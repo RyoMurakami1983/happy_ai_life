@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "bash .github/hooks/scripts/guard_pre_tool.sh",
+        "powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File .github/hooks/scripts/guard_pre_tool.ps1",
+        "cwd": ".",
+        "timeoutSec": 10,
+        "env": {
+          "COPILOT_HOOK_MODE": "guard"
+        }
+      }
+    ]
+  }
+}

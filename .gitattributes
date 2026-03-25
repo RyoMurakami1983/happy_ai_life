@@ -1,4 +1,5 @@
-# Normalize line endings: always LF in repo, convert to OS on checkout
+# Normalize line endings: always LF in repo, convert to OS on checkout.
+# This covers source files such as Rust and C as plain text.
 * text=auto eol=lf
 
 # Explicitly declare binary files

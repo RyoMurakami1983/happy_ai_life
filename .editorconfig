@@ -16,3 +16,11 @@ indent_style = tab
 
 [*.{cs,csproj,sln}]
 indent_size = 4
+
+# Rust は rustfmt の既定に合わせて 4 スペースで統一する
+[*.rs]
+indent_size = 4
+
+# C 系は 4 スペースを既定にして、言語ごとの見た目を揃える
+[*.{c,h,cc,cpp,hpp,hh,cxx}]
+indent_size = 4
