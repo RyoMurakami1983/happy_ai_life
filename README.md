@@ -1,22 +1,48 @@
-# your-project-name
+# happy_ai_life_coding_Environment
 
-> Short description of this project.
+> 楽しく AI とコーディングライフを続けるための環境を、いつでもどこでも再現できるようにする母艦リポジトリ。
 
 ## Overview
 
-TODO: Describe what this project does and why it exists.
+このリポジトリは、Copilot の共通設定を配布するためのテンプレートです。
+`.github/` を各 Repository に、`home-template/.copilot/` をホームディレクトリに同期し、同じ開発体験を再現します。
+
+思想と背景は [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) を参照してください。
 
 ## Getting Started
 
-TODO: Setup instructions.
+PowerShell でリポジトリ直下から実行します。
 
-## Usage
+1. ホームディレクトリへ同期
 
-TODO: Usage examples.
+```powershell
+./scripts/sync-to-home.ps1
+```
+
+2. 任意の Repository へ `.github/` を同期
+
+```powershell
+./scripts/sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo
+```
+
+3. 変更内容を事前確認したい場合
+
+```powershell
+./scripts/sync-to-home.ps1 -DryRun
+./scripts/sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo -DryRun
+```
+
+## Structure
+
+- `.github/`: 共有する Copilot instructions / hooks / workflows
+- `home-template/.copilot/`: 個人環境向けテンプレート
+- `scripts/`: 同期スクリプト
+- `docs/PHILOSOPHY.md`: この母艦の思想と開発憲法
 
 ## Development
 
-TODO: Development workflow.
+このリポジトリはアプリ本体ではないため、通常の build/run はありません。
+変更時は、同期先への影響（scripts、hooks、workflows、instructions）を確認してください。
 
 ## Quality Gate
 

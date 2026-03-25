@@ -1,0 +1,164 @@
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$TargetRepoPath,
+
+    [string]$SourceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
+    [string]$TemplateRelativePath = "repo-template\.github",
+    # 母艦の hooks/ を配布先にも展開する。空文字を渡すとスキップ。
+    [string]$HooksRelativePath = ".github\hooks",
+    [switch]$Mirror,
+    [switch]$DryRun,
+    [switch]$VerboseLog
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Write-Section {
+    param([string]$Message)
+    Write-Host ""
+    Write-Host "=== $Message ===" -ForegroundColor Cyan
+}
+
+function Test-RobocopyResult {
+    param([int]$ExitCode)
+
+    if ($ExitCode -ge 8) {
+        throw "robocopy failed. ExitCode=$ExitCode"
+    }
+}
+
+function Invoke-Robocopy {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination,
+        [string[]]$ExcludeDirs = @(),
+        [string[]]$ExcludeFiles = @(),
+        [switch]$MirrorMode,
+        [switch]$WhatIfMode,
+        [switch]$ShowVerboseLog
+    )
+
+    if (-not (Test-Path -LiteralPath $Source)) {
+        throw "Source path not found: $Source"
+    }
+
+    if (-not (Test-Path -LiteralPath $Destination)) {
+        New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    }
+
+    $args = @(
+        $Source
+        $Destination
+        "/E"
+        "/R:2"
+        "/W:1"
+        "/NFL"
+        "/NDL"
+        "/NP"
+        "/NJH"
+        "/NJS"
+        "/XJ"
+    )
+
+    if ($MirrorMode) {
+        $args += "/MIR"
+    }
+
+    if ($WhatIfMode) {
+        $args += "/L"
+    }
+
+    if ($ShowVerboseLog) {
+        $args = @(
+            $Source
+            $Destination
+            "/E"
+            "/R:2"
+            "/W:1"
+            "/XJ"
+        )
+        if ($MirrorMode) { $args += "/MIR" }
+        if ($WhatIfMode) { $args += "/L" }
+    }
+
+    foreach ($dir in $ExcludeDirs) {
+        $args += "/XD"
+        $args += $dir
+    }
+
+    foreach ($file in $ExcludeFiles) {
+        $args += "/XF"
+        $args += $file
+    }
+
+    Write-Host "robocopy $($args -join ' ')" -ForegroundColor DarkGray
+
+    & robocopy @args
+    $exitCode = $LASTEXITCODE
+    Test-RobocopyResult -ExitCode $exitCode
+
+    if ($WhatIfMode) {
+        Write-Host "DryRun completed. ExitCode=$exitCode" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "Sync completed. ExitCode=$exitCode" -ForegroundColor Green
+    }
+}
+
+$targetRepoPath = [System.IO.Path]::GetFullPath($TargetRepoPath)
+if (-not (Test-Path -LiteralPath $targetRepoPath)) {
+    throw "Target repository path not found: $targetRepoPath"
+}
+
+# repo固有の workflow や issue template を壊しにくくするため、
+# 必要ならここに除外を足す
+$excludeDirs = @(
+    ".git",
+    ".vs"
+)
+
+$excludeFiles = @(
+    "*.local.json",
+    "*.local.ps1"
+)
+
+# --- 1. repo-template/.github/ → 配布先 .github/ ---
+Write-Section "Sync repo-template to target repository (.github)"
+
+$sourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $TemplateRelativePath))
+$destinationPath = Join-Path $targetRepoPath ".github"
+
+Write-Host "Source      : $sourcePath"
+Write-Host "Destination : $destinationPath"
+Write-Host "Mirror      : $Mirror"
+Write-Host "DryRun      : $DryRun"
+
+Invoke-Robocopy `
+    -Source $sourcePath `
+    -Destination $destinationPath `
+    -ExcludeDirs $excludeDirs `
+    -ExcludeFiles $excludeFiles `
+    -MirrorMode:$Mirror `
+    -WhatIfMode:$DryRun `
+    -ShowVerboseLog:$VerboseLog
+
+# --- 2. .github/hooks/ → 配布先 .github/hooks/ （$HooksRelativePath が空ならスキップ）---
+if (-not [string]::IsNullOrWhiteSpace($HooksRelativePath)) {
+    Write-Section "Sync hooks to target repository (.github/hooks)"
+
+    $hooksSourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $HooksRelativePath))
+    $hooksDestinationPath = Join-Path $targetRepoPath ".github\hooks"
+
+    Write-Host "Source      : $hooksSourcePath"
+    Write-Host "Destination : $hooksDestinationPath"
+
+    Invoke-Robocopy `
+        -Source $hooksSourcePath `
+        -Destination $hooksDestinationPath `
+        -ExcludeFiles $excludeFiles `
+        -MirrorMode:$Mirror `
+        -WhatIfMode:$DryRun `
+        -ShowVerboseLog:$VerboseLog
+}
