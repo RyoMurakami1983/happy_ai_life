@@ -35,6 +35,9 @@ deny_patterns=(
   'git reset --hard'
 )
 
+# 空白の揺れを畳んで、単純な固定文字列判定で回避しにくくする
+normalized="$(tr -s '[:space:]' ' ' <<<"${normalized}")"
+
 for p in "${deny_patterns[@]}"; do
   if grep -F -q -- "${p}" <<<"${normalized}"; then
     # deny を返す（JSON）

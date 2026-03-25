@@ -31,8 +31,8 @@
 ## Build and Test
 - このリポジトリはアプリ本体ではないため、一般的な build/run コマンドは持たない。
 - 主要運用コマンドは以下。
-	- `./scripts/sync-to-home.ps1`
-	- `./scripts/sync-to-repo.ps1 -TargetRepoPath <path>`
+  - `./scripts/sync-to-home.ps1`
+  - `./scripts/sync-to-repo.ps1 -TargetRepoPath <path>`
 - 品質ゲートは `.github/workflows/quality.yml` を参照する（gitleaks は常時有効、textlint は必要時に有効化）。
 
 ## 品質と信頼性

@@ -49,7 +49,7 @@ function Invoke-Robocopy {
         New-Item -ItemType Directory -Path $Destination -Force | Out-Null
     }
 
-    $args = @(
+    $robocopyArgs = @(
         $Source
         $Destination
         "/E"
@@ -64,15 +64,15 @@ function Invoke-Robocopy {
     )
 
     if ($MirrorMode) {
-        $args += "/MIR"
+        $robocopyArgs += "/MIR"
     }
 
     if ($WhatIfMode) {
-        $args += "/L"
+        $robocopyArgs += "/L"
     }
 
     if ($ShowVerboseLog) {
-        $args = @(
+        $robocopyArgs = @(
             $Source
             $Destination
             "/E"
@@ -80,23 +80,23 @@ function Invoke-Robocopy {
             "/W:1"
             "/XJ"
         )
-        if ($MirrorMode) { $args += "/MIR" }
-        if ($WhatIfMode) { $args += "/L" }
+        if ($MirrorMode) { $robocopyArgs += "/MIR" }
+        if ($WhatIfMode) { $robocopyArgs += "/L" }
     }
 
     foreach ($dir in $ExcludeDirs) {
-        $args += "/XD"
-        $args += $dir
+        $robocopyArgs += "/XD"
+        $robocopyArgs += $dir
     }
 
     foreach ($file in $ExcludeFiles) {
-        $args += "/XF"
-        $args += $file
+        $robocopyArgs += "/XF"
+        $robocopyArgs += $file
     }
 
-    Write-Host "robocopy $($args -join ' ')" -ForegroundColor DarkGray
+    Write-Host "robocopy $($robocopyArgs -join ' ')" -ForegroundColor DarkGray
 
-    & robocopy @args
+    & robocopy @robocopyArgs
     $exitCode = $LASTEXITCODE
     Test-RobocopyResult -ExitCode $exitCode
 

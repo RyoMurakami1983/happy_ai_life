@@ -63,7 +63,7 @@ $normalized = $command.Trim().ToLowerInvariant()
 # Block list: keep it minimal and destructive-only at first
 $denyPatterns = @(
     "\brm\s+-rf\s+\/",                 # rm -rf /
-    "\brm\s+-rf\s+\.\b",               # rm -rf .
+    "\brm\s+-rf\s+\.(?:\s|$)",        # rm -rf .
     "\bdel\s+\/f\s+\/s\s+\/q\b",       # del /f /s /q
     "\bformat\b",                      # format
     "\bmkfs\b",                        # mkfs
