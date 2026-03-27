@@ -122,6 +122,7 @@ site/
 .copilot/session-state/
 .github/sessions/*
 !.github/sessions/.gitkeep
+.github/instructions/session-context.instructions.md
 *.local
 
 # Git patches

@@ -10,7 +10,7 @@
         "timeoutSec": 10
       }
     ],
-    "stop": [
+    "sessionEnd": [
       {
         "type": "command",
         "bash": "node .github/hooks/scripts/session-end.js",

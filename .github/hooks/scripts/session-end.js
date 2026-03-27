@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
- * Stop Hook (Session End) — セッション要約を .github/sessions/ に保存する
+ * SessionEnd Hook — セッション要約を .github/sessions/ に保存する
  *
- * Copilot が毎応答後に発火する Stop イベントで実行される。
- * ~/.copilot/session-state/{sessionId}/events.jsonl を解析し、
+ * Copilot のセッション終了時に発火する sessionEnd イベントで実行される。
+ * 公式入力: { timestamp, cwd, reason }
+ *
+ * ~/.copilot/session-state/ 内の最新 events.jsonl を解析し、
  * プロジェクトローカルの session.md に要約を書き出す。
  *
  * 設計原則:
@@ -42,43 +44,30 @@ async function main() {
   const raw = await readStdin();
   const cwd = process.cwd();
 
-  // stdin JSON からセッション情報を取得
-  let sessionId = null;
+  // 公式 sessionEnd 入力: { timestamp, cwd, reason }
+  let reason = null;
   try {
     const input = JSON.parse(raw);
-    // Copilot の Stop hook stdin に sessionId が含まれる想定
-    sessionId = input.sessionId || input.data?.sessionId || null;
+    reason = input.reason || null;
   } catch {
-    // パース失敗: フォールバック
+    // パース失敗: 無視して続行
   }
 
-  // sessionId がなければ最新のセッションを探索
-  let eventsPath = null;
-  if (sessionId) {
-    const candidate = path.join(
-      getGlobalSessionStateDir(),
-      sessionId,
-      'events.jsonl'
-    );
-    if (fs.existsSync(candidate)) {
-      eventsPath = candidate;
-    }
-  }
-
-  if (!eventsPath) {
-    // フォールバック: 最新の events.jsonl を cwd ベースで探す
-    eventsPath = findLatestEventsForProject(cwd);
-  }
+  // 最新の events.jsonl をプロジェクト cwd ベースで探す
+  const eventsPath = findLatestEventsForProject(cwd);
 
   const sessionsDir = getProjectSessionsDir(cwd);
   const today = getDateString();
-  const idShort = shortId(sessionId || 'manual');
+  const idShort = shortId(
+    eventsPath ? path.basename(path.dirname(eventsPath)) : 'manual'
+  );
   const sessionFile = path.join(sessionsDir, `${today}-${idShort}-session.md`);
 
   const metadata = {
     project: getProjectName(cwd),
     branch: getGitBranch(cwd),
     worktree: cwd,
+    reason: reason,
   };
 
   ensureDir(sessionsDir);

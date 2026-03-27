@@ -225,6 +225,7 @@ function buildSessionHeader(today, currentTime, metadata, existingContent) {
     `**Project:** ${metadata.project}`,
     `**Branch:** ${metadata.branch}`,
     `**Worktree:** ${metadata.worktree}`,
+    ...(metadata.reason ? [`**Reason:** ${metadata.reason}`] : []),
     '',
   ].join('\n');
 }
