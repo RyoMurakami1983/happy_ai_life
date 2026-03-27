@@ -10,7 +10,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
@@ -120,6 +120,9 @@ site/
 
 # Session and local files
 .copilot/session-state/
+.github/sessions/*
+!.github/sessions/.gitkeep
+.github/instructions/session-context.instructions.md
 *.local
 
 # Git patches
