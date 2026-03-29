@@ -57,7 +57,8 @@
 
 ## Conventions
 - 言語別の追加ルールは `.github/instructions/*.instructions.md` を参照し、このファイルに重複記載しない。
-- フック運用は `.github/hooks/*.json` と `.github/hooks/scripts/` を正とする。
+- フック運用の正本は `.github/hooks/*.json` と `.github/hooks/scripts/` のみとする。
+- `repo-template/.github/hooks/` や `home-template/.copilot/hooks/` のような重複配置はしない。
 <!-- TODO: このプロジェクト固有の慣習があれば追記する -->
 
 ## セッション終了ワークフロー

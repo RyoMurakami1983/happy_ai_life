@@ -17,6 +17,17 @@ function Write-Section {
     Write-Host "=== $Message ===" -ForegroundColor Cyan
 }
 
+function Warn-IfPathExists {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    if (Test-Path -LiteralPath $Path) {
+        Write-Warning $Message
+    }
+}
+
 function Test-RobocopyResult {
     param([int]$ExitCode)
 
@@ -106,6 +117,8 @@ function Invoke-Robocopy {
     else {
         Write-Host "Sync completed. ExitCode=$exitCode" -ForegroundColor Green
     }
+
+    $global:LASTEXITCODE = 0
 }
 
 Write-Section "Sync to HOME (.copilot)"
@@ -130,8 +143,14 @@ $excludeFiles = @(
 $excludeDirs = @(
     ".git",
     ".vs",
-    "node_modules"
+    "node_modules",
+    "hooks"
 )
+
+$unsupportedHooksPath = Join-Path $sourcePath "hooks"
+Warn-IfPathExists `
+    -Path $unsupportedHooksPath `
+    -Message "home-template/.copilot/hooks is ignored. Officially supported hook configuration is repository-scoped under .github/hooks."
 
 Invoke-Robocopy `
     -Source $sourcePath `
