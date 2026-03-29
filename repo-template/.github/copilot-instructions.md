@@ -60,6 +60,10 @@
 - フック運用は `.github/hooks/*.json` と `.github/hooks/scripts/` を正とする。
 <!-- TODO: このプロジェクト固有の慣習があれば追記する -->
 
+## セッション終了ワークフロー
+- ユーザーが「ふりかえり」と入力したら、`/exit` の前に `furikaeri-ywt` skill を発火し、セッションの YWT（やったこと・わかったこと・つぎにやること）を `.github/sessions/` に記録する。
+- `/exit` が直接入力された場合は skill を発火できない（CLI 組み込みコマンドのため LLM を経由しない）。sessionEnd hook が最低限の機械的 YWT を生成する。
+
 ## 優先順位
 1. 正確さと安全性
 2. 再現性と保守性

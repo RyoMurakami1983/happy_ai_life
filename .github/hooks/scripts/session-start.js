@@ -54,7 +54,7 @@ async function main() {
 
   const content = stripAnsi(readFileSafe(latest.path) || '');
 
-  if (!content || content.includes('[Session context goes here]')) {
+  if (!content || content.includes('[Session context goes here]') || isTemplateOnly(content)) {
     log('Session file is template-only, skipping injection');
     removeContextFile(contextFile);
     return;
@@ -91,6 +91,18 @@ function buildInstructionsContent(sessionContent, sessionBasename, allSessions) 
   }
 
   return lines.join('\n') + '\n';
+}
+
+/**
+ * YWT テンプレートのみ（W/T が未記入）のセッションファイルを判定する。
+ * summary マーカー内に実質的なコンテンツがなく、プレースホルダーだけの場合は true。
+ */
+function isTemplateOnly(content) {
+  // Y セクションがあるが実質空の場合
+  if (content.includes('### Y（やったこと）') && content.includes('- [ ]')) {
+    return true;
+  }
+  return false;
 }
 
 function removeContextFile(filePath) {

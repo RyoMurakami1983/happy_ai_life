@@ -175,9 +175,9 @@ function updateExistingSession(sessionFile, today, currentTime, metadata, summar
         summaryBlock
       );
     } else {
-      // 旧形式: "## Session Summary" 以降を全置換 + マーカー追加
+      // 旧形式: "## Session Summary" / "## Current State" / "## セッション要約" 以降を全置換 + マーカー追加
       content = content.replace(
-        /## (?:Session Summary|Current State)[\s\S]*?$/,
+        /## (?:Session Summary|Current State|セッション要約(?:（YWT）)?)[\s\S]*?$/,
         `${summaryBlock}\n\n### Notes for Next Session\n-\n\n### Context to Load\n\`\`\`\n[relevant files]\n\`\`\`\n`
       );
     }
@@ -205,15 +205,18 @@ function createNewSession(sessionFile, today, currentTime, metadata, summary) {
     ].join('\n');
   } else {
     body = [
-      '## Current State',
+      '## セッション要約（YWT）',
       '',
-      '[Session context goes here]',
-      '',
-      '### Completed',
+      '### Y（やったこと）',
       '- [ ]',
       '',
-      '### In Progress',
-      '- [ ]',
+      '### W（わかったこと）',
+      '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->',
+      '- ',
+      '',
+      '### T（つぎにやること）',
+      '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->',
+      '- ',
       '',
       '### Notes for Next Session',
       '-',

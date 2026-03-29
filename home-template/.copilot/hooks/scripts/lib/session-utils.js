@@ -254,27 +254,33 @@ function mergeSessionHeader(content, today, currentTime, metadata) {
 }
 
 function buildSummarySection(summary) {
-  let section = '## Session Summary\n\n';
+  let section = '## セッション要約（YWT）\n\n';
 
-  section += '### Tasks\n';
+  section += '### Y（やったこと）\n';
   for (const msg of summary.userMessages) {
     section += `- ${msg.replace(/\n/g, ' ').replace(/`/g, '\\`')}\n`;
   }
-  section += '\n';
-
   if (summary.filesModified.length > 0) {
-    section += '### Files Modified\n';
+    section += '\n**変更ファイル:**\n';
     for (const f of summary.filesModified) {
       section += `- ${f}\n`;
     }
-    section += '\n';
   }
+  section += '\n';
+
+  section += '### W（わかったこと）\n';
+  section += '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->\n';
+  section += '- \n\n';
+
+  section += '### T（つぎにやること）\n';
+  section += '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->\n';
+  section += '- \n\n';
 
   if (summary.toolsUsed.length > 0) {
-    section += `### Tools Used\n${summary.toolsUsed.join(', ')}\n\n`;
+    section += `### 使用ツール\n${summary.toolsUsed.join(', ')}\n\n`;
   }
 
-  section += `### Stats\n- Total user messages: ${summary.totalMessages}\n`;
+  section += `### 統計\n- ユーザーメッセージ数: ${summary.totalMessages}\n`;
   return section;
 }
 
