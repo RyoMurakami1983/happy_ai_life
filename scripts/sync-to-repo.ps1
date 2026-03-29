@@ -21,6 +21,17 @@ function Write-Section {
     Write-Host "=== $Message ===" -ForegroundColor Cyan
 }
 
+function Warn-IfPathExists {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    if (Test-Path -LiteralPath $Path) {
+        Write-Warning $Message
+    }
+}
+
 function Test-RobocopyResult {
     param([int]$ExitCode)
 
@@ -105,6 +116,8 @@ function Invoke-Robocopy {
     else {
         Write-Host "Sync completed. ExitCode=$exitCode" -ForegroundColor Green
     }
+
+    $global:LASTEXITCODE = 0
 }
 
 $targetRepoPath = [System.IO.Path]::GetFullPath($TargetRepoPath)
@@ -112,11 +125,12 @@ if (-not (Test-Path -LiteralPath $targetRepoPath)) {
     throw "Target repository path not found: $targetRepoPath"
 }
 
-# repo固有の workflow や issue template を壊しにくくするため、
-# 必要ならここに除外を足す
+# repo-template では .github/hooks を保持しない。
+# repo 用 hooks の正本は母艦 .github/hooks で、Step 2 でのみ配布する。
 $excludeDirs = @(
     ".git",
-    ".vs"
+    ".vs",
+    "hooks"
 )
 
 $excludeFiles = @(
@@ -134,6 +148,11 @@ Write-Host "Source      : $sourcePath"
 Write-Host "Destination : $destinationPath"
 Write-Host "Mirror      : $Mirror"
 Write-Host "DryRun      : $DryRun"
+
+$duplicateHooksPath = Join-Path $sourcePath "hooks"
+Warn-IfPathExists `
+    -Path $duplicateHooksPath `
+    -Message "repo-template/.github/hooks is ignored. Use .github/hooks as the single source of truth for repository hooks."
 
 Invoke-Robocopy `
     -Source $sourcePath `

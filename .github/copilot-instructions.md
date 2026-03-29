@@ -61,7 +61,12 @@
 - 1 つのコミット / 変更セットは 1 つの関心事に寄せる。
 
 ## Conventions
-- フック運用は `.github/hooks/safety-guard.json` と `.github/hooks/scripts/` を正とする。
+- フック運用の正本は `.github/hooks/*.json` と `.github/hooks/scripts/` のみとする。
+- `repo-template/.github/hooks/` や `home-template/.copilot/hooks/` に hook 実装を重複配置しない。
+
+## セッション終了ワークフロー
+- ユーザーが「ふりかえり」と入力したら、`/exit` の前に `furikaeri-ywt` skill を発火し、セッションの YWT（やったこと・わかったこと・つぎにやること）を `.github/sessions/` に記録する。
+- `/exit` が直接入力された場合は skill を発火できない（CLI 組み込みコマンドのため LLM を経由しない）。sessionEnd hook が最低限の機械的 YWT を生成する。
 
 ## 優先順位
 1. 正確さと安全性

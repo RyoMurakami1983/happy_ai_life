@@ -6,3 +6,5 @@
 - リポジトリ固有の instructions がある場合は、常にそちらを優先する。
 - 不明点は推測で固定せず、前提を短く明示する。
 - 無関係な変更や過剰な抽象化は避ける。
+- ユーザーが「ふりかえり」と入力したら、`furikaeri-ywt` skill を発火してセッションの YWT を記録する。
+- hooks は repository-scoped の `.github/hooks/` を正とし、HOME 配下に独自 hook 実装を置かない。

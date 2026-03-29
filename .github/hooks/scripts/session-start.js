@@ -54,7 +54,7 @@ async function main() {
 
   const content = stripAnsi(readFileSafe(latest.path) || '');
 
-  if (!content || content.includes('[Session context goes here]')) {
+  if (!content || content.includes('[Session context goes here]') || isTemplateOnly(content)) {
     log('Session file is template-only, skipping injection');
     removeContextFile(contextFile);
     return;
@@ -93,6 +93,85 @@ function buildInstructionsContent(sessionContent, sessionBasename, allSessions) 
   return lines.join('\n') + '\n';
 }
 
+/**
+ * YWT テンプレートのみ（Y/W/T が未記入）のセッションファイルを判定する。
+ *
+ * 判定方針:
+ * - Y/W/T / Notes for Next Session / Context to Load を評価対象とする
+ * - 空行・見出し・HTML コメント・Context の code fence 自体は評価対象外
+ * - placeholder とみなす値は以下
+ *   - `- [ ]`
+ *   - `-` / `- `
+ *   - `[relevant files]`
+ * - それ以外のテキスト（自由記述、チェック済み checkbox、太字ヘッダ、実ファイルパス等）が
+ *   1 行でもあれば false
+ */
+function isTemplateOnly(content) {
+  if (!content) return false;
+
+  const hasY = content.includes('### Y（やったこと）');
+  const hasW = content.includes('### W（わかったこと）');
+  const hasT =
+    content.includes('### T（つぎにやること）') ||
+    content.includes('### T（次にやること）');
+  const hasNotes = content.includes('### Notes for Next Session');
+  const hasContext = content.includes('### Context to Load');
+
+  if (!hasY || !hasW || !hasT || !hasNotes || !hasContext) {
+    return false;
+  }
+
+  const lines = content.split('\n');
+  let currentSection = null;
+  let inCodeFence = false;
+  const contentLines = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('### ')) {
+      currentSection = getTemplateSection(trimmed);
+      continue;
+    }
+
+    if (!currentSection) continue;
+    if (!trimmed) continue;
+    if (trimmed.startsWith('<!--')) continue;
+
+    if (trimmed.startsWith('```')) {
+      if (currentSection !== 'context') {
+        contentLines.push({ section: currentSection, line: trimmed });
+      }
+      inCodeFence = !inCodeFence;
+      continue;
+    }
+
+    contentLines.push({ section: currentSection, line: trimmed });
+  }
+
+  if (contentLines.length === 0) return true;
+
+  return contentLines.every(({ section, line }) => isPlaceholderLine(section, line));
+}
+
+function getTemplateSection(line) {
+  if (line.includes('### Y（やったこと）')) return 'y';
+  if (line.includes('### W（わかったこと）')) return 'w';
+  if (line.includes('### T（つぎにやること）')) return 't';
+  if (line.includes('### T（次にやること）')) return 't';
+  if (line.includes('### Notes for Next Session')) return 'notes';
+  if (line.includes('### Context to Load')) return 'context';
+  return null;
+}
+
+function isPlaceholderLine(section, line) {
+  if (section === 'context') {
+    return line === '[relevant files]';
+  }
+
+  return /^-\s*(\[ \])?\s*$/.test(line);
+}
+
 function removeContextFile(filePath) {
   try {
     if (fs.existsSync(filePath)) {
@@ -104,7 +183,15 @@ function removeContextFile(filePath) {
   }
 }
 
-main().catch((err) => {
-  log(`Error: ${err.message}`);
-  process.exitCode = 0;
-});
+if (require.main === module) {
+  main().catch((err) => {
+    log(`Error: ${err.message}`);
+    process.exitCode = 0;
+  });
+}
+
+module.exports = {
+  isTemplateOnly,
+  getTemplateSection,
+  isPlaceholderLine,
+};
