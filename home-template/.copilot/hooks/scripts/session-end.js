@@ -213,10 +213,12 @@ function createNewSession(sessionFile, today, currentTime, metadata, summary) {
     ].join('\n');
   } else {
     body = [
+      SUMMARY_START_MARKER,
       '## セッション要約（YWT）',
       '',
       '### Y（やったこと）',
       '- [ ]',
+      SUMMARY_END_MARKER,
       '',
       '### W（わかったこと）',
       '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->',

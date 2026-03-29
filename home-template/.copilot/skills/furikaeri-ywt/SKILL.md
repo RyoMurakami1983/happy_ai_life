@@ -2,6 +2,7 @@
 name: furikaeri-ywt
 description: >
   セッション終了前のクイック YWT ふりかえり。やったこと・わかったこと・つぎにやることを整理し、.github/sessions/ に保存する。Use when: セッション終了前に学びを残したいとき、「ふりかえり」と入力されたとき。
+license: Personal
 ---
 # セッション終了クイック YWT
 
