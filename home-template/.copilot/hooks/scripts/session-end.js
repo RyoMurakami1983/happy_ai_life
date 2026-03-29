@@ -144,6 +144,46 @@ function normalizePath(p) {
   return p.replace(/\\/g, '/').replace(/\/$/, '').toLowerCase();
 }
 
+function buildHandwrittenSections() {
+  return [
+    '### W（わかったこと）',
+    '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->',
+    '- ',
+    '',
+    '### T（つぎにやること）',
+    '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->',
+    '- ',
+    '',
+    '### Notes for Next Session',
+    '-',
+    '',
+    '### Context to Load',
+    '```',
+    '[relevant files]',
+    '```',
+  ].join('\n');
+}
+
+function findLegacyHandwrittenStart(content) {
+  const headings = [
+    '### W（わかったこと）',
+    '### T（つぎにやること）',
+    '### T（次にやること）',
+    '### Notes for Next Session',
+    '### Context to Load',
+  ];
+
+  let earliest = -1;
+  for (const heading of headings) {
+    const index = content.indexOf(heading);
+    if (index !== -1 && (earliest === -1 || index < earliest)) {
+      earliest = index;
+    }
+  }
+
+  return earliest;
+}
+
 function updateExistingSession(sessionFile, today, currentTime, metadata, summary) {
   let content = readFileSafe(sessionFile);
   if (!content) {
@@ -175,16 +215,43 @@ function updateExistingSession(sessionFile, today, currentTime, metadata, summar
         summaryBlock
       );
     } else {
-      // 旧形式: "## Session Summary" / "## Current State" / "## セッション要約" 以降を全置換 + マーカー追加
-      content = content.replace(
-        /## (?:Session Summary|Current State|セッション要約(?:（YWT）)?)[\s\S]*?$/,
-        `${summaryBlock}\n\n### W（わかったこと）\n<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->\n- \n\n### T（つぎにやること）\n<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->\n- \n\n### Notes for Next Session\n-\n\n### Context to Load\n\`\`\`\n[relevant files]\n\`\`\`\n`
+      // 旧形式: legacy summary だけ差し替え、W/T/Notes/Context などの手書き領域は保持する
+      const legacyMatch = content.match(
+        /## (?:Session Summary|Current State|セッション要約(?:（YWT）)?)/m
       );
+
+      if (legacyMatch && typeof legacyMatch.index === 'number') {
+        const summaryStart = legacyMatch.index;
+        const tail = content.slice(summaryStart);
+        const handwrittenStart = findLegacyHandwrittenStart(tail);
+        const separatorIndex = content.indexOf(SESSION_SEPARATOR);
+        const preservedPrefix =
+          separatorIndex === -1
+            ? content.slice(0, summaryStart).trimEnd()
+            : content.slice(0, separatorIndex + SESSION_SEPARATOR.length).trimEnd();
+        const handwrittenBlock =
+          handwrittenStart === -1
+            ? buildHandwrittenSections()
+            : tail.slice(handwrittenStart).trimStart();
+
+        content = [
+          preservedPrefix,
+          summaryBlock,
+          '',
+          handwrittenBlock,
+          '',
+        ].join('\n');
+      } else {
+        content = `${content.trimEnd()}\n\n${summaryBlock}\n\n${buildHandwrittenSections()}\n`;
+      }
     }
   }
 
-  writeFileSafe(sessionFile, content);
-  log(`Updated: ${sessionFile}`);
+  if (writeFileSafe(sessionFile, content)) {
+    log(`Updated: ${sessionFile}`);
+  } else {
+    log(`Failed to update: ${sessionFile}`);
+  }
 }
 
 function createNewSession(sessionFile, today, currentTime, metadata, summary) {
@@ -195,21 +262,7 @@ function createNewSession(sessionFile, today, currentTime, metadata, summary) {
     body = [
       buildSummaryBlock(summary),
       '',
-      '### W（わかったこと）',
-      '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->',
-      '- ',
-      '',
-      '### T（つぎにやること）',
-      '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->',
-      '- ',
-      '',
-      '### Notes for Next Session',
-      '-',
-      '',
-      '### Context to Load',
-      '```',
-      '[relevant files]',
-      '```',
+      buildHandwrittenSections(),
     ].join('\n');
   } else {
     body = [
@@ -220,30 +273,28 @@ function createNewSession(sessionFile, today, currentTime, metadata, summary) {
       '- [ ]',
       SUMMARY_END_MARKER,
       '',
-      '### W（わかったこと）',
-      '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->',
-      '- ',
-      '',
-      '### T（つぎにやること）',
-      '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->',
-      '- ',
-      '',
-      '### Notes for Next Session',
-      '-',
-      '',
-      '### Context to Load',
-      '```',
-      '[relevant files]',
-      '```',
+      buildHandwrittenSections(),
     ].join('\n');
   }
 
   const content = `${header}${SESSION_SEPARATOR}${body}\n`;
-  writeFileSafe(sessionFile, content);
-  log(`Created: ${sessionFile}`);
+  if (writeFileSafe(sessionFile, content)) {
+    log(`Created: ${sessionFile}`);
+  } else {
+    log(`Failed to create: ${sessionFile}`);
+  }
 }
 
-main().catch((err) => {
-  log(`Error: ${err.message}`);
-  process.exit(0);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    log(`Error: ${err.message}`);
+    process.exit(0);
+  });
+}
+
+module.exports = {
+  updateExistingSession,
+  createNewSession,
+  buildHandwrittenSections,
+  findLegacyHandwrittenStart,
+};

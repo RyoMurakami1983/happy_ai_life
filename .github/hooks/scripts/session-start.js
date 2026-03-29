@@ -97,11 +97,13 @@ function buildInstructionsContent(sessionContent, sessionBasename, allSessions) 
  * YWT テンプレートのみ（Y/W/T が未記入）のセッションファイルを判定する。
  *
  * 判定方針:
- * - Y/W/T 各セクション配下の行を評価対象とする
- *   （空行・見出し・HTML コメント・コードフェンス内・Context to Load は対象外）
- * - Y/W/T セクション内に内容が 1 行もなければテンプレートとみなす
- * - `- [ ]`（未チェック checkbox）`-` / `- `（空箇条書き）のみなら true
- * - それ以外のテキスト（自由記述、チェック済み checkbox、太字ヘッダ等）が
+ * - Y/W/T / Notes for Next Session / Context to Load を評価対象とする
+ * - 空行・見出し・HTML コメント・Context の code fence 自体は評価対象外
+ * - placeholder とみなす値は以下
+ *   - `- [ ]`
+ *   - `-` / `- `
+ *   - `[relevant files]`
+ * - それ以外のテキスト（自由記述、チェック済み checkbox、太字ヘッダ、実ファイルパス等）が
  *   1 行でもあれば false
  */
 function isTemplateOnly(content) {
@@ -112,53 +114,62 @@ function isTemplateOnly(content) {
   const hasT =
     content.includes('### T（つぎにやること）') ||
     content.includes('### T（次にやること）');
+  const hasNotes = content.includes('### Notes for Next Session');
+  const hasContext = content.includes('### Context to Load');
 
-  if (!hasY || !hasW || !hasT) {
+  if (!hasY || !hasW || !hasT || !hasNotes || !hasContext) {
     return false;
   }
 
   const lines = content.split('\n');
-  let inY = false;
-  let inW = false;
-  let inT = false;
+  let currentSection = null;
   let inCodeFence = false;
   const contentLines = [];
 
   for (const line of lines) {
     const trimmed = line.trim();
 
-    if (trimmed.startsWith('```')) {
-      inCodeFence = !inCodeFence;
-      continue;
-    }
-    if (inCodeFence) continue;
-
-    if (/^###\s+Context to Load/.test(trimmed)) {
-      inY = false;
-      inW = false;
-      inT = false;
-      continue;
-    }
-
     if (trimmed.startsWith('### ')) {
-      inY = trimmed.includes('### Y（やったこと）');
-      inW = trimmed.includes('### W（わかったこと）');
-      inT =
-        trimmed.includes('### T（つぎにやること）') ||
-        trimmed.includes('### T（次にやること）');
+      currentSection = getTemplateSection(trimmed);
       continue;
     }
 
-    if (!inY && !inW && !inT) continue;
+    if (!currentSection) continue;
     if (!trimmed) continue;
     if (trimmed.startsWith('<!--')) continue;
 
-    contentLines.push(trimmed);
+    if (trimmed.startsWith('```')) {
+      if (currentSection !== 'context') {
+        contentLines.push({ section: currentSection, line: trimmed });
+      }
+      inCodeFence = !inCodeFence;
+      continue;
+    }
+
+    contentLines.push({ section: currentSection, line: trimmed });
   }
 
   if (contentLines.length === 0) return true;
 
-  return contentLines.every((line) => /^-\s*(\[ \])?\s*$/.test(line));
+  return contentLines.every(({ section, line }) => isPlaceholderLine(section, line));
+}
+
+function getTemplateSection(line) {
+  if (line.includes('### Y（やったこと）')) return 'y';
+  if (line.includes('### W（わかったこと）')) return 'w';
+  if (line.includes('### T（つぎにやること）')) return 't';
+  if (line.includes('### T（次にやること）')) return 't';
+  if (line.includes('### Notes for Next Session')) return 'notes';
+  if (line.includes('### Context to Load')) return 'context';
+  return null;
+}
+
+function isPlaceholderLine(section, line) {
+  if (section === 'context') {
+    return line === '[relevant files]';
+  }
+
+  return /^-\s*(\[ \])?\s*$/.test(line);
 }
 
 function removeContextFile(filePath) {
@@ -172,7 +183,15 @@ function removeContextFile(filePath) {
   }
 }
 
-main().catch((err) => {
-  log(`Error: ${err.message}`);
-  process.exitCode = 0;
-});
+if (require.main === module) {
+  main().catch((err) => {
+    log(`Error: ${err.message}`);
+    process.exitCode = 0;
+  });
+}
+
+module.exports = {
+  isTemplateOnly,
+  getTemplateSection,
+  isPlaceholderLine,
+};
