@@ -98,7 +98,8 @@ function buildInstructionsContent(sessionContent, sessionBasename, allSessions) 
  *
  * 判定方針:
  * - Y/W/T の見出しがすべて存在すること
- * - 見出し行・空行・HTML コメント行を除いた本体行が、すべてプレースホルダー（未チェック checkbox のみ）であること
+ * - 見出し行・空行・HTML コメント行を除いた本体行が、すべてプレースホルダーであること
+ *   プレースホルダー: 未チェック checkbox `- [ ]` または空箇条書き `- ` / `-`
  * - チェック済み (- [x] / - [X]) や自由テキストが 1 行でもあれば false
  */
 function isTemplateOnly(content) {
@@ -127,7 +128,8 @@ function isTemplateOnly(content) {
 
   if (bodyLines.some((line) => /- \[[xX]\]/.test(line))) return false;
 
-  return bodyLines.every((line) => /^- \[ \]\s*$/.test(line.trim()));
+  // `- [ ]`（未チェック checkbox）または `-` / `- `（空箇条書き）のみ許容
+  return bodyLines.every((line) => /^-\s*(\[ \])?\s*$/.test(line.trim()));
 }
 
 function removeContextFile(filePath) {
