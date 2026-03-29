@@ -97,11 +97,12 @@ function buildInstructionsContent(sessionContent, sessionBasename, allSessions) 
  * YWT テンプレートのみ（Y/W/T が未記入）のセッションファイルを判定する。
  *
  * 判定方針:
- * - Y/W/T 各セクション配下の箇条書き行のみを評価対象とする
- *   （ヘッダ、日付、--- 区切り、Context to Load、コードフェンス内は対象外）
- * - Y/W/T セクション内に箇条書きが 1 行もなければテンプレートとみなす
- * - チェック済み (- [x] / - [X]) や自由テキストが 1 行でもあれば false
- * - `- [ ]`（未チェック checkbox）または `-` / `- `（空箇条書き）のみなら true
+ * - Y/W/T 各セクション配下の行を評価対象とする
+ *   （空行・見出し・HTML コメント・コードフェンス内・Context to Load は対象外）
+ * - Y/W/T セクション内に内容が 1 行もなければテンプレートとみなす
+ * - `- [ ]`（未チェック checkbox）`-` / `- `（空箇条書き）のみなら true
+ * - それ以外のテキスト（自由記述、チェック済み checkbox、太字ヘッダ等）が
+ *   1 行でもあれば false
  */
 function isTemplateOnly(content) {
   if (!content) return false;
@@ -120,9 +121,8 @@ function isTemplateOnly(content) {
   let inY = false;
   let inW = false;
   let inT = false;
-  let inContextToLoad = false;
   let inCodeFence = false;
-  const bulletLines = [];
+  const contentLines = [];
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -134,7 +134,6 @@ function isTemplateOnly(content) {
     if (inCodeFence) continue;
 
     if (/^###\s+Context to Load/.test(trimmed)) {
-      inContextToLoad = true;
       inY = false;
       inW = false;
       inT = false;
@@ -142,7 +141,6 @@ function isTemplateOnly(content) {
     }
 
     if (trimmed.startsWith('### ')) {
-      inContextToLoad = false;
       inY = trimmed.includes('### Y（やったこと）');
       inW = trimmed.includes('### W（わかったこと）');
       inT =
@@ -153,17 +151,14 @@ function isTemplateOnly(content) {
 
     if (!inY && !inW && !inT) continue;
     if (!trimmed) continue;
+    if (trimmed.startsWith('<!--')) continue;
 
-    if (trimmed.startsWith('-')) {
-      bulletLines.push(trimmed);
-    }
+    contentLines.push(trimmed);
   }
 
-  if (bulletLines.length === 0) return true;
+  if (contentLines.length === 0) return true;
 
-  if (bulletLines.some((line) => /- \[[xX]\]/.test(line))) return false;
-
-  return bulletLines.every((line) => /^-\s*(\[ \])?\s*$/.test(line));
+  return contentLines.every((line) => /^-\s*(\[ \])?\s*$/.test(line));
 }
 
 function removeContextFile(filePath) {
