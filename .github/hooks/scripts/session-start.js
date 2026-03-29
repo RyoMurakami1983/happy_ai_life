@@ -94,15 +94,40 @@ function buildInstructionsContent(sessionContent, sessionBasename, allSessions) 
 }
 
 /**
- * YWT テンプレートのみ（W/T が未記入）のセッションファイルを判定する。
- * summary マーカー内に実質的なコンテンツがなく、プレースホルダーだけの場合は true。
+ * YWT テンプレートのみ（Y/W/T が未記入）のセッションファイルを判定する。
+ *
+ * 判定方針:
+ * - Y/W/T の見出しがすべて存在すること
+ * - 見出し行・空行・HTML コメント行を除いた本体行が、すべてプレースホルダー（未チェック checkbox のみ）であること
+ * - チェック済み (- [x] / - [X]) や自由テキストが 1 行でもあれば false
  */
 function isTemplateOnly(content) {
-  // Y セクションがあるが実質空の場合
-  if (content.includes('### Y（やったこと）') && content.includes('- [ ]')) {
-    return true;
+  if (!content) return false;
+
+  const hasY = content.includes('### Y（やったこと）');
+  const hasW = content.includes('### W（わかったこと）');
+  const hasT =
+    content.includes('### T（つぎにやること）') ||
+    content.includes('### T（次にやること）');
+
+  if (!hasY || !hasW || !hasT) {
+    return false;
   }
-  return false;
+
+  const lines = content.split('\n');
+  const bodyLines = lines.filter((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    if (trimmed.startsWith('## ') || trimmed.startsWith('### ')) return false;
+    if (/^<!--.*-->$/.test(trimmed)) return false;
+    return true;
+  });
+
+  if (bodyLines.length === 0) return true;
+
+  if (bodyLines.some((line) => /- \[[xX]\]/.test(line))) return false;
+
+  return bodyLines.every((line) => /^- \[ \]\s*$/.test(line.trim()));
 }
 
 function removeContextFile(filePath) {

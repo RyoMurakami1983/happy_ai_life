@@ -268,14 +268,6 @@ function buildSummarySection(summary) {
   }
   section += '\n';
 
-  section += '### W（わかったこと）\n';
-  section += '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->\n';
-  section += '- \n\n';
-
-  section += '### T（つぎにやること）\n';
-  section += '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->\n';
-  section += '- \n\n';
-
   if (summary.toolsUsed.length > 0) {
     section += `### 使用ツール\n${summary.toolsUsed.join(', ')}\n\n`;
   }
