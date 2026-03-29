@@ -97,10 +97,11 @@ function buildInstructionsContent(sessionContent, sessionBasename, allSessions) 
  * YWT テンプレートのみ（Y/W/T が未記入）のセッションファイルを判定する。
  *
  * 判定方針:
- * - Y/W/T の見出しがすべて存在すること
- * - 見出し行・空行・HTML コメント行を除いた本体行が、すべてプレースホルダーであること
- *   プレースホルダー: 未チェック checkbox `- [ ]` または空箇条書き `- ` / `-`
+ * - Y/W/T 各セクション配下の箇条書き行のみを評価対象とする
+ *   （ヘッダ、日付、--- 区切り、Context to Load、コードフェンス内は対象外）
+ * - Y/W/T セクション内に箇条書きが 1 行もなければテンプレートとみなす
  * - チェック済み (- [x] / - [X]) や自由テキストが 1 行でもあれば false
+ * - `- [ ]`（未チェック checkbox）または `-` / `- `（空箇条書き）のみなら true
  */
 function isTemplateOnly(content) {
   if (!content) return false;
@@ -116,20 +117,53 @@ function isTemplateOnly(content) {
   }
 
   const lines = content.split('\n');
-  const bodyLines = lines.filter((line) => {
+  let inY = false;
+  let inW = false;
+  let inT = false;
+  let inContextToLoad = false;
+  let inCodeFence = false;
+  const bulletLines = [];
+
+  for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed) return false;
-    if (trimmed.startsWith('## ') || trimmed.startsWith('### ')) return false;
-    if (/^<!--.*-->$/.test(trimmed)) return false;
-    return true;
-  });
 
-  if (bodyLines.length === 0) return true;
+    if (trimmed.startsWith('```')) {
+      inCodeFence = !inCodeFence;
+      continue;
+    }
+    if (inCodeFence) continue;
 
-  if (bodyLines.some((line) => /- \[[xX]\]/.test(line))) return false;
+    if (/^###\s+Context to Load/.test(trimmed)) {
+      inContextToLoad = true;
+      inY = false;
+      inW = false;
+      inT = false;
+      continue;
+    }
 
-  // `- [ ]`（未チェック checkbox）または `-` / `- `（空箇条書き）のみ許容
-  return bodyLines.every((line) => /^-\s*(\[ \])?\s*$/.test(line.trim()));
+    if (trimmed.startsWith('### ')) {
+      inContextToLoad = false;
+      inY = trimmed.includes('### Y（やったこと）');
+      inW = trimmed.includes('### W（わかったこと）');
+      inT =
+        trimmed.includes('### T（つぎにやること）') ||
+        trimmed.includes('### T（次にやること）');
+      continue;
+    }
+
+    if (!inY && !inW && !inT) continue;
+    if (!trimmed) continue;
+
+    if (trimmed.startsWith('-')) {
+      bulletLines.push(trimmed);
+    }
+  }
+
+  if (bulletLines.length === 0) return true;
+
+  if (bulletLines.some((line) => /- \[[xX]\]/.test(line))) return false;
+
+  return bulletLines.every((line) => /^-\s*(\[ \])?\s*$/.test(line));
 }
 
 function removeContextFile(filePath) {
