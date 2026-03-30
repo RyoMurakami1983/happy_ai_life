@@ -62,7 +62,7 @@
 
 ## DeepReview
 - PR 前の重要変更や「事前レビュー」依頼では、`deep-review-preflight` の型で一次情報確認・source of truth 確認・非破壊性確認を先に行う。
-- review は実装スレッドと分離し、`code-review-before-commit` custom agent または built-in `code-review` / `/review` を使って高信頼の指摘だけを扱う。
+- review は実装スレッドと分離し、`deep-review` custom agent または built-in `code-review` / `/review` を使って高信頼の指摘だけを扱う。
 - DeepReview を通した後に `github-pr-workflow` へ進み、実際の PR コメント対応は `github-pr-review-response` へ委譲する。
 
 ## Conventions
