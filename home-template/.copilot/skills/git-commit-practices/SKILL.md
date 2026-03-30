@@ -23,7 +23,6 @@ description: >
 
 - **`github-pr-workflow`** - PR作成とマージ運用
 - **`github-issue-intake`** - Issue作成とトリアージ
-- **`github`** - 広い GitHub 入口から「コミットして」をこの skill に流すための補助入口
 
 ---
 

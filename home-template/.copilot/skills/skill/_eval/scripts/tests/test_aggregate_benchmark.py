@@ -156,3 +156,36 @@ def test_load_run_results_skips_prefix_collisions(tmp_path: Path):
 
     assert list(results) == ["current"]
     assert [item["case_id"] for item in results["current"]] == ["tc-001"]
+
+
+def test_load_run_results_skips_malformed_json(tmp_path: Path):
+    mod = load_module()
+    evals_dir = tmp_path / "evals"
+    skill_id = "sample"
+    runs_dir = evals_dir / skill_id / "runs"
+    runs_dir.mkdir(parents=True, exist_ok=True)
+
+    (runs_dir / "run-003__current__tc-001.json").write_text(
+        json.dumps(
+            {
+                "run_id": "run-003",
+                "case_id": "tc-001",
+                "variant_id": "current",
+                "mode": "current",
+                "score": 1.0,
+                "assertions": [],
+                "response_snippet": "ok",
+                "timestamp": "2026-03-21T00:00:00Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (runs_dir / "run-003__current__tc-002.json").write_text(
+        '{"run_id": "run-003", "case_id": "tc-002",',
+        encoding="utf-8",
+    )
+
+    results = mod.load_run_results(evals_dir, skill_id, "run-003")
+
+    assert list(results) == ["current"]
+    assert [item["case_id"] for item in results["current"]] == ["tc-001"]

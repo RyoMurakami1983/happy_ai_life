@@ -67,7 +67,7 @@ def load_run_results(evals_dir: Path, skill_id: str, run_id: str) -> dict[str, l
                 data = json.load(f)
         except json.JSONDecodeError as exc:
             print(f"WARNING: Skipping malformed JSON in {path}: {exc}", file=sys.stderr)
-            data = {}
+            continue
 
         embedded_run_id = str(data.get("run_id") or "")
         inferred_variant_id, inferred_case_id = parse_result_filename(path, run_id)

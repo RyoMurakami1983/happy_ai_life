@@ -21,9 +21,7 @@ description: >
 
 - **`git-commit-practices`** - コミット運用と実践
 - **`github-pr-workflow`** - PR運用とマージ方針
-- **`git-initial-setup`** - リポジトリ初期保護
-- **`skill`** - 変更管理と履歴整理
-- **`skill`** - ドキュメント品質検証
+- **`skill`** - 変更管理と履歴・ドキュメント品質の整理
 - **`knowledge-capture`** - 公開リポジトリ向けコンテンツの匿名化ゲート
 
 ---
@@ -66,7 +64,7 @@ Action: Issueを作成して続行
 
 ### Step 1.5: 匿名化ゲートの適用（公開リポジトリ向け）
 
-コンテンツを書く前に、投稿先リポジトリが**公開**かどうかを確認する。公開の場合は [`knowledge-capture` の匿名化チェックリスト](../../knowledge-capture/SKILL.md#anonymization-checklist)（AC-1〜AC-4）を適用する：
+コンテンツを書く前に、投稿先リポジトリが**公開**かどうかを確認する。公開の場合は [`knowledge-capture` の匿名化チェックリスト](../../knowledge-capture/SKILL.md#%E5%8C%BF%E5%90%8D%E5%8C%96%E3%83%81%E3%82%A7%E3%83%83%E3%82%AF%E3%83%AA%E3%82%B9%E3%83%88)（AC-1〜AC-4）を適用する：
 
 | チェック | Issueで確認すべき内容 |
 |---------|---------------------|

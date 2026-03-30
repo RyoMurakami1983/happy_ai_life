@@ -186,7 +186,7 @@ EOF
 gh pr create --title "feat: 支払い画面にフィルタを追加" --body-file "$BODY_FILE"
 ```
 
-複数段落の本文、シェル例、バッククォートを含むMarkdownでは、このパターンを既定にしてください。PowerShell/Bash両対応の再利用テンプレは `docs/patterns/environment-portability.md`（テンプレート2）を参照します。
+複数段落の本文、シェル例、バッククォートを含むMarkdownでは、このパターンを既定にしてください。PowerShell/Bash両対応の再利用テンプレとして扱い、同等の構成で本文ファイルを作成してから `--body-file` に渡します。
 
 ✅ **良い例**: 本文ファイルを生成して確認してから `gh pr create --body-file` を実行する。
 ❌ **悪い例**: バッククォート入りの複数行Markdownを `--body` に直接貼り付けてクォート崩れに賭ける。

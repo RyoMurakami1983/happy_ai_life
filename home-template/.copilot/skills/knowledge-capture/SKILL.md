@@ -252,7 +252,7 @@ OrderProcessorの出力で注文ORD-394072を処理した際、
 
 ## Resources
 
-- [PHILOSOPHY.md](../../PHILOSOPHY.md) — 開発憲法とValues
+- [PHILOSOPHY.md](../../../../docs/PHILOSOPHY.md) — 開発憲法とValues
 - [furikaeri-practice](../furikaeri-practice/SKILL.md) — ふりかえりワークフロー
 - [skill](../skill/SKILL.md) — スキル作成ワークフロー
 
