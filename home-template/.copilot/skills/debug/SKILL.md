@@ -2,6 +2,7 @@
 name: debug
 description: >
   再現可能な証拠で失敗を再現し、比較・切り分け・最小修正の検証まで進める。Use when: リグレッション調査、正常系と異常系の比較、変更前後のデバッグ痕跡を残したいとき。
+license: Personal
 ---
 # 再現可能な証拠でデバッグする
 
@@ -51,6 +52,7 @@ description: >
 | HTTP、認証、service、transaction、cache のずれ | `api-backend.md` | request と状態境界の切り分けが主になるため |
 | data drift、schema 破壊、join、null、aggregate の不具合 | `data-etl.md` | snapshot と分布比較が重要になるため |
 | 機能は正しいが latency、throughput、memory が悪い | `performance.md` | 機能差分より計測結果が主役になるため |
+| 共有順序、idempotency、retry、race、eventual consistency など分散/並行制御が主因らしい | `distributed-concurrency.md` | ordering と retry ポリシーを固定してから他要因を切り分けるため |
 | AI 出力の揺らぎ、seed 変化、時刻依存、retry ノイズ、共有順序や state sync が主因ではない揺らぎ | `nondeterminism.md` | time と制御変数を握るのが最短だから |
 | 個体差、fixture、電源、環境、発生時間、場所、周辺設備、仕様外使用で出たり出なかったりする | `embedded-hardware.md` | 物理条件や測定品質が owner かもしれないため |
 | 何を記録し、どう比較するか自体が曖昧 | `evidence-manifest.md` | まず証拠パッケージの型を固定するため |
