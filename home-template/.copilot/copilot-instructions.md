@@ -8,3 +8,5 @@
 - 無関係な変更や過剰な抽象化は避ける。
 - ユーザーが「ふりかえり」と入力したら、`furikaeri-ywt` skill を発火してセッションの YWT を記録する。
 - hooks は repository-scoped の `.github/hooks/` を正とし、HOME 配下に独自 hook 実装を置かない。
+- ユーザーが「DeepReview」「事前レビュー」「PR前レビュー」と依頼したら、`deep-review-preflight` skill を優先して使う。
+- DeepReview では、実装スレッドと別タスクで `deep-review` custom agent か built-in `/review` / `code-review` を使い、高信頼の指摘だけを扱う。

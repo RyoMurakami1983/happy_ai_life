@@ -35,7 +35,7 @@ PowerShell でリポジトリ直下から実行します。
 ## Structure
 
 - `.github/`: 共有する Copilot instructions / hooks / workflows
-- `home-template/.copilot/`: 個人環境向けテンプレート
+- `home-template/.copilot/`: 個人環境向けテンプレート（skills / agents を含む）
 - `scripts/`: 同期スクリプト
 - `docs/PHILOSOPHY.md`: この母艦の思想と開発憲法
 
@@ -43,6 +43,7 @@ PowerShell でリポジトリ直下から実行します。
 
 このリポジトリはアプリ本体ではないため、通常の build/run はありません。
 変更時は、同期先への影響（scripts、hooks、workflows、instructions）を確認してください。
+PR 前の深掘り事前レビューは `deep-review-preflight` skill と `deep-review` agent を起点にします。
 
 ## Quality Gate
 
