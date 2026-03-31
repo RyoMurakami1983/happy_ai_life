@@ -100,7 +100,7 @@ user-invocable: true
 | 言語/環境 | ツール | 検出対象 |
 |----------|--------|---------|
 | TypeScript/JavaScript | `knip`, `ts-prune`, `depcheck` | 未使用ファイル、エクスポート、依存 |
-| Python | `vulture`, `autoflake`, `pip-audit` | デッドコード、未使用インポート |
+| Python | `vulture`, `autoflake`, `ruff` | デッドコード、未使用インポート |
 | C# / .NET | `dotnet-unused`, Roslyn アナライザー | 未使用参照、コード |
 | 汎用 | `grep -r`, IDE の参照検索 | 任意パターンの参照確認 |
 

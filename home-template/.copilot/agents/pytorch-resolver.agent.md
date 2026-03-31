@@ -12,7 +12,7 @@ disable-model-invocation: false
 user-invocable: true
 ---
 
-# PyTorch Build/Runtime Error Resolver Agent
+# PyTorch Runtime/CUDA Error Resolver Agent
 
 PyTorch 固有のランタイムエラー、CUDA 問題、テンソル形状不整合、勾配計算エラーを
 最小限の外科的な変更で修正するエージェントです。
