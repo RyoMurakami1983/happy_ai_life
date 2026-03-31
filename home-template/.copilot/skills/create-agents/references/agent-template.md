@@ -8,7 +8,8 @@ agent.md を作成する際の雛形です。`<...>` の箇所を埋めて使い
 ---
 name: <kebab-case-name>
 description: >
-  <1〜2文で何をするエージェントか。Use when: <いつ使うか>。>
+  <1〜2文で何をするエージェントか。>
+  Use when: <いつ使うか>。
 tools:
   - read
   - search
