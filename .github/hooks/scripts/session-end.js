@@ -147,11 +147,11 @@ function normalizePath(p) {
 function buildHandwrittenSections() {
   return [
     '### W（わかったこと）',
-    '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->',
+    '<!-- furikaeri-practice skill で記入。/exit で直接終了した場合は手動で記入 -->',
     '- ',
     '',
     '### T（つぎにやること）',
-    '<!-- furikaeri-ywt skill で記入。/exit で直接終了した場合は手動で記入 -->',
+    '<!-- furikaeri-practice skill で記入。/exit で直接終了した場合は手動で記入 -->',
     '- ',
     '',
     '### Notes for Next Session',

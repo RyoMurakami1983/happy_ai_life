@@ -27,7 +27,7 @@ function makeTempFile(name) {
 function sampleMetadata() {
   return {
     project: 'happy_ai_life_coding_Environment',
-    branch: 'feature/furikaeri-ywt-skill',
+    branch: 'feature/furikaeri-practice',
     worktree: 'C:\\tools\\happy_ai_life_coding_Environment',
     reason: 'manual-test',
   };
