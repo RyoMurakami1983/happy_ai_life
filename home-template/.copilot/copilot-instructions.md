@@ -10,3 +10,12 @@
 - hooks は repository-scoped の `.github/hooks/` を正とし、HOME 配下に独自 hook 実装を置かない。
 - ユーザーが「DeepReview」「事前レビュー」「PR前レビュー」「commit前にチェック」と依頼したら、`deep-review-preflight` skill を優先して使う。
 - DeepReview では、実装スレッドと別タスクで `deep-review` custom agent か built-in `/review` / `code-review` を使い、高信頼の指摘だけを扱う。
+
+## Agent ディスパッチ
+- custom agent は `task` tool の `agent_type` に agent 名を指定して呼び出す。
+- 複雑な機能実装・リファクタリングの計画を依頼されたら、`planner` agent を呼び出す。
+- アーキテクチャや構造の設計判断が必要なら、`architect` agent を呼び出す。
+- パフォーマンス問題・ボトルネック調査を依頼されたら、`performance-optimizer` agent を呼び出す。
+- DeepReview の実行時は、`deep-review` agent を別タスクで呼び出す（既存ルールに従う）。
+- ユーザーの明示的な依頼がなくても、上記条件に合致すれば積極的に agent を活用する。
+- built-in agent と custom agent の両方が使える場合は、custom agent を優先する。

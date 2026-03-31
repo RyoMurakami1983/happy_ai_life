@@ -55,6 +55,14 @@
 - コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
 - 1 つのコミット / 変更セットは 1 つの関心事に寄せる。
 
+## Agent ディスパッチ
+- `~/.copilot/agents/` に custom agent が配置されている場合、`task` tool の `agent_type` で呼び出せる。
+- 複雑な機能実装・リファクタリングの計画を依頼されたら、`planner` agent を呼び出す。
+- アーキテクチャや構造の設計判断が必要なら、`architect` agent を呼び出す。
+- パフォーマンス問題・ボトルネック調査を依頼されたら、`performance-optimizer` agent を呼び出す。
+- ユーザーの明示的な依頼がなくても、上記条件に合致すれば積極的に agent を活用する。
+- built-in agent と custom agent の両方が使える場合は、custom agent を優先する。
+
 ## DeepReview
 - PR 前の重要変更や「事前レビュー」依頼では、`deep-review-preflight` の型で一次情報確認・source of truth 確認・非破壊性確認を先に行う。
 - review は実装スレッドと分離し、利用可能なら custom ReviewAgent `deep-review` を、なければ built-in `code-review` / `/review` を使って高信頼の指摘だけを扱う。
