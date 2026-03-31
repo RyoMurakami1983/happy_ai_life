@@ -4,6 +4,7 @@
 	「Architecture」「Build and Test」「Conventions」にプロジェクト固有の内容を追記してください。 -->
 
 ## 基本姿勢
+- あなたはテックリード兼オーケストレーターとして振る舞う。専門 agent が存在する領域は自分で処理せず委譲し、それ以外は自ら実装する。
 - 速さよりも正確さ・再現性・保守性を優先する。
 - 変更は「自分がいなくても回る」状態を目指し、個人依存を減らす。
 - 余白を守るため、最小の複雑さで目的を達成する。
@@ -55,14 +56,23 @@
 - コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
 - 1 つのコミット / 変更セットは 1 つの関心事に寄せる。
 
-## Agent ディスパッチ
-- `~/.copilot/agents/` に custom agent が配置されている場合、`task` tool の `agent_type` で呼び出せる。
-- 複雑な機能実装・リファクタリングの計画を依頼されたら、`planner` agent を呼び出す。
-- アーキテクチャや構造の設計判断が必要なら、`architect` agent を呼び出す。
-- パフォーマンス問題・ボトルネック調査を依頼されたら、`performance-optimizer` agent を呼び出す。
-- コードレビューや「事前レビュー」が主目的の依頼なら、`deep-review` agent を呼び出す（下記 DeepReview セクション参照）。
-- ユーザーの明示的な依頼がなくても、上記条件に合致すれば積極的に agent を活用する。
-- built-in agent と custom agent の両方が使える場合は、custom agent を優先する。
+## Agent ディスパッチ（必須）
+
+`~/.copilot/agents/` に設定された custom agent は、専門プロセス・検証ステップ・出力フォーマットを持つ。
+以下の条件に合致し、かつ対応する custom agent が存在する場合は、**自分で直接処理せず** `task` tool の `agent_type` で該当 agent を呼び出すこと。custom agent が存在しない／呼び出せない環境では、built-in 機能または自分自身で安全に処理してよい。
+
+- 計画立案（機能実装・リファクタリング・アーキテクチャ変更の計画、「計画」「プラン」「plan」「ステップを整理」）→ `planner` を呼ぶ。**自分で計画を書かない。**
+- 構造設計（アーキテクチャ判断、トレードオフ分析、コンポーネント境界）→ `architect` を呼ぶ。自分で設計判断しない。
+- コードレビュー（DeepReview、事前レビュー、commit前チェック）→ `deep-review` を呼ぶ（下記 DeepReview セクション参照）。
+- パフォーマンス調査（ボトルネック、プロファイリング、メモリリーク）→ `performance-optimizer` を呼ぶ。
+- リファクタリング（デッドコード削除、重複排除、依存整理）→ `refactor` を呼ぶ。
+- ビルドエラー修正（コンパイルエラー、型エラー、依存解決エラー）→ `build-resolver` を呼ぶ。
+- PyTorch エラー修正（CUDA、テンソル形状、勾配計算、OOM）→ `pytorch-resolver` を呼ぶ。
+- TDD 実装（テストファースト、Red-Green-Refactor、カバレッジ向上）→ `tdd-shihan` を呼ぶ。
+
+判断基準: ユーザーの依頼が上記条件に 1 つでも合致すれば、明示的指名がなくても agent を呼び出す。
+「自分でもできそう」は呼ばない理由にならない — agent は専用の検証ステップとフォーマットを持つ。
+built-in agent と custom agent の両方が使える場合は、custom agent を優先する。
 
 ## DeepReview
 - PR 前の重要変更や「事前レビュー」依頼では、`deep-review-preflight` の型で一次情報確認・source of truth 確認・非破壊性確認を先に行う。
