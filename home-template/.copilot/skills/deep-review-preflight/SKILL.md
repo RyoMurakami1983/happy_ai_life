@@ -3,7 +3,7 @@ name: deep-review-preflight
 description: >
   PR 前の DeepReview を標準フローで進める。一次情報確認、source of truth の確認、
   非破壊性・回帰・配布経路の点検、別タスク review、修正後の再レビューまでを整理する。
-  Use when: 「DeepReview」「事前レビュー」「PR前レビュー」の依頼時。
+  Use when: 「DeepReview」「事前レビュー」「PR前レビュー」「commit前にチェック」の依頼時。
 license: Personal
 compatibility: "deep-review.agent.md, built-in /review or code-review agent"
 ---
