@@ -70,7 +70,7 @@
 - `repo-template/.github/hooks/` や `home-template/.copilot/hooks/` に hook 実装を重複配置しない。
 
 ## セッション終了ワークフロー
-- ユーザーが「ふりかえり」と入力したら、`/exit` の前に `furikaeri-ywt` skill を発火し、セッションの YWT（やったこと・わかったこと・つぎにやること）を `.github/sessions/` に記録する。
+- ユーザーが「ふりかえり」と入力したら、`/exit` の前に `furikaeri-practice` skill を発火し、セッションの YWT（やったこと・わかったこと・つぎにやること）を `.github/sessions/` に記録する。Quick モード（既定）で T に集中し、必要に応じて Deep モード（KPT＋深掘り）に切り替える。
 - `/exit` が直接入力された場合は skill を発火できない（CLI 組み込みコマンドのため LLM を経由しない）。sessionEnd hook が最低限の機械的 YWT を生成する。
 
 ## 優先順位
