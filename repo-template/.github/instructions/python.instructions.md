@@ -7,6 +7,7 @@ applyTo: "**/*.py"
 
 - [repository-wide instructions](../copilot-instructions.md) を前提とし、このファイルは Python の追加ルールだけを定義する。
 - 既存の formatter、linter、type checker、test runner がある場合はそれを優先する。
+- ツール選定や環境構築は各 repository の setup guide や Skill に寄せ、このファイルではコード記述規約に集中する。
 - 公開関数と重要な内部関数には型ヒントを付ける。複雑な戻り値やコレクション型は省略しない。
 - 新規コードでは、可能なら `pathlib` を `os.path` より優先する。
 - 使い捨てスクリプト以外では `print` より `logging` を優先する。
