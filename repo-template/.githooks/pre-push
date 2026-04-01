@@ -6,7 +6,7 @@ protected_branch="${GIT_MAIN_GUARD_BRANCH:-main}"
 protected_ref="refs/heads/$protected_branch"
 
 while read -r local_ref local_sha remote_ref remote_sha; do
-  if [ "$local_ref" = "$protected_ref" ] || [ "$remote_ref" = "$protected_ref" ]; then
+  if [ "$remote_ref" = "$protected_ref" ]; then
     printf '%s\n%s\n' "Pushing to '$protected_branch' is blocked by the repository hook." "Create a feature branch and open a pull request instead." >&2
     exit 1
   fi
