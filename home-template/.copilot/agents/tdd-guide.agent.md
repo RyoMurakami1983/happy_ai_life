@@ -1,5 +1,5 @@
 ---
-name: tdd-shihan
+name: tdd-guide
 description: >
   テスト駆動開発（TDD）の Red-Green-Refactor サイクルを実践し、テストファーストで品質を担保する専門エージェント。
   Use when: 新機能の TDD 実装、バグ修正のテストファースト対応、テストカバレッジの向上が必要なとき。
