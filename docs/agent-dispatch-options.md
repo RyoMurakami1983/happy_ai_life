@@ -5,7 +5,7 @@
 ## 背景
 
 4師範エージェントは、`docs/PHILOSOPHY.md` の価値観を強く反映した「教える・広める・仕組み化する」実働部隊として追加された。
-一方で、`planner` / `architect` / `tdd-guide` / `refactor` / `deep-review` は、単一責務のプロセスエージェントとして別の型を持っている。
+一方で、`planner` / `architect` / `tdd-guide` / `refactor` / `code-quality-review` / `security-review` は、単一責務のプロセスエージェントとして別の型を持っている。
 
 ここで決めたいのは、4師範をどこまで実働化し、既存エージェントとどう分担するかである。
 
@@ -14,7 +14,7 @@
 ### 中身
 
 - 師範はレビュー、教育、言語固有の判断の説明に寄せる
-- 実際の修正や進行は `deep-review` / `tdd-guide` / `refactor` / `build-resolver` に委譲する
+- 実際の修正や進行は `code-quality-review` / `security-review` / `tdd-guide` / `refactor` / `build-resolver` に委譲する
 - 師範は「何が良い型か」を教える役に徹する
 
 ### 良い点
@@ -46,7 +46,7 @@
 ### 気になる点
 
 - dispatch ルールの明文化が必要
-- `deep-review` や `tdd-guide` との責務分界をはっきりさせる必要がある
+- `code-quality-review` / `security-review` や `tdd-guide` との責務分界をはっきりさせる必要がある
 
 ### 推奨
 

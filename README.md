@@ -32,6 +32,16 @@ PowerShell でリポジトリ直下から実行します。
 ./scripts/sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo -DryRun
 ```
 
+4. Git の main 保護を有効化する
+
+```powershell
+# この母艦リポジトリでローカル保護を有効化する場合
+git config --local core.hooksPath repo-template/.githooks
+
+# 別リポジトリへ hooks をインストールする場合
+./scripts/install-git-hooks.ps1 -TargetRepoPath C:\path\to\your-repo
+```
+
 ## Structure
 
 - `.github/`: 共有する Copilot instructions / hooks / workflows
@@ -43,7 +53,8 @@ PowerShell でリポジトリ直下から実行します。
 
 このリポジトリはアプリ本体ではないため、通常の build/run はありません。
 変更時は、同期先への影響（scripts、hooks、workflows、instructions）を確認してください。
-PR 前の深掘り事前レビューは `deep-review-preflight` skill と `deep-review` agent を起点にします。
+PR 前の深掘り事前レビューは `deep-review-preflight` skill を入口に、`code-quality-review` / `security-review` agent で実施します。
+Git の client hooks は `repo-template/.githooks/` を正本にし、`core.hooksPath` で有効化します。GitHub の branch protection / ruleset は別途必須です。
 
 ## Quality Gate
 

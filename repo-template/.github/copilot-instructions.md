@@ -72,7 +72,9 @@
 
 - 計画立案（機能実装・リファクタリング・アーキテクチャ変更の計画、「計画」「プラン」「plan」「ステップを整理」）→ `planner` を呼ぶ。**自分で計画を書かない。**
 - 構造設計（アーキテクチャ判断、トレードオフ分析、コンポーネント境界）→ `architect` を呼ぶ。自分で設計判断しない。
-- コードレビュー（DeepReview、事前レビュー、commit前チェック）→ `deep-review` を呼ぶ（下記 DeepReview セクション参照）。
+- コードレビュー（品質・回帰・非破壊性）→ `code-quality-review` を呼ぶ。
+- セキュリティレビュー（認証・入力検証・機密データ・脆弱性）→ `security-review` を呼ぶ。
+- DeepReview（事前レビュー、commit前チェック）→ `deep-review-preflight` skill を入口にし、変更内容に応じて上記 agent を使い分ける。
 - パフォーマンス調査（ボトルネック、プロファイリング、メモリリーク）→ `performance-optimizer` を呼ぶ。
 - リファクタリング（デッドコード削除、重複排除、依存整理）→ `refactor` を呼ぶ。
 - ビルドエラー修正（コンパイルエラー、型エラー、依存解決エラー）→ `build-resolver` を呼ぶ。
@@ -87,14 +89,16 @@
 built-in agent と custom agent の両方が使える場合は、custom agent を優先する。
 
 ## DeepReview
-- PR 前の重要変更や「事前レビュー」依頼では、`deep-review-preflight` の型で一次情報確認・source of truth 確認・非破壊性確認を先に行う。
-- review は実装スレッドと分離し、利用可能なら custom ReviewAgent `deep-review` を、なければ built-in `code-review` / `/review` を使って高信頼の指摘だけを扱う。
+- PR 前の重要変更や「事前レビュー」依頼では、`deep-review-preflight` skill を入口にし、一次情報確認・source of truth 確認・非破壊性確認を先に行う。
+- review は実装スレッドと分離し、変更内容に応じて `code-quality-review`（品質・回帰）/ `security-review`（セキュリティ）を使い分ける。両面にまたがる変更では両方を走らせる。
+- custom agent がない場合は built-in `code-review` / `/review` を fallback として使う。
 - DeepReview を通した後に PR 作成へ進み、実際の PR コメント対応は別のレビュー応答フローへ委譲する。
 
 ## Conventions
 - 言語別の追加ルールは `.github/instructions/*.instructions.md` を参照し、このファイルに重複記載しない。
 - フック運用の正本は `.github/hooks/*.json` と `.github/hooks/scripts/` のみとする。
 - `repo-template/.github/hooks/` や `home-template/.copilot/hooks/` のような重複配置はしない。
+- Git client hooks は `repo-template/.githooks/` を正本にし、target repo では `.githooks/` に同期して `core.hooksPath` で有効化する。GitHub の branch protection / ruleset は別途必須とする。
 <!-- TODO: このプロジェクト固有の慣習があれば追記する -->
 
 ## セッション終了ワークフロー

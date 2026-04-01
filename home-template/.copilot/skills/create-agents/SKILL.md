@@ -16,7 +16,7 @@ license: Personal
 
 - 新しい custom agent を `home-template/.copilot/agents/` に追加したいとき
 - 外部の agent 定義を参考にしつつ、自分の思想に合わせてカスタマイズしたいとき
-- 既存エージェント群（planner, architect, deep-review 等）と整合する新エージェントを作りたいとき
+- 既存エージェント群（planner, architect, code-quality-review, security-review 等）と整合する新エージェントを作りたいとき
 - agent の役割定義や哲学的原則の選び方に迷っているとき
 
 ## ワークフロー: エージェントを作成する
