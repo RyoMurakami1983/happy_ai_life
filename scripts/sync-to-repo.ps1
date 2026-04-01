@@ -7,6 +7,8 @@ param(
     [string]$TemplateRelativePath = "repo-template\.github",
     # 母艦の hooks/ を配布先にも展開する。空文字を渡すとスキップ。
     [string]$HooksRelativePath = ".github\hooks",
+    # Git client hooks のテンプレート。target repo の .githooks に同期する。
+    [string]$GitHooksRelativePath = "repo-template\.githooks",
     [switch]$Mirror,
     [switch]$DryRun,
     [switch]$VerboseLog
@@ -177,6 +179,24 @@ if (-not [string]::IsNullOrWhiteSpace($HooksRelativePath)) {
         -Source $hooksSourcePath `
         -Destination $hooksDestinationPath `
         -ExcludeFiles $excludeFiles `
+        -MirrorMode:$Mirror `
+        -WhatIfMode:$DryRun `
+        -ShowVerboseLog:$VerboseLog
+}
+
+# --- 3. repo-template/.githooks/ → 配布先 .githooks/ ---
+if (-not [string]::IsNullOrWhiteSpace($GitHooksRelativePath)) {
+    Write-Section "Sync git hooks to target repository (.githooks)"
+
+    $gitHooksSourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $GitHooksRelativePath))
+    $gitHooksDestinationPath = Join-Path $targetRepoPath ".githooks"
+
+    Write-Host "Source      : $gitHooksSourcePath"
+    Write-Host "Destination : $gitHooksDestinationPath"
+
+    Invoke-Robocopy `
+        -Source $gitHooksSourcePath `
+        -Destination $gitHooksDestinationPath `
         -MirrorMode:$Mirror `
         -WhatIfMode:$DryRun `
         -ShowVerboseLog:$VerboseLog
