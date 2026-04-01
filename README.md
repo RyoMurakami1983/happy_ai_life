@@ -43,7 +43,7 @@ PowerShell でリポジトリ直下から実行します。
 
 このリポジトリはアプリ本体ではないため、通常の build/run はありません。
 変更時は、同期先への影響（scripts、hooks、workflows、instructions）を確認してください。
-PR 前の深掘り事前レビューは `deep-review-preflight` skill と `deep-review` agent を起点にします。
+PR 前の深掘り事前レビューは `deep-review-preflight` skill を入口に、`code-quality-review` / `security-review` agent で実施します。
 
 ## Quality Gate
 
