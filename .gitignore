@@ -134,6 +134,7 @@ site/
 docs/local_references/*
 !docs/local_references/.gitkeep
 !docs/local_references/.gitignore
+!docs/local_references/README.md
 
 ## Private skill eval results（コミットしないローカル評価結果）
 docs/local_skill_evals/*
