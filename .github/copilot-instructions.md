@@ -29,6 +29,14 @@
 - 個人用設定の雛形は `home-template/.copilot/` に保持する。
 - 同期は `scripts/sync-to-home.ps1` と `scripts/sync-to-repo.ps1` を起点に行う。
 
+## Skill / Agent boundary
+- Skill は入口、手順、受け渡しを担う。
+- Agent は専門的な調査や分析を担う。
+- `.instructions.md` は言語やファイル種別に閉じた局所ルールを担う。
+
+## Skill ディスパッチ（必須）
+- 調査・一次情報確認・現状のベストプラクティス把握 → `deep-research-preflight` を使う。内部では `deep-researcher` agent で証拠を集める。
+
 ## Build and Test
 - このリポジトリはアプリ本体ではないため、一般的な build/run コマンドは持たない。
 - 主要運用コマンドは以下。
