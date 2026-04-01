@@ -82,7 +82,10 @@ custom agent が利用可能な場合に限り、以下のルールで agent へ
 - リファクタリング（デッドコード削除、重複排除、依存整理）→ `refactor` を呼ぶ。
 - ビルドエラー修正（コンパイルエラー、型エラー、依存解決エラー）→ `build-resolver` を呼ぶ。
 - PyTorch エラー修正（CUDA、テンソル形状、勾配計算、OOM）→ `pytorch-resolver` を呼ぶ。
-- TDD 実装（テストファースト、Red-Green-Refactor、カバレッジ向上）→ `tdd-shihan` を呼ぶ。
+- TDD 実装（テストファースト、Red-Green-Refactor、カバレッジ向上）→ `tdd-guide` を呼ぶ。
+- 言語/skill 領域の実務判断・型の提示 → `dotnet-shihan` / `python-shihan` / `typescript-shihan` / `skill-shihan` を呼ぶ。
+  - 4師範はドメイン責任者であり、構造判断や TDD/リファクタリングの進行責任は持たない。
+  - 構造判断 → `architect`、計画立案 → `planner`、テストファースト → `tdd-guide`、安全な削除・統合 → `refactor` を優先する。
 
 判断基準: ユーザーの依頼が上記条件に 1 つでも合致すれば、明示的指名がなくても agent を呼び出す。
 「自分でもできそう」は呼ばない理由にならない — agent は専用の検証ステップとフォーマットを持つ。
