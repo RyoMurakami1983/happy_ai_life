@@ -1,8 +1,7 @@
 ---
 name: python-setup-dev-environment
 description: >
-  Use when: set up and run a reproducible Python dev environment with uv, ruff,
-  and ty.
+  Use when: uv、ruff、ty を使って再現可能な Python 開発環境を整えたいとき。
 license: Personal
 ---
 
