@@ -2,13 +2,13 @@
 name: python-setup-dev-environment
 description: >
   Use when: set up and run a reproducible Python dev environment with uv, ruff,
-  ty, and VSCode.
+  and ty.
 license: Personal
 ---
 
 # python-setup-dev-environment
 
-`uv`・`ruff`・`ty`・VSCode を使って、再現可能な Python 開発環境を短い手順で整える skill です。
+`uv`・`ruff`・`ty` を使って、再現可能な Python 開発環境を短い手順で整える skill です。
 環境構築と日次運用の入口を 1 本にまとめ、余計な判断を減らします。
 
 ## こんなときに使う
@@ -16,7 +16,6 @@ license: Personal
 - 新しい Python プロジェクトを立ち上げるとき
 - 実行方法を `uv run` に統一したいとき
 - lint / format / type-check の順序を固定したいとき
-- VSCode の保存時挙動を安全側に寄せたいとき
 - `mypy` 前提の運用を `ty` に寄せたいとき
 
 ## ワークフロー: Python 開発環境を整える
@@ -41,25 +40,7 @@ uv run ty check .
 
 整形、lint、型チェックの順に回すと、差分と失敗原因が追いやすくなります。
 
-### Step 3 — VSCode の保存時ガードを設定する
-
-```json
-{
-  "[python]": {
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll": "explicit",
-      "source.organizeImports": "explicit"
-    },
-    "editor.defaultFormatter": "charliermarsh.ruff"
-  }
-}
-```
-
-保存時の広い自動修正を避けると、意図しない差分が出にくくなります。
-ここは現時点では Skill 内に残し、設定が膨らんだら `setting-vscode-env` として分離します。
-
-### Step 4 — 起動チェックを行う
+### Step 3 — 起動チェックを行う
 
 ```powershell
 # Replace main.py with your project entry script if needed.
@@ -68,7 +49,7 @@ uv run python main.py
 
 `main.py` のようなエントリースクリプトがあるプロジェクトでは、`uv run` で仮想環境を起こしつつ起動確認までまとめてできます。
 
-### Step 5 — 再現性を確認する
+### Step 4 — 再現性を確認する
 
 ```powershell
 uv sync
