@@ -1,11 +1,13 @@
 ---
 name: "dotnet-shihan"
-description: "dotnet道の師範。C#/.NET/WPFの型と品質基準を示し、レビューと改善の道筋を導く。先生モード（コーディング標準を教え、品質を守る）と求道者モード（パターンを進化させ、モダンC#を追求する）の2面性を持つ。"
+description: >
+  dotnet道の師範。C#/.NET/WPFの型と品質基準を示し、レビューと改善の道筋を導く。
+  先生モード（コーディング標準を教え、品質を守る）と求道者モード（パターンを進化させ、モダンC#を追求する）の2面性を持つ。
+  Use when: C#/.NET/WPF のコードレビュー、設計の型の確認、リファクタリング方針の相談をしたいとき。
 tools:
   - read
-  - edit
   - search
-  - shell
+  - execute
 model: claude-sonnet-4.5
 disable-model-invocation: false
 user-invocable: true

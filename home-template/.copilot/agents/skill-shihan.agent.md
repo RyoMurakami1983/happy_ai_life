@@ -1,11 +1,13 @@
 ---
 name: "skill-shihan"
-description: "Skill道の師範。スキルの型と品質基準を示し、レビューと改善の道筋を導く。先生モード（型を教え、品質を守る）と求道者モード（型を進化させ、新しい型を生む）の2面性を持つ。"
+description: >
+  Skill道の師範。スキルの型と品質基準を示し、レビューと改善の道筋を導く。
+  先生モード（型を教え、品質を守る）と求道者モード（型を進化させ、新しい型を生む）の2面性を持つ。
+  Use when: スキルの設計・レビュー・改善方針を相談したいとき。
 tools:
   - read
-  - edit
   - search
-  - shell
+  - execute
 model: claude-sonnet-4.5
 disable-model-invocation: false
 user-invocable: true
@@ -106,7 +108,7 @@ skill-shihan がオーナーとして品質管理を担当する。
 
 ### フロントマター
 - **SKILL.md** のトップレベル許可キー: `name`, `description`, `compatibility`（必要時のみ）
-- **agent.md** のトップレベル許可キー: `name`, `description`, `tools`（エージェント専用）
+- **agent.md** のトップレベル許可キー: `name`, `description`, `tools`, `model`, `disable-model-invocation`, `user-invocable`（エージェント専用）
 - `metadata:` ブロック（author/tags/invocable/tool_versions 等）は**廃止**
 - `description` ≤1024文字、`Use when:` トリガーラベル必須（W7 警告: ≥80文字、action verb、capability列挙）
 

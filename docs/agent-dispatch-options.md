@@ -1,4 +1,4 @@
-# 4師範エージェントの進め方 विकल्प
+# 4師範エージェントの進め方の選択肢
 
 この文書は、`dotnet-shihan` / `python-shihan` / `skill-shihan` / `typescript-shihan` をどう扱うかを比較するためのメモです。
 
