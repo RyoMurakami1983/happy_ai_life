@@ -44,6 +44,7 @@ architect への入力:
 - 仕様書の要件
 - サブドメイン分類表（ステップ 1 の出力）
 - 対象の技術スタックと既存基盤
+- 実装の経験則（`_foundation/IMPLEMENTATION_HEURISTICS.md`）に基づく実装パターンの候補
 
 architect と協調して行うこと:
 1. モジュール（コンポーネント）の責務と境界を定義する
@@ -66,6 +67,7 @@ architect と協調して行うこと:
 - **機能的責務**: このモジュールが担う業務機能
 - **カプセル化する知識**: 他のモジュールが知るべきではない内部情報
 - **サブドメイン分類**: Core / Supporting / Generic とその根拠
+- **業務ロジック実装方法と技術方式**: サブドメイン分類に基づく選択とその根拠（`_foundation/IMPLEMENTATION_HEURISTICS.md` の判断ツリーを参照）
 - **統合契約**: 他モジュールとの統合ポイント（方向、統合強度、共有知識、契約定義）
 - **変更ベクトル**: このモジュール「だけ」の変更で済む将来の変更シナリオ
 
@@ -73,7 +75,7 @@ architect と協調して行うこと:
 
 ### ステップ 4 — モジュールテスト仕様作成
 
-各モジュールのテスト仕様を作成する。
+各モジュールのテスト仕様を作成する。サブドメイン分類に応じたテスト型（ピラミッド / ダイヤモンド / 逆ピラミッド）を `_foundation/IMPLEMENTATION_HEURISTICS.md` から選び、テスト比率の方針を決めてから区分を設計する。
 
 テスト区分:
 - **ユニットテスト**: モジュール内部のロジック（業務ルール、状態遷移、境界値）
@@ -139,6 +141,7 @@ standard ワークフローと同じ型に加え、以下を追加する:
 ## 関連リソース
 
 - `home-template/.copilot/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — DDD 用語集
+- `home-template/.copilot/skills/design-workshop/_foundation/IMPLEMENTATION_HEURISTICS.md` — 実装の経験則（判断ツリー）
 - `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド
 - `home-template/.copilot/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
 - `home-template/.copilot/agents/architect.agent.md` — 構造判断の主担当
