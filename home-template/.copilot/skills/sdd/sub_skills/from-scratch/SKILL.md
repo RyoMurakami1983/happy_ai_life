@@ -20,7 +20,7 @@ description: >
 
 ### ステップ 1 — 仕様を固める（spec-workshop）
 
-`spec-workshop` を呼び出し、仕様書を作成します。ゼロからの場合は `from-scratch` route に振り分けられ、`spec-interviewer` で論点を掘り、`deep-researcher` で根拠を固めます。
+`spec-workshop` を呼び出し、仕様書を作成します。ゼロからの場合は `spec-workshop/sub_skills/from-scratch/` route に振り分けられ、`spec-interviewer` で論点を掘り、`deep-researcher` で根拠を固めます。
 
 成果物: 仕様書（要件、制約、受け入れ条件）
 

@@ -33,7 +33,7 @@ description: >
 
 ### ステップ 3 — 計画 → 実装 → 最終レビュー
 
-`from-scratch` のステップ 3-5 と同じ流れで進めます。
+`sdd/sub_skills/from-scratch/` のステップ 3-5 と同じ流れで進めます。
 
 ## 注意点
 

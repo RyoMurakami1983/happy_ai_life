@@ -144,6 +144,6 @@ description: >
 
 - `home-template/.copilot/skills/design-workshop/sub_skills/balanced-coupling-design/SKILL.md` — 新規設計用の Balanced Coupling ワークフロー
 - `home-template/.copilot/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — DDD 用語集
-- `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド
+- `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド（repo 内ローカル参照。`~/.copilot` 同期環境では開けない）
 - `home-template/.copilot/agents/refactor.agent.md` — 是正策の実装
 - `home-template/.copilot/agents/architect.agent.md` — 構造判断の相談

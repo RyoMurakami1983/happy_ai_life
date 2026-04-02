@@ -36,6 +36,7 @@
 
 ## Skill ディスパッチ（必須）
 - 調査・一次情報確認・現状のベストプラクティス把握 → `deep-research-preflight` を使う。内部では `deep-researcher` agent で証拠を集める。
+- 仕様作成・要件定義・前提条件の整理 → `spec-workshop` を使う。仕様の骨子づくりに集中し、追加の調査が必要な場合は `deep-research-preflight` を、詳細設計が必要な場合は `design-workshop` を併用する。
 - 設計・構造検証・セキュリティ設計確認 → `design-workshop` を使う。標準設計と Balanced Coupling レンズ設計を判断表で振り分ける router skill。内部で `architect`、`*-shihan`、`security-review` に委譲する。
 - 既存コードの結合構造分析・モジュール境界の見直し → `modularity-review` を使う。3 次元（統合強度・距離・変動性）で不均衡を検出する。
 - 仕様駆動開発（ゼロから / 途中再開）→ `sdd` を使う。内部で spec-workshop / design-workshop / planner / tdd-guide 等に委譲する。
