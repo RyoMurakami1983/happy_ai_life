@@ -26,6 +26,8 @@
 
 ## Skill ディスパッチ（必須）
 - 調査・一次情報確認・現状のベストプラクティス把握 → `deep-research-preflight` を使う。内部では `deep-researcher` agent で証拠を集める。
+- 設計・構造検証・セキュリティ設計確認 → `design-workshop` を使う。内部で `architect`、`*-shihan`、`security-review` に委譲する。仕様が固まったら spec-workshop → design-workshop → planner の順に進める。
+- 仕様駆動開発（ゼロから / 途中再開）→ `sdd` を使う。内部で spec-workshop / design-workshop / planner / tdd-guide 等に委譲する。
 
 ## Build and Test
 <!-- TODO: install / build / test / lint コマンドを記述する。エージェントが自動実行に利用する。
@@ -73,7 +75,7 @@
 - 計画立案（機能実装・リファクタリング・アーキテクチャ変更の計画、「計画」「プラン」「plan」「ステップを整理」）→ `planner` を呼ぶ。**自分で計画を書かない。**
 - 構造設計（アーキテクチャ判断、トレードオフ分析、コンポーネント境界）→ `architect` を呼ぶ。自分で設計判断しない。
 - コードレビュー（品質・回帰・非破壊性）→ `code-quality-review` を呼ぶ。
-- セキュリティレビュー（認証・入力検証・機密データ・脆弱性）→ `security-review` を呼ぶ。
+- セキュリティレビュー（認証・入力検証・機密データ・脆弱性・設計段階のセキュリティ確認）→ `security-review` を呼ぶ。
 - DeepReview（事前レビュー、commit前チェック）→ `deep-review-preflight` skill を入口にし、変更内容に応じて上記 agent を使い分ける。
 - パフォーマンス調査（ボトルネック、プロファイリング、メモリリーク）→ `performance-optimizer` を呼ぶ。
 - リファクタリング（デッドコード削除、重複排除、依存整理）→ `refactor` を呼ぶ。
