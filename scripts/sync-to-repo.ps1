@@ -215,9 +215,15 @@ if (-not [string]::IsNullOrWhiteSpace($DocsSessionsRelativePath)) {
         Write-Host "Source      : $docsSessionsSourcePath"
         Write-Host "Destination : $docsSessionsDestinationPath"
 
+        # docs/sessions は共有セッションログ用の append-only 領域なので、Mirror は使わない。
+        if ($Mirror) {
+            Write-Warning "docs/sessions sync is always non-mirror (append-only). -Mirror switch is ignored for this step."
+        }
+
         Invoke-Robocopy `
             -Source $docsSessionsSourcePath `
             -Destination $docsSessionsDestinationPath `
+            -MirrorMode:$false `
             -WhatIfMode:$DryRun `
             -ShowVerboseLog:$VerboseLog
     }

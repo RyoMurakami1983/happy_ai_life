@@ -176,7 +176,27 @@ run('findRecentSharedSessions: filename timestamp order を使う', () => {
   assert.deepStrictEqual(results.map((item) => item.basename), [
     '20260401-121500_(Beta).md',
     '20260401-101010_(Alpha).md',
+  ]); 
+});
+
+run('findRecentSharedSessions: invalid filename timestamp は mtime にフォールバックする', () => {
+  const dir = makeTempDir();
+  const validPath = path.join(dir, '20260401-121500_(Valid).md');
+  const invalidPath = path.join(dir, '20261399-996060_(Invalid).md');
+
+  fs.writeFileSync(validPath, '# valid', 'utf8');
+  fs.writeFileSync(invalidPath, '# invalid', 'utf8');
+  const older = new Date('2026-04-01T12:14:59Z');
+  const newer = new Date('2026-04-01T12:15:00Z');
+  fs.utimesSync(validPath, newer, newer);
+  fs.utimesSync(invalidPath, older, older);
+
+  const results = findRecentSharedSessions(dir, 3);
+  assert.deepStrictEqual(results.map((item) => item.basename), [
+    '20260401-121500_(Valid).md',
+    '20261399-996060_(Invalid).md',
   ]);
+  assert.strictEqual(results[1].timestamp, results[1].mtime);
 });
 
 run('buildInstructionsContent: shared session context を含む', () => {

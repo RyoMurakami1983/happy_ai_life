@@ -330,9 +330,44 @@ function parseSharedSessionTimestamp(fileName) {
   const hour = Number(timePart.slice(0, 2));
   const minute = Number(timePart.slice(2, 4));
   const second = Number(timePart.slice(4, 6));
-  const timestamp = Date.UTC(year, month - 1, day, hour, minute, second);
 
-  return Number.isNaN(timestamp) ? null : timestamp;
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    !Number.isInteger(hour) ||
+    !Number.isInteger(minute) ||
+    !Number.isInteger(second) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31 ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59
+  ) {
+    return null;
+  }
+
+  const timestamp = Date.UTC(year, month - 1, day, hour, minute, second);
+  if (Number.isNaN(timestamp)) return null;
+
+  const normalized = new Date(timestamp);
+  if (
+    normalized.getUTCFullYear() !== year ||
+    normalized.getUTCMonth() !== month - 1 ||
+    normalized.getUTCDate() !== day ||
+    normalized.getUTCHours() !== hour ||
+    normalized.getUTCMinutes() !== minute ||
+    normalized.getUTCSeconds() !== second
+  ) {
+    return null;
+  }
+
+  return timestamp;
 }
 
 function findRecentSharedSessions(dir, maxCount = 3) {

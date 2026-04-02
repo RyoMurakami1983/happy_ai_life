@@ -7,7 +7,7 @@ current_branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)
 
 changed_shared_docs=$(git diff --cached --name-only --diff-filter=MDRT -- docs/sessions 2>/dev/null || true)
 if [ -n "$changed_shared_docs" ]; then
-  printf '%s\n' "Shared session docs are append-only. Do not modify, delete, or rename existing docs/sessions/*.md files." >&2
+  printf '%s\n' "Shared session docs are append-only. Do not modify, delete, or rename existing files under docs/sessions/**." >&2
   printf '%s\n' "$changed_shared_docs" >&2
   exit 1
 fi
