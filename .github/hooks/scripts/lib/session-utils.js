@@ -15,6 +15,7 @@ const MAX_FILES = 30;
 const MAX_MESSAGE_LENGTH = 200;
 const SESSION_MAX_AGE_DAYS = 7;
 const SHARED_SESSION_NAME_PATTERN = /^\d{8}-\d{6}_.+\.md$/;
+const SHARED_SESSION_TIMESTAMP_PATTERN = /^(\d{8})-(\d{6})_.+\.md$/;
 
 // --- ファイル操作 ---
 
@@ -320,7 +321,7 @@ function findRecentSessions(dir, maxAge) {
 }
 
 function parseSharedSessionTimestamp(fileName) {
-  const match = fileName.match(/^(\d{8})-(\d{6})_.+\.md$/);
+  const match = fileName.match(SHARED_SESSION_TIMESTAMP_PATTERN);
   if (!match) return null;
 
   const [datePart, timePart] = [match[1], match[2]];

@@ -176,7 +176,7 @@ run('findRecentSharedSessions: filename timestamp order を使う', () => {
   assert.deepStrictEqual(results.map((item) => item.basename), [
     '20260401-121500_(Beta).md',
     '20260401-101010_(Alpha).md',
-  ]); 
+  ]);
 });
 
 run('findRecentSharedSessions: invalid filename timestamp は mtime にフォールバックする', () => {

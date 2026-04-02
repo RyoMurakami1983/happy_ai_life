@@ -42,11 +42,16 @@ async function main() {
   const contextFile = path.join(instructionsDir, CONTEXT_FILENAME);
 
   if (!ensureDir(sessionsDir)) return;
-  if (!ensureDir(sharedSessionsDir)) return;
+  const sharedSessionsDirReady = ensureDir(sharedSessionsDir);
+  if (!sharedSessionsDirReady) {
+    log(`Failed to ensure shared sessions dir: ${sharedSessionsDir}, continuing without shared context`);
+  }
   if (!ensureDir(instructionsDir)) return;
 
   const recentSessions = findRecentSessions(sessionsDir, SESSION_MAX_AGE_DAYS);
-  const recentSharedSessions = findRecentSharedSessions(sharedSessionsDir, 3);
+  const recentSharedSessions = sharedSessionsDirReady
+    ? findRecentSharedSessions(sharedSessionsDir, 3)
+    : [];
 
   if (recentSessions.length === 0 && recentSharedSessions.length === 0) {
     log('No recent sessions found');
