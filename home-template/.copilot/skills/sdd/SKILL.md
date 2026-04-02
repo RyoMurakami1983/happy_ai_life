@@ -1,0 +1,88 @@
+---
+name: sdd
+description: >
+  仕様駆動開発（Spec-Driven Development）の全工程を1つの入口で進める。
+  spec → design → plan → 実装 → レビュー を既存 skill/agent に委譲しながら通す。
+  Use when: 仕様駆動で開発を始めたいとき、途中のフェーズから再開したいとき。
+---
+
+# SDD — Spec-Driven Development
+
+仕様駆動開発の全工程を1つの入口から進める router skill です。各フェーズの中身は既存の skill と agent に委譲し、この skill 自身はフローの振り分けと接続だけを担います。途中からの再開にも対応し、最も進んだ地点の次から始められます。
+
+## こんなときに使う
+
+このスキルは次のようなときに使います:
+- ゼロから仕様駆動で開発を始めたいとき
+- 仕様はあるが設計から進めたいとき
+- 設計済みで計画と実装に入りたいとき
+- 計画があり実装を開始したいとき
+- 中断した開発を途中から再開したいとき
+
+## 判断表
+
+| やりたいこと | ルート | 次にやること |
+| --- | --- | --- |
+| ゼロから仕様駆動で開発したい | `sub_skills/from-scratch/` | spec-workshop → design-workshop → planner → 実装 → 最終レビュー |
+| 仕様があり設計から始めたい | `sub_skills/from-spec/` | design-workshop → planner → 実装 → 最終レビュー |
+| 設計があり計画から始めたい | `sub_skills/from-design/` | planner → 実装 → 最終レビュー |
+| 計画があり実装から始めたい | `sub_skills/from-plan/` | 実装 → 最終レビュー |
+| 中断した開発を再開したい | `sub_skills/resume/` | 成果物の状態から中断地点を判定し、該当フェーズから再開 |
+
+## 全体フロー
+
+```
+仕様フェーズ        → spec-workshop（spec-interviewer + deep-researcher）
+  ↓
+設計フェーズ        → design-workshop（architect + *-shihan + security-review）
+  ↓                    DDD 戦略パターン（Bounded Context, Context Map）は
+  ↓                    architect が構造判断として扱う
+  ↓                    DDD 戦術パターン（Entity, Value Object 等）は
+  ↓                    *-shihan が言語固有の型で支援する
+  ↓
+計画フェーズ        → planner
+  ↓
+実装フェーズ        → tdd-guide（TDD: Red-Green-Refactor）
+  ↓                    build-resolver（ビルドエラー修正）
+  ↓                    refactor（リファクタリング）
+  ↓                    ※ trust boundary 変更時に security-review を中間チェック
+  ↓
+最終レビューフェーズ → code-quality-review + security-review
+```
+
+## セキュリティ checkpoint
+
+セキュリティレビューは3段階で実施します:
+
+1. **設計時**: design-workshop 内で security-review が trust boundary と設計方針を確認
+2. **実装中（イベント駆動）**: 以下の変更時に security-review を中間チェック
+   - 認証/認可を追加・変更する
+   - 外部入力の入口を増やす
+   - 機密データの保存/転送を追加する
+   - 外部 API / Webhook / ファイル I/O / コマンド実行を追加する
+   - trust boundary をまたぐデータフローを増やす
+3. **最終**: code-quality-review + security-review で品質とセキュリティの両面を確認
+
+## 共通リソース
+
+- `home-template/.copilot/skills/spec-workshop/SKILL.md` — 仕様作成
+- `home-template/.copilot/skills/design-workshop/SKILL.md` — 技術設計
+- `home-template/.copilot/agents/planner.agent.md` — 実装計画
+- `home-template/.copilot/agents/tdd-guide.agent.md` — TDD 実装
+- `home-template/.copilot/agents/build-resolver.agent.md` — ビルドエラー修正
+- `home-template/.copilot/agents/refactor.agent.md` — リファクタリング
+- `home-template/.copilot/agents/code-quality-review.agent.md` — 品質レビュー
+- `home-template/.copilot/agents/security-review.agent.md` — セキュリティレビュー
+
+## ルーティングメモ
+
+- ユーザーの現在地点に最も合う sub-skill へ直接案内する。
+- 実行ロジックは router ではなく sub-skill と既存 skill/agent に置く。
+- 各フェーズの中身を sdd 内に再実装しない。委譲先の skill/agent が正本。
+- モデル選定は各 agent が自身のモデルを持つ。sdd は指定しない。
+
+## 注意点
+
+- **各段の中身を再実装しない**: sdd はフローを繋ぐだけです。仕様は spec-workshop、設計は design-workshop、計画は planner が正本。
+- **coder agent は置かない**: 実装はオーケストレーター + tdd-guide + build-resolver + refactor で担います。汎用 coder は責務が曖昧なため導入しません。
+- **全フェーズを必ず通す必要はない**: 途中から始めてよいし、特定フェーズを飛ばす判断もユーザーに委ねます。
