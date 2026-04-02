@@ -8,6 +8,7 @@ const path = require('path');
 
 const {
   isTemplateOnly,
+  buildInstructionsContent,
 } = require('../.github/hooks/scripts/session-start.js');
 const {
   createNewSession,
@@ -17,11 +18,16 @@ const {
   SESSION_SEPARATOR,
   SUMMARY_START_MARKER,
   SUMMARY_END_MARKER,
+  findRecentSharedSessions,
 } = require('../.github/hooks/scripts/lib/session-utils.js');
 
 function makeTempFile(name) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'session-hooks-'));
   return path.join(dir, name);
+}
+
+function makeTempDir(prefix = 'session-hooks-dir-') {
+  return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
 function sampleMetadata() {
@@ -158,6 +164,61 @@ run('non-template: Y にコードフェンス内容がある', () => {
   ].join('\n');
 
   assert.strictEqual(isTemplateOnly(content), false);
+});
+
+run('findRecentSharedSessions: filename timestamp order を使う', () => {
+  const dir = makeTempDir();
+  fs.writeFileSync(path.join(dir, '20260401-101010_(Alpha).md'), '# alpha', 'utf8');
+  fs.writeFileSync(path.join(dir, '20260401-121500_(Beta).md'), '# beta', 'utf8');
+  fs.writeFileSync(path.join(dir, 'ignore.txt'), 'x', 'utf8');
+
+  const results = findRecentSharedSessions(dir, 3);
+  assert.deepStrictEqual(results.map((item) => item.basename), [
+    '20260401-121500_(Beta).md',
+    '20260401-101010_(Alpha).md',
+  ]);
+});
+
+run('buildInstructionsContent: shared session context を含む', () => {
+  const dir = makeTempDir();
+  const sharedPath = path.join(dir, '20260401-121500_(Beta).md');
+  fs.writeFileSync(sharedPath, [
+    '# Session Share',
+    '',
+    '## Executive Summary',
+    '- shared summary',
+    '',
+    '## Session Notes',
+    '- shared note',
+    '',
+  ].join('\n'), 'utf8');
+
+  const written = buildInstructionsContent(
+    '# Private Session\nprivate body',
+    '2026-04-01-aaaa1111-session.md',
+    [{ basename: '2026-04-01-aaaa1111-session.md' }],
+    [{ basename: '20260401-121500_(Beta).md', path: sharedPath }]
+  );
+
+  assert.ok(written.includes('Latest Shared Session Context'));
+  assert.ok(written.includes('shared summary'));
+  assert.ok(written.includes('shared note'));
+});
+
+run('buildInstructionsContent: private context がなくても shared を含む', () => {
+  const dir = makeTempDir();
+  const sharedPath = path.join(dir, '20260401-121500_(Beta).md');
+  fs.writeFileSync(sharedPath, '# shared only', 'utf8');
+
+  const written = buildInstructionsContent(
+    '',
+    '',
+    [],
+    [{ basename: '20260401-121500_(Beta).md', path: sharedPath }]
+  );
+
+  assert.ok(written.includes('No recent private session context was found.'));
+  assert.ok(written.includes('shared only'));
 });
 
 run('createNewSession: bare template に summary marker を含む', () => {

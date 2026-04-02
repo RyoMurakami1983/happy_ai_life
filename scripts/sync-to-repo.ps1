@@ -5,6 +5,8 @@ param(
 
     [string]$SourceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
     [string]$TemplateRelativePath = "repo-template\.github",
+    # 共有用ドキュメントの雛形。target repo の docs/sessions に同期する。
+    [string]$DocsSessionsRelativePath = "repo-template\docs\sessions",
     # 母艦の hooks/ を配布先にも展開する。空文字を渡すとスキップ。
     [string]$HooksRelativePath = ".github\hooks",
     # Git client hooks のテンプレート。target repo の .githooks に同期する。
@@ -200,4 +202,23 @@ if (-not [string]::IsNullOrWhiteSpace($GitHooksRelativePath)) {
         -MirrorMode:$Mirror `
         -WhatIfMode:$DryRun `
         -ShowVerboseLog:$VerboseLog
+}
+
+# --- 4. repo-template/docs/sessions/ → 配布先 docs/sessions/ ---
+if (-not [string]::IsNullOrWhiteSpace($DocsSessionsRelativePath)) {
+    $docsSessionsSourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $DocsSessionsRelativePath))
+    if (Test-Path -LiteralPath $docsSessionsSourcePath) {
+        Write-Section "Sync session docs scaffold to target repository (docs/sessions)"
+
+        $docsSessionsDestinationPath = Join-Path $targetRepoPath "docs\sessions"
+
+        Write-Host "Source      : $docsSessionsSourcePath"
+        Write-Host "Destination : $docsSessionsDestinationPath"
+
+        Invoke-Robocopy `
+            -Source $docsSessionsSourcePath `
+            -Destination $docsSessionsDestinationPath `
+            -WhatIfMode:$DryRun `
+            -ShowVerboseLog:$VerboseLog
+    }
 }

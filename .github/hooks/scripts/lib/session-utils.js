@@ -14,6 +14,7 @@ const MAX_TOOLS = 20;
 const MAX_FILES = 30;
 const MAX_MESSAGE_LENGTH = 200;
 const SESSION_MAX_AGE_DAYS = 7;
+const SHARED_SESSION_NAME_PATTERN = /^\d{8}-\d{6}_.+\.md$/;
 
 // --- ファイル操作 ---
 
@@ -106,6 +107,11 @@ function getProjectName(cwd) {
 function getProjectSessionsDir(cwd) {
   const root = getGitRoot(cwd);
   return path.join(root, '.github', 'sessions');
+}
+
+function getProjectSharedSessionsDir(cwd) {
+  const root = getGitRoot(cwd);
+  return path.join(root, 'docs', 'sessions');
 }
 
 /** Copilot のグローバル session-state ディレクトリ */
@@ -313,6 +319,55 @@ function findRecentSessions(dir, maxAge) {
   return results.sort((a, b) => b.mtime - a.mtime);
 }
 
+function parseSharedSessionTimestamp(fileName) {
+  const match = fileName.match(/^(\d{8})-(\d{6})_.+\.md$/);
+  if (!match) return null;
+
+  const [datePart, timePart] = [match[1], match[2]];
+  const year = Number(datePart.slice(0, 4));
+  const month = Number(datePart.slice(4, 6));
+  const day = Number(datePart.slice(6, 8));
+  const hour = Number(timePart.slice(0, 2));
+  const minute = Number(timePart.slice(2, 4));
+  const second = Number(timePart.slice(4, 6));
+  const timestamp = Date.UTC(year, month - 1, day, hour, minute, second);
+
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function findRecentSharedSessions(dir, maxCount = 3) {
+  if (!fs.existsSync(dir)) return [];
+
+  const results = [];
+
+  try {
+    const entries = fs.readdirSync(dir);
+    for (const name of entries) {
+      if (!SHARED_SESSION_NAME_PATTERN.test(name)) continue;
+
+      const fullPath = path.join(dir, name);
+      try {
+        const stat = fs.statSync(fullPath);
+        const parsedTimestamp = parseSharedSessionTimestamp(name);
+        results.push({
+          path: fullPath,
+          basename: name,
+          timestamp: parsedTimestamp ?? stat.mtimeMs,
+          mtime: stat.mtimeMs,
+        });
+      } catch {
+        // stat 失敗はスキップ
+      }
+    }
+  } catch {
+    // ディレクトリ読み取り失敗
+  }
+
+  return results
+    .sort((a, b) => b.timestamp - a.timestamp || b.mtime - a.mtime)
+    .slice(0, maxCount);
+}
+
 // --- ユーティリティ ---
 
 function stripAnsi(text) {
@@ -362,12 +417,15 @@ module.exports = {
   shortId,
   getProjectName,
   getProjectSessionsDir,
+  getProjectSharedSessionsDir,
   getGlobalSessionStateDir,
   extractSessionSummary,
   buildSessionHeader,
   mergeSessionHeader,
   buildSummaryBlock,
   findRecentSessions,
+  parseSharedSessionTimestamp,
+  findRecentSharedSessions,
   stripAnsi,
   escapeRegExp,
   log,
