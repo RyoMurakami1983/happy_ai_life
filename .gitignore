@@ -123,6 +123,7 @@ site/
 .github/sessions/*
 !.github/sessions/.gitkeep
 .github/instructions/session-context.instructions.md
+.githooks/
 *.local
 
 # Git patches
