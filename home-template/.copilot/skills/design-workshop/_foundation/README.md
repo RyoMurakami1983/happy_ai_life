@@ -1,0 +1,12 @@
+# design-workshop 共通リソース
+
+このフォルダには、design-workshop の sub_skill 間で共有するリソースを置きます。
+
+## 配置するもの
+
+- `DDD_GLOSSARY.md` — DDD と Balanced Coupling モデルの用語集
+- 設計ワークフロー共通の確認項目やメモ（将来追加時）
+
+## 共有する理由
+
+設計レンズが異なっても（standard / balanced-coupling-design）、使う用語と前提知識を揃えることで、設計書の一貫性と読み手の理解しやすさを保つためです。
