@@ -26,7 +26,7 @@ description: >
 
 ### ステップ 2 — 設計を検証する（design-workshop）
 
-仕様書を `design-workshop` に渡します。`architect` が構造判断を行い、`*-shihan` が言語適合を検証し、`security-review` がセキュリティ設計を確認します。DDD 戦略パターンはこのステップで扱います。
+仕様書を `design-workshop` に渡します。design-workshop の判断表に従い、standard（構造判断 → 言語検証 → セキュリティ設計確認）または balanced-coupling-design（サブドメイン分類 → 3次元結合評価）を選びます。DDD 戦略パターンはこのステップで扱います。
 
 成果物: 技術設計書 + planner handoff サマリ
 

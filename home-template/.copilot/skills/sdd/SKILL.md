@@ -34,7 +34,9 @@ description: >
 ```
 仕様フェーズ        → spec-workshop（spec-interviewer + deep-researcher）
   ↓
-設計フェーズ        → design-workshop（architect + *-shihan + security-review）
+設計フェーズ        → design-workshop（router: standard / balanced-coupling-design）
+  ↓                    standard: architect + *-shihan + security-review
+  ↓                    balanced-coupling-design: サブドメイン分類 + 3次元結合評価
   ↓                    DDD 戦略パターン（Bounded Context, Context Map）は
   ↓                    architect が構造判断として扱う
   ↓                    DDD 戦術パターン（Entity, Value Object 等）は
@@ -66,7 +68,8 @@ description: >
 ## 共通リソース
 
 - `home-template/.copilot/skills/spec-workshop/SKILL.md` — 仕様作成
-- `home-template/.copilot/skills/design-workshop/SKILL.md` — 技術設計
+- `home-template/.copilot/skills/design-workshop/SKILL.md` — 技術設計（router: standard / balanced-coupling-design）
+- `home-template/.copilot/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
 - `home-template/.copilot/agents/planner.agent.md` — 実装計画
 - `home-template/.copilot/agents/tdd-guide.agent.md` — TDD 実装
 - `home-template/.copilot/agents/build-resolver.agent.md` — ビルドエラー修正

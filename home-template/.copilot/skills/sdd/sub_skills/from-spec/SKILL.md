@@ -29,7 +29,7 @@ description: >
 
 ### ステップ 2 — 設計を検証する（design-workshop）
 
-仕様書を `design-workshop` に渡し、構造判断 → 言語検証 → セキュリティ設計確認を実施します。
+仕様書を `design-workshop` に渡し、判断表に従い standard または balanced-coupling-design ルートで設計を進めます。
 
 ### ステップ 3 — 計画 → 実装 → 最終レビュー
 
