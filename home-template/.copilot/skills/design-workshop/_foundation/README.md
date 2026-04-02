@@ -5,6 +5,7 @@
 ## 配置するもの
 
 - `DDD_GLOSSARY.md` — DDD と Balanced Coupling モデルの用語集
+- `IMPLEMENTATION_HEURISTICS.md` — サブドメイン分類から実装パターンを導く判断ツリー
 - 設計ワークフロー共通の確認項目やメモ（将来追加時）
 
 ## 共有する理由

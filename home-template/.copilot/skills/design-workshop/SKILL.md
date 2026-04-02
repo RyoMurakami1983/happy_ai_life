@@ -35,6 +35,7 @@ compatibility: >
 
 - `_foundation/README.md` — 共通リソースの説明
 - `_foundation/DDD_GLOSSARY.md` — DDD と Balanced Coupling モデルの用語集
+- `_foundation/IMPLEMENTATION_HEURISTICS.md` — サブドメイン分類から実装パターンを導く判断ツリー
 - `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド
 
 ## ルーティングメモ
