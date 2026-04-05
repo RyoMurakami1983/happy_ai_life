@@ -36,7 +36,6 @@ metadata:
 - **`dotnet`** — WPF 連携系の入口
 - **`dotnet-wpf-mvvm-patterns`** — このセキュリティ基盤を利用する UI 層
 - **`git-commit-practices`** — 生成コードを原子的変更で管理
-- **`git-commit-practices`** — 各ステップを原子的変更としてコミット
 
 ---
 

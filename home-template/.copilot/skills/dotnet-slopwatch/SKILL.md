@@ -165,8 +165,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
-      - run: dotnet tool install --global Slopwatch.Cmd
-      - run: slopwatch analyze -d . --fail-on warning
+      - run: dotnet tool restore
+      - run: dotnet tool run slopwatch analyze -d . --fail-on warning
 ```
 
 **Why**: CIに組み込むことで、PRレビュー前にスロップが自動検出される。

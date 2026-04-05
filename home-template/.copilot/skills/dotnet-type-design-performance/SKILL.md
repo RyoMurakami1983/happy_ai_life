@@ -35,7 +35,6 @@ JIT最適化を最大化し、アロケーションを最小化し、明確なAP
 
 - **`dotnet`** — .NET family の入口
 - **`git-commit-practices`** — パフォーマンス重要な変更をアトミックに分けて記録
-- **`git-commit-practices`** — 各リファクタリングステップをアトミックな変更としてコミット
 
 ---
 

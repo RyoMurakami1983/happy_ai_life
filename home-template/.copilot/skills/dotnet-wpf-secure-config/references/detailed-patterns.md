@@ -95,10 +95,12 @@ namespace YourApp.Infrastructure.Configuration
 
         public bool ConfigExists() => File.Exists(_configFilePath);
 
-        public async Task ResetConfigAsync()
+        public Task ResetConfigAsync()
         {
             if (File.Exists(_configFilePath))
-                await Task.Run(() => File.Delete(_configFilePath));
+                File.Delete(_configFilePath);
+
+            return Task.CompletedTask;
         }
 
         // ✅ Add typed methods per integration (example for Oracle):
