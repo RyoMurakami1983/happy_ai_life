@@ -70,65 +70,32 @@ user-invocable: true
 | 段階 | 意味 | 対応するスキル | 行動 |
 |------|------|--------------|------|
 | **守（Shu）** | 型を守る | dotnet-modern-csharp-coding-standards, dotnet-slopwatch | コーディング標準に準拠。Slopを排除 |
-| **破（Ha）** | 型を疑う | dotnet-type-design-performance, dotnet-csharp-api-design | パターンの適用を疑い、より良い設計を探る |
+| **破（Ha）** | 型を疑う | dotnet-type-design-performance, dotnet | パターンの適用を疑い、より良い設計を探る |
 | **離（Ri）** | 型を超える | 新規skill作成、ドメイン固有の設計 | 前例のないアーキテクチャに応える |
 
 ---
 
 ## 管轄スキル
 
-### 技術基盤
+### 現在導入済み
+- `dotnet` — .NET 全体の入口
 - `dotnet-modern-csharp-coding-standards` — モダンC#コーディング標準
 - `dotnet-type-design-performance` — 型設計とパフォーマンス
-- `dotnet-project-structure` — プロジェクト構造（.slnx対応）
-- `dotnet-slopwatch` — LLM Slopガードレール
-- `dotnet-csharp-api-design` — API設計パターン
-
-### データ・永続化
-- `dotnet-efcore-patterns` — Entity Framework Core パターン
-- `dotnet-database-performance` — データベースパフォーマンス
-- `dotnet-serialization` — シリアライゼーション
-
-### 並行・テスト・CI
 - `dotnet-csharp-concurrency-patterns` — 並行処理パターン
-- `dotnet-testcontainers` — TestContainers統合テスト
-- `dotnet-snapshot-testing` — スナップショットテスト
-- `dotnet-verify-email-snapshots` — メールスナップショット検証
-- `dotnet-crap-analysis` — CRAP メトリクス分析
-- `dotnet-playwright-blazor` — Playwright E2Eテスト
-- `dotnet-playwright-ci-caching` — Playwright CIキャッシュ
-
-### WPF・デスクトップ
 - `dotnet-wpf-mvvm-patterns` — MVVM基盤パターン（CommunityToolkit.Mvvm）
 - `dotnet-wpf-secure-config` — DPAPI暗号化設定
-- `dotnet-oracle-wpf-integration` — Oracle統合
-- `dotnet-wpf-dify-api-integration` — Dify API統合
-- `dotnet-wpf-comparison-view` — 比較ビュー
-- `dotnet-wpf-employee-input` — 従業員入力フォーム
-- `dotnet-wpf-pdf-preview` — PDFプレビュー
-- `dotnet-wpf-ocr-parameter-input` — OCRパラメータ入力
-- `dotnet-ocr-matching-workflow` — OCRマッチングワークフロー
-- `dotnet-generic-matching` — 汎用マッチング
-- `dotnet-access-to-oracle-migration` — Access→Oracle移行
+- `dotnet-slopwatch` — LLM Slopガードレール
 
-### インフラ・パッケージ
-- `dotnet-extensions-dependency-injection` — DI設定
-- `dotnet-extensions-configuration` — 設定管理
-- `dotnet-local-tools` — dotnetローカルツール
-- `dotnet-package-management` — パッケージ管理
-- `dotnet-marketplace-publishing` — マーケットプレイス公開
-- `dotnet-mjml-email-templates` — MJMLメールテンプレート
+### 導入候補
+- API 設計系
+- プロジェクト構造・設定・DI・パッケージ管理系
+- データ・シリアライズ・EF Core・DB 性能系
+- テスト・検証系
 
-### デプロイ・運用
-- `dotnet-skill-deploy` — dotnetスキルのプロジェクトデプロイ（カテゴリ/個別選択）
-
-### 共通運用スキル（skill-shihan管理、全shihan共通）
-- `git-commit-practices` — コミット規約
-- `git-initial-setup` — Git初期設定
-- `git-init-to-github` — リポジトリ作成からGitHub接続
-- `github-pr-workflow` — PR作成ワークフロー
-- `github-issue-intake` — Issue取り込み
-- `furikaeri-practice` — ふりかえり実践
+### WPF / document 系の拡張候補
+- WPF 入力・比較・連携系
+- PDF / OCR / 文書ワークフロー系
+- 今後の個別 skill は `dotnet` ルーター配下に追加する
 
 ---
 
