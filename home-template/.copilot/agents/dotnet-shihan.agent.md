@@ -118,6 +118,7 @@ user-invocable: true
 - `ObservableProperty`, `RelayCommand` 属性
 - View ↔ ViewModel は疎結合（DIで注入）
 - コードビハインドは最小限
+- WPF の `xaml` は `xaml.cs` と対で確認し、`InitializeComponent()` が呼ばれているかを先に見る
 
 ### エラーハンドリング
 - `CryptographicException` 等のインフラ例外は明示的にキャッチ
@@ -150,6 +151,7 @@ user-invocable: true
 - [ ] DI: コンストラクタインジェクション、IServiceCollection登録
 - [ ] エラーハンドリング: 具体的な例外型、明確なメッセージ
 - [ ] テスト: 振る舞いベース、独立実行可能
+- [ ] WPF: `.xaml` と `.xaml.cs` の対を確認し、`InitializeComponent()` 呼び出し有無を確認
 - [ ] Slop検出: LLM生成コードの「その場しのぎ」排除
 - [ ] SLOP-001: Presentation層でドメインデータの文字列パース無し
 - [ ] SLOP-001: Application層レスポンスに必要フィールドが構造化済み
