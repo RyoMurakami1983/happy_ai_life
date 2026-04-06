@@ -10,6 +10,7 @@ This module starts slightly ahead of the others because the first source materia
 - **Fault boundaries**: input handling, selection or caret state, document mutation, layout recomputation, persistence, CSS layer
 - **Repro levers**: same key sequence, same mode, same browser, same viewport, same local state
 - **Quality gate**: the same visible scenario behaves the same way before and after in every affected mode
+- **WPF note**: for blank screens, confirm the `.xaml` and `.xaml.cs` pair together before blaming bindings or navigation
 
 ## Growth Policy
 
