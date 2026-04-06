@@ -4,7 +4,7 @@ description: >
   .NET Framework 4.x のレガシー層と .NET 8+ の UI/アプリ層を netstandard2.0 の共有層でつなぐ。
   Use when: 既存の .NET Framework 依存を残しつつ UI やアプリ本体を .NET 8 へ段階移行したいとき、
   または共有境界をどこに置くべきか判断したいとき。
-compatibility: ".NET Framework 4.6.1+, .NET Standard 2.0, .NET 8+"
+compatibility: ".NET Framework 4.7.2+, .NET Standard 2.0, .NET 8+"
 ---
 
 # .NET Framework × .NET Standard 2.0 ブリッジ
@@ -121,7 +121,7 @@ public sealed class DeviceReader : IDeviceReader
 | --- | --- |
 | `netstandard2.0` | 共有契約、DTO、設定モデル、純粋ロジック |
 | `net472` | 旧 API、NI / ベンダー SDK、実装アダプタ |
-| `net8.0+` | UI、起動、DI、アプリ全体のオーケストレーション |
+| `net8.0+` | UI、起動、DI、アプリ全体のオーケストレーション / ブリッジの呼び出し元 |
 
 ## Related Skills
 

@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | `netstandard2.0` | BCL の共通部分、契約型、DTO、純粋ロジック | WPF 型、`ConfigurationManager` 直依存、Framework 固有 API |
 | `net472` | `netstandard2.0`、Framework 固有 API、旧 SDK | `.NET 8` 専用 API |
-| `net8.0+` | `netstandard2.0`、.NET 8 API、DI / Host / WPF 新版 | Framework 固有 API |
+| `net8.0+` | `netstandard2.0`、.NET 8 API、DI / Host / WPF 新版 | Framework 固有 API / 旧 SDK |
 
 ## 実務上の目安
 
