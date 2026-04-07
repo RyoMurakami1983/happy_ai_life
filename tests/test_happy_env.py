@@ -4,7 +4,18 @@ import subprocess
 import tkinter as tk
 from pathlib import Path
 
+import pytest
+
 import happy_env
+
+
+def _create_tk_root_or_skip() -> tk.Tk:
+    try:
+        root = tk.Tk()
+    except tk.TclError as exc:
+        pytest.skip(f"Tk root is unavailable in this environment: {exc}")
+    root.withdraw()
+    return root
 
 
 def test_build_home_sync_arguments_include_requested_flags() -> None:
@@ -130,8 +141,7 @@ def test_run_script_decodes_stdout_and_stderr_with_locale(monkeypatch) -> None:
 
 
 def test_gui_gives_extra_vertical_space_to_log_pane() -> None:
-    root = tk.Tk()
-    root.withdraw()
+    root = _create_tk_root_or_skip()
     try:
         gui = happy_env.HappyEnvGui(root)
         assert gui.main_frame is not None
