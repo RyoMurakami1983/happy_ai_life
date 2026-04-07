@@ -311,7 +311,6 @@ def create_router_skill(
     validate_name(name)
     description = str(item["description"])
     title = str(item.get("title") or default_title(name))
-    compatibility = str(item.get("compatibility", ""))
     sub_skills = [normalize_sub_skill_item(raw) for raw in item.get("sub_skills", [])]
 
     skill_dir = output_root / name
