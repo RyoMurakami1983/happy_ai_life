@@ -82,6 +82,8 @@ function Invoke-Robocopy {
         $robocopyArgs += "/L"
     }
 
+    $verboseLogPath = $null
+
     if ($ShowVerboseLog) {
         $robocopyArgs = @(
             $Source
@@ -93,6 +95,8 @@ function Invoke-Robocopy {
         )
         if ($MirrorMode) { $robocopyArgs += "/MIR" }
         if ($WhatIfMode) { $robocopyArgs += "/L" }
+        $verboseLogPath = Join-Path ([System.IO.Path]::GetTempPath()) ("happy-env-robocopy-{0}.log" -f [guid]::NewGuid())
+        $robocopyArgs += "/UNILOG:$verboseLogPath"
     }
 
     foreach ($dir in $ExcludeDirs) {
@@ -107,15 +111,35 @@ function Invoke-Robocopy {
 
     Write-Host "robocopy $($robocopyArgs -join ' ')" -ForegroundColor DarkGray
 
-    & robocopy @robocopyArgs
-    $exitCode = $LASTEXITCODE
-    Test-RobocopyResult -ExitCode $exitCode
+    try {
+        if ($ShowVerboseLog) {
+            & robocopy @robocopyArgs | Out-Null
+        }
+        else {
+            & robocopy @robocopyArgs
+        }
+        $exitCode = $LASTEXITCODE
 
-    if ($WhatIfMode) {
-        Write-Host "DryRun completed. ExitCode=$exitCode" -ForegroundColor Yellow
+        if ($ShowVerboseLog -and $verboseLogPath -and (Test-Path -LiteralPath $verboseLogPath)) {
+            $verboseLogContent = Get-Content -LiteralPath $verboseLogPath -Raw -Encoding Unicode
+            if (-not [string]::IsNullOrWhiteSpace($verboseLogContent)) {
+                Write-Host $verboseLogContent -NoNewline
+            }
+        }
+
+        Test-RobocopyResult -ExitCode $exitCode
+
+        if ($WhatIfMode) {
+            Write-Host "DryRun completed. ExitCode=$exitCode" -ForegroundColor Yellow
+        }
+        else {
+            Write-Host "Sync completed. ExitCode=$exitCode" -ForegroundColor Green
+        }
     }
-    else {
-        Write-Host "Sync completed. ExitCode=$exitCode" -ForegroundColor Green
+    finally {
+        if ($verboseLogPath -and (Test-Path -LiteralPath $verboseLogPath)) {
+            Remove-Item -LiteralPath $verboseLogPath -Force
+        }
     }
 
     $global:LASTEXITCODE = 0
@@ -133,8 +157,10 @@ Write-Host "Mirror      : $Mirror"
 Write-Host "DryRun      : $DryRun"
 
 # 個人 secrets やローカル override を壊しにくくするため、
-# 既定では mcp-config.local.json や *.local.* は除外
+# 既定では live の mcp-config.json と *.local.* は除外する。
+# 初回セットアップは mcp-config.sample.json から user-owned file を作る。
 $excludeFiles = @(
+    "mcp-config.json",
     "mcp-config.local.json",
     "*.local.json",
     "*.local.ps1"
@@ -160,3 +186,9 @@ Invoke-Robocopy `
     -MirrorMode:$Mirror `
     -WhatIfMode:$DryRun `
     -ShowVerboseLog:$VerboseLog
+
+$mcpSamplePath = Join-Path $destinationPath "mcp-config.sample.json"
+$mcpLivePath = Join-Path $destinationPath "mcp-config.json"
+if (-not (Test-Path -LiteralPath $mcpLivePath) -and (Test-Path -LiteralPath $mcpSamplePath)) {
+    Write-Warning "mcp-config.json is user-owned and was not synced. Copy mcp-config.sample.json to mcp-config.json in $destinationPath and fill your API keys."
+}

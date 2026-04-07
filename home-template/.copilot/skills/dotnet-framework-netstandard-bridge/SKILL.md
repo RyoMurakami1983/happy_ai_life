@@ -25,6 +25,7 @@ compatibility: ".NET Framework 4.7.2+, .NET Standard 2.0, .NET 8+"
 - いきなりの完全書き換え
 - IPC / 別プロセス化そのものの詳細設計
 - WPF 固有の MVVM 実装手順
+- `global.json`、`.slnx`、既存 repo の build contract 診断。まずは `dotnet-setup-dev-environment` を使う
 
 ## 基本原則
 
@@ -126,5 +127,5 @@ public sealed class DeviceReader : IDeviceReader
 ## Related Skills
 
 - `dotnet` — .NET 系の入口
+- `dotnet-setup-dev-environment` — 既存 repo 診断と build contract の入口
 - `dotnet-modern-csharp-coding-standards` — 共有型や契約型をどう表現するか
-

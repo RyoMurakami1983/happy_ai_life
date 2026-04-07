@@ -11,50 +11,69 @@
 
 ## Getting Started
 
-PowerShell でリポジトリ直下から実行します。
+基本の入口は `app.py` だけです。
 
-1. ホームディレクトリへ同期
+```powershell
+uv sync --dev
+uv run app.py
+```
+
+CLI で直接使う場合も `app.py` から呼びます。
+
+```powershell
+uv run app.py home --dry-run
+uv run app.py repo C:\path\to\your-repo --dry-run
+uv run app.py repo C:\path\to\your-repo
+uv run app.py hooks C:\path\to\your-repo
+```
+
+### First run when `uv` is missing
+
+Copilot からは `initial_setup_happy_env` skill を使う前提です。
+手動で始める場合は、先に `uv` を導入してから `uv sync --dev` を実行します。
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+uv sync --dev
+```
+
+### Direct PowerShell fallback
+
+PowerShell を直接叩く既存導線も引き続き使えます。
 
 ```powershell
 ./scripts/sync-to-home.ps1
-```
-
-2. 任意の Repository へ `.github/` を同期
-
-```powershell
-./scripts/sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo
-```
-
-3. 変更内容を事前確認したい場合
-
-```powershell
 ./scripts/sync-to-home.ps1 -DryRun
+./scripts/sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo
 ./scripts/sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo -DryRun
-```
-
-4. Git の main 保護を有効化する
-
-```powershell
-# この母艦リポジトリでローカル保護を有効化する場合
-git config --local core.hooksPath repo-template/.githooks
-
-# 別リポジトリへ hooks をインストールする場合
 ./scripts/install-git-hooks.ps1 -TargetRepoPath C:\path\to\your-repo
 ```
+
+### MCP config initialization
+
+home sync は `%USERPROFILE%\.copilot\mcp-config.json` を上書きしません。
+初回だけ `%USERPROFILE%\.copilot\mcp-config.sample.json` を `mcp-config.json` にコピーし、API キーを設定してください。
 
 ## Structure
 
 - `.github/`: 共有する Copilot instructions / hooks / workflows
 - `home-template/.copilot/`: 個人環境向けテンプレート（skills / agents を含む）
 - `scripts/`: 同期スクリプト
+- `app.py`: 公開 launcher。既存 PowerShell を正本のまま呼び出す
 - `docs/PHILOSOPHY.md`: この母艦の思想と開発憲法
 
 ## Development
 
-このリポジトリはアプリ本体ではないため、通常の build/run はありません。
+このリポジトリはアプリ本体ではありませんが、運用用 launcher と quality command は持ちます。
 変更時は、同期先への影響（scripts、hooks、workflows、instructions）を確認してください。
 PR 前の深掘り事前レビューは `deep-review-preflight` skill を入口に、`code-quality-review` / `security-review` agent で実施します。
 Git の client hooks は `repo-template/.githooks/` を正本にし、`core.hooksPath` で有効化します。GitHub の branch protection / ruleset は別途必須です。
+
+```powershell
+uv run pytest -q
+uv run ruff check .
+uv run ty check .
+```
 
 ## Quality Gate
 

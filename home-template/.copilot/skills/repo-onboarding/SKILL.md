@@ -23,7 +23,7 @@ license: Personal
 6. 不明点は推測で断定せず、「未確認事項」として分離する。
 
 ## 特に見るファイル
-- C#: `*.sln`, `*.csproj`, `Directory.Build.*`, `global.json`
+- C#: `*.sln`, `*.slnx`, `*.csproj`, `Directory.Build.*`, `global.json`
 - Python: `pyproject.toml`, `requirements.txt`, `setup.cfg`, `pytest.ini`
 - C: `Makefile`, `CMakeLists.txt`, `meson.build`
 - TypeScript: `package.json`, `tsconfig.json`, `eslint.config.*`, `vite.config.*`

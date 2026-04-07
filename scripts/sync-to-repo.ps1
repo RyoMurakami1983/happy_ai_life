@@ -85,6 +85,8 @@ function Invoke-Robocopy {
         $robocopyArgs += "/L"
     }
 
+    $verboseLogPath = $null
+
     if ($ShowVerboseLog) {
         $robocopyArgs = @(
             $Source
@@ -96,6 +98,8 @@ function Invoke-Robocopy {
         )
         if ($MirrorMode) { $robocopyArgs += "/MIR" }
         if ($WhatIfMode) { $robocopyArgs += "/L" }
+        $verboseLogPath = Join-Path ([System.IO.Path]::GetTempPath()) ("happy-env-robocopy-{0}.log" -f [guid]::NewGuid())
+        $robocopyArgs += "/UNILOG:$verboseLogPath"
     }
 
     foreach ($dir in $ExcludeDirs) {
@@ -110,15 +114,35 @@ function Invoke-Robocopy {
 
     Write-Host "robocopy $($robocopyArgs -join ' ')" -ForegroundColor DarkGray
 
-    & robocopy @robocopyArgs
-    $exitCode = $LASTEXITCODE
-    Test-RobocopyResult -ExitCode $exitCode
+    try {
+        if ($ShowVerboseLog) {
+            & robocopy @robocopyArgs | Out-Null
+        }
+        else {
+            & robocopy @robocopyArgs
+        }
+        $exitCode = $LASTEXITCODE
 
-    if ($WhatIfMode) {
-        Write-Host "DryRun completed. ExitCode=$exitCode" -ForegroundColor Yellow
+        if ($ShowVerboseLog -and $verboseLogPath -and (Test-Path -LiteralPath $verboseLogPath)) {
+            $verboseLogContent = Get-Content -LiteralPath $verboseLogPath -Raw -Encoding Unicode
+            if (-not [string]::IsNullOrWhiteSpace($verboseLogContent)) {
+                Write-Host $verboseLogContent -NoNewline
+            }
+        }
+
+        Test-RobocopyResult -ExitCode $exitCode
+
+        if ($WhatIfMode) {
+            Write-Host "DryRun completed. ExitCode=$exitCode" -ForegroundColor Yellow
+        }
+        else {
+            Write-Host "Sync completed. ExitCode=$exitCode" -ForegroundColor Green
+        }
     }
-    else {
-        Write-Host "Sync completed. ExitCode=$exitCode" -ForegroundColor Green
+    finally {
+        if ($verboseLogPath -and (Test-Path -LiteralPath $verboseLogPath)) {
+            Remove-Item -LiteralPath $verboseLogPath -Force
+        }
     }
 
     $global:LASTEXITCODE = 0

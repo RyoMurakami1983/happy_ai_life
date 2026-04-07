@@ -1,0 +1,151 @@
+name: .NET Quality Gate
+
+on:
+  pull_request:
+    paths:
+      - '**/*.cs'
+      - '**/*.csproj'
+      - '**/*.sln'
+      - '**/*.slnx'
+      - '.github/workflows/dotnet-quality.yml'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
+      - 'global.json'
+      - '.editorconfig'
+      - '.config/dotnet-tools.json'
+  push:
+    branches: [main]
+    paths:
+      - '**/*.cs'
+      - '**/*.csproj'
+      - '**/*.sln'
+      - '**/*.slnx'
+      - '.github/workflows/dotnet-quality.yml'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
+      - 'global.json'
+      - '.editorconfig'
+      - '.config/dotnet-tools.json'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  DOTNET_TARGET: ${{ vars.DOTNET_TARGET }}
+
+jobs:
+  dotnet:
+    name: dotnet
+    if: ${{ hashFiles('**/*.csproj') != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require global.json
+        if: ${{ hashFiles('global.json') != '' }}
+        run: echo "global.json detected."
+
+      - name: Fail when global.json is missing
+        if: ${{ hashFiles('global.json') == '' }}
+        run: |
+          echo "global.json is required for reproducible .NET CI." >&2
+          exit 1
+
+      - name: Setup .NET from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore local tools
+        if: ${{ hashFiles('.config/dotnet-tools.json') != '' }}
+        run: dotnet tool restore
+
+      - name: Resolve dotnet target
+        id: resolve-target
+        shell: pwsh
+        run: |
+          $root = $env:GITHUB_WORKSPACE
+          $configuredTarget = $env:DOTNET_TARGET
+
+          if (-not [string]::IsNullOrWhiteSpace($configuredTarget)) {
+            $candidate = Join-Path $root $configuredTarget
+            if (-not (Test-Path $candidate)) {
+              throw "vars.DOTNET_TARGET '$configuredTarget' does not exist under the repository root."
+            }
+
+            $target = (Resolve-Path $candidate).Path
+            "target=$target" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          $slnx = Get-ChildItem -Path $root -Filter *.slnx -File
+          $sln = Get-ChildItem -Path $root -Filter *.sln -File
+
+          if ($slnx.Count -gt 1) {
+            throw "複数の .slnx が repo root にあります。1 つに絞るか vars.DOTNET_TARGET で対象を指定してください。"
+          }
+
+          if ($sln.Count -gt 1) {
+            throw "複数の .sln が repo root にあります。1 つに絞るか vars.DOTNET_TARGET で対象を指定してください。"
+          }
+
+          if ($slnx.Count -eq 1 -and $sln.Count -eq 1) {
+            throw ".sln と .slnx が同居しています。標準は 1 つに寄せることですが、例外運用なら vars.DOTNET_TARGET で対象を明示してください。"
+          }
+
+          if ($slnx.Count -eq 1) {
+            $target = $slnx[0].FullName
+          }
+          elseif ($sln.Count -eq 1) {
+            $target = $sln[0].FullName
+          }
+          else {
+            $projects = Get-ChildItem -Path $root -Filter *.csproj -File -Recurse
+            if ($projects.Count -eq 1) {
+              $target = $projects[0].FullName
+            }
+            else {
+              throw "workflow が単一の .NET entrypoint を決められません。repo root に 1 つの solution を置くか vars.DOTNET_TARGET で対象を指定してください。"
+            }
+          }
+
+          "target=$target" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore "${{ steps.resolve-target.outputs.target }}"
+
+      - name: Build
+        run: dotnet build "${{ steps.resolve-target.outputs.target }}" --no-restore
+
+      - name: Verify dotnet format availability
+        shell: pwsh
+        run: |
+          & dotnet format --version *> $null
+          if ($LASTEXITCODE -eq 0) {
+            exit 0
+          }
+
+          if (Test-Path (Join-Path $env:GITHUB_WORKSPACE '.config/dotnet-tools.json')) {
+            throw "dotnet format is unavailable. Ensure dotnet-format is included in .config/dotnet-tools.json and that dotnet tool restore succeeded."
+          }
+
+          throw "dotnet format is unavailable. Add dotnet-format to .config/dotnet-tools.json or use an SDK that provides the command."
+
+      - name: Format
+        run: dotnet format "${{ steps.resolve-target.outputs.target }}" --verify-no-changes --no-restore
+
+      - name: Test
+        shell: pwsh
+        run: |
+          $testProjects = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Filter *.csproj -File -Recurse | Where-Object {
+            $content = Get-Content $_.FullName -Raw
+            $content -match '<IsTestProject>true</IsTestProject>' -or $content -match 'Microsoft\.NET\.Test\.Sdk'
+          }
+
+          if ($testProjects.Count -eq 0) {
+            Write-Host "No test project found. Skipping dotnet test."
+            exit 0
+          }
+
+          dotnet test "${{ steps.resolve-target.outputs.target }}" --no-build
