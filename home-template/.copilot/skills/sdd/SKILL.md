@@ -23,10 +23,10 @@ description: >
 
 | やりたいこと | ルート | 次にやること |
 | --- | --- | --- |
-| ゼロから仕様駆動で開発したい | `sub_skills/from-scratch/` | spec-workshop → design-workshop → planner → 実装 → 最終レビュー |
-| 仕様があり設計から始めたい | `sub_skills/from-spec/` | design-workshop → planner → 実装 → 最終レビュー |
-| 設計があり計画から始めたい | `sub_skills/from-design/` | planner → 実装 → 最終レビュー |
-| 計画があり実装から始めたい | `sub_skills/from-plan/` | 実装 → 最終レビュー |
+| ゼロから仕様駆動で開発したい | `sub_skills/from-scratch/` | spec-workshop → design-workshop → planner → tdd-guide でテスト戦略レビュー → tdd-guide で実装 → 最終レビュー |
+| 仕様があり設計から始めたい | `sub_skills/from-spec/` | design-workshop → planner → tdd-guide でテスト戦略レビュー → tdd-guide で実装 → 最終レビュー |
+| 設計があり計画から始めたい | `sub_skills/from-design/` | planner → tdd-guide でテスト戦略レビュー → tdd-guide で実装 → 最終レビュー |
+| 計画があり実装から始めたい | `sub_skills/from-plan/` | 計画確認 → 必要なら tdd-guide でテスト戦略レビュー → 実装 → 最終レビュー |
 | 中断した開発を再開したい | `sub_skills/resume/` | 成果物の状態から中断地点を判定し、該当フェーズから再開 |
 
 ## 全体フロー
@@ -43,6 +43,11 @@ description: >
   ↓                    *-shihan が言語固有の型で支援する
   ↓
 計画フェーズ        → planner
+  ↓
+テスト戦略レビュー  → tdd-guide（計画を TDD 観点で確認）
+  ↓                    テスト可能な受け入れ条件、主要な境界値、
+  ↓                    エラーパス、外部依存のモック境界を確認
+  ↓                    不足があれば planner に計画補完を依頼
   ↓
 実装フェーズ        → tdd-guide（TDD: Red-Green-Refactor）
   ↓                    build-resolver（ビルドエラー修正）
@@ -82,10 +87,11 @@ description: >
 - ユーザーの現在地点に最も合う sub-skill へ直接案内する。
 - 実行ロジックは router ではなく sub-skill と既存 skill/agent に置く。
 - 各フェーズの中身を sdd 内に再実装しない。委譲先の skill/agent が正本。
+- planner が計画の正本を持ち、tdd-guide は計画のテスト観点レビューと TDD 実装を担う。
 - モデル選定は各 agent が自身のモデルを持つ。sdd は指定しない。
 
 ## 注意点
 
-- **各段の中身を再実装しない**: sdd はフローを繋ぐだけです。仕様は spec-workshop、設計は design-workshop、計画は planner が正本。
+- **各段の中身を再実装しない**: sdd はフローを繋ぐだけです。仕様は spec-workshop、設計は design-workshop、計画は planner が正本です。tdd-guide は実装前にテスト観点を返せますが、計画の更新自体は planner に戻します。
 - **coder agent は置かない**: 実装はオーケストレーター + tdd-guide + build-resolver + refactor で担います。汎用 coder は責務が曖昧なため導入しません。
 - **全フェーズを必ず通す必要はない**: 途中から始めてよいし、特定フェーズを飛ばす判断もユーザーに委ねます。
