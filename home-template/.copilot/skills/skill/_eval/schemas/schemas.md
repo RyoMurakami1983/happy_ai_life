@@ -120,7 +120,7 @@ append-only の履歴 ledger です。各行に 1 campaign の集計結果を記
 
 ## Workspace Layout
 
-想定する artifact 配置は次のとおりです。
+想定する artifact 配置は、**セッションワークスペースを既定**として次のとおりです。
 
 ```text
 <skill-name>-workspace/
@@ -136,3 +136,18 @@ append-only の履歴 ledger です。各行に 1 campaign の集計結果を記
 │   └── benchmark.md
 └── skill-snapshot/
 ```
+
+この workspace は iteration の証跡を残す正本です。`viewer.html`、raw runs、途中の grading result など、まだ共有前提でない artifact はここに残します。
+
+## Promoted Repo Layout
+
+再利用価値が確認できた artifact だけを repo の `evals/` へ昇格します。既定で昇格する対象は `evals.json` と `benchmark_summary/history` です。
+
+```text
+evals/<skill-id>/
+├── evals.json
+├── benchmark_summary.json
+└── benchmark_history.jsonl
+```
+
+`viewer.html` と raw run artifact は session 側に残す前提です。repo に入れるのは、次回以降の比較や共有に耐えるものだけに絞ります。
