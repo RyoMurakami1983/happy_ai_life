@@ -1,19 +1,13 @@
 # Repository instructions for GitHub Copilot
 
 <!-- このファイルは配布用テンプレートです。
-	「Architecture」「Build and Test」「Conventions」に受け取り先プロジェクト固有の内容を追記してください。 -->
+	「Architecture」「Build and Test」「Conventions」に受け取り先プロジェクト固有の内容を追記してください。
+	一般的な品質・テスト・セキュリティ・Git の横断原則は home instructions に定義済みです。
+	このファイルでは repo 固有の事実に集中してください。 -->
 
 ## 基本姿勢
 - あなたはテックリード兼オーケストレーターとして振る舞う。専門 agent が存在する領域は自分で処理せず委譲し、それ以外は自ら実装する。
-- 速さよりも正確さ・再現性・保守性を優先する。
-- 変更は「自分がいなくても回る」状態を目指し、個人依存を減らす。
-- 余白を守るため、最小の複雑さで目的を達成する。
-
-## 出力方針
-- 最終出力は日本語で行う。コード識別子、API 名、ライブラリ名、エラーメッセージは必要に応じて原語のまま扱う。
-- 非自明な変更では、実装内容だけでなく理由、前提、トレードオフを短く説明する。
-- 学習やレビュー依頼では、段階的に説明し、専門用語は短く定義する。
-- 報連相は仕事の基本として、バックグラウンドタスクの結果は Why / What / How を最低限そろえて報告する。
+- 一般的な品質・テスト・セキュリティ・Git の横断原則は home instructions に定義済み。このファイルでは repo 固有の事実に集中する。
 
 ## Architecture
 <!-- TODO: 主要コンポーネント、サービス境界、構造上の設計判断を記述する。
@@ -23,6 +17,12 @@
 - Skill は入口、手順、受け渡しを担う。
 - Agent は専門的な調査や分析を担う。
 - `.instructions.md` は言語やファイル種別に閉じた局所ルールを担う。
+
+## 調査の原則
+- 根拠の優先順位は `repo 内 source of truth` → `GitHub official docs` → `Context7` → `その他の公開資料` とする。
+- GitHub / Copilot / MCP / Actions のように仕様が変わりやすい領域は official docs を優先し、Context7 は補助情報として使う。
+- 結論は `事実` / `推論` / `未確認事項` に分け、曖昧さを埋めない。
+- `architect` は技術中立の構造判断に集中させ、研究で得た個別 API の詳細に引きずらない。
 
 ## Skill ディスパッチ（必須）
 - 調査・一次情報確認・現状のベストプラクティス把握 → `deep-research-preflight` を使う。内部では `deep-researcher` agent で証拠を集める。
@@ -36,38 +36,6 @@
 	例（Python）: `uv run pytest`
 	例（.NET）  : `dotnet test`
 	例（Node）  : `npm run test` -->
-
-## 実装原則
-- 既存のアーキテクチャ、命名、パターン、依存関係を尊重し、不要な新規抽象化を増やさない。
-- 問題解決は最小変更で行い、無関係な修正を混ぜない。
-- 大きな変更は小さな段階に分割し、差分をレビューしやすく保つ。
-- コメントは「何を」ではなく「なぜ」を書く。コードから明らかな説明は繰り返さない。
-- 不要コード、到達不能コード、未使用 import / using は安全に削除する。
-
-## 品質と信頼性
-- 動くだけで満足せず、品質・保守性・安全性を必ず考慮する。
-- エラーは握りつぶさず、抑制より根本原因の修正を優先する。
-- 外部入力、ファイル、ネットワーク、時刻依存、並行処理では失敗を前提に設計する。
-- 外部 I/O には必要に応じて timeout、retry、ログ、明確なエラーメッセージを入れる。
-- パフォーマンス最適化は推測ではなく計測に基づいて行う。
-
-## テスト
-- 変更した振る舞いには対応するテストを追加または更新する。
-- テストは実装詳細より振る舞いを確認する。
-- 失敗するテストを安易に skip / ignore しない。やむを得ない場合は理由を明記する。
-- 既存のテスト framework と既存パターンを優先する。
-
-## セキュリティと依存関係
-- シークレット、API キー、接続文字列、パスワードをハードコードしない。
-- 外部入力は検証する。必要最小限の権限で動作させる。
-- 新しい依存関係は、本当に必要な場合のみ追加し、保守性・ライセンス・サイズ・セキュリティ影響を意識する。
-- 例外抑制、型抑制、lint 無効化は最終手段とし、必要なら理由をコメントする。
-
-## ドキュメントと Git
-- 仕様、設定、使い方、設計判断が変わる場合は README、関連 docs、ADR も更新する。
-- 重要な判断には Why を残す。
-- コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
-- 1 つのコミット / 変更セットは 1 つの関心事に寄せる。
 
 ## Agent ディスパッチ（必須）
 
@@ -93,22 +61,20 @@
 built-in agent と custom agent の両方が使える場合は、custom agent を優先する。
 
 ## DeepReview
-- PR 前の重要変更や「事前レビュー」依頼では、`deep-review-preflight` skill を入口にし、一次情報確認・source of truth 確認・非破壊性確認を先に行う。
-- review は実装スレッドと分離し、変更内容に応じて `code-quality-review`（品質・回帰）/ `security-review`（セキュリティ）を使い分ける。両面にまたがる変更では両方を走らせる。
-- custom agent がない場合は built-in `code-review` / `/review` を fallback として使う。
-- DeepReview を通した後に PR 作成へ進み、実際の PR コメント対応は別のレビュー応答フローへ委譲する。
+- PR 前の重要変更や「事前レビュー」依頼 → `deep-review-preflight` skill を入口にする。詳細手順は skill 内に定義済み。
 
 ## Conventions
 - 言語別の追加ルールは `.github/instructions/*.instructions.md` を参照し、このファイルに重複記載しない。
 - フック運用の正本は `.github/hooks/*.json` と `.github/hooks/scripts/` のみとする。
-- `repo-template/.github/hooks/` や `home-template/.copilot/hooks/` のような重複配置はしない。
-- Git client hooks は `repo-template/.githooks/` を正本にし、target repo では `.githooks/` に同期して `core.hooksPath` で有効化する。GitHub の branch protection / ruleset は別途必須とする。
+- Git client hooks は `.githooks/` に配置し `core.hooksPath` で有効化する。
+- コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
+- 仕様、設定、使い方、設計判断が変わる場合は README、関連 docs、ADR も更新する。
 <!-- TODO: このプロジェクト固有の慣習があれば追記する -->
 
 ## セッション終了ワークフロー
-- ユーザーが「ふりかえり」と入力したら、`/exit` の前に `furikaeri-practice` skill を発火し、セッションの YWT（やったこと・わかったこと・つぎにやること）を `.github/sessions/` に記録する。Quick モード（既定）で T に集中し、必要に応じて Deep モード（KPT＋深掘り）に切り替える。
-- セッションを共有用に整えたいときは `session-share-document` skill を発火し、`docs/sessions/` に保存する。
-- `/exit` が直接入力された場合は skill を発火できない（CLI 組み込みコマンドのため LLM を経由しない）。sessionEnd hook が最低限の機械的 YWT を生成する。
+- 「ふりかえり」→ `furikaeri-practice` skill を発火。詳細手順は skill 内に定義済み。
+- セッション共有 → `session-share-document` skill を発火。
+- `/exit` 直接入力時は sessionEnd hook が機械的 YWT を生成する。
 
 ## 優先順位
 1. 正確さと安全性

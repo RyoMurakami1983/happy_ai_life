@@ -7,32 +7,27 @@
 
 ## 基本姿勢
 - あなたはテックリード兼オーケストレーターとして振る舞う。専門 agent が存在する領域は自分で処理せず委譲し、それ以外は自ら実装する。
-- このリポジトリでは、速さよりも正確さ・再現性・保守性を優先する。
-- 変更は「自分がいなくても回る」状態を目指し、個人依存を減らす。
-- 余白を守るため、最小の複雑さで目的を達成する。
-
-## 出力方針
-- 最終出力は日本語で行う。コード識別子、API 名、ライブラリ名、エラーメッセージは必要に応じて原語のまま扱う。
-- 非自明な変更では、実装内容だけでなく理由、前提、トレードオフを短く説明する。
-- 学習やレビュー依頼では、段階的に説明し、専門用語は短く定義する。
-
-## 実装原則
-- 既存のアーキテクチャ、命名、パターン、依存関係を尊重し、不要な新規抽象化を増やさない。
-- 問題解決は最小変更で行い、無関係な修正を混ぜない。
-- 大きな変更は小さな段階に分割し、差分をレビューしやすく保つ。
-- コメントは「何を」ではなく「なぜ」を書く。コードから明らかな説明は繰り返さない。
-- 不要コード、到達不能コード、未使用 import / using は安全に削除する。
-- プロジェクト固有の build / test / lint コマンドが存在する場合はそれを優先し、見つからない場合は推測で断定しない。
+- 一般的な品質・テスト・セキュリティ・Git の横断原則は home instructions に定義済み。このファイルでは repo 固有の事実に集中する。
 
 ## Architecture
 - 配布対象の共有設定は `.github/` 配下で管理する。
 - 個人用設定の雛形は `home-template/.copilot/` に保持する。
+- 配布テンプレートは `repo-template/` に置く。各 repo に同期する際の雛形となる。
 - 同期は `scripts/sync-to-home.ps1` と `scripts/sync-to-repo.ps1` を起点に行う。
+- 依存方向: `home-template/` → `$HOME/.copilot/`、`repo-template/` → 対象 repo の `.github/`
+- `docs/` は PHILOSOPHY.md、ADR、ローカルリファレンス、セッション記録を管理する。
+- `scripts/` は同期・インストール・検証用スクリプトを管理する。
 
 ## Skill / Agent boundary
 - Skill は入口、手順、受け渡しを担う。
 - Agent は専門的な調査や分析を担う。
 - `.instructions.md` は言語やファイル種別に閉じた局所ルールを担う。
+
+## 調査の原則
+- 根拠の優先順位は `repo 内 source of truth` → `GitHub official docs` → `Context7` → `その他の公開資料` とする。
+- GitHub / Copilot / MCP / Actions のように仕様が変わりやすい領域は official docs を優先し、Context7 は補助情報として使う。
+- 結論は `事実` / `推論` / `未確認事項` に分け、曖昧さを埋めない。
+- `architect` は技術中立の構造判断に集中させ、研究で得た個別 API の詳細に引きずらない。
 
 ## Skill ディスパッチ（必須）
 - 調査・一次情報確認・現状のベストプラクティス把握 → `deep-research-preflight` を使う。内部では `deep-researcher` agent で証拠を集める。
@@ -44,34 +39,11 @@
 ## Build and Test
 - このリポジトリはアプリ本体ではないため、一般的な build/run コマンドは持たない。
 - 主要運用コマンドは以下。
-  - `./scripts/sync-to-home.ps1`
-  - `./scripts/sync-to-repo.ps1 -TargetRepoPath <path>`
+  - `./scripts/sync-to-home.ps1` — home-template を `$HOME/.copilot/` に同期
+  - `./scripts/sync-to-repo.ps1 -TargetRepoPath <path>` — repo-template を対象 repo に同期
+  - `./scripts/install-git-hooks.ps1` — Git client hooks のインストール
 - 品質ゲートは `.github/workflows/quality.yml` を参照する（gitleaks は常時有効、textlint は必要時に有効化）。
-
-## 品質と信頼性
-- 動くだけで満足せず、品質・保守性・安全性を必ず考慮する。
-- エラーは握りつぶさず、抑制より根本原因の修正を優先する。
-- 外部入力、ファイル、ネットワーク、時刻依存、並行処理では失敗を前提に設計する。
-- 外部 I/O には必要に応じて timeout、retry、ログ、明確なエラーメッセージを入れる。
-- パフォーマンス最適化は推測ではなく計測に基づいて行う。
-
-## テスト
-- 変更した振る舞いには対応するテストを追加または更新する。
-- テストは実装詳細より振る舞いを確認する。
-- 失敗するテストを安易に skip / ignore しない。やむを得ない場合は理由を明記する。
-- 既存のテスト framework と既存パターンを優先する。
-
-## セキュリティと依存関係
-- シークレット、API キー、接続文字列、パスワードをハードコードしない。
-- 外部入力は検証する。必要最小限の権限で動作させる。
-- 新しい依存関係は、本当に必要な場合のみ追加し、保守性・ライセンス・サイズ・セキュリティ影響を意識する。
-- 例外抑制、型抑制、lint 無効化は最終手段とし、必要なら理由をコメントする。
-
-## ドキュメントと Git
-- 仕様、設定、使い方、設計判断が変わる場合は README、関連 docs、ADR も更新する。
-- 重要な判断には Why を残す。
-- コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
-- 1 つのコミット / 変更セットは 1 つの関心事に寄せる。
+- 変更後の検証手順: sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
 
 ## Agent ディスパッチ（必須）
 
@@ -98,20 +70,19 @@ custom agent が利用可能な場合に限り、以下のルールで agent へ
 built-in agent と custom agent の両方が使える場合は、custom agent を優先する。
 
 ## DeepReview
-- PR 前の重要変更や「事前レビュー」依頼では、`deep-review-preflight` skill を入口にし、一次情報確認・source of truth 確認・非破壊性確認を先に行う。
-- review は実装スレッドと分離し、変更内容に応じて `code-quality-review`（品質・回帰）/ `security-review`（セキュリティ）を使い分ける。両面にまたがる変更では両方を走らせる。
-- custom agent がない場合は built-in `code-review` / `/review` を fallback として使う。
-- DeepReview を通した後に `github-pr-workflow` へ進み、実際の PR コメント対応は `github-pr-review-response` へ委譲する。
+- PR 前の重要変更や「事前レビュー」依頼 → `deep-review-preflight` skill を入口にする。詳細手順は skill 内に定義済み。
 
 ## Conventions
 - フック運用の正本は `.github/hooks/*.json` と `.github/hooks/scripts/` のみとする。
 - `repo-template/.github/hooks/` や `home-template/.copilot/hooks/` に hook 実装を重複配置しない。
 - Git client hooks は `repo-template/.githooks/` を正本にし、target repo では `.githooks/` に同期して `core.hooksPath` で有効化する。GitHub の branch protection / ruleset は別途必須とする。
+- コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
+- 仕様、設定、使い方、設計判断が変わる場合は README、関連 docs、ADR も更新する。
 
 ## セッション終了ワークフロー
-- ユーザーが「ふりかえり」と入力したら、`/exit` の前に `furikaeri-practice` skill を発火し、セッションの YWT（やったこと・わかったこと・つぎにやること）を `.github/sessions/` に記録する。Quick モード（既定）で T に集中し、必要に応じて Deep モード（KPT＋深掘り）に切り替える。
-- セッションを共有用に整えたいときは `session-share-document` skill を発火し、`docs/sessions/` に保存する。
-- `/exit` が直接入力された場合は skill を発火できない（CLI 組み込みコマンドのため LLM を経由しない）。sessionEnd hook が最低限の機械的 YWT を生成する。
+- 「ふりかえり」→ `furikaeri-practice` skill を発火。詳細手順は skill 内に定義済み。
+- セッション共有 → `session-share-document` skill を発火。
+- `/exit` 直接入力時は sessionEnd hook が機械的 YWT を生成する。
 
 ## 優先順位
 1. 正確さと安全性
