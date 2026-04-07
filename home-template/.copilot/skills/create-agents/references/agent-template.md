@@ -25,7 +25,7 @@ user-invocable: true
 |-----------|------|------|
 | `name` | ✓ | kebab-case。ファイル名の `<name>.agent.md` と一致させる |
 | `description` | ✓ | `>` で折り返し、`Use when:` トリガー句を含める |
-| `tools` | ✓ | `read`, `search`, `execute` から最小限を選ぶ |
+| `tools` | ✓ | `read`, `search`, `execute`, `edit` から最小限を選ぶ |
 | `model` | ✓ | ユーザーと相談して決定する |
 | `disable-model-invocation` | ✓ | 通常は `false` |
 | `user-invocable` | ✓ | 通常は `true` |

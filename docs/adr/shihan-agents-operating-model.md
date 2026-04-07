@@ -7,7 +7,7 @@
 
 ## 背景
 
-4 つの師範 agent（dotnet-shihan, python-shihan, typescript-shihan, skill-shihan）は、現在「先生モード」を既定とし、tools に `edit` を含まない。
+4 つの師範 agent（dotnet-shihan, python-shihan, typescript-shihan, skill-shihan）は、現在「改善提案既定」を保ちつつ、Copilot CLI で有効な `edit` を frontmatter に含め、使用条件で実行権限を制御している。
 
 仕様書は「求道者モードを既定にし、必要なら編集まで行う」ことを求めている。一方、Architect レビューは以下のリスクを指摘した:
 
