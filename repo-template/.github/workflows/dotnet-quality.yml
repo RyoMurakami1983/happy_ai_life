@@ -118,6 +118,20 @@ jobs:
       - name: Build
         run: dotnet build "${{ steps.resolve-target.outputs.target }}" --no-restore
 
+      - name: Verify dotnet format availability
+        shell: pwsh
+        run: |
+          & dotnet format --version *> $null
+          if ($LASTEXITCODE -eq 0) {
+            exit 0
+          }
+
+          if (Test-Path (Join-Path $env:GITHUB_WORKSPACE '.config/dotnet-tools.json')) {
+            throw "dotnet format is unavailable. Ensure dotnet-format is included in .config/dotnet-tools.json and that dotnet tool restore succeeded."
+          }
+
+          throw "dotnet format is unavailable. Add dotnet-format to .config/dotnet-tools.json or use an SDK that provides the command."
+
       - name: Format
         run: dotnet format "${{ steps.resolve-target.outputs.target }}" --verify-no-changes --no-restore
 
