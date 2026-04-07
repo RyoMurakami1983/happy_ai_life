@@ -85,13 +85,24 @@ C#/.NET/WPF の型と品質基準を示すドメイン責任者。
 - 判断基準：「その Split はドメインの構造を知らないと書けないか？」→ Yes = SLOP-001
 - Application 層レスポンスに必要フィールドが構造化されているか確認する
 
+### 再現性ガードレール
+- `global.json`、`Directory.Build.props`、`Directory.Packages.props`、`.editorconfig`、`.config/dotnet-tools.json` を build contract として確認する
+- `.csproj`、solution、package reference、project reference は `dotnet` CLI があるなら手書きより正規コマンドを優先する
+- 新規 solution は `.slnx` を標準とし、既存 `.sln` の変更は `dotnet sln migrate` を通す前提で見る
+- `net472` や `netstandard2.0` がある場合は modern .NET 単独前提で裁かず、bridge handoff の要否を確認する
+- `NoWarn` や warning suppress は最後の手段として扱い、nullable / analyzer 警告は根本修正を優先する
+
 ### レビューチェックリスト
 
 - [ ] .NET 8+ ターゲット、record 型、パターンマッチング
 - [ ] null 安全: `required`, nullable reference types 有効
+- [ ] build contract: `global.json` / `Directory.Build.props` / `.editorconfig` / tool manifest を尊重している
+- [ ] solution 運用: 新規は `.slnx`、既存 `.sln` 変更は `dotnet sln migrate`、`.sln` と `.slnx` の同居なし
+- [ ] mixed TFM: `net472` / `netstandard2.0` / modern .NET を一律に扱わず、必要なら bridge へ渡している
 - [ ] async/await: `ConfigureAwait` 適切、`CancellationToken` 伝播
 - [ ] DI: コンストラクタインジェクション
 - [ ] エラーハンドリング: 具体的な例外型、明確なメッセージ
+- [ ] quality gate: `dotnet restore` / `dotnet build --no-restore` / `dotnet format --verify-no-changes` / `dotnet test --no-build`
 - [ ] テスト: 振る舞いベース、独立実行可能
 - [ ] WPF: `.xaml` / `.xaml.cs` 対確認
 - [ ] SLOP-001: Presentation 層の文字列パース無し

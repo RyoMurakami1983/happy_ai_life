@@ -158,15 +158,36 @@ dotnet tool install dotnet-format
 追加の analyzer や CLI を入れる場合も、まずは `dotnet tool` か `PackageReference` の正規ルートを使います。
 既存 repo で `Directory.Packages.props` があるなら、新しく作らずにそこへ寄せます。
 
-### Step 5 — `.editorconfig` を gate に変える
+### Step 5 — `.editorconfig` を build contract にする
 
 ```powershell
 dotnet new editorconfig
 ```
 
-生成後は repo の方針に合わせて `.editorconfig` を調整します。
-`dotnet format --verify-no-changes` を completion gate に使うなら、`.editorconfig` が品質の正本です。
-既存 repo では、既存 `.editorconfig` を消さずに差分を足す前提で見ます。
+`.editorconfig` は target repo 側の build contract であり、`dotnet format --verify-no-changes` の正本です。
+共有テンプレートから万能な 1 枚を配るより、target repo で生成したものを最小差分で育てます。
+
+- greenfield: `dotnet new editorconfig` を土台にし、repo root の `.editorconfig` を正本にする
+- existing repo: 既存 `.editorconfig` を消さず、`dotnet format --verify-no-changes --verbosity diagnostic` で診断してから差分を足す
+- `Directory.Build.props`: `TreatWarningsAsErrors`、`AnalysisLevel`、`Nullable`
+- `.editorconfig`: formatting と rule severity の明示
+
+```ini
+root = true
+
+[*.cs]
+dotnet_analyzer_diagnostic.category-Style.severity = warning
+dotnet_analyzer_diagnostic.category-Design.severity = warning
+dotnet_analyzer_diagnostic.category-Reliability.severity = warning
+dotnet_analyzer_diagnostic.category-Performance.severity = warning
+dotnet_diagnostic.CS8602.severity = error
+dotnet_diagnostic.CS8604.severity = error
+dotnet_diagnostic.CS8618.severity = error
+```
+
+最初から naming や doc comment の細則まで全部を強制しないほうが安全です。
+まずは `dotnet format --verify-no-changes` と null 安全に直結する最小セットを gate にし、追加 analyzer の細則は repo ごとに増やします。
+つまり、この skill は `.editorconfig` の考え方を示し、実ファイルの正本は target repo 側に持たせます。
 
 ### Step 6 — 日次コマンドを固定する
 
@@ -191,7 +212,7 @@ dotnet test --no-build
 5. `Directory.Build.props` を追加し、`Nullable` から寄せる
 6. mixed TFM なら条件付き props にし、詳細は bridge skill で詰める
 7. `TreatWarningsAsErrors`
-8. `.editorconfig` と `dotnet format --verify-no-changes`
+8. 既存 `.editorconfig` があれば上書きせず、gate 用の差分を足して `dotnet format --verify-no-changes`
 9. `Directory.Packages.props` と local tool manifest
 
 の順で寄せると、どこで破綻したかを追いやすくなります。
