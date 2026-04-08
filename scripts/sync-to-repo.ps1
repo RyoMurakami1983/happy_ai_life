@@ -44,6 +44,69 @@ function Test-RobocopyResult {
     }
 }
 
+function Merge-AppendOnlyFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination,
+        [switch]$WhatIfMode
+    )
+
+    if (-not (Test-Path -LiteralPath $Source)) {
+        throw "Source file not found: $Source"
+    }
+
+    if ($WhatIfMode) {
+        if (Test-Path -LiteralPath $Destination) {
+            Write-Host "Would append missing lines from $Source to $Destination" -ForegroundColor Yellow
+        }
+        else {
+            Write-Host "Would create $Destination from $Source" -ForegroundColor Yellow
+        }
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $Destination)) {
+        $destinationDirectory = Split-Path -Path $Destination -Parent
+        if (-not [string]::IsNullOrWhiteSpace($destinationDirectory) -and -not (Test-Path -LiteralPath $destinationDirectory)) {
+            New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+        }
+
+        Copy-Item -LiteralPath $Source -Destination $Destination -Force
+        return
+    }
+
+    $sourceLines = @(Get-Content -LiteralPath $Source)
+    $existingLines = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+
+    foreach ($line in @(Get-Content -LiteralPath $Destination)) {
+        if (-not [string]::IsNullOrWhiteSpace($line)) {
+            [void]$existingLines.Add($line)
+        }
+    }
+
+    $linesToAppend = New-Object System.Collections.Generic.List[string]
+    foreach ($line in $sourceLines) {
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        if (-not $existingLines.Contains($line)) {
+            [void]$linesToAppend.Add($line)
+        }
+    }
+
+    if ($linesToAppend.Count -eq 0) {
+        return
+    }
+
+    $destinationTail = @(Get-Content -LiteralPath $Destination -Tail 1)
+    if ($destinationTail.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($destinationTail[0])) {
+        Add-Content -LiteralPath $Destination -Value ''
+    }
+
+    Add-Content -LiteralPath $Destination -Value $linesToAppend
+}
+
 function Invoke-Robocopy {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
@@ -163,7 +226,9 @@ $excludeDirs = @(
 
 $excludeFiles = @(
     "*.local.json",
-    "*.local.ps1"
+    "*.local.ps1",
+    # .github/.gitignore は既存内容を壊さず、後段で追記マージする。
+    ".gitignore"
 )
 
 # --- 1. repo-template/.github/ → 配布先 .github/ ---
@@ -190,6 +255,14 @@ Invoke-Robocopy `
     -MirrorMode:$Mirror `
     -WhatIfMode:$DryRun `
     -ShowVerboseLog:$VerboseLog
+
+$githubGitIgnoreSourcePath = [System.IO.Path]::GetFullPath((Join-Path $sourcePath ".gitignore"))
+$githubGitIgnoreDestinationPath = Join-Path $destinationPath ".gitignore"
+
+Merge-AppendOnlyFile `
+    -Source $githubGitIgnoreSourcePath `
+    -Destination $githubGitIgnoreDestinationPath `
+    -WhatIfMode:$DryRun
 
 # --- 2. .github/hooks/ → 配布先 .github/hooks/ （$HooksRelativePath が空ならスキップ）---
 if (-not [string]::IsNullOrWhiteSpace($HooksRelativePath)) {
