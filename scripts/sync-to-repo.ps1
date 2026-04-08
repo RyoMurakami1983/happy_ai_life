@@ -44,6 +44,89 @@ function Test-RobocopyResult {
     }
 }
 
+function Get-TextFileContent {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $stream = [System.IO.File]::Open(
+        $Path,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::Read,
+        [System.IO.FileShare]::ReadWrite
+    )
+
+    try {
+        $reader = [System.IO.StreamReader]::new(
+            $stream,
+            [System.Text.UTF8Encoding]::new($false),
+            $true
+        )
+        try {
+            return $reader.ReadToEnd()
+        }
+        finally {
+            $reader.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
+function Get-TextFileLines {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $content = Get-TextFileContent -Path $Path
+    if ([string]::IsNullOrEmpty($content)) {
+        return @()
+    }
+
+    return $content -split "`r?`n"
+}
+
+function Write-TextFileContent {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Content
+    )
+
+    $directory = Split-Path -Path $Path -Parent
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
+    $stream = [System.IO.File]::Open(
+        $Path,
+        [System.IO.FileMode]::Create,
+        [System.IO.FileAccess]::Write,
+        [System.IO.FileShare]::Read
+    )
+
+    try {
+        $writer = [System.IO.StreamWriter]::new(
+            $stream,
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        try {
+            $writer.Write($Content)
+        }
+        finally {
+            $writer.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
+function Write-TextFileLines {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string[]]$Lines
+    )
+
+    Write-TextFileContent -Path $Path -Content (($Lines -join [System.Environment]::NewLine) + [System.Environment]::NewLine)
+}
+
 function Merge-AppendOnlyFile {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
@@ -55,9 +138,36 @@ function Merge-AppendOnlyFile {
         throw "Source file not found: $Source"
     }
 
+    $sourceLines = @(Get-TextFileLines -Path $Source)
+
     if ($WhatIfMode) {
         if (Test-Path -LiteralPath $Destination) {
-            Write-Host "Would append missing lines from $Source to $Destination" -ForegroundColor Yellow
+            $destinationLines = @(Get-TextFileLines -Path $Destination)
+            $existingLines = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+
+            foreach ($line in $destinationLines) {
+                if (-not [string]::IsNullOrWhiteSpace($line)) {
+                    [void]$existingLines.Add($line)
+                }
+            }
+
+            $missingCount = 0
+            foreach ($line in $sourceLines) {
+                if ([string]::IsNullOrWhiteSpace($line)) {
+                    continue
+                }
+
+                if (-not $existingLines.Contains($line)) {
+                    $missingCount += 1
+                }
+            }
+
+            if ($missingCount -eq 0) {
+                Write-Host "No append-only changes needed for $Destination" -ForegroundColor Yellow
+            }
+            else {
+                Write-Host "Would merge $missingCount missing line(s) into $Destination" -ForegroundColor Yellow
+            }
         }
         else {
             Write-Host "Would create $Destination from $Source" -ForegroundColor Yellow
@@ -66,19 +176,14 @@ function Merge-AppendOnlyFile {
     }
 
     if (-not (Test-Path -LiteralPath $Destination)) {
-        $destinationDirectory = Split-Path -Path $Destination -Parent
-        if (-not [string]::IsNullOrWhiteSpace($destinationDirectory) -and -not (Test-Path -LiteralPath $destinationDirectory)) {
-            New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
-        }
-
-        Copy-Item -LiteralPath $Source -Destination $Destination -Force
+        Write-TextFileLines -Path $Destination -Lines $sourceLines
         return
     }
 
-    $sourceLines = @(Get-Content -LiteralPath $Source)
     $existingLines = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $destinationLines = @(Get-TextFileLines -Path $Destination)
 
-    foreach ($line in @(Get-Content -LiteralPath $Destination)) {
+    foreach ($line in $destinationLines) {
         if (-not [string]::IsNullOrWhiteSpace($line)) {
             [void]$existingLines.Add($line)
         }
@@ -99,12 +204,14 @@ function Merge-AppendOnlyFile {
         return
     }
 
-    $destinationTail = @(Get-Content -LiteralPath $Destination -Tail 1)
-    if ($destinationTail.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($destinationTail[0])) {
-        Add-Content -LiteralPath $Destination -Value ''
+    $destinationContent = Get-TextFileContent -Path $Destination
+    $appendContent = ''
+    if ($destinationContent.Length -gt 0 -and -not $destinationContent.EndsWith([System.Environment]::NewLine)) {
+        $appendContent += [System.Environment]::NewLine
     }
 
-    Add-Content -LiteralPath $Destination -Value $linesToAppend
+    $appendContent += (($linesToAppend -join [System.Environment]::NewLine) + [System.Environment]::NewLine)
+    [System.IO.File]::AppendAllText($Destination, $appendContent, [System.Text.UTF8Encoding]::new($false))
 }
 
 function Invoke-Robocopy {

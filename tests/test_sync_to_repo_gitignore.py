@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -9,6 +10,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "sync-to-repo.ps1"
+ROBOCOPY = shutil.which("robocopy")
+SKIP_REASON = "sync-to-repo.ps1 requires Windows robocopy"
 
 
 def _powershell_executable() -> str:
@@ -18,6 +21,12 @@ def _powershell_executable() -> str:
             return resolved
 
     pytest.skip("PowerShell executable not found")
+
+
+pytestmark = pytest.mark.skipif(
+    os.name != "nt" or ROBOCOPY is None,
+    reason=SKIP_REASON,
+)
 
 
 def _run_sync(
