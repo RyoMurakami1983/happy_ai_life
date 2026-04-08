@@ -176,7 +176,7 @@ function Merge-AppendOnlyFile {
     }
 
     if (-not (Test-Path -LiteralPath $Destination)) {
-        Write-TextFileLines -Path $Destination -Lines $sourceLines
+        Copy-Item -LiteralPath $Source -Destination $Destination -Force
         return
     }
 

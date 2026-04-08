@@ -109,3 +109,19 @@ def test_sync_to_repo_appends_missing_github_gitignore_rules(tmp_path: Path) -> 
     assert "custom.local" in content
     assert "sessions/" in content
     assert "instructions/session-context.instructions.md" in content
+
+
+def test_sync_to_repo_creates_missing_github_gitignore(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    (target_repo / ".github").mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    target_file = target_repo / ".github" / ".gitignore"
+    assert target_file.exists()
+    content = target_file.read_text(encoding="utf-8")
+    assert "sessions/" in content
+    assert "instructions/session-context.instructions.md" in content
