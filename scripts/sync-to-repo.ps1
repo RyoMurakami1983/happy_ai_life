@@ -44,6 +44,176 @@ function Test-RobocopyResult {
     }
 }
 
+function Get-TextFileContent {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $stream = [System.IO.File]::Open(
+        $Path,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::Read,
+        [System.IO.FileShare]::ReadWrite
+    )
+
+    try {
+        $reader = [System.IO.StreamReader]::new(
+            $stream,
+            [System.Text.UTF8Encoding]::new($false),
+            $true
+        )
+        try {
+            return $reader.ReadToEnd()
+        }
+        finally {
+            $reader.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
+function Get-TextFileLines {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $content = Get-TextFileContent -Path $Path
+    if ([string]::IsNullOrEmpty($content)) {
+        return @()
+    }
+
+    return $content -split "`r?`n"
+}
+
+function Write-TextFileContent {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Content
+    )
+
+    $directory = Split-Path -Path $Path -Parent
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
+    $stream = [System.IO.File]::Open(
+        $Path,
+        [System.IO.FileMode]::Create,
+        [System.IO.FileAccess]::Write,
+        [System.IO.FileShare]::Read
+    )
+
+    try {
+        $writer = [System.IO.StreamWriter]::new(
+            $stream,
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        try {
+            $writer.Write($Content)
+        }
+        finally {
+            $writer.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
+function Write-TextFileLines {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string[]]$Lines
+    )
+
+    Write-TextFileContent -Path $Path -Content (($Lines -join [System.Environment]::NewLine) + [System.Environment]::NewLine)
+}
+
+function Merge-AppendOnlyFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination,
+        [switch]$WhatIfMode
+    )
+
+    if (-not (Test-Path -LiteralPath $Source)) {
+        throw "Source file not found: $Source"
+    }
+
+    $sourceLines = @(Get-TextFileLines -Path $Source)
+
+    if ($WhatIfMode) {
+        if (Test-Path -LiteralPath $Destination) {
+            $destinationLines = @(Get-TextFileLines -Path $Destination)
+            $existingLines = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+
+            foreach ($line in $destinationLines) {
+                if (-not [string]::IsNullOrWhiteSpace($line)) {
+                    [void]$existingLines.Add($line)
+                }
+            }
+
+            $missingCount = 0
+            foreach ($line in $sourceLines) {
+                if ([string]::IsNullOrWhiteSpace($line)) {
+                    continue
+                }
+
+                if (-not $existingLines.Contains($line)) {
+                    $missingCount += 1
+                }
+            }
+
+            if ($missingCount -eq 0) {
+                Write-Host "No append-only changes needed for $Destination" -ForegroundColor Yellow
+            }
+            else {
+                Write-Host "Would merge $missingCount missing line(s) into $Destination" -ForegroundColor Yellow
+            }
+        }
+        else {
+            Write-Host "Would create $Destination from $Source" -ForegroundColor Yellow
+        }
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $Destination)) {
+        Copy-Item -LiteralPath $Source -Destination $Destination -Force
+        return
+    }
+
+    $existingLines = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $destinationLines = @(Get-TextFileLines -Path $Destination)
+
+    foreach ($line in $destinationLines) {
+        if (-not [string]::IsNullOrWhiteSpace($line)) {
+            [void]$existingLines.Add($line)
+        }
+    }
+
+    $linesToAppend = New-Object System.Collections.Generic.List[string]
+    foreach ($line in $sourceLines) {
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        if (-not $existingLines.Contains($line)) {
+            [void]$linesToAppend.Add($line)
+        }
+    }
+
+    if ($linesToAppend.Count -eq 0) {
+        return
+    }
+
+    $destinationContent = Get-TextFileContent -Path $Destination
+    $appendContent = ''
+    if ($destinationContent.Length -gt 0 -and -not $destinationContent.EndsWith([System.Environment]::NewLine)) {
+        $appendContent += [System.Environment]::NewLine
+    }
+
+    $appendContent += (($linesToAppend -join [System.Environment]::NewLine) + [System.Environment]::NewLine)
+    [System.IO.File]::AppendAllText($Destination, $appendContent, [System.Text.UTF8Encoding]::new($false))
+}
+
 function Invoke-Robocopy {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
@@ -163,7 +333,9 @@ $excludeDirs = @(
 
 $excludeFiles = @(
     "*.local.json",
-    "*.local.ps1"
+    "*.local.ps1",
+    # .github/.gitignore は既存内容を壊さず、後段で追記マージする。
+    ".gitignore"
 )
 
 # --- 1. repo-template/.github/ → 配布先 .github/ ---
@@ -190,6 +362,14 @@ Invoke-Robocopy `
     -MirrorMode:$Mirror `
     -WhatIfMode:$DryRun `
     -ShowVerboseLog:$VerboseLog
+
+$githubGitIgnoreSourcePath = [System.IO.Path]::GetFullPath((Join-Path $sourcePath ".gitignore"))
+$githubGitIgnoreDestinationPath = Join-Path $destinationPath ".gitignore"
+
+Merge-AppendOnlyFile `
+    -Source $githubGitIgnoreSourcePath `
+    -Destination $githubGitIgnoreDestinationPath `
+    -WhatIfMode:$DryRun
 
 # --- 2. .github/hooks/ → 配布先 .github/hooks/ （$HooksRelativePath が空ならスキップ）---
 if (-not [string]::IsNullOrWhiteSpace($HooksRelativePath)) {
