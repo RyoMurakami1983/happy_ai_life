@@ -46,7 +46,11 @@ compatibility: GitHub Copilot Agent, Claude Code, Codex
 ファイル名の禁止文字は置換し、長すぎるタイトルは読みやすさを優先して短くしてください。
 既存の共有文書は更新せず、新しい共有文書を追加してください。`pre-commit` hook が既存ファイルの変更・削除・rename を拒否します。
 
-### ステップ 5 — 次の導線を残す
+### ステップ 5 — commit するなら docs タイトル形式にする
+
+共有文書を Git に残す場合は、その文書だけを atomic に stage し、commit 件名は `docs:(共有タイトル)` を使います。ふりかえり由来の共有では `共有タイトル` に最終決定したふりかえりタイトル名をそのまま入れ、`docs:(ふりかえりタイトル名)` の形式にそろえます。これにより、`git log` から共有文書を見つけやすくなり、実装 commit と docs commit も分離できます。
+
+### ステップ 6 — 次の導線を残す
 
 `furikaeri-practice` の後続として案内しやすいように、必要なら次回のセッション向けメモも短く残します。
 
@@ -55,6 +59,7 @@ compatibility: GitHub Copilot Agent, Claude Code, Codex
 - **hook からの自動起動はしない**: `sessionEnd` から skill を直接呼び出す前提ではありません。
 - **作業用と共有用を混ぜない**: `.github/sessions/` は作業領域、`docs/sessions/` は共有領域です。
 - **公開配慮を省かない**: 共有文書は外部に読まれる前提で書きます。
+- **共有 docs commit を実装 commit と混ぜない**: `docs:(共有タイトル)` の 1 commit に分けると履歴が読みやすくなります。
 
 ## 早見表
 
@@ -64,3 +69,4 @@ compatibility: GitHub Copilot Agent, Claude Code, Codex
 | 共有文書の名前を決めたい | タイトル候補を出してユーザー確認する |
 | 公開用の本文を整えたい | Executive Summary と匿名化を入れる |
 | 保存したい | `docs/sessions/YYYYMMDD-HHmmss_(Session名).md` に書く |
+| commit したい | `docs:(共有タイトル)` で共有文書だけ commit する |

@@ -7,7 +7,7 @@ license: Personal
 
 # initial_setup_happy_env
 
-この母艦リポジトリの初回セットアップを、`uv` を入口にそろえて安全に始める skill です。
+この母艦リポジトリ専用の初回セットアップを、`uv` を入口にそろえて安全に始める skill です。
 first-run はここで整え、steady-state は `uv run app.py` を主入口にします。
 
 ## こんなときに使う
