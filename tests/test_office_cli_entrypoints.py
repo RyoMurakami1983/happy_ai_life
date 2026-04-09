@@ -17,8 +17,10 @@ REDLINING_SCRIPT = SCRIPTS_ROOT / "office" / "validators" / "redlining.py"
 
 
 def _load_module(module_name: str, script_path: Path):
-    sys.path.insert(0, str(SCRIPTS_ROOT))
+    original_sys_path = sys.path.copy()
     try:
+        if str(SCRIPTS_ROOT) not in sys.path:
+            sys.path.insert(0, str(SCRIPTS_ROOT))
         spec = importlib.util.spec_from_file_location(module_name, script_path)
         assert spec is not None
         assert spec.loader is not None
@@ -27,7 +29,7 @@ def _load_module(module_name: str, script_path: Path):
         spec.loader.exec_module(module)
         return module
     finally:
-        sys.path.pop(0)
+        sys.path[:] = original_sys_path
 
 
 def _run_skill_script(script_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -127,3 +129,24 @@ def test_redlining_validator_reports_fast_path_skip_reason(
     captured = capsys.readouterr()
     assert "WARNING - Skipping fast-path tracked change detection" in captured.out
     assert "FAILED - Error parsing XML files:" in captured.out
+
+
+def test_load_module_restores_sys_path() -> None:
+    original_sys_path = sys.path.copy()
+
+    _load_module("pptx_unpack_restore", UNPACK_SCRIPT)
+
+    assert sys.path == original_sys_path
+
+
+def test_unpack_bootstrap_avoids_duplicate_scripts_root() -> None:
+    module = _load_module("pptx_unpack_bootstrap", UNPACK_SCRIPT)
+    original_sys_path = sys.path.copy()
+
+    try:
+        sys.path[:] = [str(SCRIPTS_ROOT)]
+        module._ensure_scripts_path()
+
+        assert sys.path == [str(SCRIPTS_ROOT)]
+    finally:
+        sys.path[:] = original_sys_path

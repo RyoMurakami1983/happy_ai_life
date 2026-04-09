@@ -1,6 +1,7 @@
 """Pack a directory into a DOCX, PPTX, or XLSX file.
 
-Validates with auto-repair, condenses XML formatting, and creates the Office file.
+Validation with auto-repair currently applies to .docx and .pptx only. .xlsx
+files are packed without validator-backed checks.
 
 Usage:
     python scripts/office/pack.py <input_directory> <output_file> [--original <file>] [--validate true|false]
@@ -11,6 +12,7 @@ Examples:
 """
 
 import argparse
+import os
 import sys
 import shutil
 import tempfile
@@ -19,10 +21,22 @@ from pathlib import Path
 
 import defusedxml.minidom
 
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+def _ensure_scripts_path() -> None:
+    scripts_root = Path(__file__).resolve().parent.parent
+    normalized_scripts_root = os.path.normcase(str(scripts_root))
+    normalized_entries = {
+        os.path.normcase(str(Path(entry).resolve()))
+        for entry in sys.path
+        if entry
+    }
+    if normalized_scripts_root not in normalized_entries:
+        sys.path.insert(0, str(scripts_root))
 
-from office.validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
+
+if __package__ in {None, ""}:
+    _ensure_scripts_path()
+
+from office.validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator  # noqa: E402
 
 def pack(
     input_directory: str,
@@ -138,10 +152,16 @@ def _condense_xml(xml_file: Path) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Pack a directory into a DOCX, PPTX, or XLSX file"
+        description=(
+            "Pack a directory into a DOCX, PPTX, or XLSX file "
+            "(.docx/.pptx validation only)"
+        )
     )
     parser.add_argument("input_directory", help="Unpacked Office document directory")
-    parser.add_argument("output_file", help="Output Office file (.docx/.pptx/.xlsx)")
+    parser.add_argument(
+        "output_file",
+        help="Output Office file (.docx/.pptx/.xlsx; validator-backed checks support .docx/.pptx)",
+    )
     parser.add_argument(
         "--original",
         help="Original file for validation comparison",

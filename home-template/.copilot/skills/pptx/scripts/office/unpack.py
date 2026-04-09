@@ -14,6 +14,7 @@ Examples:
 """
 
 import argparse
+import os
 import sys
 import zipfile
 from pathlib import Path
@@ -22,12 +23,24 @@ from xml.parsers.expat import ExpatError
 from defusedxml.common import DefusedXmlException
 import defusedxml.minidom
 
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+def _ensure_scripts_path() -> None:
+    scripts_root = Path(__file__).resolve().parent.parent
+    normalized_scripts_root = os.path.normcase(str(scripts_root))
+    normalized_entries = {
+        os.path.normcase(str(Path(entry).resolve()))
+        for entry in sys.path
+        if entry
+    }
+    if normalized_scripts_root not in normalized_entries:
+        sys.path.insert(0, str(scripts_root))
 
-from office.helpers.merge_runs import merge_runs as do_merge_runs
-from office.helpers.simplify_redlines import simplify_redlines as do_simplify_redlines
-from office.zip_utils import safe_extractall
+
+if __package__ in {None, ""}:
+    _ensure_scripts_path()
+
+from office.helpers.merge_runs import merge_runs as do_merge_runs  # noqa: E402
+from office.helpers.simplify_redlines import simplify_redlines as do_simplify_redlines  # noqa: E402
+from office.zip_utils import safe_extractall  # noqa: E402
 
 SMART_QUOTE_REPLACEMENTS = {
     "\u201c": "&#x201C;",

@@ -14,16 +14,29 @@ Auto-repair fixes:
 """
 
 import argparse
+import os
 import sys
 import tempfile
 import zipfile
 from pathlib import Path
 
-if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+def _ensure_scripts_path() -> None:
+    scripts_root = Path(__file__).resolve().parent.parent
+    normalized_scripts_root = os.path.normcase(str(scripts_root))
+    normalized_entries = {
+        os.path.normcase(str(Path(entry).resolve()))
+        for entry in sys.path
+        if entry
+    }
+    if normalized_scripts_root not in normalized_entries:
+        sys.path.insert(0, str(scripts_root))
 
-from office.validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
-from office.zip_utils import safe_extractall
+
+if __package__ in {None, ""}:
+    _ensure_scripts_path()
+
+from office.validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator  # noqa: E402
+from office.zip_utils import safe_extractall  # noqa: E402
 
 
 def main():
