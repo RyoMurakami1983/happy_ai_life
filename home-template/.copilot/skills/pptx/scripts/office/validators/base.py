@@ -758,9 +758,9 @@ class BaseSchemaValidator:
 
         try:
             with open(schema_path, "rb") as xsd_file:
-                parser = lxml.etree.XMLParser()
+                parser = lxml.etree.XMLParser(no_network=True)
                 xsd_doc = lxml.etree.parse(
-                    xsd_file, parser=parser, base_url=str(schema_path)
+                    xsd_file, parser=parser, base_url=schema_path.resolve().as_uri()
                 )
                 schema = lxml.etree.XMLSchema(xsd_doc)
 

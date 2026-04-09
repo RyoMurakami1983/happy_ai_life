@@ -68,12 +68,23 @@ def _ensure_shim() -> Path:
     src = shim_dir / "lo_socket_shim.c"
     _SHIM_SO = shim_dir / "lo_socket_shim.so"
     src.write_text(_SHIM_SOURCE)
-    subprocess.run(
-        ["gcc", "-shared", "-fPIC", "-o", str(_SHIM_SO), str(src), "-ldl"],
-        check=True,
-        capture_output=True,
-    )
-    src.unlink()
+    try:
+        subprocess.run(
+            ["gcc", "-shared", "-fPIC", "-o", str(_SHIM_SO), str(src), "-ldl"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "gcc is required to build the LibreOffice socket shim. Install a C toolchain or run in an environment where AF_UNIX sockets are available."
+        ) from exc
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr.strip() if exc.stderr else "unknown gcc error"
+        raise RuntimeError(f"Failed to build the LibreOffice socket shim: {stderr}") from exc
+    finally:
+        if src.exists():
+            src.unlink()
     return _SHIM_SO
 
 
