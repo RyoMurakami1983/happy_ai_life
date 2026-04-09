@@ -19,7 +19,7 @@ from pathlib import Path
 
 import defusedxml.minidom
 
-from validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
+from office.validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
 
 def pack(
     input_directory: str,
@@ -73,7 +73,9 @@ def _run_validation(
     infer_author_func=None,
 ) -> tuple[bool, str | None]:
     output_lines = []
-    validators = []
+    validators: list[
+        DOCXSchemaValidator | PPTXSchemaValidator | RedliningValidator
+    ] = []
 
     if suffix == ".docx":
         author = "Claude"

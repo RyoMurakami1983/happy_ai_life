@@ -8,6 +8,8 @@ from pathlib import Path
 import defusedxml.minidom
 import lxml.etree
 
+from office.zip_utils import safe_extractall
+
 
 class BaseSchemaValidator:
 
@@ -108,6 +110,14 @@ class BaseSchemaValidator:
 
     def validate(self):
         raise NotImplementedError("Subclasses must implement the validate method")
+
+    @staticmethod
+    def _local_name(tag: object) -> str:
+        return str(tag).rsplit("}", 1)[-1].lower()
+
+    @staticmethod
+    def _display_name(tag: object) -> str:
+        return str(tag).rsplit("}", 1)[-1]
 
     def repair(self) -> int:
         return self.repair_whitespace_preservation()
@@ -212,15 +222,11 @@ class BaseSchemaValidator:
                     elem.getparent().remove(elem)
 
                 for elem in root.iter():
-                    tag = (
-                        elem.tag.split("}")[-1].lower()
-                        if "}" in elem.tag
-                        else elem.tag.lower()
-                    )
+                    tag = self._local_name(elem.tag)
 
                     if tag in self.UNIQUE_ID_REQUIREMENTS:
                         in_excluded_container = any(
-                            ancestor.tag.split("}")[-1].lower() in self.EXCLUDED_ID_CONTAINERS
+                            self._local_name(ancestor.tag) in self.EXCLUDED_ID_CONTAINERS
                             for ancestor in elem.iterancestors()
                         )
                         if in_excluded_container:
@@ -428,9 +434,7 @@ class BaseSchemaValidator:
                         if not rid_attr:
                             continue
                         xml_rel_path = xml_file.relative_to(self.unpacked_dir)
-                        elem_name = (
-                            elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
-                        )
+                        elem_name = self._display_name(elem.tag)
 
                         if rid_attr not in rid_to_type:
                             errors.append(
@@ -554,7 +558,7 @@ class BaseSchemaValidator:
 
                 try:
                     root_tag = lxml.etree.parse(str(xml_file)).getroot().tag
-                    root_name = root_tag.split("}")[-1] if "}" in root_tag else root_tag
+                    root_name = self._display_name(root_tag)
 
                     if root_name in declarable_roots and path_str not in declared_parts:
                         errors.append(
@@ -689,10 +693,10 @@ class BaseSchemaValidator:
         if xml_file.suffix == ".rels":
             return self.schemas_dir / self.SCHEMA_MAPPINGS[".rels"]
 
-        if "charts/" in str(xml_file) and xml_file.name.startswith("chart"):
+        if "charts" in xml_file.parts and xml_file.name.startswith("chart"):
             return self.schemas_dir / self.SCHEMA_MAPPINGS["chart"]
 
-        if "theme/" in str(xml_file) and xml_file.name.startswith("theme"):
+        if "theme" in xml_file.parts and xml_file.name.startswith("theme"):
             return self.schemas_dir / self.SCHEMA_MAPPINGS["theme"]
 
         if xml_file.parent.name in self.MAIN_CONTENT_FOLDERS:
@@ -799,7 +803,7 @@ class BaseSchemaValidator:
             temp_path = Path(temp_dir)
 
             with zipfile.ZipFile(self.original_file, "r") as zip_ref:
-                zip_ref.extractall(temp_path)
+                safe_extractall(zip_ref, temp_path)
 
             original_xml_file = temp_path / relative_path
 

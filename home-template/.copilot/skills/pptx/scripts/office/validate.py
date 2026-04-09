@@ -6,7 +6,7 @@ Usage:
 
 The first argument can be either:
 - An unpacked directory containing the Office document XML files
-- A packed Office file (.docx/.pptx/.xlsx) which will be unpacked to a temp directory
+ - A packed Office file (.docx/.pptx) which will be unpacked to a temp directory
 
 Auto-repair fixes:
 - paraId/durableId values that exceed OOXML limits
@@ -19,20 +19,21 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
+from office.validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
+from office.zip_utils import safe_extractall
 
 
 def main():
     parser = argparse.ArgumentParser(description="Validate Office document XML files")
     parser.add_argument(
         "path",
-        help="Path to unpacked directory or packed Office file (.docx/.pptx/.xlsx)",
+        help="Path to unpacked directory or packed Office file (.docx/.pptx)",
     )
     parser.add_argument(
         "--original",
         required=False,
         default=None,
-        help="Path to original file (.docx/.pptx/.xlsx). If omitted, all XSD errors are reported and redlining validation is skipped.",
+        help="Path to original file (.docx/.pptx). If omitted, all XSD errors are reported and redlining validation is skipped.",
     )
     parser.add_argument(
         "-v",
@@ -53,38 +54,89 @@ def main():
     args = parser.parse_args()
 
     path = Path(args.path)
-    assert path.exists(), f"Error: {path} does not exist"
+    if not path.exists():
+        print(f"Error: {path} does not exist", file=sys.stderr)
+        sys.exit(1)
 
     original_file = None
     if args.original:
         original_file = Path(args.original)
-        assert original_file.is_file(), f"Error: {original_file} is not a file"
-        assert original_file.suffix.lower() in [".docx", ".pptx", ".xlsx"], (
-            f"Error: {original_file} must be a .docx, .pptx, or .xlsx file"
-        )
+        if not original_file.is_file():
+            print(f"Error: {original_file} is not a file", file=sys.stderr)
+            sys.exit(1)
+        if original_file.suffix.lower() not in [".docx", ".pptx"]:
+            print(f"Error: {original_file} must be a .docx or .pptx file", file=sys.stderr)
+            sys.exit(1)
 
     file_extension = (original_file or path).suffix.lower()
-    assert file_extension in [".docx", ".pptx", ".xlsx"], (
-        f"Error: Cannot determine file type from {path}. Use --original or provide a .docx/.pptx/.xlsx file."
-    )
+    if file_extension not in [".docx", ".pptx"]:
+        print(
+            f"Error: Cannot determine file type from {path}. Use --original or provide a .docx/.pptx file.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
-    if path.is_file() and path.suffix.lower() in [".docx", ".pptx", ".xlsx"]:
-        temp_dir = tempfile.mkdtemp()
-        with zipfile.ZipFile(path, "r") as zf:
-            zf.extractall(temp_dir)
-        unpacked_dir = Path(temp_dir)
+    if path.is_file() and path.suffix.lower() in [".docx", ".pptx"]:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with zipfile.ZipFile(path, "r") as zf:
+                safe_extractall(zf, Path(temp_dir))
+            unpacked_dir = Path(temp_dir)
+            if file_extension == ".docx":
+                validators: list[
+                    DOCXSchemaValidator | PPTXSchemaValidator | RedliningValidator
+                ] = [
+                    DOCXSchemaValidator(
+                        unpacked_dir, original_file, verbose=args.verbose
+                    ),
+                ]
+                if original_file:
+                    validators.append(
+                        RedliningValidator(
+                            unpacked_dir,
+                            original_file,
+                            verbose=args.verbose,
+                            author=args.author,
+                        )
+                    )
+            else:
+                validators = [
+                    PPTXSchemaValidator(
+                        unpacked_dir, original_file, verbose=args.verbose
+                    ),
+                ]
+
+            if args.auto_repair:
+                total_repairs = sum(v.repair() for v in validators)
+                if total_repairs:
+                    print(f"Auto-repaired {total_repairs} issue(s)")
+
+            success = all(v.validate() for v in validators)
+
+            if success:
+                print("All validations PASSED!")
+
+            sys.exit(0 if success else 1)
     else:
-        assert path.is_dir(), f"Error: {path} is not a directory or Office file"
+        if not path.is_dir():
+            print(f"Error: {path} is not a directory or Office file", file=sys.stderr)
+            sys.exit(1)
         unpacked_dir = path
 
     match file_extension:
         case ".docx":
-            validators = [
+            validators: list[
+                DOCXSchemaValidator | PPTXSchemaValidator | RedliningValidator
+            ] = [
                 DOCXSchemaValidator(unpacked_dir, original_file, verbose=args.verbose),
             ]
             if original_file:
                 validators.append(
-                    RedliningValidator(unpacked_dir, original_file, verbose=args.verbose, author=args.author)  
+                    RedliningValidator(
+                        unpacked_dir,
+                        original_file,
+                        verbose=args.verbose,
+                        author=args.author,
+                    )
                 )
         case ".pptx":
             validators = [

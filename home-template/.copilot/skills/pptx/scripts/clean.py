@@ -225,10 +225,11 @@ def update_content_types(unpacked_dir: Path, removed_files: list[str]) -> None:
 
     dom = defusedxml.minidom.parse(str(ct_path))
     changed = False
+    normalized_removed_files = {path.replace("\\", "/") for path in removed_files}
 
     for override in list(dom.getElementsByTagName("Override")):
         part_name = override.getAttribute("PartName").lstrip("/")
-        if part_name in removed_files:
+        if part_name in normalized_removed_files:
             if override.parentNode:
                 override.parentNode.removeChild(override)
                 changed = True

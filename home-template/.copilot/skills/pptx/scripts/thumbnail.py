@@ -112,8 +112,16 @@ def get_slide_info(pptx_path: Path) -> list[dict]:
         for sld_id in pres_dom.getElementsByTagName("p:sldId"):
             rid = sld_id.getAttribute("r:id")
             if rid in rid_to_slide:
-                hidden = sld_id.getAttribute("show") == "0"
-                slides.append({"name": rid_to_slide[rid], "hidden": hidden})
+                slide_name = rid_to_slide[rid]
+                hidden = False
+                try:
+                    slide_content = zf.read(f"ppt/slides/{slide_name}").decode("utf-8")
+                    slide_dom = defusedxml.minidom.parseString(slide_content)
+                    slide_root = slide_dom.getElementsByTagName("p:sld")[0]
+                    hidden = slide_root.getAttribute("show") in ("0", "false")
+                except Exception:
+                    hidden = False
+                slides.append({"name": slide_name, "hidden": hidden})
 
         return slides
 
