@@ -2,6 +2,8 @@
 
 ## Template-Based Workflow
 
+Commands below assume the current working directory is this skill directory.
+
 When using an existing presentation as a template:
 
 1. **Analyze existing slides**:

@@ -3,11 +3,11 @@
 Validates with auto-repair, condenses XML formatting, and creates the Office file.
 
 Usage:
-    python pack.py <input_directory> <output_file> [--original <file>] [--validate true|false]
+    python scripts/office/pack.py <input_directory> <output_file> [--original <file>] [--validate true|false]
 
 Examples:
-    python pack.py unpacked/ output.docx --original input.docx
-    python pack.py unpacked/ output.pptx --validate false
+    python scripts/office/pack.py unpacked/ output.docx --original input.docx
+    python scripts/office/pack.py unpacked/ output.pptx --validate false
 """
 
 import argparse
@@ -18,6 +18,9 @@ import zipfile
 from pathlib import Path
 
 import defusedxml.minidom
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from office.validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
 

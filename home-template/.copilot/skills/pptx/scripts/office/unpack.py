@@ -5,30 +5,35 @@ Extracts the ZIP archive, pretty-prints XML files, and optionally:
 - Simplifies adjacent tracked changes from same author (DOCX only)
 
 Usage:
-    python unpack.py <office_file> <output_dir> [options]
+    python scripts/office/unpack.py <office_file> <output_dir> [options]
 
 Examples:
-    python unpack.py document.docx unpacked/
-    python unpack.py presentation.pptx unpacked/
-    python unpack.py document.docx unpacked/ --merge-runs false
+    python scripts/office/unpack.py document.docx unpacked/
+    python scripts/office/unpack.py presentation.pptx unpacked/
+    python scripts/office/unpack.py document.docx unpacked/ --merge-runs false
 """
 
 import argparse
 import sys
 import zipfile
 from pathlib import Path
+from xml.parsers.expat import ExpatError
 
+from defusedxml.common import DefusedXmlException
 import defusedxml.minidom
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from office.helpers.merge_runs import merge_runs as do_merge_runs
 from office.helpers.simplify_redlines import simplify_redlines as do_simplify_redlines
 from office.zip_utils import safe_extractall
 
 SMART_QUOTE_REPLACEMENTS = {
-    "\u201c": "&#x201C;",  
-    "\u201d": "&#x201D;",  
-    "\u2018": "&#x2018;",  
-    "\u2019": "&#x2019;",  
+    "\u201c": "&#x201C;",
+    "\u201d": "&#x201D;",
+    "\u2018": "&#x2018;",
+    "\u2019": "&#x2019;",
 }
 
 
@@ -85,8 +90,11 @@ def _pretty_print_xml(xml_file: Path) -> None:
         content = xml_file.read_text(encoding="utf-8")
         dom = defusedxml.minidom.parseString(content)
         xml_file.write_bytes(dom.toprettyxml(indent="  ", encoding="utf-8"))
-    except Exception:
-        pass  
+    except (DefusedXmlException, ExpatError, OSError, UnicodeDecodeError) as exc:
+        print(
+            f"Warning: Skipped pretty-printing for {xml_file}: {exc}",
+            file=sys.stderr,
+        )
 
 
 def _escape_smart_quotes(xml_file: Path) -> None:
@@ -95,8 +103,11 @@ def _escape_smart_quotes(xml_file: Path) -> None:
         for char, entity in SMART_QUOTE_REPLACEMENTS.items():
             content = content.replace(char, entity)
         xml_file.write_text(content, encoding="utf-8")
-    except Exception:
-        pass
+    except (OSError, UnicodeDecodeError) as exc:
+        print(
+            f"Warning: Skipped smart-quote escaping for {xml_file}: {exc}",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":

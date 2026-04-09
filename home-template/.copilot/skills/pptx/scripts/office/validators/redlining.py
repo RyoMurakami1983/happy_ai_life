@@ -2,6 +2,7 @@
 Validator for tracked changes in Word documents.
 """
 
+import xml.etree.ElementTree as ET
 import subprocess
 import tempfile
 import zipfile
@@ -31,8 +32,6 @@ class RedliningValidator:
             return False
 
         try:
-            import xml.etree.ElementTree as ET
-
             tree = ET.parse(modified_file)
             root = tree.getroot()
 
@@ -55,8 +54,11 @@ class RedliningValidator:
                     print(f"PASSED - No tracked changes by {self.author} found.")
                 return True
 
-        except Exception:
-            pass
+        except (ET.ParseError, OSError) as exc:
+            if self.verbose:
+                print(
+                    f"WARNING - Skipping fast-path tracked change detection for {modified_file}: {exc}"
+                )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
@@ -64,7 +66,7 @@ class RedliningValidator:
             try:
                 with zipfile.ZipFile(self.original_docx, "r") as zip_ref:
                     safe_extractall(zip_ref, temp_path)
-            except Exception as e:
+            except (OSError, ValueError, zipfile.BadZipFile) as e:
                 print(f"FAILED - Error unpacking original docx: {e}")
                 return False
 
@@ -76,13 +78,11 @@ class RedliningValidator:
                 return False
 
             try:
-                import xml.etree.ElementTree as ET
-
                 modified_tree = ET.parse(modified_file)
                 modified_root = modified_tree.getroot()
                 original_tree = ET.parse(original_file)
                 original_root = original_tree.getroot()
-            except ET.ParseError as e:
+            except (ET.ParseError, OSError) as e:
                 print(f"FAILED - Error parsing XML files: {e}")
                 return False
 
@@ -137,64 +137,62 @@ class RedliningValidator:
                 original_file.write_text(original_text, encoding="utf-8")
                 modified_file.write_text(modified_text, encoding="utf-8")
 
-                result = subprocess.run(
+                commands = (
                     [
                         "git",
                         "diff",
                         "--word-diff=plain",
-                        "--word-diff-regex=.",  
-                        "-U0",  
+                        "--word-diff-regex=.",
+                        "-U0",
                         "--no-index",
                         str(original_file),
                         str(modified_file),
                     ],
-                    capture_output=True,
-                    text=True,
-                )
-
-                if result.stdout.strip():
-                    lines = result.stdout.split("\n")
-                    content_lines = []
-                    in_content = False
-                    for line in lines:
-                        if line.startswith("@@"):
-                            in_content = True
-                            continue
-                        if in_content and line.strip():
-                            content_lines.append(line)
-
-                    if content_lines:
-                        return "\n".join(content_lines)
-
-                result = subprocess.run(
                     [
                         "git",
                         "diff",
                         "--word-diff=plain",
-                        "-U0",  
+                        "-U0",
                         "--no-index",
                         str(original_file),
                         str(modified_file),
                     ],
-                    capture_output=True,
-                    text=True,
                 )
 
-                if result.stdout.strip():
-                    lines = result.stdout.split("\n")
-                    content_lines = []
-                    in_content = False
-                    for line in lines:
-                        if line.startswith("@@"):
-                            in_content = True
-                            continue
-                        if in_content and line.strip():
-                            content_lines.append(line)
-                    return "\n".join(content_lines)
+                for command in commands:
+                    result = subprocess.run(
+                        command,
+                        capture_output=True,
+                        text=True,
+                    )
+                    if result.returncode not in (0, 1):
+                        continue
 
-        except (subprocess.CalledProcessError, FileNotFoundError, Exception):
-            pass
+                    diff_output = self._extract_diff_content(result.stdout)
+                    if diff_output:
+                        return diff_output
 
+        except OSError:
+            return None
+
+        return None
+
+    def _extract_diff_content(self, diff_output):
+        if not diff_output.strip():
+            return None
+
+        lines = diff_output.split("\n")
+        content_lines = []
+        in_content = False
+        for line in lines:
+            if line.startswith("@@"):
+                in_content = True
+                continue
+            if in_content and line.strip():
+                content_lines.append(line)
+
+        if content_lines:
+            return "\n".join(content_lines)
         return None
 
     def _remove_author_tracked_changes(self, root):
