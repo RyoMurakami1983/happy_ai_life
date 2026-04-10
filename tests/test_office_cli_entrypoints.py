@@ -14,6 +14,7 @@ PACK_SCRIPT = SCRIPTS_ROOT / "office" / "pack.py"
 UNPACK_SCRIPT = SCRIPTS_ROOT / "office" / "unpack.py"
 VALIDATE_SCRIPT = SCRIPTS_ROOT / "office" / "validate.py"
 REDLINING_SCRIPT = SCRIPTS_ROOT / "office" / "validators" / "redlining.py"
+RENDER_SCRIPT = SCRIPTS_ROOT / "render_slides.py"
 
 
 def _load_module(module_name: str, script_path: Path):
@@ -101,6 +102,16 @@ def test_validate_script_reports_unsafe_archive_member(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "Error: Unsafe archive member: ../evil.txt" in result.stderr
+
+
+def test_render_slides_script_reports_missing_input(tmp_path: Path) -> None:
+    missing_file = tmp_path / "missing.pptx"
+
+    result = _run_skill_script(RENDER_SCRIPT, str(missing_file))
+
+    assert result.returncode == 1
+    assert f"Error: Invalid PowerPoint file: {missing_file}" in result.stderr
+    assert "ModuleNotFoundError" not in result.stdout + result.stderr
 
 
 def test_unpack_pretty_print_warns_for_invalid_xml(tmp_path: Path, capsys) -> None:

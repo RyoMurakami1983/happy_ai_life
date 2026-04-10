@@ -16,15 +16,14 @@ Examples:
 """
 
 import argparse
-import subprocess
 import sys
 import tempfile
 import zipfile
 from pathlib import Path
 
 import defusedxml.minidom
-from office.soffice import get_soffice_env
 from PIL import Image, ImageDraw, ImageFont
+from render_slides import render_slides
 
 THUMBNAIL_WIDTH = 300
 CONVERSION_DPI = 100
@@ -164,41 +163,12 @@ def create_hidden_placeholder(size: tuple[int, int]) -> Image.Image:
 
 
 def convert_to_images(pptx_path: Path, temp_dir: Path) -> list[Path]:
-    pdf_path = temp_dir / f"{pptx_path.stem}.pdf"
-
-    result = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            str(temp_dir),
-            str(pptx_path),
-        ],
-        capture_output=True,
-        text=True,
-        env=get_soffice_env(),
+    return render_slides(
+        pptx_path,
+        temp_dir / "slide",
+        image_format="jpeg",
+        dpi=CONVERSION_DPI,
     )
-    if result.returncode != 0 or not pdf_path.exists():
-        raise RuntimeError("PDF conversion failed")
-
-    result = subprocess.run(
-        [
-            "pdftoppm",
-            "-jpeg",
-            "-r",
-            str(CONVERSION_DPI),
-            str(pdf_path),
-            str(temp_dir / "slide"),
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError("Image conversion failed")
-
-    return sorted(temp_dir.glob("slide-*.jpg"))
 
 
 def create_grids(

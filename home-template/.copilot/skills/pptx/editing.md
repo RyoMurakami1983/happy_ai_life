@@ -96,7 +96,7 @@ python scripts/thumbnail.py input.pptx [output_prefix] [--cols N]
 
 Creates `thumbnails.jpg` with slide filenames as labels. Default 3 columns; each grid contains up to `cols * (cols + 1)` slides, so the default is 12 per grid.
 
-**Use for template analysis only** (choosing layouts). For visual QA, use `soffice` + `pdftoppm` to create full-resolution individual slide images—see SKILL.md.
+**Use for template analysis only** (choosing layouts). For visual QA, use `render_slides.py` to create full-resolution individual slide images—see SKILL.md. It prefers headless LibreOffice and uses a hidden PowerPoint fallback on Windows when needed.
 
 ---
 
