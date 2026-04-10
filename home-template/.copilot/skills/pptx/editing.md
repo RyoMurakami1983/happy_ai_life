@@ -9,9 +9,9 @@ When using an existing presentation as a template:
 1. **Analyze existing slides**:
    ```bash
    python scripts/thumbnail.py template.pptx
-   python -m markitdown template.pptx
+   uvx --from "markitdown[pptx]" markitdown template.pptx
    ```
-   Review `thumbnails.jpg` to see layouts, and markitdown output to see placeholder text.
+   Review `thumbnails.jpg` to see layouts, and markitdown output to see placeholder text. The `uvx` form works with the standard repo setup and does not require adding `markitdown` to this repository's managed dependencies.
 
 2. **Plan slide mapping**: For each content section, choose a template slide.
 

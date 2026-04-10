@@ -21,6 +21,15 @@ NON_RESPONSIBILITY_HEADINGS = ("Non-Responsibilities", "非責務")
 OUTPUT_HEADINGS = ("Output Shape", "出力の型")
 PITFALL_HEADINGS = ("Pitfalls", "注意点")
 COMPLETION_HEADINGS = ("Completion Criteria", "完了条件")
+LEGACY_BOUNDARY_HEADINGS = ("権限境界",)
+LEGACY_QUALITY_HEADINGS = ("品質基準",)
+LEGACY_OUTPUT_HEADINGS = ("出力テンプレート",)
+LEGACY_PROHIBITION_HEADINGS = ("禁止事項",)
+LEGACY_MODE_HEADING_PATTERNS = (
+    r"既定モード.*",
+    r"求道者モード",
+    r"先生モード",
+)
 RELATED_RESOURCE_MARKERS = ("Related Skills", "Shared Resources", "関連スキル", "共通リソース")
 PRINCIPLES_HEADING_PATTERNS = (
     r"Principles",
@@ -103,7 +112,13 @@ def get_section(content: str, headings: str | Iterable[str]) -> str | None:
     matches = [
         match
         for heading in heading_list
-        if (match := re.search(rf"^##\s+{re.escape(heading)}\s*$", content, re.MULTILINE))
+        if (
+            match := re.search(
+                rf"^##\s+(?:\d+\.\s+)?{re.escape(heading)}\s*$",
+                content,
+                re.MULTILINE,
+            )
+        )
     ]
     if not matches:
         return None
@@ -120,7 +135,13 @@ def get_section_by_patterns(content: str, patterns: Iterable[str]) -> str | None
     matches = [
         match
         for pattern in patterns
-        if (match := re.search(rf"^##\s+(?:{pattern})\s*$", content, re.IGNORECASE | re.MULTILINE))
+        if (
+            match := re.search(
+                rf"^##\s+(?:\d+\.\s+)?(?:{pattern})\s*$",
+                content,
+                re.IGNORECASE | re.MULTILINE,
+            )
+        )
     ]
     if not matches:
         return None
@@ -165,6 +186,14 @@ def has_step_structure(section: str | None) -> bool:
     )
 
 
+def has_legacy_mode_structure(content: str) -> bool:
+    """師範 agent 系の mode-based 構成がそろっているか判定する。"""
+    return all(
+        get_section_by_patterns(content, (pattern,)) is not None
+        for pattern in LEGACY_MODE_HEADING_PATTERNS
+    )
+
+
 def parse_tools(raw_value: str) -> list[str]:
     """tools frontmatter を緩やかに list 化する。"""
     if not raw_value:
@@ -196,9 +225,13 @@ def validate(path: Path, level: str) -> ValidationReport:
     output_shape = get_section(content, OUTPUT_HEADINGS)
     pitfalls = get_section(content, PITFALL_HEADINGS)
     completion = get_section(content, COMPLETION_HEADINGS)
+    legacy_boundary = get_section(content, LEGACY_BOUNDARY_HEADINGS)
+    legacy_quality = get_section(content, LEGACY_QUALITY_HEADINGS)
+    legacy_output = get_section(content, LEGACY_OUTPUT_HEADINGS)
+    legacy_prohibitions = get_section(content, LEGACY_PROHIBITION_HEADINGS)
     tools = parse_tools(frontmatter.get("tools", ""))
 
-    missing_sections = [
+    missing_standard_sections = [
         label
         for label, section in (
             ("役割", role),
@@ -211,6 +244,29 @@ def validate(path: Path, level: str) -> ValidationReport:
         )
         if section is None
     ]
+    has_legacy_modes = has_legacy_mode_structure(content)
+    missing_legacy_sections = [
+        label
+        for label, section in (
+            ("役割", role),
+            ("mode 構成", "ok" if has_legacy_modes else None),
+            ("権限境界", legacy_boundary),
+            ("品質基準", legacy_quality),
+            ("出力テンプレート", legacy_output),
+            ("禁止事項", legacy_prohibitions),
+        )
+        if section is None
+    ]
+    has_supported_structure = (
+        not missing_standard_sections or not missing_legacy_sections
+    )
+    structure_details = ""
+    if not has_supported_structure:
+        standard_details = ", ".join(missing_standard_sections)
+        legacy_details = ", ".join(missing_legacy_sections)
+        structure_details = (
+            f"standard missing: {standard_details}; legacy missing: {legacy_details}"
+        )
 
     critical = [
         CheckResult(
@@ -233,8 +289,12 @@ def validate(path: Path, level: str) -> ValidationReport:
             f"file={agent_file_stem(path)}",
         ),
         CheckResult("C3", "description に trigger phrase が入っている", has_trigger_phrase(frontmatter.get("description", ""))),
-        CheckResult("C4", "必須 section がそろっている", not missing_sections, ", ".join(missing_sections)),
-        CheckResult("C5", "プロセス section に step 構造がある", has_step_structure(process)),
+        CheckResult("C4", "必須 section がそろっている", has_supported_structure, structure_details),
+        CheckResult(
+            "C5",
+            "プロセスまたは legacy mode 構造がある",
+            has_step_structure(process) or has_legacy_modes,
+        ),
     ]
 
     recommended = [

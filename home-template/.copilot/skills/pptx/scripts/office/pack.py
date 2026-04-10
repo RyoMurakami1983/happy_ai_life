@@ -21,6 +21,20 @@ from pathlib import Path
 
 import defusedxml.minidom
 
+
+def _ensure_safe_input_tree(input_dir: Path) -> None:
+    root = input_dir.resolve()
+    if input_dir.is_symlink():
+        raise ValueError(f"Symlinks are not supported in unpacked Office trees: {input_dir}")
+
+    for path in input_dir.rglob("*"):
+        resolved = path.resolve()
+        if not resolved.is_relative_to(root):
+            raise ValueError(f"Unsafe path outside input directory: {path}")
+        if path.is_symlink():
+            raise ValueError(f"Symlinks are not supported in unpacked Office trees: {path}")
+
+
 def _ensure_scripts_path() -> None:
     scripts_root = Path(__file__).resolve().parent.parent
     normalized_scripts_root = os.path.normcase(str(scripts_root))
@@ -54,6 +68,11 @@ def pack(
 
     if suffix not in {".docx", ".pptx", ".xlsx"}:
         return None, f"Error: {output_file} must be a .docx, .pptx, or .xlsx file"
+
+    try:
+        _ensure_safe_input_tree(input_dir)
+    except ValueError as exc:
+        return None, f"Error: {exc}"
 
     original_path = Path(original_file) if original_file is not None else None
     if original_path is not None and not original_path.exists():

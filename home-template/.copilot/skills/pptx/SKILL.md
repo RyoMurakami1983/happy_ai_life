@@ -10,7 +10,7 @@ license: See LICENSE.txt for the current maintainer notice and redistribution ca
 
 | Task | Guide |
 |------|-------|
-| Read/analyze content | `python -m markitdown presentation.pptx` |
+| Read/analyze content | `uvx --from "markitdown[pptx]" markitdown presentation.pptx` |
 | Edit or create from template | Read [editing.md](editing.md) |
 | Create from scratch | Read [pptxgenjs.md](pptxgenjs.md) |
 
@@ -18,11 +18,11 @@ license: See LICENSE.txt for the current maintainer notice and redistribution ca
 
 ## Reading Content
 
-Commands below assume the current working directory is this skill directory.
+Commands below assume the current working directory is this skill directory. Text extraction uses `uvx` so it works with the standard repo setup without preinstalling `markitdown`.
 
 ```bash
 # Text extraction
-python -m markitdown presentation.pptx
+uvx --from "markitdown[pptx]" markitdown presentation.pptx
 
 # Visual overview
 python scripts/thumbnail.py presentation.pptx
@@ -149,7 +149,7 @@ Your first render is almost never correct. Approach QA as a bug hunt, not a conf
 ### Content QA
 
 ```bash
-python -m markitdown output.pptx
+uvx --from "markitdown[pptx]" markitdown output.pptx
 ```
 
 Check for missing content, typos, wrong order.
@@ -157,7 +157,7 @@ Check for missing content, typos, wrong order.
 **When using templates, check for leftover placeholder text:**
 
 ```bash
-python -m markitdown output.pptx | grep -iE "xxxx|lorem|ipsum|this.*(page|slide).*layout"
+uvx --from "markitdown[pptx]" markitdown output.pptx | grep -iE "xxxx|lorem|ipsum|this.*(page|slide).*layout"
 ```
 
 If grep returns results, fix them before declaring success.
@@ -227,7 +227,7 @@ pdftoppm -jpeg -r 150 -f N -l N output.pdf slide-fixed
 
 ## Dependencies
 
-- `pip install "markitdown[pptx]"` - text extraction
+- `uvx --from "markitdown[pptx]" markitdown ...` - text extraction without preinstall
 - `pip install Pillow` - thumbnail grids
 - `npm install -g pptxgenjs` - creating from scratch
 - LibreOffice (`soffice`) - PDF conversion (auto-configured for sandboxed environments via `scripts/office/soffice.py`)
