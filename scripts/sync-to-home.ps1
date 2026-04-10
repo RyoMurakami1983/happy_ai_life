@@ -159,18 +159,28 @@ Write-Host "DryRun      : $DryRun"
 # 個人 secrets やローカル override を壊しにくくするため、
 # 既定では live の mcp-config.json と *.local.* は除外する。
 # 初回セットアップは mcp-config.sample.json から user-owned file を作る。
+# config.json / command-history-state.json は Copilot ランタイムが書くファイルのため除外する。
 $excludeFiles = @(
     "mcp-config.json",
     "mcp-config.local.json",
     "*.local.json",
-    "*.local.ps1"
+    "*.local.ps1",
+    # --- Copilot ランタイムファイル（上書き・削除しない） ---
+    "config.json",
+    "command-history-state.json"
 )
 
 $excludeDirs = @(
     ".git",
     ".vs",
     "node_modules",
-    "hooks"
+    "hooks",
+    # --- Copilot ランタイムデータ（ミラー同期でも絶対に削除しない） ---
+    "session-state",
+    "pkg",
+    "logs",
+    "ide",
+    "restart"
 )
 
 $unsupportedHooksPath = Join-Path $sourcePath "hooks"

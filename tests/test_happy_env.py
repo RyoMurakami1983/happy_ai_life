@@ -166,3 +166,42 @@ def test_main_home_delegates_to_cli(monkeypatch) -> None:
 
     assert exit_code == 7
     assert captured == ["home"]
+
+
+def test_confirm_mirror_sync_returns_true_for_yes(monkeypatch) -> None:
+    monkeypatch.setattr("builtins.input", lambda _prompt: "yes")
+    assert happy_env.confirm_mirror_sync() is True
+
+
+def test_confirm_mirror_sync_returns_false_for_non_yes(monkeypatch) -> None:
+    for answer in ("y", "no", "", "はい"):
+        monkeypatch.setattr("builtins.input", lambda _prompt, _a=answer: _a)
+        assert happy_env.confirm_mirror_sync() is False, f"Expected False for {answer!r}"
+
+
+def test_run_cli_mirror_without_dry_run_prompts_for_confirmation(monkeypatch) -> None:
+    monkeypatch.setattr("builtins.input", lambda _prompt: "no")
+    monkeypatch.setattr(happy_env, "run_home_sync", lambda **_kw: pytest.fail("run_home_sync must not be called"))
+
+    exit_code = happy_env.run_cli(
+        happy_env.build_parser().parse_args(["home", "--mirror"])
+    )
+
+    assert exit_code == 1
+
+
+def test_run_cli_mirror_with_dry_run_skips_confirmation(monkeypatch) -> None:
+    called: list[bool] = []
+
+    def fake_run_home_sync(**kw: object) -> happy_env.CommandResult:
+        called.append(True)
+        return happy_env.CommandResult(label="test", command=(), returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(happy_env, "run_home_sync", fake_run_home_sync)
+
+    exit_code = happy_env.run_cli(
+        happy_env.build_parser().parse_args(["home", "--mirror", "--dry-run"])
+    )
+
+    assert exit_code == 0
+    assert called == [True]
