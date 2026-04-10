@@ -93,7 +93,14 @@ user-invocable: true
 
 def test_validate_agent_accepts_existing_agent_corpus() -> None:
     module = _load_module()
-    for agent_name in ("architect.agent.md", "code-quality-review.agent.md"):
+    for agent_name in (
+        "architect.agent.md",
+        "code-quality-review.agent.md",
+        "dotnet-shihan.agent.md",
+        "python-shihan.agent.md",
+        "skill-shihan.agent.md",
+        "typescript-shihan.agent.md",
+    ):
         agent_path = ROOT / "home-template" / ".copilot" / "agents" / agent_name
         report = module.validate(agent_path, "L1")
         assert report.critical_passed is True, agent_name

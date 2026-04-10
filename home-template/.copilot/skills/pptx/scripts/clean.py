@@ -24,12 +24,27 @@ import defusedxml.minidom
 import re
 
 
+def _ensure_safe_workspace_path(unpacked_dir: Path, path: Path) -> Path:
+    root = unpacked_dir.resolve()
+    resolved = path.resolve()
+
+    if not resolved.is_relative_to(root):
+        raise ValueError(f"Unsafe path outside unpacked directory: {path}")
+    if path.is_symlink():
+        raise ValueError(f"Symlinks are not supported in unpacked Office trees: {path}")
+
+    return resolved
+
+
 def get_slides_in_sldidlst(unpacked_dir: Path) -> set[str]:
     pres_path = unpacked_dir / "ppt" / "presentation.xml"
     pres_rels_path = unpacked_dir / "ppt" / "_rels" / "presentation.xml.rels"
 
     if not pres_path.exists() or not pres_rels_path.exists():
         return set()
+
+    _ensure_safe_workspace_path(unpacked_dir, pres_path)
+    _ensure_safe_workspace_path(unpacked_dir, pres_rels_path)
 
     rels_dom = defusedxml.minidom.parse(str(pres_rels_path))
     rid_to_slide = {}
@@ -54,17 +69,25 @@ def remove_orphaned_slides(unpacked_dir: Path) -> list[str]:
     if not slides_dir.exists():
         return []
 
+    _ensure_safe_workspace_path(unpacked_dir, slides_dir)
+    if slides_rels_dir.exists():
+        _ensure_safe_workspace_path(unpacked_dir, slides_rels_dir)
+    if pres_rels_path.exists():
+        _ensure_safe_workspace_path(unpacked_dir, pres_rels_path)
+
     referenced_slides = get_slides_in_sldidlst(unpacked_dir)
     removed = []
 
     for slide_file in slides_dir.glob("slide*.xml"):
         if slide_file.name not in referenced_slides:
+            _ensure_safe_workspace_path(unpacked_dir, slide_file)
             rel_path = slide_file.relative_to(unpacked_dir)
             slide_file.unlink()
             removed.append(str(rel_path))
 
             rels_file = slides_rels_dir / f"{slide_file.name}.rels"
             if rels_file.exists():
+                _ensure_safe_workspace_path(unpacked_dir, rels_file)
                 rels_file.unlink()
                 removed.append(str(rels_file.relative_to(unpacked_dir)))
 
@@ -93,8 +116,10 @@ def remove_trash_directory(unpacked_dir: Path) -> list[str]:
     removed = []
 
     if trash_dir.exists() and trash_dir.is_dir():
+        _ensure_safe_workspace_path(unpacked_dir, trash_dir)
         for file_path in trash_dir.iterdir():
             if file_path.is_file():
+                _ensure_safe_workspace_path(unpacked_dir, file_path)
                 rel_path = file_path.relative_to(unpacked_dir)
                 removed.append(str(rel_path))
                 file_path.unlink()
@@ -110,7 +135,10 @@ def get_slide_referenced_files(unpacked_dir: Path) -> set:
     if not slides_rels_dir.exists():
         return referenced
 
+    _ensure_safe_workspace_path(unpacked_dir, slides_rels_dir)
+
     for rels_file in slides_rels_dir.glob("*.rels"):
+        _ensure_safe_workspace_path(unpacked_dir, rels_file)
         dom = defusedxml.minidom.parse(str(rels_file))
         for rel in dom.getElementsByTagName("Relationship"):
             target = rel.getAttribute("Target")
@@ -135,9 +163,14 @@ def remove_orphaned_rels_files(unpacked_dir: Path) -> list[str]:
         if not rels_dir.exists():
             continue
 
+        _ensure_safe_workspace_path(unpacked_dir, rels_dir)
+
         for rels_file in rels_dir.glob("*.rels"):
+            _ensure_safe_workspace_path(unpacked_dir, rels_file)
             resource_file = rels_dir.parent / rels_file.name.replace(".rels", "")
             try:
+                if resource_file.exists():
+                    _ensure_safe_workspace_path(unpacked_dir, resource_file)
                 resource_rel_path = resource_file.resolve().relative_to(unpacked_dir.resolve())
             except ValueError:
                 continue
@@ -154,6 +187,7 @@ def get_referenced_files(unpacked_dir: Path) -> set:
     referenced = set()
 
     for rels_file in unpacked_dir.rglob("*.rels"):
+        _ensure_safe_workspace_path(unpacked_dir, rels_file)
         dom = defusedxml.minidom.parse(str(rels_file))
         for rel in dom.getElementsByTagName("Relationship"):
             target = rel.getAttribute("Target")
@@ -177,9 +211,12 @@ def remove_orphaned_files(unpacked_dir: Path, referenced: set) -> list[str]:
         if not dir_path.exists():
             continue
 
+        _ensure_safe_workspace_path(unpacked_dir, dir_path)
+
         for file_path in dir_path.glob("*"):
             if not file_path.is_file():
                 continue
+            _ensure_safe_workspace_path(unpacked_dir, file_path)
             rel_path = file_path.relative_to(unpacked_dir)
             if rel_path not in referenced:
                 file_path.unlink()
@@ -187,21 +224,26 @@ def remove_orphaned_files(unpacked_dir: Path, referenced: set) -> list[str]:
 
     theme_dir = unpacked_dir / "ppt" / "theme"
     if theme_dir.exists():
+        _ensure_safe_workspace_path(unpacked_dir, theme_dir)
         for file_path in theme_dir.glob("theme*.xml"):
+            _ensure_safe_workspace_path(unpacked_dir, file_path)
             rel_path = file_path.relative_to(unpacked_dir)
             if rel_path not in referenced:
                 file_path.unlink()
                 removed.append(str(rel_path))
                 theme_rels = theme_dir / "_rels" / f"{file_path.name}.rels"
                 if theme_rels.exists():
+                    _ensure_safe_workspace_path(unpacked_dir, theme_rels)
                     theme_rels.unlink()
                     removed.append(str(theme_rels.relative_to(unpacked_dir)))
 
     notes_dir = unpacked_dir / "ppt" / "notesSlides"
     if notes_dir.exists():
+        _ensure_safe_workspace_path(unpacked_dir, notes_dir)
         for file_path in notes_dir.glob("*.xml"):
             if not file_path.is_file():
                 continue
+            _ensure_safe_workspace_path(unpacked_dir, file_path)
             rel_path = file_path.relative_to(unpacked_dir)
             if rel_path not in referenced:
                 file_path.unlink()
@@ -209,7 +251,9 @@ def remove_orphaned_files(unpacked_dir: Path, referenced: set) -> list[str]:
 
         notes_rels_dir = notes_dir / "_rels"
         if notes_rels_dir.exists():
+            _ensure_safe_workspace_path(unpacked_dir, notes_rels_dir)
             for file_path in notes_rels_dir.glob("*.rels"):
+                _ensure_safe_workspace_path(unpacked_dir, file_path)
                 notes_file = notes_dir / file_path.name.replace(".rels", "")
                 if not notes_file.exists():
                     file_path.unlink()
@@ -223,12 +267,14 @@ def update_content_types(unpacked_dir: Path, removed_files: list[str]) -> None:
     if not ct_path.exists():
         return
 
+    _ensure_safe_workspace_path(unpacked_dir, ct_path)
     dom = defusedxml.minidom.parse(str(ct_path))
     changed = False
+    normalized_removed_files = {path.replace("\\", "/") for path in removed_files}
 
     for override in list(dom.getElementsByTagName("Override")):
         part_name = override.getAttribute("PartName").lstrip("/")
-        if part_name in removed_files:
+        if part_name in normalized_removed_files:
             if override.parentNode:
                 override.parentNode.removeChild(override)
                 changed = True
@@ -239,6 +285,7 @@ def update_content_types(unpacked_dir: Path, removed_files: list[str]) -> None:
 
 
 def clean_unused_files(unpacked_dir: Path) -> list[str]:
+    _ensure_safe_workspace_path(unpacked_dir.parent, unpacked_dir)
     all_removed = []
 
     slides_removed = remove_orphaned_slides(unpacked_dir)
@@ -276,7 +323,11 @@ if __name__ == "__main__":
         print(f"Error: {unpacked_dir} not found", file=sys.stderr)
         sys.exit(1)
 
-    removed = clean_unused_files(unpacked_dir)
+    try:
+        removed = clean_unused_files(unpacked_dir)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     if removed:
         print(f"Removed {len(removed)} unreferenced files:")

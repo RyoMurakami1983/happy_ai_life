@@ -2,6 +2,7 @@
 Validator for PowerPoint presentation XML files against XSD schemas.
 """
 
+import posixpath
 import re
 
 from .base import BaseSchemaValidator
@@ -82,7 +83,7 @@ class PPTXSchemaValidator(BaseSchemaValidator):
                                         f"Line {elem.sourceline}: ID '{value}' appears to be a UUID but contains invalid hex characters"
                                     )
 
-            except (lxml.etree.XMLSyntaxError, Exception) as e:
+            except (lxml.etree.LxmlError, OSError) as e:
                 errors.append(
                     f"  {xml_file.relative_to(self.unpacked_dir)}: Error: {e}"
                 )
@@ -151,7 +152,7 @@ class PPTXSchemaValidator(BaseSchemaValidator):
                             f"references r:id='{r_id}' which is not found in slide layout relationships"
                         )
 
-            except (lxml.etree.XMLSyntaxError, Exception) as e:
+            except (lxml.etree.LxmlError, OSError) as e:
                 errors.append(
                     f"  {slide_master.relative_to(self.unpacked_dir)}: Error: {e}"
                 )
@@ -192,7 +193,7 @@ class PPTXSchemaValidator(BaseSchemaValidator):
                         f"  {rels_file.relative_to(self.unpacked_dir)}: has {len(layout_rels)} slideLayout references"
                     )
 
-            except Exception as e:
+            except (lxml.etree.LxmlError, OSError) as e:
                 errors.append(
                     f"  {rels_file.relative_to(self.unpacked_dir)}: Error: {e}"
                 )
@@ -211,7 +212,7 @@ class PPTXSchemaValidator(BaseSchemaValidator):
         import lxml.etree
 
         errors = []
-        notes_slide_references = {}  
+        notes_slide_references = {}
 
         slide_rels_files = list(self.unpacked_dir.glob("ppt/slides/_rels/*.xml.rels"))
 
@@ -231,11 +232,13 @@ class PPTXSchemaValidator(BaseSchemaValidator):
                     if "notesSlide" in rel_type:
                         target = rel.get("Target", "")
                         if target:
-                            normalized_target = target.replace("../", "")
+                            normalized_target = self._normalize_notes_slide_target(
+                                rels_file, target
+                            )
 
                             slide_name = rels_file.stem.replace(
                                 ".xml", ""
-                            )  
+                            )
 
                             if normalized_target not in notes_slide_references:
                                 notes_slide_references[normalized_target] = []
@@ -243,7 +246,7 @@ class PPTXSchemaValidator(BaseSchemaValidator):
                                 (slide_name, rels_file)
                             )
 
-            except (lxml.etree.XMLSyntaxError, Exception) as e:
+            except (lxml.etree.LxmlError, OSError) as e:
                 errors.append(
                     f"  {rels_file.relative_to(self.unpacked_dir)}: Error: {e}"
                 )
@@ -263,12 +266,18 @@ class PPTXSchemaValidator(BaseSchemaValidator):
             )
             for error in errors:
                 print(error)
-            print("Each slide may optionally have its own slide file.")
+            print("Each slide may optionally have its own notes slide file.")
             return False
         else:
             if self.verbose:
                 print("PASSED - All notes slide references are unique")
             return True
+
+    def _normalize_notes_slide_target(self, rels_file, target):
+        source_part_dir = posixpath.dirname(
+            posixpath.dirname(rels_file.relative_to(self.unpacked_dir).as_posix())
+        )
+        return posixpath.normpath(posixpath.join(source_part_dir, target))
 
 
 if __name__ == "__main__":

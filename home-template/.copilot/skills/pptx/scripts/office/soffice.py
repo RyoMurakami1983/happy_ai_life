@@ -18,6 +18,7 @@ import os
 import socket
 import subprocess
 import tempfile
+import atexit
 from pathlib import Path
 
 
@@ -37,13 +38,16 @@ def run_soffice(args: list[str], **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(["soffice"] + args, env=env, **kwargs)
 
 
-
-_SHIM_SO = Path(tempfile.gettempdir()) / "lo_socket_shim.so"
+_SHIM_TEMPDIR: tempfile.TemporaryDirectory[str] | None = None
+_SHIM_SO: Path | None = None
 
 
 def _needs_shim() -> bool:
     try:
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        unix_family = getattr(socket, "AF_UNIX", None)
+        if unix_family is None:
+            return False
+        s = socket.socket(unix_family, socket.SOCK_STREAM)
         s.close()
         return False
     except OSError:
@@ -51,17 +55,36 @@ def _needs_shim() -> bool:
 
 
 def _ensure_shim() -> Path:
-    if _SHIM_SO.exists():
+    global _SHIM_TEMPDIR, _SHIM_SO
+
+    if _SHIM_SO is not None and _SHIM_SO.exists():
         return _SHIM_SO
 
-    src = Path(tempfile.gettempdir()) / "lo_socket_shim.c"
+    if _SHIM_TEMPDIR is None:
+        _SHIM_TEMPDIR = tempfile.TemporaryDirectory(prefix="lo_shim_")
+        atexit.register(_SHIM_TEMPDIR.cleanup)
+
+    shim_dir = Path(_SHIM_TEMPDIR.name)
+    src = shim_dir / "lo_socket_shim.c"
+    _SHIM_SO = shim_dir / "lo_socket_shim.so"
     src.write_text(_SHIM_SOURCE)
-    subprocess.run(
-        ["gcc", "-shared", "-fPIC", "-o", str(_SHIM_SO), str(src), "-ldl"],
-        check=True,
-        capture_output=True,
-    )
-    src.unlink()
+    try:
+        subprocess.run(
+            ["gcc", "-shared", "-fPIC", "-o", str(_SHIM_SO), str(src), "-ldl"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "gcc is required to build the LibreOffice socket shim. Install a C toolchain or run in an environment where AF_UNIX sockets are available."
+        ) from exc
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr.strip() if exc.stderr else "unknown gcc error"
+        raise RuntimeError(f"Failed to build the LibreOffice socket shim: {stderr}") from exc
+    finally:
+        if src.exists():
+            src.unlink()
     return _SHIM_SO
 
 

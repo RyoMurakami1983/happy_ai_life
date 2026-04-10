@@ -1,7 +1,7 @@
 ---
 name: pptx
 description: "Use this skill any time a .pptx file is involved in any way — as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx file (even if the extracted content will be used elsewhere, like in an email or summary); editing, modifying, or updating existing presentations; combining or splitting slide files; working with templates, layouts, speaker notes, or comments. Trigger whenever the user mentions \"deck,\" \"slides,\" \"presentation,\" or references a .pptx filename, regardless of what they plan to do with the content afterward. If a .pptx file needs to be opened, created, or touched, use this skill."
-license: Proprietary. LICENSE.txt has complete terms
+license: See LICENSE.txt for the current maintainer notice and redistribution caveat.
 ---
 
 # PPTX Skill
@@ -10,7 +10,7 @@ license: Proprietary. LICENSE.txt has complete terms
 
 | Task | Guide |
 |------|-------|
-| Read/analyze content | `python -m markitdown presentation.pptx` |
+| Read/analyze content | `uvx --from "markitdown[pptx]" markitdown presentation.pptx` |
 | Edit or create from template | Read [editing.md](editing.md) |
 | Create from scratch | Read [pptxgenjs.md](pptxgenjs.md) |
 
@@ -18,9 +18,11 @@ license: Proprietary. LICENSE.txt has complete terms
 
 ## Reading Content
 
+Commands below assume the current working directory is this skill directory. Text extraction uses `uvx` so it works with the standard repo setup without preinstalling `markitdown`.
+
 ```bash
 # Text extraction
-python -m markitdown presentation.pptx
+uvx --from "markitdown[pptx]" markitdown presentation.pptx
 
 # Visual overview
 python scripts/thumbnail.py presentation.pptx
@@ -147,7 +149,7 @@ Your first render is almost never correct. Approach QA as a bug hunt, not a conf
 ### Content QA
 
 ```bash
-python -m markitdown output.pptx
+uvx --from "markitdown[pptx]" markitdown output.pptx
 ```
 
 Check for missing content, typos, wrong order.
@@ -155,7 +157,7 @@ Check for missing content, typos, wrong order.
 **When using templates, check for leftover placeholder text:**
 
 ```bash
-python -m markitdown output.pptx | grep -iE "xxxx|lorem|ipsum|this.*(page|slide).*layout"
+uvx --from "markitdown[pptx]" markitdown output.pptx | grep -iE "xxxx|lorem|ipsum|this.*(page|slide).*layout"
 ```
 
 If grep returns results, fix them before declaring success.
@@ -209,24 +211,31 @@ Report ALL issues found, including minor ones.
 Convert presentations to individual slide images for visual inspection:
 
 ```bash
-python scripts/office/soffice.py --headless --convert-to pdf output.pptx
-pdftoppm -jpeg -r 150 output.pdf slide
+python scripts/render_slides.py output.pptx slide --format png
 ```
 
-This creates `slide-01.jpg`, `slide-02.jpg`, etc.
+This prefers `LibreOffice --headless` when available and falls back to **hidden**
+PowerPoint COM export on Windows when LibreOffice is unavailable. It creates
+`slide-01.png`, `slide-02.png`, etc. without showing the PowerPoint window in
+the normal fallback path.
 
-To re-render specific slides after fixes:
+To re-render after fixes:
 
 ```bash
-pdftoppm -jpeg -r 150 -f N -l N output.pdf slide-fixed
+python scripts/render_slides.py output.pptx slide-fixed --format png
 ```
+
+If you need strict headless behavior on Windows, install LibreOffice so the
+skill can stay on the `soffice --headless` path. The PowerPoint fallback is
+hidden by default, but LibreOffice remains the preferred background renderer.
 
 ---
 
 ## Dependencies
 
-- `pip install "markitdown[pptx]"` - text extraction
+- `uvx --from "markitdown[pptx]" markitdown ...` - text extraction without preinstall
 - `pip install Pillow` - thumbnail grids
 - `npm install -g pptxgenjs` - creating from scratch
 - LibreOffice (`soffice`) - PDF conversion (auto-configured for sandboxed environments via `scripts/office/soffice.py`)
 - Poppler (`pdftoppm`) - PDF to images
+- Windows + Microsoft PowerPoint - hidden fallback when `soffice` is unavailable

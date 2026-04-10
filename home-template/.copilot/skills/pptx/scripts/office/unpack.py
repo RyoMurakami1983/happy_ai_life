@@ -5,29 +5,48 @@ Extracts the ZIP archive, pretty-prints XML files, and optionally:
 - Simplifies adjacent tracked changes from same author (DOCX only)
 
 Usage:
-    python unpack.py <office_file> <output_dir> [options]
+    python scripts/office/unpack.py <office_file> <output_dir> [options]
 
 Examples:
-    python unpack.py document.docx unpacked/
-    python unpack.py presentation.pptx unpacked/
-    python unpack.py document.docx unpacked/ --merge-runs false
+    python scripts/office/unpack.py document.docx unpacked/
+    python scripts/office/unpack.py presentation.pptx unpacked/
+    python scripts/office/unpack.py document.docx unpacked/ --merge-runs false
 """
 
 import argparse
+import os
 import sys
 import zipfile
 from pathlib import Path
+from xml.parsers.expat import ExpatError
 
+from defusedxml.common import DefusedXmlException
 import defusedxml.minidom
 
-from helpers.merge_runs import merge_runs as do_merge_runs
-from helpers.simplify_redlines import simplify_redlines as do_simplify_redlines
+def _ensure_scripts_path() -> None:
+    scripts_root = Path(__file__).resolve().parent.parent
+    normalized_scripts_root = os.path.normcase(str(scripts_root))
+    normalized_entries = {
+        os.path.normcase(str(Path(entry).resolve()))
+        for entry in sys.path
+        if entry
+    }
+    if normalized_scripts_root not in normalized_entries:
+        sys.path.insert(0, str(scripts_root))
+
+
+if __package__ in {None, ""}:
+    _ensure_scripts_path()
+
+from office.helpers.merge_runs import merge_runs as do_merge_runs  # noqa: E402
+from office.helpers.simplify_redlines import simplify_redlines as do_simplify_redlines  # noqa: E402
+from office.zip_utils import safe_extractall  # noqa: E402
 
 SMART_QUOTE_REPLACEMENTS = {
-    "\u201c": "&#x201C;",  
-    "\u201d": "&#x201D;",  
-    "\u2018": "&#x2018;",  
-    "\u2019": "&#x2019;",  
+    "\u201c": "&#x201C;",
+    "\u201d": "&#x201D;",
+    "\u2018": "&#x2018;",
+    "\u2019": "&#x2019;",
 }
 
 
@@ -51,7 +70,7 @@ def unpack(
         output_path.mkdir(parents=True, exist_ok=True)
 
         with zipfile.ZipFile(input_path, "r") as zf:
-            zf.extractall(output_path)
+            safe_extractall(zf, output_path)
 
         xml_files = list(output_path.rglob("*.xml")) + list(output_path.rglob("*.rels"))
         for xml_file in xml_files:
@@ -84,8 +103,11 @@ def _pretty_print_xml(xml_file: Path) -> None:
         content = xml_file.read_text(encoding="utf-8")
         dom = defusedxml.minidom.parseString(content)
         xml_file.write_bytes(dom.toprettyxml(indent="  ", encoding="utf-8"))
-    except Exception:
-        pass  
+    except (DefusedXmlException, ExpatError, OSError, UnicodeDecodeError) as exc:
+        print(
+            f"Warning: Skipped pretty-printing for {xml_file}: {exc}",
+            file=sys.stderr,
+        )
 
 
 def _escape_smart_quotes(xml_file: Path) -> None:
@@ -94,8 +116,11 @@ def _escape_smart_quotes(xml_file: Path) -> None:
         for char, entity in SMART_QUOTE_REPLACEMENTS.items():
             content = content.replace(char, entity)
         xml_file.write_text(content, encoding="utf-8")
-    except Exception:
-        pass
+    except (OSError, UnicodeDecodeError) as exc:
+        print(
+            f"Warning: Skipped smart-quote escaping for {xml_file}: {exc}",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":

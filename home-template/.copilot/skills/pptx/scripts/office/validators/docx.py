@@ -6,11 +6,13 @@ import random
 import re
 import tempfile
 import zipfile
+from pathlib import Path
 
 import defusedxml.minidom
 import lxml.etree
 
 from .base import BaseSchemaValidator
+from office.zip_utils import safe_extractall
 
 
 class DOCXSchemaValidator(BaseSchemaValidator):
@@ -186,9 +188,9 @@ class DOCXSchemaValidator(BaseSchemaValidator):
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
                 with zipfile.ZipFile(original, "r") as zip_ref:
-                    zip_ref.extractall(temp_dir)
+                    safe_extractall(zip_ref, Path(temp_dir))
 
-                doc_xml_path = temp_dir + "/word/document.xml"
+                doc_xml_path = Path(temp_dir) / "word" / "document.xml"
                 root = lxml.etree.parse(doc_xml_path).getroot()
 
                 paragraphs = root.findall(f".//{{{self.WORD_2006_NAMESPACE}}}p")

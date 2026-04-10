@@ -30,12 +30,21 @@ def get_next_slide_number(slides_dir: Path) -> int:
     return max(existing) + 1 if existing else 1
 
 
+def _resolve_child_path(base_dir: Path, child: str, kind: str) -> Path:
+    base_dir = base_dir.resolve()
+    child_path = (base_dir / child).resolve()
+    if not child_path.is_relative_to(base_dir):
+        print(f"Error: {kind} escapes its parent directory: {child}", file=sys.stderr)
+        sys.exit(1)
+    return child_path
+
+
 def create_slide_from_layout(unpacked_dir: Path, layout_file: str) -> None:
     slides_dir = unpacked_dir / "ppt" / "slides"
     rels_dir = slides_dir / "_rels"
     layouts_dir = unpacked_dir / "ppt" / "slideLayouts"
 
-    layout_path = layouts_dir / layout_file
+    layout_path = _resolve_child_path(layouts_dir, layout_file, "layout path")
     if not layout_path.exists():
         print(f"Error: {layout_path} not found", file=sys.stderr)
         sys.exit(1)
@@ -91,7 +100,7 @@ def duplicate_slide(unpacked_dir: Path, source: str) -> None:
     slides_dir = unpacked_dir / "ppt" / "slides"
     rels_dir = slides_dir / "_rels"
 
-    source_slide = slides_dir / source
+    source_slide = _resolve_child_path(slides_dir, source, "source slide")
 
     if not source_slide.exists():
         print(f"Error: {source_slide} not found", file=sys.stderr)
@@ -101,7 +110,7 @@ def duplicate_slide(unpacked_dir: Path, source: str) -> None:
     dest = f"slide{next_num}.xml"
     dest_slide = slides_dir / dest
 
-    source_rels = rels_dir / f"{source}.rels"
+    source_rels = _resolve_child_path(rels_dir, f"{source}.rels", "source rels")
     dest_rels = rels_dir / f"{dest}.rels"
 
     shutil.copy2(source_slide, dest_slide)

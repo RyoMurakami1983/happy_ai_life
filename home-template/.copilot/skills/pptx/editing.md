@@ -2,14 +2,16 @@
 
 ## Template-Based Workflow
 
+Commands below assume the current working directory is this skill directory.
+
 When using an existing presentation as a template:
 
 1. **Analyze existing slides**:
    ```bash
    python scripts/thumbnail.py template.pptx
-   python -m markitdown template.pptx
+   uvx --from "markitdown[pptx]" markitdown template.pptx
    ```
-   Review `thumbnails.jpg` to see layouts, and markitdown output to see placeholder text.
+   Review `thumbnails.jpg` to see layouts, and markitdown output to see placeholder text. The `uvx` form works with the standard repo setup and does not require adding `markitdown` to this repository's managed dependencies.
 
 2. **Plan slide mapping**: For each content section, choose a template slide.
 
@@ -92,9 +94,9 @@ Validates, repairs, condenses XML, re-encodes smart quotes.
 python scripts/thumbnail.py input.pptx [output_prefix] [--cols N]
 ```
 
-Creates `thumbnails.jpg` with slide filenames as labels. Default 3 columns, max 12 per grid.
+Creates `thumbnails.jpg` with slide filenames as labels. Default 3 columns; each grid contains up to `cols * (cols + 1)` slides, so the default is 12 per grid.
 
-**Use for template analysis only** (choosing layouts). For visual QA, use `soffice` + `pdftoppm` to create full-resolution individual slide images—see SKILL.md.
+**Use for template analysis only** (choosing layouts). For visual QA, use `render_slides.py` to create full-resolution individual slide images—see SKILL.md. It prefers headless LibreOffice and uses a hidden PowerPoint fallback on Windows when needed.
 
 ---
 

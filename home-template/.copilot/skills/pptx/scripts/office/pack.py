@@ -1,16 +1,18 @@
 """Pack a directory into a DOCX, PPTX, or XLSX file.
 
-Validates with auto-repair, condenses XML formatting, and creates the Office file.
+Validation with auto-repair currently applies to .docx and .pptx only. .xlsx
+files are packed without validator-backed checks.
 
 Usage:
-    python pack.py <input_directory> <output_file> [--original <file>] [--validate true|false]
+    python scripts/office/pack.py <input_directory> <output_file> [--original <file>] [--validate true|false]
 
 Examples:
-    python pack.py unpacked/ output.docx --original input.docx
-    python pack.py unpacked/ output.pptx --validate false
+    python scripts/office/pack.py unpacked/ output.docx --original input.docx
+    python scripts/office/pack.py unpacked/ output.pptx --validate false
 """
 
 import argparse
+import os
 import sys
 import shutil
 import tempfile
@@ -19,7 +21,36 @@ from pathlib import Path
 
 import defusedxml.minidom
 
-from validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
+
+def _ensure_safe_input_tree(input_dir: Path) -> None:
+    root = input_dir.resolve()
+    if input_dir.is_symlink():
+        raise ValueError(f"Symlinks are not supported in unpacked Office trees: {input_dir}")
+
+    for path in input_dir.rglob("*"):
+        resolved = path.resolve()
+        if not resolved.is_relative_to(root):
+            raise ValueError(f"Unsafe path outside input directory: {path}")
+        if path.is_symlink():
+            raise ValueError(f"Symlinks are not supported in unpacked Office trees: {path}")
+
+
+def _ensure_scripts_path() -> None:
+    scripts_root = Path(__file__).resolve().parent.parent
+    normalized_scripts_root = os.path.normcase(str(scripts_root))
+    normalized_entries = {
+        os.path.normcase(str(Path(entry).resolve()))
+        for entry in sys.path
+        if entry
+    }
+    if normalized_scripts_root not in normalized_entries:
+        sys.path.insert(0, str(scripts_root))
+
+
+if __package__ in {None, ""}:
+    _ensure_scripts_path()
+
+from office.validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator  # noqa: E402
 
 def pack(
     input_directory: str,
@@ -38,16 +69,23 @@ def pack(
     if suffix not in {".docx", ".pptx", ".xlsx"}:
         return None, f"Error: {output_file} must be a .docx, .pptx, or .xlsx file"
 
-    if validate and original_file:
-        original_path = Path(original_file)
-        if original_path.exists():
-            success, output = _run_validation(
-                input_dir, original_path, suffix, infer_author_func
-            )
-            if output:
-                print(output)
-            if not success:
-                return None, f"Error: Validation failed for {input_dir}"
+    try:
+        _ensure_safe_input_tree(input_dir)
+    except ValueError as exc:
+        return None, f"Error: {exc}"
+
+    original_path = Path(original_file) if original_file is not None else None
+    if original_path is not None and not original_path.exists():
+        return None, f"Error: Original file does not exist: {original_path}"
+
+    if validate:
+        success, output = _run_validation(
+            input_dir, original_path, suffix, infer_author_func
+        )
+        if output:
+            print(output)
+        if not success:
+            return None, f"Error: Validation failed for {input_dir}"
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_content_dir = Path(temp_dir) / "content"
@@ -68,16 +106,18 @@ def pack(
 
 def _run_validation(
     unpacked_dir: Path,
-    original_file: Path,
+    original_file: Path | None,
     suffix: str,
     infer_author_func=None,
 ) -> tuple[bool, str | None]:
     output_lines = []
-    validators = []
+    validators: list[
+        DOCXSchemaValidator | PPTXSchemaValidator | RedliningValidator
+    ] = []
 
     if suffix == ".docx":
         author = "Claude"
-        if infer_author_func:
+        if infer_author_func and original_file is not None:
             try:
                 author = infer_author_func(unpacked_dir, original_file)
             except ValueError as e:
@@ -85,8 +125,9 @@ def _run_validation(
 
         validators = [
             DOCXSchemaValidator(unpacked_dir, original_file),
-            RedliningValidator(unpacked_dir, original_file, author=author),
         ]
+        if original_file is not None:
+            validators.append(RedliningValidator(unpacked_dir, original_file, author=author))
     elif suffix == ".pptx":
         validators = [PPTXSchemaValidator(unpacked_dir, original_file)]
 
@@ -130,10 +171,16 @@ def _condense_xml(xml_file: Path) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Pack a directory into a DOCX, PPTX, or XLSX file"
+        description=(
+            "Pack a directory into a DOCX, PPTX, or XLSX file "
+            "(.docx/.pptx validation only)"
+        )
     )
     parser.add_argument("input_directory", help="Unpacked Office document directory")
-    parser.add_argument("output_file", help="Output Office file (.docx/.pptx/.xlsx)")
+    parser.add_argument(
+        "output_file",
+        help="Output Office file (.docx/.pptx/.xlsx; validator-backed checks support .docx/.pptx)",
+    )
     parser.add_argument(
         "--original",
         help="Original file for validation comparison",

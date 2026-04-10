@@ -1,6 +1,4 @@
-"""
-Validation modules for Word document processing.
-"""
+"""Validation modules for Office OOXML document processing."""
 
 from .base import BaseSchemaValidator
 from .docx import DOCXSchemaValidator
