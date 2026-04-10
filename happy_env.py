@@ -254,8 +254,11 @@ _MIRROR_CONFIRM_PROMPT = (
 
 def confirm_mirror_sync() -> bool:
     """Return True if the user explicitly confirms mirror sync."""
-    answer = input(_MIRROR_CONFIRM_PROMPT).strip().lower()
-    return answer == "yes"
+    try:
+        answer = input(_MIRROR_CONFIRM_PROMPT).strip().lower()
+        return answer == "yes"
+    except EOFError:
+        return False
 
 
 def run_cli(namespace: argparse.Namespace) -> int:
@@ -270,6 +273,10 @@ def run_cli(namespace: argparse.Namespace) -> int:
             verbose_log=namespace.verbose_log,
         )
     elif namespace.command == "repo":
+        if namespace.mirror and not namespace.dry_run:
+            if not confirm_mirror_sync():
+                print("中断しました。")
+                return 1
         result = run_repo_sync(
             namespace.target_repo_path,
             mirror=namespace.mirror,
