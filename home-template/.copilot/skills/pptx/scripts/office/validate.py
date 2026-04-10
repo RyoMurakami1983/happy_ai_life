@@ -94,8 +94,12 @@ def main():
 
     if path.is_file() and path.suffix.lower() in [".docx", ".pptx"]:
         with tempfile.TemporaryDirectory() as temp_dir:
-            with zipfile.ZipFile(path, "r") as zf:
-                safe_extractall(zf, Path(temp_dir))
+            try:
+                with zipfile.ZipFile(path, "r") as zf:
+                    safe_extractall(zf, Path(temp_dir))
+            except (zipfile.BadZipFile, ValueError) as exc:
+                print(f"Error: {exc}", file=sys.stderr)
+                sys.exit(1)
             unpacked_dir = Path(temp_dir)
             if file_extension == ".docx":
                 validators: list[

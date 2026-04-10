@@ -82,6 +82,27 @@ def test_validate_script_runs_via_documented_path(tmp_path: Path) -> None:
     assert "ModuleNotFoundError" not in result.stdout + result.stderr
 
 
+def test_validate_script_reports_invalid_zip(tmp_path: Path) -> None:
+    invalid_file = tmp_path / "broken.pptx"
+    invalid_file.write_text("not a zip", encoding="utf-8")
+
+    result = _run_skill_script(VALIDATE_SCRIPT, str(invalid_file))
+
+    assert result.returncode == 1
+    assert "Error: File is not a zip file" in result.stderr
+
+
+def test_validate_script_reports_unsafe_archive_member(tmp_path: Path) -> None:
+    unsafe_file = tmp_path / "unsafe.pptx"
+    with zipfile.ZipFile(unsafe_file, "w") as zf:
+        zf.writestr("../evil.txt", "boom")
+
+    result = _run_skill_script(VALIDATE_SCRIPT, str(unsafe_file))
+
+    assert result.returncode == 1
+    assert "Error: Unsafe archive member: ../evil.txt" in result.stderr
+
+
 def test_unpack_pretty_print_warns_for_invalid_xml(tmp_path: Path, capsys) -> None:
     module = _load_module("pptx_unpack", UNPACK_SCRIPT)
     xml_file = tmp_path / "broken.xml"
