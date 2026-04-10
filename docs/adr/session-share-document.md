@@ -39,10 +39,9 @@
 
 - `furikaeri-practice` 完了後に共有したい場合は `session-share-document` を案内する
 - `sessionStart` は最新の共有文脈を `session-context.instructions.md` に書き込む
-- 共有文書は append-only とし、`YYYYMMDD-HHmmss_(Session名).md` で新規保存する
+- 共有文書は append-only とし、`YYYYMMDD-HHmmss-Session名.md` で新規保存する
 - 既存の `docs/sessions/*.md` 変更は repo-template の pre-commit hook で拒否する
 
 ## 状態
 
 承認
-

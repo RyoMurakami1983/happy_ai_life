@@ -245,14 +245,38 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+_MIRROR_CONFIRM_PROMPT = (
+    "警告: ミラー同期では $HOME/.copilot/ 内でテンプレートにないファイル・ディレクトリが\n"
+    "完全削除されます（ゴミ箱には入りません）。\n"
+    "続けるには 'yes' と入力してください: "
+)
+
+
+def confirm_mirror_sync() -> bool:
+    """Return True if the user explicitly confirms mirror sync."""
+    try:
+        answer = input(_MIRROR_CONFIRM_PROMPT).strip().lower()
+        return answer == "yes"
+    except EOFError:
+        return False
+
+
 def run_cli(namespace: argparse.Namespace) -> int:
     if namespace.command == "home":
+        if namespace.mirror and not namespace.dry_run:
+            if not confirm_mirror_sync():
+                print("中断しました。")
+                return 1
         result = run_home_sync(
             mirror=namespace.mirror,
             dry_run=namespace.dry_run,
             verbose_log=namespace.verbose_log,
         )
     elif namespace.command == "repo":
+        if namespace.mirror and not namespace.dry_run:
+            if not confirm_mirror_sync():
+                print("中断しました。")
+                return 1
         result = run_repo_sync(
             namespace.target_repo_path,
             mirror=namespace.mirror,

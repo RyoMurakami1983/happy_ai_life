@@ -49,6 +49,14 @@ PowerShell を直接叩く既存導線も引き続き使えます。
 ./scripts/install-git-hooks.ps1 -TargetRepoPath C:\path\to\your-repo
 ```
 
+> **注意: `-Mirror` フラグについて**
+> `-Mirror`（または `--mirror`）は robocopy の `/MIR` に相当し、同期先にのみ存在するファイルを**完全削除**します（ゴミ箱には入りません）。
+> 以下の Copilot ランタイムデータは除外済みで削除されません:
+> - `session-state/`, `pkg/`, `logs/`, `ide/`, `restart/`（ディレクトリ）
+> - `config.json`, `command-history-state.json`（ファイル）
+>
+> それ以外の `.copilot/` 内データは削除対象になる可能性があるため、必ず `-DryRun` で事前確認してください。
+
 ### MCP config initialization
 
 home sync は `%USERPROFILE%\.copilot\mcp-config.json` を上書きしません。

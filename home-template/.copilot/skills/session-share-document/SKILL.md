@@ -8,65 +8,54 @@ compatibility: GitHub Copilot Agent, Claude Code, Codex
 
 # session-share-document
 
-`.github/sessions/` にある作業用セッションを、タイトル確認と公開配慮を通して `docs/sessions/` に保存する共有ワークフローです。  
-`furikaeri-practice` の成果を「読まれる文書」に変えるときに使います。
-対話でタイトルと要約を固めてから保存するので、あとから直しづらい公開用の事故を減らせます。
-なぜなら、共有文書は公開前にタイトル確認と匿名化を済ませないと、内部情報をそのまま残しやすいからです。
+`.github/sessions/` の作業記録を、公開配慮とタイトル確認を通して `docs/sessions/` の共有文書に変える router skill です。
+`furikaeri-practice` の出力をそのまま使わず、読まれる文書として整える入口にします。
 
 ## こんなときに使う
 
 - セッションの内容を共有用の文書にしたいとき
 - ふりかえりの結果を履歴として残したいとき
-- `docs/sessions/` に最新の共有版を作りたいとき
+- `docs/sessions/` に最新の共有版を追加したいとき
 
-## 関連スキル
+## 選び方
 
-- **`furikaeri-practice`** — ふりかえりから共有へつなぐ入口
-- **`knowledge-capture`** — 公開前の匿名化観点
+| 状況 | 使うもの | 目的 |
+| --- | --- | --- |
+| 共有版を作る | session-share-document | 公開用の文書に整える |
+| ふりかえりから繋ぐ | furikaeri-practice | YWT / KPT を作る |
 
-## ワークフロー: 共有文書の作成
+## ワークフロー
 
-### ステップ 1 — 対象セッションを選ぶ
+### Step 1 — 対象セッションを選ぶ
 
-既定では最新の `.github/sessions/*-session.md` を対象にします。`docs/sessions/` の共有文書は append-only にして、既存版を上書きせず新しい `YYYYMMDD-HHmmss_(Session名).md` を追加します。
+既定では最新の `.github/sessions/*-session.md` を対象にします。
 
-### ステップ 2 — タイトル候補を出して確認する
+### Step 2 — タイトル候補を確認する
 
-共有文書のファイル名と見出しに使うセッションタイトルを、まず候補として提示します。  
-そのあとで、必ずユーザーに最終タイトルを確認してください。
+共有文書のタイトルと見出し候補を提示し、最終決定を確認します。
 
-### ステップ 3 — Executive Summary と公開用本文を作る
+### Step 3 — 公開用本文に整える
 
-セッション全体を 2〜4 文の Executive Summary に圧縮し、公開可能な表現に整えます。  
-必要なら `knowledge-capture` の匿名化観点（AC-1〜AC-4）を使って、固有名詞や内部情報を置き換えます。
+Executive Summary を先頭に置き、必要なら匿名化して読みやすくします。
 
-### ステップ 4 — `docs/sessions/` に保存する
+### Step 4 — `docs/sessions/` に保存する
 
-保存先は `docs/sessions/YYYYMMDD-HHmmss_(Session名).md` です。  
-ファイル名の禁止文字は置換し、長すぎるタイトルは読みやすさを優先して短くしてください。
-既存の共有文書は更新せず、新しい共有文書を追加してください。`pre-commit` hook が既存ファイルの変更・削除・rename を拒否します。
+新しい共有文書として追加し、既存の共有文書は上書きしません。
 
-### ステップ 5 — commit するなら docs タイトル形式にする
+### Step 5 — 次の導線を残す
 
-共有文書を Git に残す場合は、その文書だけを atomic に stage し、commit 件名は `docs:(共有タイトル)` を使います。ふりかえり由来の共有では `共有タイトル` に最終決定したふりかえりタイトル名をそのまま入れ、`docs:(ふりかえりタイトル名)` の形式にそろえます。これにより、`git log` から共有文書を見つけやすくなり、実装 commit と docs commit も分離できます。
+必要なら次回向けメモを短く残し、`furikaeri-practice` とつなぎます。
 
-### ステップ 6 — 次の導線を残す
+## 共通リソース
 
-`furikaeri-practice` の後続として案内しやすいように、必要なら次回のセッション向けメモも短く残します。
+- `references/naming.md`
+- `references/output-shape.md`
+- `../furikaeri-practice/`
+- `../knowledge-capture/`
 
 ## 注意点
 
-- **hook からの自動起動はしない**: `sessionEnd` から skill を直接呼び出す前提ではありません。
-- **作業用と共有用を混ぜない**: `.github/sessions/` は作業領域、`docs/sessions/` は共有領域です。
-- **公開配慮を省かない**: 共有文書は外部に読まれる前提で書きます。
-- **共有 docs commit を実装 commit と混ぜない**: `docs:(共有タイトル)` の 1 commit に分けると履歴が読みやすくなります。
-
-## 早見表
-
-| やりたいこと | 次の動き |
-| --- | --- |
-| 直近のセッションを共有したい | 最新の `.github/sessions/` を読む |
-| 共有文書の名前を決めたい | タイトル候補を出してユーザー確認する |
-| 公開用の本文を整えたい | Executive Summary と匿名化を入れる |
-| 保存したい | `docs/sessions/YYYYMMDD-HHmmss_(Session名).md` に書く |
-| commit したい | `docs:(共有タイトル)` で共有文書だけ commit する |
+- hook から自動起動しない
+- 作業用と共有用を混ぜない
+- 公開配慮を省かない
+- 共有 docs commit は実装 commit と分ける
