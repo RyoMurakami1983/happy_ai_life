@@ -48,6 +48,8 @@ def test_build_option_summary_for_dry_run_and_mirror() -> None:
 
     assert "現在はドライランです。" in summary
     assert "ミラー同期の影響を試算します。" in summary
+    assert "同期先だけにあるファイルやディレクトリは削除されます。" in summary
+    assert "robocopy の '*EXTRA'" in summary
 
 
 def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
@@ -148,6 +150,26 @@ def test_gui_gives_extra_vertical_space_to_log_pane() -> None:
         assert int(gui.output.grid_info()["row"]) == 4
         assert int(gui.main_frame.grid_rowconfigure(4)["weight"]) == 1
         assert int(gui.main_frame.grid_rowconfigure(3)["weight"]) == 0
+    finally:
+        root.destroy()
+
+
+def test_gui_mirror_checkbox_label_matches_warning_language() -> None:
+    root = _create_tk_root_or_skip()
+    try:
+        gui = happy_env.HappyEnvGui(root)
+        assert gui.main_frame is not None
+        labels: list[str] = []
+        for child in gui.main_frame.winfo_children():
+            if child.winfo_class() != "TFrame":
+                continue
+            labels.extend(
+                widget.cget("text")
+                for widget in child.winfo_children()
+                if widget.winfo_class() == "TCheckbutton"
+            )
+
+        assert "ミラー同期（同期先だけのファイルやディレクトリは削除される）" in labels
     finally:
         root.destroy()
 

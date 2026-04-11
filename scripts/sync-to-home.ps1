@@ -28,6 +28,19 @@ function Warn-IfPathExists {
     }
 }
 
+function Write-MirrorDryRunWarning {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourcePath,
+        [Parameter(Mandatory = $true)][string]$DestinationPath
+    )
+
+    Write-Warning "DRY-RUN WARNING: これは安全確認のための試運転です。実際には変更されません。"
+    Write-Warning "DRY-RUN WARNING: ただし、-Mirror の本番実行では robocopy /MIR により、同期先だけにあるファイルやディレクトリは削除されます。"
+    Write-Warning "DRY-RUN WARNING: robocopy の '*EXTRA' は同期先だけにある項目を表します。本番の /MIR では削除対象です。"
+    Write-Warning "DRY-RUN WARNING: '$DestinationPath' にだけ存在し、'$SourcePath' に無い項目は特に注意してください。"
+    Write-Warning "DRY-RUN WARNING: 出力を見て『このフォルダ/ファイルは本番で削除されてもよいか』を必ず確認してください。"
+}
+
 function Test-RobocopyResult {
     param([int]$ExitCode)
 
@@ -167,7 +180,9 @@ $excludeFiles = @(
     "*.local.ps1",
     # --- Copilot ランタイムファイル（上書き・削除しない） ---
     "config.json",
-    "command-history-state.json"
+    "command-history-state.json",
+    # --- live HOME 側のユーザー固有ファイル（削除防止） ---
+    "A_Key.txt"
 )
 
 $excludeDirs = @(
@@ -180,13 +195,22 @@ $excludeDirs = @(
     "pkg",
     "logs",
     "ide",
-    "restart"
+    "restart",
+    # --- live HOME 側のユーザー固有データ（削除防止） ---
+    "Archive",
+    "mcp-oauth-config"
 )
 
 $unsupportedHooksPath = Join-Path $sourcePath "hooks"
 Warn-IfPathExists `
     -Path $unsupportedHooksPath `
     -Message "home-template/.copilot/hooks is ignored. Officially supported hook configuration is repository-scoped under .github/hooks."
+
+if ($DryRun -and $Mirror) {
+    Write-MirrorDryRunWarning `
+        -SourcePath $sourcePath `
+        -DestinationPath $destinationPath
+}
 
 Invoke-Robocopy `
     -Source $sourcePath `

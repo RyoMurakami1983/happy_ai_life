@@ -52,10 +52,12 @@ PowerShell を直接叩く既存導線も引き続き使えます。
 > **注意: `-Mirror` フラグについて**
 > `-Mirror`（または `--mirror`）は robocopy の `/MIR` に相当し、同期先にのみ存在するファイルを**完全削除**します（ゴミ箱には入りません）。
 > 以下の Copilot ランタイムデータは除外済みで削除されません:
-> - `session-state/`, `pkg/`, `logs/`, `ide/`, `restart/`（ディレクトリ）
-> - `config.json`, `command-history-state.json`（ファイル）
+> - `session-state/`, `pkg/`, `logs/`, `ide/`, `restart/`, `Archive/`, `mcp-oauth-config/`（ディレクトリ）
+> - `config.json`, `command-history-state.json`, `A_Key.txt`（ファイル）
 >
 > それ以外の `.copilot/` 内データは削除対象になる可能性があるため、必ず `-DryRun` で事前確認してください。
+> 特に `uv run app.py home --mirror --dry-run` は「本番の /MIR で何が消えるか」を見るための確認用です。出力に出た「同期先だけの項目」は、実行モードでは削除される前提で読んでください。
+> robocopy の `*EXTRA` は「同期先だけにある項目」を意味します。本番の `/MIR` では削除対象です。
 
 ### MCP config initialization
 

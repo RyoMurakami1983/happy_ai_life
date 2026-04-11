@@ -206,9 +206,12 @@ def build_option_summary(*, dry_run: bool, mirror: bool, verbose_log: bool) -> s
 
     if mirror:
         if dry_run:
-            lines.append("ミラー同期の影響を試算します。同期先にだけあるファイルも削除対象になる可能性があります。")
+            lines.append("ミラー同期の影響を試算します。")
+            lines.append("警告: これはミラー同期の試運転です。本番の /MIR では、同期先だけにあるファイルやディレクトリは削除されます。")
+            lines.append("robocopy の '*EXTRA' は同期先だけにある項目を表します。本番の /MIR では削除対象です。")
+            lines.append("出力を見て、削除されて困る項目がないか必ず確認してください。")
         else:
-            lines.append("警告: ミラー同期では、同期先にだけあるファイルも削除対象になる可能性があります。")
+            lines.append("警告: ミラー同期では、同期先だけにあるファイルやディレクトリは削除されます。")
     else:
         lines.append("通常同期です。テンプレートにある内容を同期します。同期先だけのファイルはミラーより安全に残りやすい設定です。")
 
@@ -331,7 +334,7 @@ class HappyEnvGui:
         ).grid(row=0, column=0, padx=(0, 12))
         ttk.Checkbutton(
             options,
-            text="ミラー同期（同期先だけのファイルも削除対象になりうる）",
+            text="ミラー同期（同期先だけのファイルやディレクトリは削除される）",
             variable=self.mirror_var,
             command=self._update_option_summary,
         ).grid(row=1, column=0, padx=(0, 12), pady=(6, 0), sticky="w")
@@ -403,7 +406,8 @@ class HappyEnvGui:
 
         self._set_running(True)
         if self.mirror_var.get() and not self.dry_run_var.get():
-            self._append_output("警告: ミラー同期では、同期先にだけあるファイルも削除対象になる可能性があります。")
+            self._append_output("警告: ミラー同期では、同期先だけにあるファイルやディレクトリは削除されます。")
+            self._append_output("robocopy の '*EXTRA' は同期先だけにある項目を表します。本番の /MIR では削除対象です。")
         self._append_output("実行中...")
 
         def worker() -> None:
