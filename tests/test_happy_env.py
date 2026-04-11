@@ -48,6 +48,8 @@ def test_build_option_summary_for_dry_run_and_mirror() -> None:
 
     assert "現在はドライランです。" in summary
     assert "ミラー同期の影響を試算します。" in summary
+    assert "同期先だけにあるファイルやディレクトリは削除されます。" in summary
+    assert "robocopy の '*EXTRA'" in summary
 
 
 def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
