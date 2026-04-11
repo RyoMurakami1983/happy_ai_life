@@ -334,7 +334,7 @@ class HappyEnvGui:
         ).grid(row=0, column=0, padx=(0, 12))
         ttk.Checkbutton(
             options,
-            text="ミラー同期（同期先だけのファイルも削除対象になりうる）",
+            text="ミラー同期（同期先だけのファイルやディレクトリは削除される）",
             variable=self.mirror_var,
             command=self._update_option_summary,
         ).grid(row=1, column=0, padx=(0, 12), pady=(6, 0), sticky="w")

@@ -154,6 +154,26 @@ def test_gui_gives_extra_vertical_space_to_log_pane() -> None:
         root.destroy()
 
 
+def test_gui_mirror_checkbox_label_matches_warning_language() -> None:
+    root = _create_tk_root_or_skip()
+    try:
+        gui = happy_env.HappyEnvGui(root)
+        assert gui.main_frame is not None
+        labels: list[str] = []
+        for child in gui.main_frame.winfo_children():
+            if child.winfo_class() != "TFrame":
+                continue
+            labels.extend(
+                widget.cget("text")
+                for widget in child.winfo_children()
+                if widget.winfo_class() == "TCheckbutton"
+            )
+
+        assert "ミラー同期（同期先だけのファイルやディレクトリは削除される）" in labels
+    finally:
+        root.destroy()
+
+
 def test_main_home_delegates_to_cli(monkeypatch) -> None:
     captured: list[str | tuple[str, ...]] = []
 
