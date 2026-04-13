@@ -91,19 +91,20 @@ user-invocable: true
     assert report.recommended_pass_count == report.recommended_total
 
 
-def test_validate_agent_accepts_existing_agent_corpus() -> None:
+def test_validate_agent_tdd_coder_is_the_only_distributed_agent() -> None:
+    """Phase 3: only the narrow tdd-coder specialist is distributed."""
+    agents_dir = ROOT / "home-template" / ".copilot" / "agents"
+    assert agents_dir.exists()
+    assert [path.name for path in sorted(agents_dir.glob("*.agent.md"))] == ["tdd-coder.agent.md"]
+
+
+def test_validate_agent_real_tdd_coder_markdown() -> None:
     module = _load_module()
-    for agent_name in (
-        "architect.agent.md",
-        "code-quality-review.agent.md",
-        "dotnet-shihan.agent.md",
-        "python-shihan.agent.md",
-        "skill-shihan.agent.md",
-        "typescript-shihan.agent.md",
-    ):
-        agent_path = ROOT / "home-template" / ".copilot" / "agents" / agent_name
-        report = module.validate(agent_path, "L1")
-        assert report.critical_passed is True, agent_name
+    agent_path = ROOT / "home-template" / ".copilot" / "agents" / "tdd-coder.agent.md"
+
+    report = module.validate(agent_path, "L2")
+
+    assert report.critical_passed is True
 
 
 def test_validate_agent_rejects_missing_principles_only(tmp_path: Path) -> None:

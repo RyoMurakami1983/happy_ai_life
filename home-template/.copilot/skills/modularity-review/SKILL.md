@@ -100,50 +100,58 @@ description: >
 - 対象範囲: [全体 / 特定モジュール群]
 - モジュール数: N
 - 統合数: M
-- 分析目的: [ユーザーの問題意識]
+- 分析日: YYYY-MM-DD
 
 ## サブドメイン分類表
 | 業務領域 | 分類 | 根拠 | 変動性 |
-|---|---|---|---|
-| ... | Core | ... | 高 |
+|---------|------|------|--------|
+| ... | Core / Supporting / Generic | ... | High / Medium / Low |
 
 ## 結合評価表
 | 統合 | 統合強度 | 距離 | 変動性 | バランス? | 重大度 |
-|---|---|---|---|---|---|
-| A → B | Intrusive | 高 | 高 | 不均衡 — 密結合 | Critical |
+|-----|---------|------|--------|----------|--------|
+| A → B | Contract / Model / Functional / Intrusive | ... | ... | ✅ / ❌ | Critical / Significant / Minor |
 
 ## 不均衡リスト
 
 ### Critical
-- [統合名]: [根拠と影響]
+- [統合名]: [問題の説明と根拠]
 
 ### Significant
-- [統合名]: [根拠と影響]
+- [統合名]: [問題の説明と根拠]
 
 ### Minor
-- [統合名]: [根拠と影響]
+- [統合名]: [問題の説明と根拠]
 
 ## 是正提案
-| 優先度 | 対象 | 提案 | 期待効果 |
-|---|---|---|---|
-| 高 | A → B | 統合契約の導入 | 統合強度を Intrusive → Contract に |
+| 統合 | 提案 | 優先度 | 影響範囲 |
+|-----|------|--------|---------|
+| ... | ... | High / Medium / Low | ... |
 
 ## 保留事項
-- [追加調査が必要な領域]
+- [追加調査が必要な項目]
 ```
+
+## 判断表
+
+| やりたいこと | やること |
+|------------|---------|
+| 既存コードの結合構造を分析したい | ステップ 1 から順に進める |
+| 特定モジュール群だけ分析したい | ステップ 1 で対象範囲を限定する |
+| 不均衡の是正策を提案してほしい | ステップ 3 の結果を基にステップ 4 で具体案を作る |
+| design-workshop で検出した課題を深掘りしたい | 該当モジュールを対象にステップ 1 から分析する |
 
 ## 注意点
 
-- **コード変更はこの skill の範囲外**: 分析と提案のみ行う。実際のリファクタリングは `refactor` agent に委譲する
-- **バランスルールを機械的に適用しない**: ルールは検出ツールであり、是正の判断は文脈に依存する
-- **変動性の評価はコミット頻度だけで決めない**: 業務上の変更確率（本質的変動性）で判断する
-- **概念の出典**: Balanced Coupling モデル by Vlad Khononov。詳細は `docs/local_references/balanced-coupling/README.md` を参照
-- **1次元だけで結合を評価しない**: 統合強度・距離・変動性の3つを常にセットで見る
+- **すべての統合を均等に扱わない**: バランスルールに従い、Critical から優先的に対処する。
+- **変動性の見積もりは暫定でよい**: サブドメイン分類が不明確な場合は Medium で仮置きし、後で見直す。
+- **是正策は提案まで**: 実際の変更方針は planning や設計の次段に渡す。この skill は診断に専念する。
+- **暗黙的な結合を見逃さない**: コードの依存関係だけでなく、共有 DB、設定、グローバル状態も統合として扱う。
 
 ## 関連リソース
 
-- `home-template/.copilot/skills/design-workshop/sub_skills/balanced-coupling-design/SKILL.md` — 新規設計用の Balanced Coupling ワークフロー
-- `home-template/.copilot/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — DDD 用語集
-- `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド（repo 内ローカル参照。`~/.copilot` 同期環境では開けない）
-- `home-template/.copilot/agents/refactor.agent.md` — 是正策の実装
-- `home-template/.copilot/agents/architect.agent.md` — 構造判断の相談
+- `home-template/.copilot/skills/design-workshop/SKILL.md` — 設計の入口
+- `home-template/.copilot/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — 用語集
+- `home-template/.copilot/skills/design-workshop/SKILL.md` — 是正策の構造判断
+- `home-template/.copilot/skills/sdd/SKILL.md` — 是正策を仕様駆動の次段へ接続するとき
+- `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド

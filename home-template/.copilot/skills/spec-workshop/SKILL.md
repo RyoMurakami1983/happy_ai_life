@@ -2,9 +2,9 @@
 name: spec-workshop
 description: >
   仕様書を作る入口として、ゼロからの開始と既存ドラフトの補完を振り分け、
-  spec-interviewer と deep-researcher で仕様を固める。
+  対話と調査で仕様を固める。
   Use when: 仕様書を作り始めたいとき、ドラフトを整理したいとき、要件を固めたいとき。
-compatibility: home-template/.copilot/agents/spec-interviewer.agent.md, home-template/.copilot/agents/deep-researcher.agent.md
+compatibility: GitHub Copilot
 ---
 
 # Spec Workshop
@@ -22,26 +22,24 @@ compatibility: home-template/.copilot/agents/spec-interviewer.agent.md, home-tem
 
 | やりたいこと | ルート | 次にやること |
 | --- | --- | --- |
-| 仕様をゼロから立ち上げたい | `sub_skills/from-scratch/` | 目的・対象・制約を `spec-interviewer` で掘る |
-| 既存ドラフトを仕上げたい | `sub_skills/from-draft/` | 草案の穴を `spec-interviewer` で埋め、必要箇所を `deep-researcher` へ渡す |
+| 仕様をゼロから立ち上げたい | `sub_skills/from-scratch/` | 目的・対象・制約を対話で掘る |
+| 既存ドラフトを仕上げたい | `sub_skills/from-draft/` | 草案の穴を対話で埋め、必要箇所は追加調査へ |
 
 ## 共通リソース
 
 - `_foundation/` — 仕様作成時の共通論点、確認順、共有メモを置く
 - `sub_skills/` — ゼロ開始とドラフト開始の分岐を置く
-- `home-template/.copilot/agents/spec-interviewer.agent.md` — 論点整理の入口
-- `home-template/.copilot/agents/deep-researcher.agent.md` — 一次情報と外部知見の照合
 - `home-template/.copilot/skills/design-workshop/SKILL.md` — 仕様完成後の設計入口
 - `home-template/.copilot/skills/sdd/SKILL.md` — 仕様駆動開発の全工程を通すとき
 
 ## ルーティングメモ
 
 - ユーザーの現在地点から最短で役立つ sub-skill に飛び込む。
-- 実行ロジックは router に書かず、sub-skill と agent に委譲する。
+- 実行ロジックは router に書かず、sub-skill に委譲する。
 - ひな形ありでもゼロからでも、先に未確定事項を見える形にする。
 
 ## 注意点
 
 - **planner の前に終わらせる**: ここは実行計画を作る場所ではなく、仕様を固める入口です。仕様が固まったら `design-workshop` で設計を検証してから planner へ進みます。
 - **architect の代わりにしない**: 構造判断やトレードオフは後段に渡します。
-- **調査を抱え込まない**: 根拠確認は `deep-researcher` に委譲します。
+- **調査を抱え込まない**: 根拠確認は built-in 機能または自分で対応します。

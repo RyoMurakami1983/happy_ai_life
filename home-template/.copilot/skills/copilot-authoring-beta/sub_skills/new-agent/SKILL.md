@@ -33,7 +33,7 @@ compatibility: "../../../create-agents/references/agent-template.md, ../../_eval
 
 ### ステップ 4 — 近接 agent と比較する
 
-`home-template/.copilot/agents/` の近い agent と見比べ、責務境界、語彙、出力の型をそろえます。ここを比較する理由は、新規 agent 単体では気づきにくい overlap を早く見つけるためです。
+`home-template/.copilot/agents/` に近い agent がある場合は見比べ、責務境界、語彙、出力の型をそろえます。ここを比較する理由は、新規 agent 単体では気づきにくい overlap を早く見つけるためです。比較対象がない場合は、template と instructions との整合を優先します。
 
 ### ステップ 5 — validator で骨格を確認する
 

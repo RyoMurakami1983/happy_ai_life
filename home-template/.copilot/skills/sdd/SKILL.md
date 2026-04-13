@@ -2,13 +2,13 @@
 name: sdd
 description: >
   仕様駆動開発（Spec-Driven Development）の全工程を1つの入口で進める。
-  spec → design → plan → 実装 → レビュー を既存 skill/agent に委譲しながら通す。
+  spec → design → plan → 実装 → レビュー を既存 skill に委譲しながら通す。
   Use when: 仕様駆動で開発を始めたいとき、途中のフェーズから再開したいとき。
 ---
 
 # SDD — Spec-Driven Development
 
-仕様駆動開発の全工程を1つの入口から進める router skill です。各フェーズの中身は既存の skill と agent に委譲し、この skill 自身はフローの振り分けと接続だけを担います。途中からの再開にも対応し、最も進んだ地点の次から始められます。
+仕様駆動開発の全工程を1つの入口から進める router skill です。各フェーズの中身は既存の skill に委譲し、この skill 自身はフローの振り分けと接続だけを担います。途中からの再開にも対応し、最も進んだ地点の次から始められます。
 
 ## こんなときに使う
 
@@ -23,75 +23,60 @@ description: >
 
 | やりたいこと | ルート | 次にやること |
 | --- | --- | --- |
-| ゼロから仕様駆動で開発したい | `sub_skills/from-scratch/` | spec-workshop → design-workshop → planner → tdd-guide でテスト戦略レビュー → tdd-guide で実装 → 最終レビュー |
-| 仕様があり設計から始めたい | `sub_skills/from-spec/` | design-workshop → planner → tdd-guide でテスト戦略レビュー → tdd-guide で実装 → 最終レビュー |
-| 設計があり計画から始めたい | `sub_skills/from-design/` | planner → tdd-guide でテスト戦略レビュー → tdd-guide で実装 → 最終レビュー |
-| 計画があり実装から始めたい | `sub_skills/from-plan/` | 計画確認 → 必要なら tdd-guide でテスト戦略レビュー → 実装 → 最終レビュー |
+| ゼロから仕様駆動で開発したい | `sub_skills/from-scratch/` | spec-workshop → design-workshop → PLAN mode → 実装 → レビュー |
+| 仕様があり設計から始めたい | `sub_skills/from-spec/` | design-workshop → PLAN mode → 実装 → レビュー |
+| 設計があり計画から始めたい | `sub_skills/from-design/` | PLAN mode → 実装 → レビュー |
+| 計画があり実装から始めたい | `sub_skills/from-plan/` | 計画確認 → 実装 → レビュー |
 | 中断した開発を再開したい | `sub_skills/resume/` | 成果物の状態から中断地点を判定し、該当フェーズから再開 |
 
 ## 全体フロー
 
 ```
-仕様フェーズ        → spec-workshop（spec-interviewer + deep-researcher）
+仕様フェーズ        → spec-workshop（対話 + 調査）
   ↓
 設計フェーズ        → design-workshop（router: standard / balanced-coupling-design）
-  ↓                    standard: architect + *-shihan + security-review
+  ↓                    standard: 構造判断 + 自己レビュー
   ↓                    balanced-coupling-design: サブドメイン分類 + 3次元結合評価
   ↓                    DDD 戦略パターン（Bounded Context, Context Map）は
-  ↓                    architect が構造判断として扱う
-  ↓                    DDD 戦術パターン（Entity, Value Object 等）は
-  ↓                    *-shihan が言語固有の型で支援する
+  ↓                    design-workshop が構造判断として扱う
   ↓
-計画フェーズ        → planner
+計画フェーズ        → PLAN mode
   ↓
-テスト戦略レビュー  → tdd-guide（計画を TDD 観点で確認）
-  ↓                    テスト可能な受け入れ条件、主要な境界値、
-  ↓                    エラーパス、外部依存のモック境界を確認
-  ↓                    不足があれば planner に計画補完を依頼
+実装フェーズ        → オーケストレーター主導
+  ↓                    テストファースト、ビルドエラー修正、リファクタリング
+  ↓                    セキュリティ境界変更時は中間チェック
   ↓
-実装フェーズ        → tdd-guide（TDD: Red-Green-Refactor）
-  ↓                    build-resolver（ビルドエラー修正）
-  ↓                    refactor（リファクタリング）
-  ↓                    ※ trust boundary 変更時に security-review を中間チェック
-  ↓
-最終レビューフェーズ → code-quality-review + security-review
+最終レビューフェーズ → 自己レビュー + built-in 機能
 ```
 
 ## セキュリティ checkpoint
 
-セキュリティレビューは3段階で実施します:
+セキュリティレビューは2段階で実施します:
 
-1. **設計時**: design-workshop 内で security-review が trust boundary と設計方針を確認
-2. **実装中（イベント駆動）**: 以下の変更時に security-review を中間チェック
+1. **設計時**: design-workshop 内で trust boundary と設計方針を確認
+2. **実装中（イベント駆動）**: 以下の変更時に中間チェック
    - 認証/認可を追加・変更する
    - 外部入力の入口を増やす
    - 機密データの保存/転送を追加する
    - 外部 API / Webhook / ファイル I/O / コマンド実行を追加する
    - trust boundary をまたぐデータフローを増やす
-3. **最終**: code-quality-review + security-review で品質とセキュリティの両面を確認
 
 ## 共通リソース
 
 - `home-template/.copilot/skills/spec-workshop/SKILL.md` — 仕様作成
 - `home-template/.copilot/skills/design-workshop/SKILL.md` — 技術設計（router: standard / balanced-coupling-design）
 - `home-template/.copilot/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
-- `home-template/.copilot/agents/planner.agent.md` — 実装計画
-- `home-template/.copilot/agents/tdd-guide.agent.md` — TDD 実装
-- `home-template/.copilot/agents/build-resolver.agent.md` — ビルドエラー修正
-- `home-template/.copilot/agents/refactor.agent.md` — リファクタリング
-- `home-template/.copilot/agents/code-quality-review.agent.md` — 品質レビュー
-- `home-template/.copilot/agents/security-review.agent.md` — セキュリティレビュー
 
 ## ルーティングメモ
 
 - ユーザーの現在地点に最も合う sub-skill へ直接案内する。
-- 実行ロジックは router ではなく sub-skill と既存 skill/agent に置く。
-- 各フェーズの中身を sdd 内に再実装しない。委譲先の skill/agent が正本。
-- planner が計画の正本を持ち、tdd-guide は計画のテスト観点レビューと TDD 実装を担う。
-- モデル選定は各 agent が自身のモデルを持つ。sdd は指定しない。
+- 実行ロジックは router ではなく sub-skill と既存 skill に置く。
+- 各フェーズの中身を sdd 内に再実装しない。委譲先の skill や PLAN mode が正本。
+- 計画の正本は PLAN mode の出力または明示的な plan artifact に置く。
+- sdd 自体はモデル選定を持たず、入口と接続だけを担う。
 
 ## 注意点
 
-- **各段の中身を再実装しない**: sdd はフローを繋ぐだけです。仕様は spec-workshop、設計は design-workshop、計画は planner が正本です。tdd-guide は実装前にテスト観点を返せますが、計画の更新自体は planner に戻します。
-- **coder agent は置かない**: 実装はオーケストレーター + tdd-guide + build-resolver + refactor で担います。汎用 coder は責務が曖昧なため導入しません。
+- **各段の中身を再実装しない**: sdd はフローを繋ぐだけです。仕様は spec-workshop、設計は design-workshop、計画は PLAN mode または plan artifact が正本です。
+- **汎用 coder は置かない**: 実装はオーケストレーター + built-in 機能で担います。
 - **全フェーズを必ず通す必要はない**: 途中から始めてよいし、特定フェーズを飛ばす判断もユーザーに委ねます。

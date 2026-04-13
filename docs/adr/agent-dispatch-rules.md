@@ -118,3 +118,82 @@ GitHub 公式ドキュメント（[Invoking custom agents](https://docs.github.c
 - description のバイリンガル化（根本原因 #2, #5 への対応）は効果検証後に検討
 - VS Code Copilot Chat と CLI でのディスパッチ挙動差異は継続調査
 - GitHub に Agent 自動ディスパッチの Feature Request を検討
+
+
+---
+
+## 補遺: Phase 1 — カスタムエージェント削減（2026-04）
+
+### 変更内容
+
+agents/ のゼロベース見直しの Phase 1 により、`architect` と `planner` 以外のカスタムエージェントを削除しました。
+
+削除対象:
+- `deep-researcher`
+- `code-quality-review`
+- `security-review`
+- `performance-optimizer`
+- `refactor`
+- `build-resolver`
+- `pytorch-resolver`
+- `tdd-guide`
+- `spec-interviewer`
+- `dotnet-shihan`, `python-shihan`, `typescript-shihan`, `skill-shihan`
+
+### ディスパッチルールの更新
+
+Phase 1 以降、copilot-instructions.md のディスパッチルールは以下のみとなります:
+
+- **計画立案** → `planner`
+- **構造設計** → `architect`
+- **その他すべて** → built-in 機能またはオーケストレーター自身
+
+### Phase 2 以降の方向性
+
+Phase 2 では、`architect` / `planner` も削除し、built-in 機能と PLAN モードへ完全移行する選択肢を検討します。その際、以下の skill の handoff 先を置換する必要があります:
+
+- `design-workshop` → built-in / plan mode / prose workflow
+- `sdd` → built-in / plan mode
+- `deep-research-preflight` → built-in
+
+現時点（Phase 1）では、`architect` / `planner` のみをカスタムエージェントとして保持します。
+
+---
+
+## 補遺: Phase 2 — custom agent 全廃（2026-04）
+
+### 変更内容
+
+Phase 2 で `architect` / `planner` も削除し、`home-template/.copilot/agents/` から custom agent を全廃しました。
+
+### 新しいディスパッチ
+
+- 構造判断・設計 handoff → `design-workshop`
+- 実装計画・段取り整理 → PLAN mode
+- 調査・review・実装 → built-in 機能またはオーケストレーター
+
+### ねらい
+
+- skills を入口として残し、instructions を dispatch の正本に保つ
+- planning を専用 skill に再実装せず、built-in PLAN mode に寄せる
+- custom agent を再び増やす場合も、狭い責務の specialist だけに限定しやすくする
+
+---
+
+## 補遺: Phase 3 — `tdd-coder` の限定再導入（2026-04）
+
+### 変更内容
+
+Phase 3 で、custom agent を無差別に戻すのではなく、TDD 実装専用の narrow specialist として `tdd-coder` だけを再導入した。
+
+### ディスパッチ方針
+
+- 入口は引き続き skill / PLAN mode / built-in を優先する
+- `tdd-coder` は `/fleet` または明示指名を基本とする
+- 前提成果物（受け入れ条件、設計書または planning handoff、plan artifact）が不足する場合は差し戻す
+- 仕様整理、構造設計、実装計画、広い review は引き受けない
+
+### ねらい
+
+- Phase 2 の skill-first / PLAN-first 構造を壊さずに、TDD 実装だけを局所的に加速する
+- god agent 化を避けながら、multi-agent で価値が出る最小単位だけを残す
