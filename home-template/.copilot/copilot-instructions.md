@@ -29,4 +29,5 @@
 - リポジトリ固有の instructions がある場合は常にそちらを優先する。
 - hooks は repository-scoped の `.github/hooks/` を正とし、HOME 配下に独自 hook 実装を置かない。
 - custom skill / agent の作成・改善・検証は `copilot-authoring-beta` を入口にする。`skill` と `create-agents` はその内部ルートとして扱う。
-- custom agent が条件に合致する場合は委譲を優先する。詳細なディスパッチルールはリポジトリの `.github/copilot-instructions.md` を参照。
+- planning / research / review などの built-in 機能が使える環境では、それらを優先して使う。詳細なディスパッチルールはリポジトリの `.github/copilot-instructions.md` を参照。
+- custom agent は例外的に狭い specialist だけを許容し、現在の配布対象は `tdd-coder` のみとする。仕様・設計・計画の入口としては使わない。

@@ -1,7 +1,7 @@
 ---
 name: deep-research-preflight
 description: >
-  内部 source of truth と外部の公開知見を集める調査の入口を整え、deep-researcher agent へ渡す。
+  内部 source of truth と外部の公開知見を集める調査の入口を整える。
   Use when: Planner や Architect の前に一次情報確認や現状ベストプラクティス調査を始めたいとき。
 license: Personal
 compatibility: GitHub Copilot Agent, Claude Code, Codex
@@ -28,7 +28,7 @@ compatibility: GitHub Copilot Agent, Claude Code, Codex
 ### ステップ 2 — source of truth を分ける
 内部では README、ADR、instructions、scripts、既存の agent / skill を確認します。  
 外部では公式ドキュメント、release notes、公開ベストプラクティスを確認します。  
-調査の本文は `deep-researcher` agent に渡し、証拠の収集と照合を進めます。
+調査の本文はオーケストレーターまたは built-in 機能で進め、証拠の収集と照合を行います。
 
 ### ステップ 3 — 事実と推論を分離する
 調査結果は、内部で確認できた事実、外部で確認した知見、そこからの推論に分けます。  
@@ -44,15 +44,15 @@ compatibility: GitHub Copilot Agent, Claude Code, Codex
 | --- | --- |
 | 調査を始めたい | 問いを一文で固定して、内部と外部の source of truth を分ける |
 | 調査結果を使いたい | 事実、推論、未確認事項を分けて整理する |
-| 計画や構造判断に進みたい | `planner` または `architect` に証拠つきで渡す |
+| 構造判断に進みたい | `design-workshop` に証拠つきで渡す |
+| 実行順序や段取りを決めたい | PLAN mode に証拠つきで渡す |
 
 ## 注意点
 
-- **Skill だけで深掘りを完結させない**: ここは入口と手順の標準化が役割で、専門的な調査本文は `deep-researcher` agent に任せます。
+- **Skill だけで深掘りを完結させない**: ここは入口と手順の標準化が役割で、専門的な調査本文はオーケストレーターまたは built-in 機能に任せます。
 - **提案を急がない**: 調査の価値は、まず真実を固めることにあります。結論を先に決めるより、証拠を揃える方が後続の判断が安定します。
 
 ## 関連スキル
 
-- `deep-researcher` — 内部と外部の証拠を集めて整理する調査エージェント
-- `planner` — 調査結果をもとに実行順序を組み立てる
-- `architect` — 調査結果をもとに構造判断とトレードオフを整理する
+- `design-workshop` — 調査結果をもとに構造判断とトレードオフを整理する
+- `sdd` — 調査結果を含めて仕様駆動の次段へ接続するとき

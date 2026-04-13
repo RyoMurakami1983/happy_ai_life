@@ -1,6 +1,6 @@
 # 4師範エージェントの進め方の選択肢
 
-この文書は、`dotnet-shihan` / `python-shihan` / `skill-shihan` / `typescript-shihan` をどう扱うかを比較するためのメモです。
+この文書は、`dotnet-shihan` / `python-shihan` / `skill-shihan` / `typescript-shihan` をどう扱うかを比較していた当時のメモです。Phase 1 で師範 agent は削除済みのため、現行方針ではなく再導入時の参照用アーカイブとして扱います。
 
 ## 背景
 

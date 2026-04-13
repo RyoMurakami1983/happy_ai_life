@@ -11,14 +11,14 @@
 この方式は、新しい runtime directory や未把握の local file が増えるたびに除外更新が必要で、安全性を blacklist の網羅性に依存していた。
 
 この repository の home sync で本当に配りたいものは限定されている。  
-具体的には、skills、agents、instructions、sample の MCP 設定であり、live の `mcp-config.json` や runtime data を transport 層が判断して触る必要はない。
+具体的には、skills、instructions、sample の MCP 設定であり、live の `mcp-config.json` や runtime data を transport 層が判断して触る必要はない。
 
 ## 判断
 
 - home sync は `.copilot/` 全体を robocopy しない
-- home sync の tracked 対象は次の 4 つに限定する
+- home sync の tracked 対象は次に限定する
   - `skills/`
-  - `agents/`
+  - `docs/furikaeri/`
   - `copilot-instructions.md`
   - `mcp-config.sample.json`
 - `mcp-config.json` は user-owned live file として維持し、home sync では作成も上書きもしない
@@ -46,6 +46,16 @@
 - `app.py` / GUI は home sync で mirror 確認を求めない
 - README では repo sync の mirror 削除と home sync の whitelist copy を分けて説明する
 - 新しく home に配布したい項目が増えたら、除外ではなく tracked 対象の一覧へ追加する
+
+## 補遺: Phase 2 — custom agent 全廃
+
+2026-04 の Phase 2 で custom agent 配布を終了したため、tracked 対象から `agents/` を外した。  
+home sync は既存の `%USERPROFILE%\.copilot\agents\` を削除せず、legacy directory が残っている場合は手動 cleanup を促す warning を出す。
+
+## 補遺: Phase 3 — `tdd-coder` だけ再導入
+
+2026-04 の Phase 3 では、`/fleet` または明示指名で使う narrow specialist として `agents/tdd-coder.agent.md` だけを tracked file として戻した。  
+ただし home sync が配る custom agent はこの 1 体だけとし、`agents/` 配下の他ファイルは削除せず warning で手動 cleanup を促す。
 
 ## 状態
 

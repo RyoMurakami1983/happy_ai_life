@@ -139,14 +139,14 @@ Slopwatchが問題をフラグした場合、**無視しない**：
 
 #### 4b: オンデマンド（Copilot CLI）
 
-`@dotnet-shihan` にslopwatch実行を依頼する。agentが `slopwatch analyze` をshell経由で実行し、結果を解釈する：
+オーケストレーターに slopwatch 実行を依頼する。必要なら built-in review を併用し、`slopwatch analyze` を shell 経由で実行して結果を解釈する：
 
 ```
-@dotnet-shihan slopwatch を実行して
-@dotnet-shihan 近道してないかチェックして
+slopwatch を実行して
+近道してないかチェックして
 ```
 
-agentはコードレビュー時にこのスキルとSLOP-xxxカタログを自動的に参照する。
+レビュー時はこのスキルと SLOP-xxx カタログを参照する。
 
 **Why**: 自動ガードレール（Claude Code）またはオンデマンド検査（Copilot CLI）により、LLMのスロップが人間のレビュー前に検出される。
 
