@@ -5,8 +5,9 @@ param(
 
     [string]$SourceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
     [string]$TemplateRelativePath = "repo-template\.github",
-    # 共有用ドキュメントの雛形。target repo の docs/sessions に同期する。
-    [string]$DocsSessionsRelativePath = "repo-template\docs\sessions",
+    # 共有用ふりかえりドキュメントの雛形。target repo の docs/furikaeri に同期する。
+    [Alias("DocsSessionsRelativePath")]
+    [string]$DocsFurikaeriRelativePath = "repo-template\docs\furikaeri",
     # 母艦の hooks/ を配布先にも展開する。空文字を渡すとスキップ。
     [string]$HooksRelativePath = ".github\hooks",
     # Git client hooks のテンプレート。target repo の .githooks に同期する。
@@ -408,25 +409,25 @@ if (-not [string]::IsNullOrWhiteSpace($GitHooksRelativePath)) {
         -ShowVerboseLog:$VerboseLog
 }
 
-# --- 4. repo-template/docs/sessions/ → 配布先 docs/sessions/ ---
-if (-not [string]::IsNullOrWhiteSpace($DocsSessionsRelativePath)) {
-    $docsSessionsSourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $DocsSessionsRelativePath))
-    if (Test-Path -LiteralPath $docsSessionsSourcePath) {
-        Write-Section "Sync session docs scaffold to target repository (docs/sessions)"
+# --- 4. repo-template/docs/furikaeri/ → 配布先 docs/furikaeri/ ---
+if (-not [string]::IsNullOrWhiteSpace($DocsFurikaeriRelativePath)) {
+    $docsFurikaeriSourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $DocsFurikaeriRelativePath))
+    if (Test-Path -LiteralPath $docsFurikaeriSourcePath) {
+        Write-Section "Sync furikaeri docs scaffold to target repository (docs/furikaeri)"
 
-        $docsSessionsDestinationPath = Join-Path $targetRepoPath "docs\sessions"
+        $docsFurikaeriDestinationPath = Join-Path $targetRepoPath "docs\furikaeri"
 
-        Write-Host "Source      : $docsSessionsSourcePath"
-        Write-Host "Destination : $docsSessionsDestinationPath"
+        Write-Host "Source      : $docsFurikaeriSourcePath"
+        Write-Host "Destination : $docsFurikaeriDestinationPath"
 
-        # docs/sessions は共有セッションログ用の append-only 領域なので、Mirror は使わない。
+        # docs/furikaeri は共有ふりかえりログ用の append-only 領域なので、Mirror は使わない。
         if ($Mirror) {
-            Write-Warning "docs/sessions sync is always non-mirror (append-only). -Mirror switch is ignored for this step."
+            Write-Warning "docs/furikaeri sync is always non-mirror (append-only). -Mirror switch is ignored for this step."
         }
 
         Invoke-Robocopy `
-            -Source $docsSessionsSourcePath `
-            -Destination $docsSessionsDestinationPath `
+            -Source $docsFurikaeriSourcePath `
+            -Destination $docsFurikaeriDestinationPath `
             -MirrorMode:$false `
             -WhatIfMode:$DryRun `
             -ShowVerboseLog:$VerboseLog

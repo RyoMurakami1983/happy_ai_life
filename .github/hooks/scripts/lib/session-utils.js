@@ -14,8 +14,8 @@ const MAX_TOOLS = 20;
 const MAX_FILES = 30;
 const MAX_MESSAGE_LENGTH = 200;
 const SESSION_MAX_AGE_DAYS = 7;
-const SHARED_SESSION_NAME_PATTERN = /^\d{8}-\d{6}_.+\.md$/;
-const SHARED_SESSION_TIMESTAMP_PATTERN = /^(\d{8})-(\d{6})_.+\.md$/;
+const FURIKAERI_DOC_NAME_PATTERN = /^\d{8}-\d{6}[-_].+\.md$/;
+const FURIKAERI_DOC_TIMESTAMP_PATTERN = /^(\d{8})-(\d{6})[-_].+\.md$/;
 
 // --- ファイル操作 ---
 
@@ -110,9 +110,9 @@ function getProjectSessionsDir(cwd) {
   return path.join(root, '.github', 'sessions');
 }
 
-function getProjectSharedSessionsDir(cwd) {
+function getProjectFurikaeriDocsDir(cwd) {
   const root = getGitRoot(cwd);
-  return path.join(root, 'docs', 'sessions');
+  return path.join(root, 'docs', 'furikaeri');
 }
 
 /** Copilot のグローバル session-state ディレクトリ */
@@ -320,8 +320,8 @@ function findRecentSessions(dir, maxAge) {
   return results.sort((a, b) => b.mtime - a.mtime);
 }
 
-function parseSharedSessionTimestamp(fileName) {
-  const match = fileName.match(SHARED_SESSION_TIMESTAMP_PATTERN);
+function parseFurikaeriDocTimestamp(fileName) {
+  const match = fileName.match(FURIKAERI_DOC_TIMESTAMP_PATTERN);
   if (!match) return null;
 
   const [datePart, timePart] = [match[1], match[2]];
@@ -371,7 +371,7 @@ function parseSharedSessionTimestamp(fileName) {
   return timestamp;
 }
 
-function findRecentSharedSessions(dir, maxCount = 3) {
+function findRecentFurikaeriDocs(dir, maxCount = 3) {
   if (!fs.existsSync(dir)) return [];
 
   const results = [];
@@ -379,12 +379,12 @@ function findRecentSharedSessions(dir, maxCount = 3) {
   try {
     const entries = fs.readdirSync(dir);
     for (const name of entries) {
-      if (!SHARED_SESSION_NAME_PATTERN.test(name)) continue;
+      if (!FURIKAERI_DOC_NAME_PATTERN.test(name)) continue;
 
       const fullPath = path.join(dir, name);
       try {
         const stat = fs.statSync(fullPath);
-        const parsedTimestamp = parseSharedSessionTimestamp(name);
+        const parsedTimestamp = parseFurikaeriDocTimestamp(name);
         results.push({
           path: fullPath,
           basename: name,
@@ -453,15 +453,15 @@ module.exports = {
   shortId,
   getProjectName,
   getProjectSessionsDir,
-  getProjectSharedSessionsDir,
+  getProjectFurikaeriDocsDir,
   getGlobalSessionStateDir,
   extractSessionSummary,
   buildSessionHeader,
   mergeSessionHeader,
   buildSummaryBlock,
   findRecentSessions,
-  parseSharedSessionTimestamp,
-  findRecentSharedSessions,
+  parseFurikaeriDocTimestamp,
+  findRecentFurikaeriDocs,
   stripAnsi,
   escapeRegExp,
   log,

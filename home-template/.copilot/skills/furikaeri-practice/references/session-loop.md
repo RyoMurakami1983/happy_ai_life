@@ -7,20 +7,20 @@
 ## ループ
 
 1. `session-start` が前回の文脈を注入する
-2. `furikaeri-practice` で YWT / KPT を作る
-3. `.github/sessions/` に保存する
-4. 必要なら `session-share-document` で `docs/sessions/` に整える
-5. 改善種を T / TRY / Issue に逃がす
-6. 次回の `session-start` がそれを拾う
+2. `furikaeri-practice` でセッションストーリーをほどき、YWT / KPT を選ぶ
+3. `.github/sessions/` は continuity 用の private log として残る
+4. 共有できるふりかえりを `docs/furikaeri/` と `.copilot/docs/furikaeri/` に保存する
+5. 改善種を T / TRY / Issue / 条件付き skill 改善提案 に逃がす
+6. 次回の `session-start` が repo の `docs/furikaeri/` を拾う
 
 ## 共有文書の読みやすい型
 
-既存の docs/sessions を見ると、次の並びが読みやすい。
+既存の docs/furikaeri では、次の並びが読みやすい。
 
 - Executive Summary
+- Session Story
+- Reflection
 - Session Notes
-- 主要な学び
-- 変更の要点
 - Next Steps
 
 短い要約から始め、学びと次の一手に繋げると再利用しやすい。

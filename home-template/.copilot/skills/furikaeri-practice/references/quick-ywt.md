@@ -2,7 +2,7 @@
 
 ## 目的
 
-日常のセッション終了を 3〜5 分で閉じる。Y は事実を厚めに、W は学びと詰まりをはっきり、T は次の一手に絞る。
+日常のセッション終了を短く閉じる。Y は事実を厚めに、W は学びをはっきり、T は次の一手に絞る。複雑な skill 利用や出戻りが見えたら、この形式は使わず KPT へ切り替える。
 
 ## Y（やったこと）
 
@@ -33,7 +33,7 @@ W は学び・気づき・予想外の事実を書く。
 
 ### Trouble / backtrack があるとき
 
-W だけで終わらせず、Deep の KPT に移行して Problem と Try を分ける。
+W だけで終わらせず、Deep の KPT に移行して Problem と Try を分ける。複数 skill をまたいだり、判断をやり直したりした場合も同様。
 
 ## T（つぎにやること）
 
@@ -48,16 +48,28 @@ T は次のセッションの入口。
 
 ```markdown
 ### T（つぎにやること）
-- furikaeri-practice を References 分割して簡素化する
-- session-share-document で共有用出力を整える
-- TRY: docs/sessions の既存文書を 1 本追加で確認する
+- furikaeri-practice の対話フローを 1 回通して確認する
+- docs/furikaeri の naming と output shape を揃える
+- TRY: home の .copilot/docs/furikaeri にも同じ文書を保存する
 ```
 
-## 共有文書の型
+## SMART への接続
 
-docs/sessions に残すなら、次の形が読みやすい。
+Quick でも最後は SMART に落とす。
+
+- Specific: 次に何をするか 1 文で言える
+- Measurable: 完了判定が見える
+- Achievable: 次回セッションで手が届く
+- Relevant: 今回の学びに直結する
+- Time-bound: 次回までの動きに繋がる
+
+## 保存文書の型
+
+docs/furikaeri に残すなら、次の形が読みやすい。
 
 - Executive Summary
+- Session Story
+- Reflection
 - Session Notes
 - Next Steps
 

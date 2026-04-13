@@ -18,7 +18,7 @@ const {
   SESSION_SEPARATOR,
   SUMMARY_START_MARKER,
   SUMMARY_END_MARKER,
-  findRecentSharedSessions,
+  findRecentFurikaeriDocs,
 } = require('../.github/hooks/scripts/lib/session-utils.js');
 
 function makeTempFile(name) {
@@ -166,23 +166,23 @@ run('non-template: Y にコードフェンス内容がある', () => {
   assert.strictEqual(isTemplateOnly(content), false);
 });
 
-run('findRecentSharedSessions: filename timestamp order を使う', () => {
+run('findRecentFurikaeriDocs: filename timestamp order を使う', () => {
   const dir = makeTempDir();
-  fs.writeFileSync(path.join(dir, '20260401-101010_(Alpha).md'), '# alpha', 'utf8');
-  fs.writeFileSync(path.join(dir, '20260401-121500_(Beta).md'), '# beta', 'utf8');
+  fs.writeFileSync(path.join(dir, '20260401-101010-alpha.md'), '# alpha', 'utf8');
+  fs.writeFileSync(path.join(dir, '20260401-121500-beta.md'), '# beta', 'utf8');
   fs.writeFileSync(path.join(dir, 'ignore.txt'), 'x', 'utf8');
 
-  const results = findRecentSharedSessions(dir, 3);
+  const results = findRecentFurikaeriDocs(dir, 3);
   assert.deepStrictEqual(results.map((item) => item.basename), [
-    '20260401-121500_(Beta).md',
-    '20260401-101010_(Alpha).md',
+    '20260401-121500-beta.md',
+    '20260401-101010-alpha.md',
   ]);
 });
 
-run('findRecentSharedSessions: invalid filename timestamp は mtime にフォールバックする', () => {
+run('findRecentFurikaeriDocs: invalid filename timestamp は mtime にフォールバックする', () => {
   const dir = makeTempDir();
-  const validPath = path.join(dir, '20260401-121500_(Valid).md');
-  const invalidPath = path.join(dir, '20261399-996060_(Invalid).md');
+  const validPath = path.join(dir, '20260401-121500-valid.md');
+  const invalidPath = path.join(dir, '20261399-996060-invalid.md');
 
   fs.writeFileSync(validPath, '# valid', 'utf8');
   fs.writeFileSync(invalidPath, '# invalid', 'utf8');
@@ -191,19 +191,19 @@ run('findRecentSharedSessions: invalid filename timestamp は mtime にフォー
   fs.utimesSync(validPath, newer, newer);
   fs.utimesSync(invalidPath, older, older);
 
-  const results = findRecentSharedSessions(dir, 3);
+  const results = findRecentFurikaeriDocs(dir, 3);
   assert.deepStrictEqual(results.map((item) => item.basename), [
-    '20260401-121500_(Valid).md',
-    '20261399-996060_(Invalid).md',
+    '20260401-121500-valid.md',
+    '20261399-996060-invalid.md',
   ]);
   assert.strictEqual(results[1].timestamp, results[1].mtime);
 });
 
-run('buildInstructionsContent: shared session context を含む', () => {
+run('buildInstructionsContent: shared furikaeri context を含む', () => {
   const dir = makeTempDir();
-  const sharedPath = path.join(dir, '20260401-121500_(Beta).md');
+  const sharedPath = path.join(dir, '20260401-121500-beta.md');
   fs.writeFileSync(sharedPath, [
-    '# Session Share',
+    '# Furikaeri Share',
     '',
     '## Executive Summary',
     '- shared summary',
@@ -217,24 +217,24 @@ run('buildInstructionsContent: shared session context を含む', () => {
     '# Private Session\nprivate body',
     '2026-04-01-aaaa1111-session.md',
     [{ basename: '2026-04-01-aaaa1111-session.md' }],
-    [{ basename: '20260401-121500_(Beta).md', path: sharedPath }]
+    [{ basename: '20260401-121500-beta.md', path: sharedPath }]
   );
 
-  assert.ok(written.includes('Latest Shared Session Context'));
+  assert.ok(written.includes('Latest Shared Furikaeri Context'));
   assert.ok(written.includes('shared summary'));
   assert.ok(written.includes('shared note'));
 });
 
 run('buildInstructionsContent: private context がなくても shared を含む', () => {
   const dir = makeTempDir();
-  const sharedPath = path.join(dir, '20260401-121500_(Beta).md');
+  const sharedPath = path.join(dir, '20260401-121500-beta.md');
   fs.writeFileSync(sharedPath, '# shared only', 'utf8');
 
   const written = buildInstructionsContent(
     '',
     '',
     [],
-    [{ basename: '20260401-121500_(Beta).md', path: sharedPath }]
+    [{ basename: '20260401-121500-beta.md', path: sharedPath }]
   );
 
   assert.ok(written.includes('No recent private session context was found.'));
