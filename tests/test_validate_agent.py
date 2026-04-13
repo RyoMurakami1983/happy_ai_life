@@ -105,6 +105,7 @@ def test_validate_agent_real_tdd_coder_markdown() -> None:
     report = module.validate(agent_path, "L2")
 
     assert report.critical_passed is True
+    assert report.recommended_pass_count == report.recommended_total
 
 
 def test_validate_agent_rejects_missing_principles_only(tmp_path: Path) -> None:
