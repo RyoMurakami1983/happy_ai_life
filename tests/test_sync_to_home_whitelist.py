@@ -66,8 +66,10 @@ def _create_minimal_source_root(base: Path) -> Path:
     copilot_dir = base / "home-template" / ".copilot"
     (copilot_dir / "skills" / "sample-skill").mkdir(parents=True)
     (copilot_dir / "agents").mkdir(parents=True)
+    (copilot_dir / "docs" / "furikaeri").mkdir(parents=True)
     (copilot_dir / "skills" / "sample-skill" / "SKILL.md").write_text("# skill\n", encoding="utf-8")
     (copilot_dir / "agents" / "sample.agent.md").write_text("# agent\n", encoding="utf-8")
+    (copilot_dir / "docs" / "furikaeri" / ".gitkeep").write_text("\n", encoding="utf-8")
     (copilot_dir / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
     (copilot_dir / "mcp-config.sample.json").write_text("{}", encoding="utf-8")
     (copilot_dir / "config.json").write_text('{"runtime":true}', encoding="utf-8")
@@ -90,6 +92,7 @@ def test_sync_to_home_copies_only_whitelisted_targets(tmp_path: Path) -> None:
     assert (destination / "agents" / "sample.agent.md").exists()
     assert (destination / "copilot-instructions.md").exists()
     assert (destination / "mcp-config.sample.json").exists()
+    assert (destination / "docs" / "furikaeri" / ".gitkeep").exists()
     assert (destination / "keep.txt").read_text(encoding="utf-8") == "keep"
     assert (destination / "config.json").read_text(encoding="utf-8") == '{"user":true}'
     assert (destination / "session-state").exists()
@@ -109,3 +112,22 @@ def test_sync_to_home_mirror_does_not_delete_existing_home_files(tmp_path: Path)
     assert "無視されます" in (result.stdout + result.stderr)
     assert (destination / "skills" / "custom-only" / "SKILL.md").exists()
     assert (destination / "custom-root.txt").read_text(encoding="utf-8") == "keep"
+
+
+def test_sync_to_home_does_not_delete_home_only_furikaeri_docs(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    destination.mkdir(parents=True)
+    # home 側にのみ存在するふりかえりドキュメント（ユーザーが作成したもの）
+    furikaeri_dir = destination / "docs" / "furikaeri"
+    furikaeri_dir.mkdir(parents=True)
+    user_doc = furikaeri_dir / "20260101-120000-my-session.md"
+    user_doc.write_text("# user furikaeri\n", encoding="utf-8")
+
+    result = _run_sync(source_root, destination, dry_run=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    # ホーム側のドキュメントは削除されていないこと
+    assert user_doc.exists(), "home-only furikaeri doc must not be deleted by sync"
+    # テンプレートの .gitkeep も追加されていること
+    assert (furikaeri_dir / ".gitkeep").exists()
