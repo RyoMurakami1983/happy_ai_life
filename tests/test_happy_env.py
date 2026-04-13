@@ -47,9 +47,9 @@ def test_build_option_summary_for_dry_run_and_mirror() -> None:
     summary = happy_env.build_option_summary(dry_run=True, mirror=True, verbose_log=False)
 
     assert "現在はドライランです。" in summary
-    assert "ミラー同期の影響を試算します。" in summary
-    assert "同期先だけにあるファイルやディレクトリは削除されます。" in summary
-    assert "robocopy の '*EXTRA'" in summary
+    assert "ミラー指定の影響を確認します。" in summary
+    assert "リポジトリ同期ではミラー削除が有効です。" in summary
+    assert "ホーム同期は whitelist copy のため、--mirror を指定しても削除しません。" in summary
 
 
 def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
@@ -169,7 +169,7 @@ def test_gui_mirror_checkbox_label_matches_warning_language() -> None:
                 if widget.winfo_class() == "TCheckbutton"
             )
 
-        assert "ミラー同期（同期先だけのファイルやディレクトリは削除される）" in labels
+        assert "ミラー同期（リポジトリ同期では同期先だけのファイルやディレクトリを削除）" in labels
     finally:
         root.destroy()
 
@@ -201,15 +201,21 @@ def test_confirm_mirror_sync_returns_false_for_non_yes(monkeypatch) -> None:
         assert happy_env.confirm_mirror_sync() is False, f"Expected False for {answer!r}"
 
 
-def test_run_cli_mirror_without_dry_run_prompts_for_confirmation(monkeypatch) -> None:
-    monkeypatch.setattr("builtins.input", lambda _prompt: "no")
-    monkeypatch.setattr(happy_env, "run_home_sync", lambda **_kw: pytest.fail("run_home_sync must not be called"))
+def test_run_cli_home_mirror_without_dry_run_skips_confirmation(monkeypatch) -> None:
+    called: list[bool] = []
+
+    def fake_run_home_sync(**kw: object) -> happy_env.CommandResult:
+        called.append(True)
+        return happy_env.CommandResult(label="test", command=(), returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(happy_env, "run_home_sync", fake_run_home_sync)
 
     exit_code = happy_env.run_cli(
         happy_env.build_parser().parse_args(["home", "--mirror"])
     )
 
-    assert exit_code == 1
+    assert exit_code == 0
+    assert called == [True]
 
 
 def test_run_cli_mirror_with_dry_run_skips_confirmation(monkeypatch) -> None:
@@ -227,3 +233,14 @@ def test_run_cli_mirror_with_dry_run_skips_confirmation(monkeypatch) -> None:
 
     assert exit_code == 0
     assert called == [True]
+
+
+def test_run_cli_repo_mirror_without_dry_run_prompts_for_confirmation(monkeypatch) -> None:
+    monkeypatch.setattr("builtins.input", lambda _prompt: "no")
+    monkeypatch.setattr(happy_env, "run_repo_sync", lambda *args, **kwargs: pytest.fail("run_repo_sync must not be called"))
+
+    exit_code = happy_env.run_cli(
+        happy_env.build_parser().parse_args(["repo", r"C:\repos\sample", "--mirror"])
+    )
+
+    assert exit_code == 1
