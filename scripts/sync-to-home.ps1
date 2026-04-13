@@ -168,7 +168,8 @@ Write-Host "DryRun      : $DryRun"
 
 $trackedDirectories = @(
     @{ Source = (Join-Path $sourcePath "skills"); Destination = (Join-Path $destinationPath "skills") },
-    @{ Source = (Join-Path $sourcePath "agents"); Destination = (Join-Path $destinationPath "agents") }
+    @{ Source = (Join-Path $sourcePath "agents"); Destination = (Join-Path $destinationPath "agents") },
+    @{ Source = (Join-Path (Join-Path $sourcePath "docs") "furikaeri"); Destination = (Join-Path (Join-Path $destinationPath "docs") "furikaeri") }
 )
 
 $trackedFiles = @(
