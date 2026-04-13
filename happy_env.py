@@ -206,14 +206,12 @@ def build_option_summary(*, dry_run: bool, mirror: bool, verbose_log: bool) -> s
 
     if mirror:
         if dry_run:
-            lines.append("ミラー同期の影響を試算します。")
-            lines.append("警告: これはミラー同期の試運転です。本番の /MIR では、同期先だけにあるファイルやディレクトリは削除されます。")
-            lines.append("robocopy の '*EXTRA' は同期先だけにある項目を表します。本番の /MIR では削除対象です。")
-            lines.append("出力を見て、削除されて困る項目がないか必ず確認してください。")
+            lines.append("ミラー指定の影響を確認します。")
+            lines.append("補足: リポジトリ同期ではミラー削除が有効です。同期先だけのファイルやディレクトリは完全削除されます。ホーム同期は whitelist copy のため、--mirror を指定しても削除しません。")
         else:
-            lines.append("警告: ミラー同期では、同期先だけにあるファイルやディレクトリは削除されます。")
+            lines.append("補足: リポジトリ同期ではミラー削除が有効です。同期先だけのファイルやディレクトリは完全削除されます。ホーム同期は whitelist copy のため、--mirror を指定しても削除しません。")
     else:
-        lines.append("通常同期です。テンプレートにある内容を同期します。同期先だけのファイルはミラーより安全に残りやすい設定です。")
+        lines.append("通常同期です。ホーム同期は tracked な template 項目だけをコピーし、既存の HOME 側ファイルは保持します。")
 
     if verbose_log:
         lines.append("詳細ログを表示します。robocopy の出力が増えるため、実行内容を追いやすくなります。")
@@ -232,7 +230,7 @@ def build_parser() -> argparse.ArgumentParser:
     gui_parser.set_defaults(command="gui")
 
     home_parser = subparsers.add_parser("home", help="home-template/.copilot を $HOME/.copilot へ同期します。")
-    home_parser.add_argument("--mirror", action="store_true", help="同期先をミラーします。")
+    home_parser.add_argument("--mirror", action="store_true", help="互換オプションです。ホーム同期では無視されます。")
     home_parser.add_argument("--dry-run", action="store_true", help="書き込み前に差分だけ確認します。")
     home_parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
 
@@ -249,7 +247,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 _MIRROR_CONFIRM_PROMPT = (
-    "警告: ミラー同期では $HOME/.copilot/ 内でテンプレートにないファイル・ディレクトリが\n"
+    "警告: リポジトリのミラー同期では同期先にだけあるファイル・ディレクトリが\n"
     "完全削除されます（ゴミ箱には入りません）。\n"
     "続けるには 'yes' と入力してください: "
 )
@@ -266,10 +264,6 @@ def confirm_mirror_sync() -> bool:
 
 def run_cli(namespace: argparse.Namespace) -> int:
     if namespace.command == "home":
-        if namespace.mirror and not namespace.dry_run:
-            if not confirm_mirror_sync():
-                print("中断しました。")
-                return 1
         result = run_home_sync(
             mirror=namespace.mirror,
             dry_run=namespace.dry_run,
@@ -334,7 +328,7 @@ class HappyEnvGui:
         ).grid(row=0, column=0, padx=(0, 12))
         ttk.Checkbutton(
             options,
-            text="ミラー同期（同期先だけのファイルやディレクトリは削除される）",
+            text="ミラー同期（リポジトリ同期では同期先だけのファイルやディレクトリを削除）",
             variable=self.mirror_var,
             command=self._update_option_summary,
         ).grid(row=1, column=0, padx=(0, 12), pady=(6, 0), sticky="w")
@@ -364,7 +358,7 @@ class HappyEnvGui:
         self.output.grid(row=4, column=0, sticky="nsew")
         self.output.insert(
             "end",
-            "準備完了。ホーム同期では mcp-config.json を保護し、初回用に mcp-config.sample.json を残します。\n",
+            "準備完了。ホーム同期は tracked な template 項目だけをコピーし、mcp-config.json など user-owned file は保護します。\n",
         )
         self.output.configure(state="disabled")
 
@@ -405,9 +399,6 @@ class HappyEnvGui:
             return
 
         self._set_running(True)
-        if self.mirror_var.get() and not self.dry_run_var.get():
-            self._append_output("警告: ミラー同期では、同期先だけにあるファイルやディレクトリは削除されます。")
-            self._append_output("robocopy の '*EXTRA' は同期先だけにある項目を表します。本番の /MIR では削除対象です。")
         self._append_output("実行中...")
 
         def worker() -> None:
@@ -446,6 +437,10 @@ class HappyEnvGui:
         target_repo_path = self._select_directory()
         if target_repo_path is None:
             return
+
+        if self.mirror_var.get() and not self.dry_run_var.get():
+            self._append_output("警告: リポジトリのミラー同期では、同期先だけにあるファイルやディレクトリは削除されます。")
+            self._append_output("robocopy の '*EXTRA' は同期先だけにある項目を表します。本番の /MIR では削除対象です。")
 
         self._run_in_background(
             lambda: run_repo_sync(

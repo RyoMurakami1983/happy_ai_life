@@ -28,27 +28,17 @@ function Warn-IfPathExists {
     }
 }
 
-function Write-MirrorDryRunWarning {
-    param(
-        [Parameter(Mandatory = $true)][string]$SourcePath,
-        [Parameter(Mandatory = $true)][string]$DestinationPath
-    )
+function Write-IgnoredMirrorWarning {
+    param([Parameter(Mandatory = $true)][switch]$WhatIfMode)
 
-    Write-Warning "DRY-RUN WARNING: これは安全確認のための試運転です。実際には変更されません。"
-    Write-Warning "DRY-RUN WARNING: ただし、-Mirror の本番実行では robocopy /MIR により、同期先だけにあるファイルやディレクトリは削除されます。"
-    Write-Warning "DRY-RUN WARNING: robocopy の '*EXTRA' は同期先だけにある項目を表します。本番の /MIR では削除対象です。"
-    Write-Warning "DRY-RUN WARNING: '$DestinationPath' にだけ存在し、'$SourcePath' に無い項目は特に注意してください。"
-    Write-Warning "DRY-RUN WARNING: 出力を見て『このフォルダ/ファイルは本番で削除されてもよいか』を必ず確認してください。"
+    $prefix = if ($WhatIfMode) { "DRY-RUN WARNING" } else { "WARNING" }
+    Write-Warning "${prefix}: home sync では -Mirror は互換オプションとして受け付けますが、現在は無視されます。"
+    Write-Warning "${prefix}: home sync は whitelist 方式で tracked な template 項目だけを追加・更新し、既存の HOME 側ファイルやディレクトリは削除しません。"
 }
 
 function Test-RobocopyResult {
     param([int]$ExitCode)
 
-    # robocopy exit code:
-    # 0: no files copied
-    # 1: files copied successfully
-    # 2-7: success with extras/mismatches etc.
-    # 8+: failure
     if ($ExitCode -ge 8) {
         throw "robocopy failed. ExitCode=$ExitCode"
     }
@@ -58,9 +48,6 @@ function Invoke-Robocopy {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
         [Parameter(Mandatory = $true)][string]$Destination,
-        [string[]]$ExcludeDirs = @(),
-        [string[]]$ExcludeFiles = @(),
-        [switch]$MirrorMode,
         [switch]$WhatIfMode,
         [switch]$ShowVerboseLog
     )
@@ -87,10 +74,6 @@ function Invoke-Robocopy {
         "/XJ"
     )
 
-    if ($MirrorMode) {
-        $robocopyArgs += "/MIR"
-    }
-
     if ($WhatIfMode) {
         $robocopyArgs += "/L"
     }
@@ -106,20 +89,9 @@ function Invoke-Robocopy {
             "/W:1"
             "/XJ"
         )
-        if ($MirrorMode) { $robocopyArgs += "/MIR" }
         if ($WhatIfMode) { $robocopyArgs += "/L" }
         $verboseLogPath = Join-Path ([System.IO.Path]::GetTempPath()) ("happy-env-robocopy-{0}.log" -f [guid]::NewGuid())
         $robocopyArgs += "/UNILOG:$verboseLogPath"
-    }
-
-    foreach ($dir in $ExcludeDirs) {
-        $robocopyArgs += "/XD"
-        $robocopyArgs += $dir
-    }
-
-    foreach ($file in $ExcludeFiles) {
-        $robocopyArgs += "/XF"
-        $robocopyArgs += $file
     }
 
     Write-Host "robocopy $($robocopyArgs -join ' ')" -ForegroundColor DarkGray
@@ -158,6 +130,31 @@ function Invoke-Robocopy {
     $global:LASTEXITCODE = 0
 }
 
+function Copy-TrackedFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination,
+        [switch]$WhatIfMode
+    )
+
+    if (-not (Test-Path -LiteralPath $Source)) {
+        throw "Source file not found: $Source"
+    }
+
+    $destinationDir = Split-Path -Parent $Destination
+    if (-not [string]::IsNullOrWhiteSpace($destinationDir) -and -not (Test-Path -LiteralPath $destinationDir)) {
+        New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+    }
+
+    if ($WhatIfMode) {
+        Write-Host "Would copy $Source -> $Destination" -ForegroundColor Yellow
+        return
+    }
+
+    Copy-Item -LiteralPath $Source -Destination $Destination -Force
+    Write-Host "Copied $Source -> $Destination" -ForegroundColor Green
+}
+
 Write-Section "Sync to HOME (.copilot)"
 
 $sourcePath = Join-Path $SourceRoot $TemplateRelativePath
@@ -169,36 +166,16 @@ Write-Host "Destination : $destinationPath"
 Write-Host "Mirror      : $Mirror"
 Write-Host "DryRun      : $DryRun"
 
-# 個人 secrets やローカル override を壊しにくくするため、
-# 既定では live の mcp-config.json と *.local.* は除外する。
-# 初回セットアップは mcp-config.sample.json から user-owned file を作る。
-# config.json / command-history-state.json は Copilot ランタイムが書くファイルのため除外する。
-$excludeFiles = @(
-    "mcp-config.json",
-    "mcp-config.local.json",
-    "*.local.json",
-    "*.local.ps1",
-    # --- Copilot ランタイムファイル（上書き・削除しない） ---
-    "config.json",
-    "command-history-state.json",
-    # --- live HOME 側のユーザー固有ファイル（削除防止） ---
-    "A_Key.txt"
+$trackedDirectories = @(
+    @{ Source = (Join-Path $sourcePath "skills"); Destination = (Join-Path $destinationPath "skills") },
+    @{ Source = (Join-Path $sourcePath "agents"); Destination = (Join-Path $destinationPath "agents") },
+    # Shared furikaeri archives are part of the writable home template.
+    @{ Source = (Join-Path (Join-Path $sourcePath "docs") "furikaeri"); Destination = (Join-Path (Join-Path $destinationPath "docs") "furikaeri") }
 )
 
-$excludeDirs = @(
-    ".git",
-    ".vs",
-    "node_modules",
-    "hooks",
-    # --- Copilot ランタイムデータ（ミラー同期でも絶対に削除しない） ---
-    "session-state",
-    "pkg",
-    "logs",
-    "ide",
-    "restart",
-    # --- live HOME 側のユーザー固有データ（削除防止） ---
-    "Archive",
-    "mcp-oauth-config"
+$trackedFiles = @(
+    @{ Source = (Join-Path $sourcePath "copilot-instructions.md"); Destination = (Join-Path $destinationPath "copilot-instructions.md") },
+    @{ Source = (Join-Path $sourcePath "mcp-config.sample.json"); Destination = (Join-Path $destinationPath "mcp-config.sample.json") }
 )
 
 $unsupportedHooksPath = Join-Path $sourcePath "hooks"
@@ -206,20 +183,28 @@ Warn-IfPathExists `
     -Path $unsupportedHooksPath `
     -Message "home-template/.copilot/hooks is ignored. Officially supported hook configuration is repository-scoped under .github/hooks."
 
-if ($DryRun -and $Mirror) {
-    Write-MirrorDryRunWarning `
-        -SourcePath $sourcePath `
-        -DestinationPath $destinationPath
+if (-not (Test-Path -LiteralPath $destinationPath)) {
+    New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
 }
 
-Invoke-Robocopy `
-    -Source $sourcePath `
-    -Destination $destinationPath `
-    -ExcludeDirs $excludeDirs `
-    -ExcludeFiles $excludeFiles `
-    -MirrorMode:$Mirror `
-    -WhatIfMode:$DryRun `
-    -ShowVerboseLog:$VerboseLog
+if ($Mirror) {
+    Write-IgnoredMirrorWarning -WhatIfMode:$DryRun
+}
+
+foreach ($entry in $trackedDirectories) {
+    Invoke-Robocopy `
+        -Source $entry.Source `
+        -Destination $entry.Destination `
+        -WhatIfMode:$DryRun `
+        -ShowVerboseLog:$VerboseLog
+}
+
+foreach ($entry in $trackedFiles) {
+    Copy-TrackedFile `
+        -Source $entry.Source `
+        -Destination $entry.Destination `
+        -WhatIfMode:$DryRun
+}
 
 $mcpSamplePath = Join-Path $destinationPath "mcp-config.sample.json"
 $mcpLivePath = Join-Path $destinationPath "mcp-config.json"

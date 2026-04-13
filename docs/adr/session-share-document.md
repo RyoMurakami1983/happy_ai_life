@@ -1,4 +1,6 @@
-# `session-share-document` を `furikaeri-practice` に統合する
+# 対話型ふりかえりを `furikaeri-practice` に統合する
+
+> **注記**: この ADR は既存リンクや履歴との互換性のため、ファイル名は旧名称の `session-share-document.md` のまま保持している。現在の判断主題は `session-share-document` の独立運用ではなく、`furikaeri-practice` への統合である。
 
 **日付**: 2026-04-02  
 **ステータス**: 承認
