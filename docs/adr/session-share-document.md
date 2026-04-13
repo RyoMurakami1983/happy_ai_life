@@ -1,4 +1,4 @@
-# 対話型ふりかえりを `furikaeri-practice` に統合する
+# `session-share-document` を `furikaeri-practice` に統合する
 
 **日付**: 2026-04-02  
 **ステータス**: 承認
