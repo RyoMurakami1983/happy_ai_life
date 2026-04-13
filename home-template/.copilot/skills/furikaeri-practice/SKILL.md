@@ -1,28 +1,28 @@
 ---
 name: furikaeri-practice
 description: >
-  セッション終了前のふりかえりを Quick（YWT）または Deep（KPT＋5つのなぜ）で進め、.github/sessions/ に保存する。前回の T（つぎにやること）を起点にセッションを繋ぐ。Use when: 作業の学びを整理したいとき、改善アクションを決めたいとき、「ふりかえり」と入力されたとき。
+  セッションのふりかえりを対話で進め、セッションストーリーから YWT / KPT を選び、SMART 目標まで整えて repo の `docs/furikaeri/` と home の `.copilot/docs/furikaeri/` に保存する。KPT では必要に応じて skill 改善提案まで出す。Use when: 作業の学びを整理したいとき、改善アクションを決めたいとき、「ふりかえり」と入力されたとき。
 license: Personal
 ---
 
 # ふりかえりプラクティス
 
-セッションの学びを次の行動に変える router skill。既定は Quick（YWT）、問題や出戻りがあるときは Deep（KPT）へ切り替えます。Y は事実を厚めに、W は学びと詰まりをはっきり、T は次の一手と TRY を並べてよい形にします。
+セッションの学びを次の行動と共有可能な記録に変える single-entry skill。まずセッションストーリーを対話でほどき、使った skill、出戻り、詰まりを確認してから YWT か KPT を選びます。軽い終了だけを Quick にし、複雑な流れや改善余地が見えるときは KPT に寄せます。
 
 ## こんなときに使う
 
 - セッション終了前に学びを残したい（「ふりかえり」と入力）
 - コーディングセッションや複数ターンの会話を閉じたい
 - 詰まり・出戻り・再発があり、原因と対策を残したい
-- 共有用の session 記録を docs/sessions に残したい
+- 対話しながら repo / home のふりかえり記録まで保存したい
 
 ## 選び方
 
-| 状況 | 使うもの | 目的 |
+| 状況 | 進め方 | 目的 |
 | --- | --- | --- |
-| 日常の終了 | Quick（YWT） | 事実と学びを素早く整理して T に繋ぐ |
-| 詰まり / 出戻り / 再発 | Deep（KPT） | Problem を分け、Try を実験に落とす |
-| 共有文書を残す | session-share-document | Executive Summary 形式で archive に残す |
+| 作業が素直に進み、skill 利用も単純 | YWT | 事実と学びを素早く整理して SMART に繋ぐ |
+| skill 利用が複雑 / 出戻りあり / 再発あり | KPT | Problem を分け、Try と SMART を明確にする |
+| KPT で改善余地が見えた | KPT + 改善提案 | skill / hook / docs のカイゼン候補まで残す |
 
 ## ワークフロー
 
@@ -30,32 +30,47 @@ license: Personal
 
 前回セッションの T を見て、完了・継続・破棄を整理します。継続項目は今回の T に含めてよいです。
 
-### Step 1 — Quick か Deep かを決める
+### Step 1 — セッションストーリーを展開する
 
-- Quick: いつもの終了処理。YWT を軽く、でも具体的に。
-- Deep: 問題が多い、同じ問題が再発する、根本原因が不明、環境改善の種を残したいとき。
+- 何を進めたかを時系列で短くほどく
+- 使った skill / hook / agent を確認する
+- ユーザーの出戻り、詰まり、判断のやり直しがあったか確認する
+- 複雑さが高ければ YWT を外し、KPT を主にする
 
-### Step 2 — 出力を組み立てる
+### Step 2 — YWT か KPT かを決める
 
-- Quick は **Y / W / T**。
-- Deep は **Keep / Problem / Try / 5つのなぜ / SMART**。
-- T は最大 3 件を目安にし、必要なら `TRY` を併記してよい。
-- ふりかえり中に問題が見えたら、その場で Deep に切り替えてよい。
+- YWT は「軽い終了」「複雑な skill 利用なし」「大きな出戻りなし」のときだけ使う
+- KPT は「複雑」「出戻りあり」「改善余地が大きい」のいずれかで優先する
+- 対話中に問題が見えたら、その場で KPT に切り替えてよい
 
-### Step 3 — 保存する
+### Step 3 — ふりかえりを組み立てる
 
-`.github/sessions/` に保存し、必要なら `session-share-document` で `docs/sessions/` 用の共有文書に整えます。
+- YWT は **Y / W / T / SMART** を作る
+- KPT は **Keep / Problem / Try / 5つのなぜ / SMART** を作る
+- ユーザーが Keep / Problem / Try を出したあと、アシスタント側でも補助候補を 1〜3 件だけ提示してよい
+- 補助候補は「観測した摩擦」「言語化すると次回に効く良い動き」「未整理の改善種」を優先する
+- skill 改善提案は KPT のときだけ候補にし、強化やカイゼンが望ましい場合にだけ書く
+
+### Step 4 — 保存する
+
+- `.github/sessions/` は hook が作る private continuity として扱い、これだけで完了扱いにしない
+- 対話でタイトルと公開配慮を確認してから `docs/furikaeri/` に保存する
+- 同じ basename で home の `.copilot/docs/furikaeri/` にも保存する
+- 共有文書は append-only で残す
 
 ## 共通リソース
 
+- `references/session-story.md`
 - `references/quick-ywt.md`
 - `references/deep-kpt.md`
+- `references/output-shape.md`
+- `references/naming.md`
 - `references/session-loop.md`
-- `../session-share-document/`
+- `../knowledge-capture/`
 
 ## 注意点
 
 - ふりかえりは報告書ではなく、次の改善に繋ぐ道具。
-- Y を薄くしすぎると W/T の質が落ちる。
+- YWT を既定にしすぎない。複雑な session に Quick を当てると学びが痩せる。
 - Problem は人ではなく、プロセス・道具・条件に向ける。
-- 環境や skill 自体の改善が見えたら、T に残して次の改善ループへ回す。
+- 保存前に、モード・タイトル・公開配慮を対話で確認する。
