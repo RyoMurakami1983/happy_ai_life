@@ -97,11 +97,21 @@ description: >
 - `deep-review-preflight`
 - `design-workshop`
 
+## 同梱テンプレ
+
+- `scripts/playwright-eval-template.md` — web app を触る evaluator の基本形
+- `scripts/flaui-eval-template.md` — WPF など desktop app を触る evaluator の基本形
+- `scripts/python-gui-eval-template.md` — Python GUI / pygame 系を触る evaluator の基本形
+
 ## 同梱リソース
 
 ```text
 implementation-eval-gate/
 ├── SKILL.md
+├── scripts/
+│   ├── playwright-eval-template.md
+│   ├── flaui-eval-template.md
+│   └── python-gui-eval-template.md
 └── references/
     └── checklist.md
 ```
