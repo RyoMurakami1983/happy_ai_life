@@ -141,6 +141,7 @@ debug/<session>/
 | Module | 使う場面 | 現在の状態 |
 |---|---|---|
 | `gui.md` | UI、描画、editor、入力、focus、layout の不具合 | 現時点の主力 |
+| `wpf-blank-screen.md` | WPF 白画面、`.xaml`/`.xaml.cs` ペア、`testhost` ロック、manual verification への切替条件 | 実セッション由来 |
 | `api-backend.md` | HTTP、認証、service、transaction、cache の不具合 | 薄い starter |
 | `data-etl.md` | pipeline、schema、join、分布、null 処理の不具合 | 薄い starter |
 | `performance.md` | latency、memory、throughput、hot path の不具合 | 薄い starter |
