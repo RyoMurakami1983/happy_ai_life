@@ -196,6 +196,20 @@ def test_pre_commit_scans_staged_content_not_working_tree(tmp_path: Path) -> Non
     assert commit.returncode == 0, commit.stdout + commit.stderr
 
 
+def test_pre_commit_handles_non_ascii_staged_paths(tmp_path: Path) -> None:
+    repo, env = _prepare_repo(tmp_path)
+    tracked_file = repo / "docs" / "ふりかえり.txt"
+    tracked_file.parent.mkdir(parents=True)
+    tracked_file.write_text("safe\n", encoding="utf-8", newline="\n")
+
+    add = _run_git(repo, "add", "docs/ふりかえり.txt", env=env)
+    assert add.returncode == 0, add.stdout + add.stderr
+
+    commit = _run_git(repo, "commit", "-m", "non ascii path", env=env)
+
+    assert commit.returncode == 0, commit.stdout + commit.stderr
+
+
 def test_pre_commit_fails_when_gitleaks_is_missing(tmp_path: Path) -> None:
     repo, _env = _prepare_repo(tmp_path)
     tracked_file = repo / "notes.txt"

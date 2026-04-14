@@ -37,7 +37,7 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 mkdir -p "$snapshot_dir"
-git diff --cached --name-only --diff-filter=ACMR -- > "$staged_paths"
+git -c core.quotepath=false diff --cached --name-only --diff-filter=ACMR -- > "$staged_paths"
 
 if [ ! -s "$staged_paths" ]; then
   exit 0
