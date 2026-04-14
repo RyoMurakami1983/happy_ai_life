@@ -2,7 +2,7 @@
 name: sdd
 description: >
   仕様駆動開発（Spec-Driven Development）の全工程を1つの入口で進める。
-  spec → design → plan → 実装 → レビュー を既存 skill に委譲しながら通す。
+  spec → design → plan → 実装 → eval → レビュー を既存 skill に委譲しながら通す。
   Use when: 仕様駆動で開発を始めたいとき、途中のフェーズから再開したいとき。
 ---
 
@@ -23,10 +23,10 @@ description: >
 
 | やりたいこと | ルート | 次にやること |
 | --- | --- | --- |
-| ゼロから仕様駆動で開発したい | `sub_skills/from-scratch/` | spec-workshop → design-workshop → PLAN mode → 実装 → レビュー |
-| 仕様があり設計から始めたい | `sub_skills/from-spec/` | design-workshop → PLAN mode → 実装 → レビュー |
-| 設計があり計画から始めたい | `sub_skills/from-design/` | PLAN mode → 実装 → レビュー |
-| 計画があり実装から始めたい | `sub_skills/from-plan/` | 計画確認 → 実装 → レビュー |
+| ゼロから仕様駆動で開発したい | `sub_skills/from-scratch/` | spec-workshop → design-workshop → PLAN mode → 実装 slice → eval gate → レビュー |
+| 仕様があり設計から始めたい | `sub_skills/from-spec/` | design-workshop → PLAN mode → 実装 slice → eval gate → レビュー |
+| 設計があり計画から始めたい | `sub_skills/from-design/` | PLAN mode → 実装 slice → eval gate → レビュー |
+| 計画があり実装から始めたい | `sub_skills/from-plan/` | 計画確認 → contract checkpoint → 実装 slice → eval gate → レビュー |
 | 中断した開発を再開したい | `sub_skills/resume/` | 成果物の状態から中断地点を判定し、該当フェーズから再開 |
 
 ## 全体フロー
@@ -42,9 +42,16 @@ description: >
   ↓
 計画フェーズ        → PLAN mode
   ↓
-実装フェーズ        → オーケストレーター主導
+contract checkpoint → slice 単位の done / 非対象 / test 観点を固定
+  ↓
+実装フェーズ        → オーケストレーター主導 / 必要時は `tdd-coder`
   ↓                    テストファースト、ビルドエラー修正、リファクタリング
   ↓                    セキュリティ境界変更時は中間チェック
+  ↓
+実装中 eval gate   → `implementation-eval-gate`
+  ↓                    PASS: 次の slice へ
+  ↓                    FAIL: 実装修正へ戻す
+  ↓                    REPLAN_REQUIRED: PLAN mode / design-workshop へ戻す
   ↓
 最終レビューフェーズ → 自己レビュー + built-in 機能
 ```
@@ -66,6 +73,7 @@ description: >
 - `home-template/.copilot/skills/spec-workshop/SKILL.md` — 仕様作成
 - `home-template/.copilot/skills/design-workshop/SKILL.md` — 技術設計（router: standard / balanced-coupling-design）
 - `home-template/.copilot/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
+- `home-template/.copilot/skills/implementation-eval-gate/SKILL.md` — 実装 slice の批判的 gate
 
 ## ルーティングメモ
 
@@ -73,10 +81,12 @@ description: >
 - 実行ロジックは router ではなく sub-skill と既存 skill に置く。
 - 各フェーズの中身を sdd 内に再実装しない。委譲先の skill や PLAN mode が正本。
 - 計画の正本は PLAN mode の出力または明示的な plan artifact に置く。
+- 実装中の評価本文は `implementation-eval-gate` が正本で、`sdd` は順序と戻り先だけを持つ。
 - sdd 自体はモデル選定を持たず、入口と接続だけを担う。
 
 ## 注意点
 
 - **各段の中身を再実装しない**: sdd はフローを繋ぐだけです。仕様は spec-workshop、設計は design-workshop、計画は PLAN mode または plan artifact が正本です。
 - **汎用 coder は置かない**: 実装はオーケストレーター + built-in 機能で担います。
+- **eval は別タスクで行う**: generator の自己正当化を避けるため、実装と評価を同じ流れに閉じ込めません。
 - **全フェーズを必ず通す必要はない**: 途中から始めてよいし、特定フェーズを飛ばす判断もユーザーに委ねます。
