@@ -1,8 +1,10 @@
 # Interactive App Bootstrap Checklist
 
-interactive app の pilot / downstream repo で、実装着手前に最低限そろっているべき前提を確認する checklist です。`/sdd` の bootstrap checkpoint で使い、足りない場合は実装を始める前に補います。
+この checklist は **母艦 repo 側の正本** です。interactive app の pilot / downstream repo では、sync 済みのコピーを読みながら、実装着手前に最低限そろっているべき前提を確認します。`/sdd` の bootstrap checkpoint で使い、足りない場合は実装を始める前に補います。
 
 ## 1. Target repo sync
+
+- `repo-template` / `scripts/sync-to-repo.ps1` は母艦 repo の source of truth であり、downstream repo では配布済みの結果を前提に読む
 
 - target repo に `.github/copilot-instructions.md` が存在するか
 - target repo に `.github/instructions/` が存在するか
