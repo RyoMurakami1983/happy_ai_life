@@ -54,7 +54,7 @@ description: >
 
 ### ステップ 2.5 — interactive runtime evidence の要件を固定する
 
-interactive app の slice は、unit test や build が通ってもそれだけで `PASS` にしません。最低限、generator handoff の runtime launch command を起点に live behavior を確認し、どの操作を証拠として扱うかを固定します。
+interactive app の slice は、unit test や build が通ってもそれだけで `PASS` にしません。最低限、generator handoff の runtime launch command を起点に live behavior を確認し、どの操作を証拠として扱うかを固定します。比較用 pilot の場合は、`/sdd` 側で fixed seed / state dump schema / command runner などの comparable harness contract が先に決まっているかも確認します。
 
 | Stack | 最低限ほしい runtime evidence | `PASS` に必要な状態 |
 | --- | --- | --- |
