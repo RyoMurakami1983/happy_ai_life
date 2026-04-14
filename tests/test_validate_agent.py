@@ -91,11 +91,13 @@ user-invocable: true
     assert report.recommended_pass_count == report.recommended_total
 
 
-def test_validate_agent_tdd_coder_is_the_only_distributed_agent() -> None:
-    """Phase 3: only the narrow tdd-coder specialist is distributed."""
+def test_validate_agent_limits_distributed_agents_to_three() -> None:
+    """Phase 3: distributed custom agents stay within the reserved 3-slot envelope."""
     agents_dir = ROOT / "home-template" / ".copilot" / "agents"
     assert agents_dir.exists()
-    assert [path.name for path in sorted(agents_dir.glob("*.agent.md"))] == ["tdd-coder.agent.md"]
+    agent_names = [path.name for path in sorted(agents_dir.glob("*.agent.md"))]
+    assert "tdd-coder.agent.md" in agent_names
+    assert len(agent_names) <= 3
 
 
 def test_validate_agent_real_tdd_coder_markdown() -> None:

@@ -168,14 +168,14 @@ Write-Host "DryRun      : $DryRun"
 
 $trackedDirectories = @(
     @{ Source = (Join-Path $sourcePath "skills"); Destination = (Join-Path $destinationPath "skills") },
+    @{ Source = (Join-Path $sourcePath "agents"); Destination = (Join-Path $destinationPath "agents") },
     # Shared furikaeri archives are part of the writable home template.
     @{ Source = (Join-Path (Join-Path $sourcePath "docs") "furikaeri"); Destination = (Join-Path (Join-Path $destinationPath "docs") "furikaeri") }
 )
 
 $trackedFiles = @(
     @{ Source = (Join-Path $sourcePath "copilot-instructions.md"); Destination = (Join-Path $destinationPath "copilot-instructions.md") },
-    @{ Source = (Join-Path $sourcePath "mcp-config.sample.json"); Destination = (Join-Path $destinationPath "mcp-config.sample.json") },
-    @{ Source = (Join-Path (Join-Path $sourcePath "agents") "tdd-coder.agent.md"); Destination = (Join-Path (Join-Path $destinationPath "agents") "tdd-coder.agent.md") }
+    @{ Source = (Join-Path $sourcePath "mcp-config.sample.json"); Destination = (Join-Path $destinationPath "mcp-config.sample.json") }
 )
 
 $unsupportedHooksPath = Join-Path $sourcePath "hooks"
@@ -204,16 +204,6 @@ foreach ($entry in $trackedFiles) {
         -Source $entry.Source `
         -Destination $entry.Destination `
         -WhatIfMode:$DryRun
-}
-
-$agentsPath = Join-Path $destinationPath "agents"
-if (Test-Path -LiteralPath $agentsPath) {
-    $unexpectedAgentFiles = Get-ChildItem -LiteralPath $agentsPath -Filter "*.agent.md" -File |
-        Where-Object { $_.Name -ne "tdd-coder.agent.md" }
-    if ($unexpectedAgentFiles) {
-        $unexpectedNames = ($unexpectedAgentFiles | ForEach-Object { $_.Name }) -join ", "
-        Write-Warning "home sync distributes only tdd-coder.agent.md. Existing extra agent files were left untouched: $unexpectedNames. Remove them manually if you want the current agent set."
-    }
 }
 
 $mcpSamplePath = Join-Path $destinationPath "mcp-config.sample.json"

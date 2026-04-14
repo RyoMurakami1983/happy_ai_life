@@ -207,11 +207,11 @@ def build_option_summary(*, dry_run: bool, mirror: bool, verbose_log: bool) -> s
     if mirror:
         if dry_run:
             lines.append("ミラー指定の影響を確認します。")
-            lines.append("補足: リポジトリ同期ではミラー削除が有効です。同期先だけのファイルやディレクトリは完全削除されます。ホーム同期は whitelist copy のため、--mirror を指定しても削除しません。")
+            lines.append("補足: リポジトリ同期ではミラー削除が有効です。同期先だけのファイルやディレクトリは完全削除されます。ホーム同期は whitelist copy のため、--mirror を指定しても削除しません。agents/ はディレクトリ同期です。")
         else:
-            lines.append("補足: リポジトリ同期ではミラー削除が有効です。同期先だけのファイルやディレクトリは完全削除されます。ホーム同期は whitelist copy のため、--mirror を指定しても削除しません。")
+            lines.append("補足: リポジトリ同期ではミラー削除が有効です。同期先だけのファイルやディレクトリは完全削除されます。ホーム同期は whitelist copy のため、--mirror を指定しても削除しません。agents/ はディレクトリ同期です。")
     else:
-        lines.append("通常同期です。ホーム同期は tracked な template 項目だけをコピーし、既存の HOME 側ファイルは保持します。")
+        lines.append("通常同期です。ホーム同期は tracked な template 項目だけをコピーし、既存の HOME 側ファイルは保持します。agents/ もディレクトリ単位で同期します。")
 
     if verbose_log:
         lines.append("詳細ログを表示します。robocopy の出力が増えるため、実行内容を追いやすくなります。")
