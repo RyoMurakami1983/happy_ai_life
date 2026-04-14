@@ -31,9 +31,9 @@ description: >
 
 仕様書を `design-workshop` に渡し、判断表に従い standard または balanced-coupling-design ルートで設計を進めます。
 
-### ステップ 3 — 計画 → テスト戦略レビュー → 実装 → 最終レビュー
+### ステップ 3 — 計画 → bootstrap / テスト戦略レビュー → contract checkpoint → 実装 → implementation eval gate → 最終レビュー
 
-`sdd/sub_skills/from-scratch/` のステップ 3-6 と同じ流れで進めます。
+`sdd/sub_skills/from-scratch/` のステップ 3-8 と同じ流れで進めます。
 
 ## 注意点
 

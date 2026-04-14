@@ -51,6 +51,7 @@ def test_build_option_summary_for_dry_run_and_mirror() -> None:
     assert "リポジトリ同期ではミラー削除が有効です。" in summary
     assert "同期先だけのファイルやディレクトリは完全削除されます。" in summary
     assert "ホーム同期は whitelist copy のため、--mirror を指定しても削除しません。" in summary
+    assert "agents/ はディレクトリ同期です。" in summary
 
 
 def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
@@ -58,6 +59,7 @@ def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
 
     assert "現在は実行モードです。" in summary
     assert "通常同期です。" in summary
+    assert "agents/ もディレクトリ単位で同期します。" in summary
     assert "詳細ログを表示します。" in summary
 
 

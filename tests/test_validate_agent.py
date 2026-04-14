@@ -91,11 +91,13 @@ user-invocable: true
     assert report.recommended_pass_count == report.recommended_total
 
 
-def test_validate_agent_tdd_coder_is_the_only_distributed_agent() -> None:
-    """Phase 3: only the narrow tdd-coder specialist is distributed."""
+def test_validate_agent_limits_distributed_agents_to_three() -> None:
+    """Phase 3: distributed custom agents stay within the reserved 3-slot envelope."""
     agents_dir = ROOT / "home-template" / ".copilot" / "agents"
     assert agents_dir.exists()
-    assert [path.name for path in sorted(agents_dir.glob("*.agent.md"))] == ["tdd-coder.agent.md"]
+    agent_names = [path.name for path in sorted(agents_dir.glob("*.agent.md"))]
+    assert "tdd-coder.agent.md" in agent_names
+    assert len(agent_names) <= 3
 
 
 def test_validate_agent_real_tdd_coder_markdown() -> None:
@@ -106,6 +108,15 @@ def test_validate_agent_real_tdd_coder_markdown() -> None:
 
     assert report.critical_passed is True
     assert report.recommended_pass_count == report.recommended_total
+
+
+def test_tdd_coder_handoff_contract_mentions_test_and_runtime_fields() -> None:
+    agent_path = ROOT / "home-template" / ".copilot" / "agents" / "tdd-coder.agent.md"
+    content = agent_path.read_text(encoding="utf-8")
+
+    assert "- Test artifact path:" in content
+    assert "- Test command:" in content
+    assert "- Runtime launch command:" in content
 
 
 def test_validate_agent_rejects_missing_principles_only(tmp_path: Path) -> None:
