@@ -31,9 +31,11 @@ description: >
 
 設計書を PLAN mode に渡し、実装計画を立てます。ここで受け入れ条件とテスト方針の下地も揃えます。
 
-### ステップ 3 — テスト戦略を確認する
+### ステップ 3 — テスト戦略と target repo bootstrap を確認する
 
 計画を読み、TDD またはテストファーストで進められる粒度になっているかを確認します。テスト可能な受け入れ条件、主要な境界値、エラーパス、外部依存のモック境界が不足していれば、PLAN mode で計画補完を行います。
+
+target repo を触る場合は、`.github/instructions/` が配布済みかもここで確認します。interactive app では `sdd/references/interactive-app-bootstrap-checklist.md` の前提も確認します。
 
 ### ステップ 4 — contract checkpoint → 実装 → implementation eval gate → 最終レビュー
 

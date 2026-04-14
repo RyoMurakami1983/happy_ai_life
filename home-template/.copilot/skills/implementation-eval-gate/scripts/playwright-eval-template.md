@@ -12,11 +12,18 @@ Web UI を対象に、実装 slice の受け入れ条件を実際の画面操作
 
 ## Basic loop
 
-1. app を起動する
-2. Playwright で初期状態を確認する
+1. generator handoff の runtime launch command で app を起動する
+2. Playwright で初期描画と主要 UI 要素を確認する
 3. contract の各行動を 1 つずつ再現する
 4. 失敗した操作と observed result を記録する
 5. `PASS` / `FAIL` / `REPLAN_REQUIRED` を返す
+
+## Minimum operations for interactive slices
+
+- 初期描画が崩れていない
+- 主要入力（click / key / navigation）の少なくとも 1 本が live に通る
+- contract に含まれる状態変化が画面上で確認できる
+- 失敗時に screenshot または trace を残せる
 
 ## Evidence to capture
 
@@ -24,6 +31,7 @@ Web UI を対象に、実装 slice の受け入れ条件を実際の画面操作
 - 再現した入力
 - 期待値と実測値の差分
 - 失敗時のスクリーンショットまたは trace
+- 使用した runtime launch command
 
 ## Return format
 

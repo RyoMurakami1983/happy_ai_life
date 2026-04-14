@@ -36,15 +36,19 @@ description: >
 
 成果物: 実装計画（フェーズ分割、依存関係、実行順序）
 
-### ステップ 4 — テスト戦略を確認する
+### ステップ 4 — テスト戦略と target repo bootstrap を確認する
 
 実装計画を読み、TDD またはテストファーストで進められる粒度になっているかを確認します。テスト可能な受け入れ条件、主要な境界値、エラーパス、外部依存のモック境界が不足していれば、PLAN mode で計画補完を行います。
+
+target repo を触る場合は、`.github/instructions/` が配布済みかもここで確認します。未配布なら `scripts/sync-to-repo.ps1 -TargetRepoPath PATH` 相当で配布するか、未配布のまま進める理由を handoff に残します。
+
+interactive app では `sdd/references/interactive-app-bootstrap-checklist.md` を使い、最低限の test runner、import-safe 条件、runtime launch entrypoint を先に固定します。
 
 成果物: TDD-ready handoff（テスト観点で補強された実装着手条件）
 
 ### ステップ 5 — contract checkpoint を固定する
 
-plan artifact を読み、今回の実装を 1 slice に落とします。最低でも対象振る舞い、非対象、主要な test 観点、戻り先の条件を明示します。
+plan artifact を読み、今回の実装を 1 slice に落とします。最低でも対象振る舞い、非対象、主要な test 観点、generator handoff に残す test artifact path / test command / runtime launch command、戻り先の条件を明示します。
 
 成果物: slice contract（small-slice 単位の done 定義）
 

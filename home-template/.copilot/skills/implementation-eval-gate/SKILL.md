@@ -35,6 +35,7 @@ description: >
 - plan artifact または planning handoff
 - 今回の slice contract（done の定義、非対象、主要なテスト観点）
 - generator handoff（例: `tdd-coder` の TDD Progress）
+- generator handoff 内の test artifact path / test command / runtime launch command
 - 差分と test / build / lint の証拠
 
 対象の振る舞いや非対象が曖昧なら、コードの良し悪しを推測で埋めず `REPLAN_REQUIRED` に倒します。ここで評価境界を曖昧にすると、review が scope 拡大や style 議論へ流れやすくなり、実装修正で済む問題と再計画が必要な問題の切り分けも崩れるからです。
@@ -50,6 +51,18 @@ description: >
 - trust boundary 変更時の安全性
 
 重要なのは、好みや一般論で減点しないことです。高信頼の evidence がある論点だけを残し、generator に返して次の行動へつながる指摘に絞ります。
+
+### ステップ 2.5 — interactive runtime evidence の要件を固定する
+
+interactive app の slice は、unit test や build が通ってもそれだけで `PASS` にしません。最低限、generator handoff の runtime launch command を起点に live behavior を確認し、どの操作を証拠として扱うかを固定します。
+
+| Stack | 最低限ほしい runtime evidence | `PASS` に必要な状態 |
+| --- | --- | --- |
+| Web / Playwright | app 起動、初期描画、主要操作、失敗時 screenshot/trace | contract 上の UI 振る舞いが live で確認できる |
+| Python GUI / pygame | app 起動、main loop、入力イベント、state 変化 | loop 上の操作結果と expected state が対応している |
+| WPF / desktop | app 起動、window 捕捉、主要 control / status / restart | desktop UI の主要操作と状態遷移が live で確認できる |
+
+interactive slice で runtime evidence がない場合は、設計や計画が概ね妥当でも `FAIL` に倒します。何を確認すべきか自体が曖昧なら `REPLAN_REQUIRED` に倒します。
 
 ### ステップ 3 — generator と別タスクで評価する
 
@@ -90,6 +103,7 @@ description: >
 - **称賛で埋めない**: 良かった点を長く書くより、次の行動に必要な blocker と evidence を先に返します。
 - **PR 前 review と混同しない**: repo 全体の広い事前 review は `deep-review-preflight` へ渡し、この skill は実装中の slice gate に集中します。
 - **推測で PASS を出さない**: contract や test evidence が弱ければ `FAIL` または `REPLAN_REQUIRED` に倒したほうが、後工程の手戻りを減らせます。
+- **interactive app は live evidence を要求する**: build/test の成功だけで UI slice を `PASS` にしません。runtime launch command を起点にした live evidence を要求します。
 
 ## 関連スキル
 

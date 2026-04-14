@@ -110,6 +110,15 @@ def test_validate_agent_real_tdd_coder_markdown() -> None:
     assert report.recommended_pass_count == report.recommended_total
 
 
+def test_tdd_coder_handoff_contract_mentions_test_and_runtime_fields() -> None:
+    agent_path = ROOT / "home-template" / ".copilot" / "agents" / "tdd-coder.agent.md"
+    content = agent_path.read_text(encoding="utf-8")
+
+    assert "- Test artifact path:" in content
+    assert "- Test command:" in content
+    assert "- Runtime launch command:" in content
+
+
 def test_validate_agent_rejects_missing_principles_only(tmp_path: Path) -> None:
     module = _load_module()
     agent_path = tmp_path / "missing-principles.agent.md"

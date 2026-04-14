@@ -68,10 +68,16 @@ def _run_sync(
 def _create_minimal_source_root(base: Path) -> Path:
     template_dir = base / "repo-template" / ".github"
     template_dir.mkdir(parents=True)
+    instructions_dir = template_dir / "instructions"
+    instructions_dir.mkdir()
     (template_dir / ".gitignore").write_text(
         "# Session and local files\n"
         "sessions/\n"
         "instructions/session-context.instructions.md\n",
+        encoding="utf-8",
+    )
+    (instructions_dir / "python.instructions.md").write_text(
+        "# Python instructions\n",
         encoding="utf-8",
     )
     return base
@@ -109,6 +115,7 @@ def test_sync_to_repo_appends_missing_github_gitignore_rules(tmp_path: Path) -> 
     assert "custom.local" in content
     assert "sessions/" in content
     assert "instructions/session-context.instructions.md" in content
+    assert (target_repo / ".github" / "instructions" / "python.instructions.md").exists()
 
 
 def test_sync_to_repo_creates_missing_github_gitignore(tmp_path: Path) -> None:
@@ -125,3 +132,4 @@ def test_sync_to_repo_creates_missing_github_gitignore(tmp_path: Path) -> None:
     content = target_file.read_text(encoding="utf-8")
     assert "sessions/" in content
     assert "instructions/session-context.instructions.md" in content
+    assert (target_repo / ".github" / "instructions" / "python.instructions.md").exists()

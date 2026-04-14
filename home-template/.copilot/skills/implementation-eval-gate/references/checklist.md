@@ -7,6 +7,7 @@
 - plan artifact または planning handoff を読んだか
 - 今回の slice contract があり、done の定義と非対象が見えるか
 - generator handoff と test / build / lint の証拠があるか
+- generator handoff に test artifact path / test command / runtime launch command があるか
 
 不足時の基本判定:
 
@@ -24,6 +25,14 @@
 - 期待された振る舞いが evidence 付きで確認できるか
 - 失敗系や主要な境界値を見落としていないか
 - 実装の見た目ではなく、ユーザー行動または契約された挙動で確認しているか
+
+### 3.5 Interactive runtime evidence
+
+- interactive app の slice なら、runtime launch command を使った live evidence があるか
+- web なら初期描画、主要操作、失敗時 screenshot/trace まで追えているか
+- pygame / Python GUI なら loop 起動、入力イベント、state 変化を観測できているか
+- WPF / desktop なら window 捕捉、主要 control / status text / restart 動線を観測できているか
+- build/test だけで `PASS` にしていないか
 
 ## 4. Regression risk
 

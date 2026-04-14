@@ -18,15 +18,19 @@ description: >
 
 ## ワークフロー: 計画から実装を通す
 
-### ステップ 1 — 計画の確認
+### ステップ 1 — 計画と target repo bootstrap の確認
 
 実装計画が存在し、実装を始められる状態かを確認します。以下が揃っているかをチェックします:
 - todo リスト（実装対象と依存関係）
 - 技術的な前提条件
 - 受け入れ条件
 - テスト可能な受け入れ条件、主要な境界値、エラーパス、外部依存のモック境界
+- target repo を触る場合は `.github/instructions/` が配布済みか
+- interactive app の場合は `sdd/references/interactive-app-bootstrap-checklist.md` の最低条件を満たすか
 
-不足があれば、まずテスト戦略を見直します。計画の補完が必要なら PLAN mode に戻します。
+instructions が未配布なら `scripts/sync-to-repo.ps1 -TargetRepoPath PATH` 相当の配布を優先します。未配布のまま進めるなら、その理由を plan artifact と handoff に明記します。
+
+不足があれば、まず bootstrap またはテスト戦略を見直します。計画の補完が必要なら PLAN mode に戻します。
 
 ### ステップ 2 — contract checkpoint を固定する
 
@@ -35,6 +39,7 @@ description: >
 - 今回の対象振る舞い
 - 非対象
 - 主要な test 観点
+- generator handoff に残す test artifact path / test command / runtime launch command
 - `FAIL` なら実装修正、`REPLAN_REQUIRED` なら plan / design に戻る条件
 
 大きな sprint を一度に抱えず、まずは 1 受け入れ条件または 1 ユーザー行動を 1 slice として切ります。
