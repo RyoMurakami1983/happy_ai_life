@@ -45,6 +45,16 @@ function Test-DirectoryHasEntries {
     return $null -ne (Get-ChildItem -LiteralPath $Path -Force | Select-Object -First 1)
 }
 
+function Test-DirectoryHasJsonFiles {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+        return $false
+    }
+
+    return $null -ne (Get-ChildItem -LiteralPath $Path -File -Filter "*.json" -Force | Select-Object -First 1)
+}
+
 function Test-GitRepository {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -88,7 +98,7 @@ if ($isGitRepo) {
 }
 
 $instructionsOk = Test-Path -LiteralPath $instructionsPath -PathType Leaf
-$copilotHooksOk = Test-DirectoryHasEntries -Path $copilotHooksPath
+$copilotHooksOk = Test-DirectoryHasJsonFiles -Path $copilotHooksPath
 $gitHooksOk = Test-DirectoryHasEntries -Path $gitHooksPath
 $coreHooksOk = $false
 $coreHooksDetails = ""
@@ -119,7 +129,7 @@ $checks = @(
         -Label "Copilot hooks" `
         -Ok $copilotHooksOk `
         -Path $copilotHooksPath `
-        -Details ($(if ($copilotHooksOk) { "Copilot hooks が存在します。" } else { "Copilot hooks がありません。" }))),
+        -Details ($(if ($copilotHooksOk) { "Copilot hooks の JSON 設定が存在します。" } else { "Copilot hooks の JSON 設定がありません。" }))),
     (New-CheckResult `
         -Key "gitHooksDirectory" `
         -Label ".githooks" `
