@@ -32,7 +32,7 @@ function Write-HomeMirrorCompatibilityWarning {
     param([Parameter(Mandatory = $true)][switch]$WhatIfMode)
 
     $prefix = if ($WhatIfMode) { "DRY-RUN WARNING" } else { "WARNING" }
-    Write-Warning "${prefix}: home sync では skills/ と agents/ を常に template 一致の mirror-managed directory として扱います。"
+    Write-Warning "${prefix}: home sync では skills/、agents/、repo-template/、.github/hooks/ を常に template 一致の mirror-managed directory として扱います。"
     Write-Warning "${prefix}: -Mirror は互換オプションとして受け付けますが、home sync では追加効果を持ちません。"
 }
 
