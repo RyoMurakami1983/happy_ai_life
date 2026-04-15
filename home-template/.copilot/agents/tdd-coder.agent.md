@@ -132,4 +132,4 @@ Green 後に重複や命名のゆがみを最小限で整えます。
 - `sdd`
 - `design-workshop`
 - `spec-workshop`
-- `copilot-authoring-beta`
+- `copilot-authoring`

@@ -27,15 +27,23 @@ compatibility: "../../../skill/sub_skills/improve/SKILL.md, ../../../create-agen
 
 review comment、利用 transcript、validation 結果、周辺 docs のずれを読みます。単発の違和感より、複数回再発している friction を優先して直すほうが効果的です。
 
-### ステップ 3 — いちばん近い正本を直す
+### ステップ 3 — 変更の型を抽象化する
+
+実装の具体に入る前に、変更の型を 3〜6 行で言い換えます。たとえば hooks の改善なら「何を前段に置くか」「どの責務を守るか」「失敗時にどう戻すか」「どこに共有するか」を先に固定します。ここで抽象化しておくと、review で論点をまとめやすくなります。
+
+### ステップ 4 — review を先に通す
+
+抽象化した型を他者視点で一度見てもらい、境界や不足を直します。具体実装の前に review を通すのは、後戻りを小さくして、改善を別の資産にも再利用しやすくするためです。
+
+### ステップ 5 — いちばん近い正本を直す
 
 skill なら `description`、workflow、references、router を見直し、agent なら frontmatter、役割、非責務、プロセスを見直します。なぜ正本を先に直すかというと、派生資料だけ直すと次回の変更で再び崩れるためです。
 
-### ステップ 4 — 周辺の dispatch と説明を同期する
+### ステップ 6 — 周辺の dispatch と説明を同期する
 
 境界や入口名が変わる場合は README や関連 skill の導線も合わせます。入口だけ直って周辺が古いままだと、利用者体験は改善しません。
 
-### ステップ 5 — 検証ルートへ戻す
+### ステップ 7 — 検証ルートへ戻す
 
 改善後は `../validate-authoring/` に戻し、skill / agent それぞれの validator で骨格を再確認します。改善は「書き換えたこと」ではなく「再び使っても迷わないこと」で完了です。
 
@@ -52,6 +60,12 @@ skill なら `description`、workflow、references、router を見直し、agent
 - `../../../skill/sub_skills/improve/` — skill 改善の既存導線
 - `../../../create-agents/` — agent 側の元 workflow
 - `../validate-authoring/` — 改善後の再検証
+
+## hooks の最小例
+
+- `pre-commit` の secret guard を追加したいなら、まず「Git client hooks で staged diff を検査する」という抽象へ寄せる。
+- review では、対象ファイル、失敗時の扱い、README との整合、sync 後の配布先を確認する。
+- その場で閉じない論点は Issue 化して、次回の改善資産として残す。
 
 ## 注意点
 
