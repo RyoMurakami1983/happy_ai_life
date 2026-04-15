@@ -43,6 +43,14 @@ def test_build_repo_sync_arguments_include_target_and_flags() -> None:
     )
 
 
+def test_build_repo_secure_check_arguments_include_target_and_json_flag() -> None:
+    target_repo_path = Path(r"C:\repos\sample")
+
+    arguments = happy_env.build_repo_secure_check_arguments(target_repo_path, as_json=True)
+
+    assert arguments == ("-TargetRepoPath", str(target_repo_path), "-AsJson")
+
+
 def test_build_option_summary_for_dry_run_and_mirror() -> None:
     summary = happy_env.build_option_summary(dry_run=True, mirror=True, verbose_log=False)
 
@@ -50,8 +58,7 @@ def test_build_option_summary_for_dry_run_and_mirror() -> None:
     assert "ミラー指定の影響を確認します。" in summary
     assert "リポジトリ同期ではミラー削除が有効です。" in summary
     assert "同期先だけのファイルやディレクトリは完全削除されます。" in summary
-    assert "ホーム同期は whitelist copy のため、--mirror を指定しても削除しません。" in summary
-    assert "agents/ はディレクトリ同期です。" in summary
+    assert "ホーム同期は skills/、agents/、repo-template/、.github/hooks/" in summary
 
 
 def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
@@ -59,7 +66,7 @@ def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
 
     assert "現在は実行モードです。" in summary
     assert "通常同期です。" in summary
-    assert "agents/ もディレクトリ単位で同期します。" in summary
+    assert "ホーム同期は skills/、agents/、repo-template/、.github/hooks/" in summary
     assert "詳細ログを表示します。" in summary
 
 
@@ -118,6 +125,26 @@ def test_run_repo_sync_resolves_relative_paths_from_caller_cwd(tmp_path: Path, m
     assert captured_arguments["arguments"][:2] == ("-TargetRepoPath", str(caller_dir.resolve()))
 
 
+def test_run_repo_secure_check_resolves_relative_paths_from_caller_cwd(tmp_path: Path, monkeypatch) -> None:
+    caller_dir = tmp_path / "caller"
+    caller_dir.mkdir()
+    captured_arguments: dict[str, tuple[str, ...]] = {}
+
+    def fake_run_script(script_name: str, arguments: tuple[str, ...], *, label: str, notes=()) -> happy_env.CommandResult:
+        captured_arguments["script_name"] = (script_name,)
+        captured_arguments["arguments"] = arguments
+        return happy_env.CommandResult(label=label, command=(script_name,), returncode=0, stdout="", stderr="", notes=tuple(notes))
+
+    monkeypatch.chdir(caller_dir)
+    monkeypatch.setattr(happy_env, "run_script", fake_run_script)
+
+    result = happy_env.run_repo_secure_check(Path("."))
+
+    assert result.succeeded
+    assert captured_arguments["script_name"] == ("repo-secure-check.ps1",)
+    assert captured_arguments["arguments"][:2] == ("-TargetRepoPath", str(caller_dir.resolve()))
+
+
 def test_decode_process_output_uses_windows_locale(monkeypatch) -> None:
     monkeypatch.setattr(happy_env.locale, "getpreferredencoding", lambda _do_setlocale=False: "cp932")
 
@@ -143,6 +170,102 @@ def test_run_script_decodes_stdout_and_stderr_with_locale(monkeypatch) -> None:
     assert result.returncode == 3
     assert result.stdout == "詳細ログ"
     assert result.stderr == "警告"
+
+
+def test_parse_repo_security_report_validates_shape() -> None:
+    report = happy_env.parse_repo_security_report(
+        """
+        {
+          "targetRepoPath": "C:\\\\repos\\\\sample",
+          "isGitRepo": true,
+          "missing": ["repoInstructions"],
+          "warnings": ["Branch Protection / Ruleset はローカルでは確認できません。"],
+          "checks": [
+            {
+              "key": "repoInstructions",
+              "label": "repo instructions",
+              "ok": false,
+              "path": "C:\\\\repos\\\\sample\\\\.github\\\\copilot-instructions.md",
+              "details": "repo-wide instructions がありません。"
+            }
+          ]
+        }
+        """
+    )
+
+    assert report["targetRepoPath"] == r"C:\repos\sample"
+    assert report["missing"] == ["repoInstructions"]
+    assert report["checks"][0]["ok"] is False
+
+
+def test_run_repo_bootstrap_dry_run_uses_repo_sync_when_missing(monkeypatch) -> None:
+    monkeypatch.setattr(
+        happy_env,
+        "inspect_repo_security",
+        lambda path: {
+            "targetRepoPath": str(path),
+            "isGitRepo": True,
+            "missing": ["repoInstructions"],
+            "warnings": ["Branch Protection / Ruleset はローカルでは確認できません。"],
+            "checks": [],
+        },
+    )
+    monkeypatch.setattr(
+        happy_env,
+        "run_repo_sync",
+        lambda path, **kwargs: happy_env.CommandResult(
+            label="リポジトリ同期",
+            command=("repo", str(path)),
+            returncode=0,
+            stdout="dry-run ok",
+            stderr="",
+        ),
+    )
+    monkeypatch.setattr(
+        happy_env,
+        "run_install_git_hooks",
+        lambda path: pytest.fail("run_install_git_hooks must not be called for dry-run bootstrap"),
+    )
+
+    result = happy_env.run_repo_bootstrap(Path(r"C:\repos\sample"), apply=False)
+
+    assert result.succeeded
+    assert "不足があるため、repo bootstrap のドライランを実行しました。" in result.stdout
+    assert "実適用では repo sync の後に Git hooks インストールも実行します。" in result.stdout
+    assert "dry-run ok" in result.stdout
+
+
+def test_run_repo_bootstrap_apply_runs_repo_sync_and_install_hooks(monkeypatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(
+        happy_env,
+        "inspect_repo_security",
+        lambda path: {
+            "targetRepoPath": str(path),
+            "isGitRepo": True,
+            "missing": ["repoInstructions", "coreHooksPath"],
+            "warnings": [],
+            "checks": [],
+        },
+    )
+
+    def fake_run_repo_sync(path: Path, **kwargs: object) -> happy_env.CommandResult:
+        calls.append(f"repo:{path}")
+        return happy_env.CommandResult(label="リポジトリ同期", command=("repo", str(path)), returncode=0, stdout="repo ok", stderr="")
+
+    def fake_run_install_git_hooks(path: Path) -> happy_env.CommandResult:
+        calls.append(f"hooks:{path}")
+        return happy_env.CommandResult(label="Git hooks インストール", command=("hooks", str(path)), returncode=0, stdout="hooks ok", stderr="")
+
+    monkeypatch.setattr(happy_env, "run_repo_sync", fake_run_repo_sync)
+    monkeypatch.setattr(happy_env, "run_install_git_hooks", fake_run_install_git_hooks)
+
+    result = happy_env.run_repo_bootstrap(Path(r"C:\repos\sample"), apply=True)
+
+    assert result.succeeded
+    assert calls == [r"repo:C:\repos\sample", r"hooks:C:\repos\sample"]
+    assert "repo ok" in result.stdout
+    assert "hooks ok" in result.stdout
 
 
 def test_gui_gives_extra_vertical_space_to_log_pane() -> None:
@@ -204,6 +327,17 @@ def test_confirm_mirror_sync_returns_false_for_non_yes(monkeypatch) -> None:
         assert happy_env.confirm_mirror_sync() is False, f"Expected False for {answer!r}"
 
 
+def test_confirm_repo_bootstrap_returns_true_for_yes(monkeypatch) -> None:
+    monkeypatch.setattr("builtins.input", lambda _prompt: "yes")
+    assert happy_env.confirm_repo_bootstrap() is True
+
+
+def test_confirm_repo_bootstrap_returns_false_for_non_yes(monkeypatch) -> None:
+    for answer in ("y", "no", "", "はい"):
+        monkeypatch.setattr("builtins.input", lambda _prompt, _a=answer: _a)
+        assert happy_env.confirm_repo_bootstrap() is False, f"Expected False for {answer!r}"
+
+
 def test_run_cli_home_mirror_without_dry_run_skips_confirmation(monkeypatch) -> None:
     called: list[bool] = []
 
@@ -247,3 +381,20 @@ def test_run_cli_repo_mirror_without_dry_run_prompts_for_confirmation(monkeypatc
     )
 
     assert exit_code == 1
+
+
+def test_run_cli_repo_bootstrap_without_apply_skips_confirmation(monkeypatch) -> None:
+    called: list[bool] = []
+
+    def fake_run_repo_bootstrap(*args: object, **kwargs: object) -> happy_env.CommandResult:
+        called.append(True)
+        return happy_env.CommandResult(label="test", command=(), returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(happy_env, "run_repo_bootstrap", fake_run_repo_bootstrap)
+
+    exit_code = happy_env.run_cli(
+        happy_env.build_parser().parse_args(["repo-bootstrap", r"C:\repos\sample"])
+    )
+
+    assert exit_code == 0
+    assert called == [True]

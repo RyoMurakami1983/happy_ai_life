@@ -42,10 +42,11 @@ description: >
   ↓
 計画フェーズ        → PLAN mode
   ↓
-bootstrap checkpoint → target repo の `.github/instructions/` 配布確認
+bootstrap checkpoint → `repo-secure-check` で target repo の local safety valve を確認
   ↓                    `git init` 済みか、fixed build/test/launch command があるか確認
   ↓                    interactive app なら bootstrap checklist と comparable harness contract を確認
-  ↓                    不足時は sync-to-repo または bootstrap task を先に切る
+  ↓                    repo instructions / Copilot hooks / `.githooks` / `core.hooksPath` の不足時は repo bootstrap を提案する
+  ↓                    Branch Protection / Ruleset はローカルでは未確認として別 warning にする
   ↓
 contract checkpoint → slice 単位の done / 非対象 / test 観点を固定
   ↓
@@ -88,7 +89,7 @@ contract checkpoint → slice 単位の done / 非対象 / test 観点を固定
 - 実行ロジックは router ではなく sub-skill と既存 skill に置く。
 - 各フェーズの中身を sdd 内に再実装しない。委譲先の skill や PLAN mode が正本。
 - 計画の正本は PLAN mode の出力または明示的な plan artifact に置く。
-- target repo を触る flow では、実装前に `.github/instructions/` が配布済みか、`git init` 済みか、fixed build/test/launch command があるかを確認する。
+- target repo を触る flow では、実装前に `repo-secure-check` で local safety valve を確認し、`git init` 済みか、fixed build/test/launch command があるかを確認する。
 - interactive app の比較 pilot では、deterministic seed / state dump schema / command runner などの comparable harness contract を先に確認する。
 - 実装中の評価本文は `implementation-eval-gate` が正本で、`sdd` は順序と戻り先だけを持つ。
 - sdd 自体はモデル選定を持たず、入口と接続だけを担う。
@@ -96,7 +97,7 @@ contract checkpoint → slice 単位の done / 非対象 / test 観点を固定
 ## 注意点
 
 - **各段の中身を再実装しない**: sdd はフローを繋ぐだけです。仕様は spec-workshop、設計は design-workshop、計画は PLAN mode または plan artifact が正本です。
-- **target repo の前提を飛ばさない**: pilot / downstream repo に入るときは、`.github/instructions/`、`git init` 状態、fixed command contract、必要なら comparable harness contract を確認してから実装に入ります。
+- **target repo の前提を飛ばさない**: pilot / downstream repo に入るときは、`repo-secure-check` による local safety valve、`git init` 状態、fixed command contract、必要なら comparable harness contract を確認してから実装に入ります。
 - **汎用 coder は置かない**: 実装はオーケストレーター + built-in 機能で担います。
 - **eval は別タスクで行う**: generator の自己正当化を避けるため、実装と評価を同じ流れに閉じ込めません。
 - **全フェーズを必ず通す必要はない**: 途中から始めてよいし、特定フェーズを飛ばす判断もユーザーに委ねます。

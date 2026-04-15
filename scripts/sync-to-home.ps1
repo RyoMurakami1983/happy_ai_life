@@ -28,12 +28,12 @@ function Warn-IfPathExists {
     }
 }
 
-function Write-IgnoredMirrorWarning {
+function Write-HomeMirrorCompatibilityWarning {
     param([Parameter(Mandatory = $true)][switch]$WhatIfMode)
 
     $prefix = if ($WhatIfMode) { "DRY-RUN WARNING" } else { "WARNING" }
-    Write-Warning "${prefix}: home sync では -Mirror は互換オプションとして受け付けますが、現在は無視されます。"
-    Write-Warning "${prefix}: home sync は whitelist 方式で tracked な template 項目だけを追加・更新し、既存の HOME 側ファイルやディレクトリは削除しません。"
+    Write-Warning "${prefix}: home sync では skills/ と agents/ を常に template 一致の mirror-managed directory として扱います。"
+    Write-Warning "${prefix}: -Mirror は互換オプションとして受け付けますが、home sync では追加効果を持ちません。"
 }
 
 function Test-RobocopyResult {
@@ -48,6 +48,7 @@ function Invoke-Robocopy {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
         [Parameter(Mandatory = $true)][string]$Destination,
+        [switch]$MirrorMode,
         [switch]$WhatIfMode,
         [switch]$ShowVerboseLog
     )
@@ -74,6 +75,10 @@ function Invoke-Robocopy {
         "/XJ"
     )
 
+    if ($MirrorMode) {
+        $robocopyArgs += "/MIR"
+    }
+
     if ($WhatIfMode) {
         $robocopyArgs += "/L"
     }
@@ -89,6 +94,7 @@ function Invoke-Robocopy {
             "/W:1"
             "/XJ"
         )
+        if ($MirrorMode) { $robocopyArgs += "/MIR" }
         if ($WhatIfMode) { $robocopyArgs += "/L" }
         $verboseLogPath = Join-Path ([System.IO.Path]::GetTempPath()) ("happy-env-robocopy-{0}.log" -f [guid]::NewGuid())
         $robocopyArgs += "/UNILOG:$verboseLogPath"
@@ -167,15 +173,45 @@ Write-Host "Mirror      : $Mirror"
 Write-Host "DryRun      : $DryRun"
 
 $trackedDirectories = @(
-    @{ Source = (Join-Path $sourcePath "skills"); Destination = (Join-Path $destinationPath "skills") },
-    @{ Source = (Join-Path $sourcePath "agents"); Destination = (Join-Path $destinationPath "agents") },
+    @{
+        Source = (Join-Path $sourcePath "skills")
+        Destination = (Join-Path $destinationPath "skills")
+        MirrorMode = $true
+        Label = "skills/ (mirror-managed)"
+    },
+    @{
+        Source = (Join-Path $sourcePath "agents")
+        Destination = (Join-Path $destinationPath "agents")
+        MirrorMode = $true
+        Label = "agents/ (mirror-managed)"
+    },
+    @{
+        Source = (Join-Path $SourceRoot "repo-template")
+        Destination = (Join-Path $destinationPath "repo-template")
+        MirrorMode = $true
+        Label = "repo-template/ (mirror-managed)"
+    },
+    @{
+        Source = (Join-Path (Join-Path $SourceRoot ".github") "hooks")
+        Destination = (Join-Path (Join-Path $destinationPath ".github") "hooks")
+        MirrorMode = $true
+        Label = ".github/hooks/ (mirror-managed)"
+    },
     # Shared furikaeri archives are part of the writable home template.
-    @{ Source = (Join-Path (Join-Path $sourcePath "docs") "furikaeri"); Destination = (Join-Path (Join-Path $destinationPath "docs") "furikaeri") }
+    @{
+        Source = (Join-Path (Join-Path $sourcePath "docs") "furikaeri")
+        Destination = (Join-Path (Join-Path $destinationPath "docs") "furikaeri")
+        MirrorMode = $false
+        Label = "docs/furikaeri (copy-only)"
+    }
 )
 
 $trackedFiles = @(
     @{ Source = (Join-Path $sourcePath "copilot-instructions.md"); Destination = (Join-Path $destinationPath "copilot-instructions.md") },
-    @{ Source = (Join-Path $sourcePath "mcp-config.sample.json"); Destination = (Join-Path $destinationPath "mcp-config.sample.json") }
+    @{ Source = (Join-Path $sourcePath "mcp-config.sample.json"); Destination = (Join-Path $destinationPath "mcp-config.sample.json") },
+    @{ Source = (Join-Path (Join-Path $SourceRoot "scripts") "sync-to-repo.ps1"); Destination = (Join-Path (Join-Path $destinationPath "scripts") "sync-to-repo.ps1") },
+    @{ Source = (Join-Path (Join-Path $SourceRoot "scripts") "install-git-hooks.ps1"); Destination = (Join-Path (Join-Path $destinationPath "scripts") "install-git-hooks.ps1") },
+    @{ Source = (Join-Path (Join-Path $SourceRoot "scripts") "repo-secure-check.ps1"); Destination = (Join-Path (Join-Path $destinationPath "scripts") "repo-secure-check.ps1") }
 )
 
 $unsupportedHooksPath = Join-Path $sourcePath "hooks"
@@ -188,13 +224,15 @@ if (-not (Test-Path -LiteralPath $destinationPath)) {
 }
 
 if ($Mirror) {
-    Write-IgnoredMirrorWarning -WhatIfMode:$DryRun
+    Write-HomeMirrorCompatibilityWarning -WhatIfMode:$DryRun
 }
 
 foreach ($entry in $trackedDirectories) {
+    Write-Host "Directory   : $($entry.Label)" -ForegroundColor DarkGray
     Invoke-Robocopy `
         -Source $entry.Source `
         -Destination $entry.Destination `
+        -MirrorMode:$entry.MirrorMode `
         -WhatIfMode:$DryRun `
         -ShowVerboseLog:$VerboseLog
 }
