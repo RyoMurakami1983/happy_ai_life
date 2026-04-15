@@ -40,7 +40,7 @@ compatibility: "../../../create-agents/references/agent-template.md, ../../_eval
 作成後は同梱 validator で frontmatter と section 構造を確認します。`## 1. 役割` のような番号付き H2 や `## 設計プロセス` / `## レビュープロセス` のような既存 corpus にある見出し、師範 agent の legacy mode 構成も受け入れつつ、template 系 agent では `原則` セクションを必須として `create-agents` と契約を揃えます。
 
 ```powershell
-uv run python home-template/.copilot/skills/copilot-authoring-beta/_eval/scripts/validate_agent.py home-template/.copilot/agents/<agent-name>.agent.md --level L1
+uv run python home-template/.copilot/skills/copilot-authoring/_eval/scripts/validate_agent.py home-template/.copilot/agents/<agent-name>.agent.md --level L1
 ```
 
 ## 早見表

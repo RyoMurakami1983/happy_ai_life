@@ -18,6 +18,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const {
   SESSION_MAX_AGE_DAYS,
   readFileSafe,
@@ -28,11 +29,14 @@ const {
   findRecentSessions,
   findRecentFurikaeriDocs,
   stripAnsi,
+  escapeRegExp,
   log,
 } = require('./lib/session-utils');
 
 const INSTRUCTIONS_DIR = '.github/instructions';
 const CONTEXT_FILENAME = 'session-context.instructions.md';
+const MAX_OPEN_ISSUES = 5;
+const MAX_PROPOSED_STEPS = 3;
 
 async function main() {
   const cwd = process.cwd();
@@ -52,15 +56,19 @@ async function main() {
   const recentFurikaeriDocs = furikaeriDocsDirReady
     ? findRecentFurikaeriDocs(furikaeriDocsDir, 3)
     : [];
+  const openIssues = collectOpenIssues(cwd);
 
-  if (recentSessions.length === 0 && recentFurikaeriDocs.length === 0) {
-    log('No recent sessions found');
+  if (recentSessions.length === 0 && recentFurikaeriDocs.length === 0 && openIssues.length === 0) {
+    log('No recent sessions, furikaeri docs, or open issues found');
     removeContextFile(contextFile);
     return;
   }
 
   if (recentSessions.length === 0 && recentFurikaeriDocs.length > 0) {
     log(`No recent private sessions found, using furikaeri archive: ${recentFurikaeriDocs[0].basename}`);
+  }
+  if (openIssues.length > 0) {
+    log(`Found ${openIssues.length} open issue(s), latest: #${openIssues[0].number}`);
   }
 
   let latest = null;
@@ -78,21 +86,24 @@ async function main() {
   }
 
   if (!content.trim() && recentFurikaeriDocs.length === 0) {
-    removeContextFile(contextFile);
-    return;
+    if (openIssues.length === 0) {
+      removeContextFile(contextFile);
+      return;
+    }
   }
 
   const instructionsContent = buildInstructionsContent(
     content,
     latest ? latest.basename : '',
     recentSessions,
-    recentFurikaeriDocs
+    recentFurikaeriDocs,
+    openIssues
   );
   writeFileSafe(contextFile, instructionsContent);
   log(`Wrote session context to: ${contextFile}`);
 }
 
-function buildInstructionsContent(sessionContent, sessionBasename, allSessions, furikaeriDocs) {
+function buildInstructionsContent(sessionContent, sessionBasename, allSessions, furikaeriDocs, openIssues = []) {
   const lines = [
     '---',
     'applyTo: "**"',
@@ -136,7 +147,135 @@ function buildInstructionsContent(sessionContent, sessionBasename, allSessions, 
     }
   }
 
+  const suggestedNextSteps = buildSuggestedNextSteps(furikaeriDocs, openIssues);
+  if (suggestedNextSteps.length > 0) {
+    lines.push(...suggestedNextSteps);
+  }
+
   return lines.join('\n') + '\n';
+}
+
+function buildSuggestedNextSteps(furikaeriDocs, openIssues) {
+  const latestShared = furikaeriDocs && furikaeriDocs.length > 0 ? furikaeriDocs[0] : null;
+  const furikaeriContent = latestShared ? stripAnsi(readFileSafe(latestShared.path) || '') : '';
+  const furikaeriSteps = extractSectionListItems(furikaeriContent, 'Next Steps').slice(0, MAX_PROPOSED_STEPS);
+  const issueList = openIssues.slice(0, MAX_OPEN_ISSUES);
+
+  if (furikaeriSteps.length === 0 && issueList.length === 0) {
+    return [];
+  }
+
+  const lines = ['', '## Suggested Next Steps', ''];
+
+  if (furikaeriSteps.length > 0) {
+    lines.push('### From latest furikaeri', '');
+    furikaeriSteps.forEach((step) => {
+      lines.push(`- ${step}`);
+    });
+  }
+
+  if (issueList.length > 0) {
+    if (furikaeriSteps.length > 0) {
+      lines.push('');
+    }
+    lines.push('### Open issues', '');
+    issueList.forEach((issue) => {
+      lines.push(`- #${issue.number}: ${issue.title}`);
+    });
+  }
+
+  const primaryStep = furikaeriSteps[0];
+  const primaryIssue = issueList[0];
+  const primaryHint = primaryIssue ? ` and keep issue #${primaryIssue.number} in view` : '';
+  lines.push('');
+  lines.push(`> Suggested next move: ${primaryStep || 'review the open issues list'}${primaryHint}.`);
+
+  return lines;
+}
+
+function extractSectionListItems(content, sectionTitle) {
+  if (!content || !sectionTitle) return [];
+
+  const lines = content.split('\n');
+  const headingPattern = new RegExp(`^(#{1,6})\\s+${escapeRegExp(sectionTitle)}\\s*$`);
+  let inSection = false;
+  let sectionLevel = 0;
+  const items = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!inSection) {
+      const headingMatch = trimmed.match(headingPattern);
+      if (headingMatch) {
+        inSection = true;
+        sectionLevel = headingMatch[1].length;
+      }
+      continue;
+    }
+
+    const nextHeading = trimmed.match(/^(#{1,6})\s+/);
+    if (nextHeading && nextHeading[1].length <= sectionLevel) {
+      break;
+    }
+
+    const bulletMatch = trimmed.match(/^[-*]\s+(.*)$/);
+    if (bulletMatch) {
+      items.push(bulletMatch[1].trim());
+      continue;
+    }
+
+    const numberedMatch = trimmed.match(/^\d+\.\s+(.*)$/);
+    if (numberedMatch) {
+      items.push(numberedMatch[1].trim());
+    }
+  }
+
+  return items.filter(Boolean);
+}
+
+function collectOpenIssues(cwd) {
+  try {
+    const raw = execFileSync(
+      'gh',
+      ['issue', 'list', '--state', 'open', '--limit', String(MAX_OPEN_ISSUES), '--json', 'number,title,url'],
+      {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      }
+    ).trim();
+
+    return parseOpenIssues(raw);
+  } catch (err) {
+    const message = err && err.message ? err.message : String(err);
+    if (message.includes('ENOENT')) {
+      log('gh not available, skipping open issue lookup');
+      return [];
+    }
+
+    log(`Failed to load open issues: ${message}`);
+    return [];
+  }
+}
+
+function parseOpenIssues(raw) {
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((item) => item && typeof item.number === 'number' && typeof item.title === 'string')
+      .map((item) => ({
+        number: item.number,
+        title: item.title,
+        url: typeof item.url === 'string' ? item.url : '',
+      }));
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -241,4 +380,8 @@ module.exports = {
   getTemplateSection,
   isPlaceholderLine,
   buildInstructionsContent,
+  buildSuggestedNextSteps,
+  extractSectionListItems,
+  collectOpenIssues,
+  parseOpenIssues,
 };

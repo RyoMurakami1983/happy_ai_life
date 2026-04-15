@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "home-template" / ".copilot" / "skills" / "copilot-authoring-beta" / "_eval" / "scripts" / "validate_agent.py"
+SCRIPT = ROOT / "home-template" / ".copilot" / "skills" / "copilot-authoring" / "_eval" / "scripts" / "validate_agent.py"
 
 
 def _load_module():
@@ -80,7 +80,7 @@ user-invocable: true
 
 ## 関連スキル
 
-- `copilot-authoring-beta`
+- `copilot-authoring`
 """,
         encoding="utf-8",
     )
@@ -172,7 +172,7 @@ user-invocable: true
 
 ## 関連スキル
 
-- `copilot-authoring-beta`
+- `copilot-authoring`
 """,
         encoding="utf-8",
     )
