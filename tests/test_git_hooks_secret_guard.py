@@ -86,7 +86,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     --no-banner|--no-git)
       ;;
-    --redact|--redact=*)
+    --redact=*)
       ;;
     --exit-code)
       shift
