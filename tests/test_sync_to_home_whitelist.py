@@ -74,10 +74,42 @@ def _create_minimal_source_root(base: Path) -> Path:
     (copilot_dir / "mcp-config.sample.json").write_text("{}", encoding="utf-8")
     (copilot_dir / "config.json").write_text('{"runtime":true}', encoding="utf-8")
     (copilot_dir / "session-state").mkdir()
+
+    repo_template = base / "repo-template"
+    (repo_template / ".github").mkdir(parents=True)
+    (repo_template / ".githooks").mkdir(parents=True)
+    (repo_template / ".github" / "copilot-instructions.md").write_text("# repo instructions\n", encoding="utf-8")
+    (repo_template / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+
+    repo_hooks = base / ".github" / "hooks" / "scripts"
+    repo_hooks.mkdir(parents=True)
+    (repo_hooks / "sample.js").write_text("console.log('hook');\n", encoding="utf-8")
+
+    scripts_dir = base / "scripts"
+    scripts_dir.mkdir(parents=True)
+    (scripts_dir / "sync-to-repo.ps1").write_text("Write-Host 'sync repo'\n", encoding="utf-8")
+    (scripts_dir / "install-git-hooks.ps1").write_text("Write-Host 'install hooks'\n", encoding="utf-8")
+    (scripts_dir / "repo-secure-check.ps1").write_text("Write-Host 'secure check'\n", encoding="utf-8")
     return base
 
 
-def test_sync_to_home_copies_only_whitelisted_targets(tmp_path: Path) -> None:
+def _collect_relative_files(base: Path) -> dict[str, str]:
+    return {
+        str(path.relative_to(base)).replace("\\", "/"): path.read_text(encoding="utf-8")
+        for path in base.rglob("*")
+        if path.is_file()
+    }
+
+
+def _create_extra_files(base: Path) -> None:
+    (base / "a").mkdir(parents=True, exist_ok=True)
+    (base / "a" / "b.md").write_text("extra markdown\n", encoding="utf-8")
+    (base / "c.py").write_text("print('extra')\n", encoding="utf-8")
+    (base / "d").mkdir(parents=True, exist_ok=True)
+    (base / "d" / "e.ps1").write_text("Write-Host 'extra'\n", encoding="utf-8")
+
+
+def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     destination = tmp_path / "home"
     destination.mkdir(parents=True)
@@ -90,6 +122,11 @@ def test_sync_to_home_copies_only_whitelisted_targets(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     assert (destination / "skills" / "sample-skill" / "SKILL.md").exists()
     assert (destination / "agents" / "tdd-coder.agent.md").exists()
+    assert (destination / "repo-template" / ".github" / "copilot-instructions.md").exists()
+    assert (destination / ".github" / "hooks" / "scripts" / "sample.js").exists()
+    assert (destination / "scripts" / "sync-to-repo.ps1").exists()
+    assert (destination / "scripts" / "install-git-hooks.ps1").exists()
+    assert (destination / "scripts" / "repo-secure-check.ps1").exists()
     assert (destination / "copilot-instructions.md").exists()
     assert (destination / "mcp-config.sample.json").exists()
     assert (destination / "docs" / "furikaeri" / ".gitkeep").exists()
@@ -98,59 +135,49 @@ def test_sync_to_home_copies_only_whitelisted_targets(tmp_path: Path) -> None:
     assert (destination / "session-state").exists()
 
 
-def test_sync_to_home_copies_extra_source_agents_and_preserves_existing_agents(tmp_path: Path) -> None:
+def test_sync_to_home_mirrors_skills_and_agents_to_template(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     source_agents = source_root / "home-template" / ".copilot" / "agents"
     (source_agents / "draft.agent.md").write_text("# draft\n", encoding="utf-8")
+
     destination = tmp_path / "home"
-    destination_agents = destination / "agents"
-    destination_agents.mkdir(parents=True)
-    (destination_agents / "legacy.agent.md").write_text("# legacy\n", encoding="utf-8")
-
-    result = _run_sync(source_root, destination, dry_run=False)
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert (destination / "agents" / "tdd-coder.agent.md").exists()
-    assert (destination / "agents" / "draft.agent.md").exists()
-    assert (destination / "agents" / "legacy.agent.md").exists()
-
-
-def test_sync_to_home_mirror_does_not_delete_existing_home_files(tmp_path: Path) -> None:
-    source_root = _create_minimal_source_root(tmp_path / "source")
-    destination = tmp_path / "home"
-    destination.mkdir(parents=True)
-    (destination / "skills" / "custom-only").mkdir(parents=True)
-    (destination / "skills" / "custom-only" / "SKILL.md").write_text("# custom\n", encoding="utf-8")
-    (destination / "custom-root.txt").write_text("keep", encoding="utf-8")
-
-    result = _run_sync(source_root, destination, dry_run=False, mirror=True)
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "無視されます" in (result.stdout + result.stderr)
-    assert (destination / "skills" / "custom-only" / "SKILL.md").exists()
-    assert (destination / "custom-root.txt").read_text(encoding="utf-8") == "keep"
-
-
-def test_sync_to_home_keeps_agents_directory_sync_as_ordinary_robocopy(tmp_path: Path) -> None:
-    source_root = _create_minimal_source_root(tmp_path / "source")
-    destination = tmp_path / "home"
-    (destination / "agents").mkdir(parents=True)
-    (destination / "agents" / "legacy.agent.md").write_text("# legacy\n", encoding="utf-8")
+    _create_extra_files(destination / "skills")
+    _create_extra_files(destination / "agents")
 
     result = _run_sync(source_root, destination, dry_run=False)
 
     combined_output = result.stdout + result.stderr
     assert result.returncode == 0, combined_output
-    assert (destination / "agents" / "legacy.agent.md").exists()
-    assert (destination / "agents" / "tdd-coder.agent.md").exists()
-    assert "Remove them manually" not in combined_output
+
+    for top_level in ("skills", "agents"):
+        assert not (destination / top_level / "a" / "b.md").exists()
+        assert not (destination / top_level / "c.py").exists()
+        assert not (destination / top_level / "d" / "e.ps1").exists()
+        assert not (destination / top_level / "a").exists()
+        assert not (destination / top_level / "d").exists()
+
+    assert _collect_relative_files(destination / "skills") == _collect_relative_files(
+        source_root / "home-template" / ".copilot" / "skills"
+    )
+    assert _collect_relative_files(destination / "agents") == _collect_relative_files(source_agents)
+
+
+def test_sync_to_home_mirror_flag_is_compatibility_only(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    destination.mkdir(parents=True)
+
+    result = _run_sync(source_root, destination, dry_run=True, mirror=True)
+
+    combined_output = result.stdout + result.stderr
+    assert result.returncode == 0, combined_output
+    assert "追加効果を持ちません" in combined_output
 
 
 def test_sync_to_home_does_not_delete_home_only_furikaeri_docs(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     destination = tmp_path / "home"
     destination.mkdir(parents=True)
-    # home 側にのみ存在するふりかえりドキュメント（ユーザーが作成したもの）
     furikaeri_dir = destination / "docs" / "furikaeri"
     furikaeri_dir.mkdir(parents=True)
     user_doc = furikaeri_dir / "20260101-120000-my-session.md"
@@ -159,7 +186,5 @@ def test_sync_to_home_does_not_delete_home_only_furikaeri_docs(tmp_path: Path) -
     result = _run_sync(source_root, destination, dry_run=False)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    # ホーム側のドキュメントは削除されていないこと
     assert user_doc.exists(), "home-only furikaeri doc must not be deleted by sync"
-    # テンプレートの .gitkeep も追加されていること
     assert (furikaeri_dir / ".gitkeep").exists()
