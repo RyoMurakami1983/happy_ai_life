@@ -53,20 +53,71 @@ set -eu
 
 snapshot_dir=""
 config_path=""
+redact_seen=0
+exit_code_seen=0
+
+if [ "$#" -lt 2 ]; then
+  echo "expected: gitleaks dir <snapshot_dir> --config <config_path>" >&2
+  exit 2
+fi
+
+if [ "$1" != "dir" ]; then
+  echo "expected first argument to be 'dir', got: $1" >&2
+  exit 2
+fi
+shift
+
+snapshot_dir="$1"
+if [ -z "$snapshot_dir" ]; then
+  echo "missing snapshot directory after 'dir'" >&2
+  exit 2
+fi
+shift
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    dir)
-      shift
-      snapshot_dir="$1"
-      ;;
     --config)
+      if [ -n "$config_path" ]; then
+        echo "duplicate --config argument" >&2
+        exit 2
+      fi
       shift
+      if [ "$#" -eq 0 ]; then
+        echo "missing value for --config" >&2
+        exit 2
+      fi
       config_path="$1"
+      ;;
+    --no-banner)
+      ;;
+    --redact=100)
+      redact_seen=1
+      ;;
+    --exit-code)
+      exit_code_seen=1
+      shift
+      if [ "$#" -eq 0 ] || [ "$1" != "1" ]; then
+        echo "expected --exit-code 1" >&2
+        exit 2
+      fi
+      ;;
+    *)
+      echo "unexpected gitleaks argument: $1" >&2
+      exit 2
       ;;
   esac
   shift
 done
+
+if [ -z "$config_path" ]; then
+  echo "missing required --config argument" >&2
+  exit 2
+fi
+
+if [ "$redact_seen" -ne 1 ] || [ "$exit_code_seen" -ne 1 ]; then
+  echo "missing expected gitleaks flags" >&2
+  exit 2
+fi
 
 allow_path=""
 if [ -n "$config_path" ] && [ -f "$config_path" ]; then
@@ -128,7 +179,7 @@ def _prepare_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     _create_gitleaks_shim(shim_dir / "gitleaks-shim")
     env = {
         "GITLEAKS_BIN": "gitleaks-shim",
-        "PATH": f"{shim_dir}{os.pathsep}{os.environ['PATH']}",
+        "PATH": f"{shim_dir}{os.pathsep}{os.environ.get('PATH', '')}",
     }
     return repo, env
 
@@ -208,6 +259,41 @@ def test_pre_commit_handles_non_ascii_staged_paths(tmp_path: Path) -> None:
     commit = _run_git(repo, "commit", "-m", "non ascii path", env=env)
 
     assert commit.returncode == 0, commit.stdout + commit.stderr
+
+
+def test_pre_commit_skips_scan_when_config_is_missing_by_default(tmp_path: Path) -> None:
+    repo, _env = _prepare_repo(tmp_path)
+    (repo / ".gitleaks.toml").unlink()
+    tracked_file = repo / "notes.txt"
+    tracked_file.write_text("safe\n", encoding="utf-8", newline="\n")
+
+    add = _run_git(repo, "add", "notes.txt")
+    assert add.returncode == 0, add.stdout + add.stderr
+
+    commit = _run_git(repo, "commit", "-m", "missing config skips scan")
+
+    assert commit.returncode == 0, commit.stdout + commit.stderr
+
+
+def test_pre_commit_fails_when_config_is_required_but_missing(tmp_path: Path) -> None:
+    repo, _env = _prepare_repo(tmp_path)
+    (repo / ".gitleaks.toml").unlink()
+    tracked_file = repo / "notes.txt"
+    tracked_file.write_text("safe\n", encoding="utf-8", newline="\n")
+
+    add = _run_git(repo, "add", "notes.txt")
+    assert add.returncode == 0, add.stdout + add.stderr
+
+    commit = _run_git(
+        repo,
+        "commit",
+        "-m",
+        "missing config required",
+        env={"SECRET_GUARD_REQUIRE_CONFIG": "1"},
+    )
+
+    assert commit.returncode != 0
+    assert "Missing .gitleaks.toml in the repository root." in commit.stderr
 
 
 def test_pre_commit_fails_when_gitleaks_is_missing(tmp_path: Path) -> None:

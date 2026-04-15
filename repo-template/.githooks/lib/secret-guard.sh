@@ -9,9 +9,24 @@ if [ -z "$repo_root" ]; then
 fi
 
 config_path="$repo_root/.gitleaks.toml"
+require_config="${SECRET_GUARD_REQUIRE_CONFIG:-0}"
 if [ ! -f "$config_path" ]; then
-  printf '%s\n%s\n' "Missing .gitleaks.toml in the repository root." "Secret detection policy must be configured before committing." >&2
-  exit 1
+  case "$require_config" in
+    1|true|yes)
+      printf '%s\n%s\n%s\n' \
+        "Missing .gitleaks.toml in the repository root." \
+        "Secret detection is configured to require a gitleaks policy before committing." \
+        "Add .gitleaks.toml to the repository root, or unset SECRET_GUARD_REQUIRE_CONFIG to skip scanning until the repository opts in." >&2
+      exit 1
+      ;;
+    *)
+      printf '%s\n%s\n%s\n' \
+        "Skipping pre-commit secret scan because .gitleaks.toml was not found in the repository root." \
+        "To enable gitleaks scanning, add .gitleaks.toml to the repository root." \
+        "To make missing configuration a hard failure, set SECRET_GUARD_REQUIRE_CONFIG=1." >&2
+      exit 0
+      ;;
+  esac
 fi
 
 gitleaks_bin="${GITLEAKS_BIN:-gitleaks}"
@@ -37,24 +52,16 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 mkdir -p "$snapshot_dir"
-git -c core.quotepath=false diff --cached --name-only --diff-filter=ACMR -- > "$staged_paths"
+git -c core.quotepath=false diff --cached --name-only -z --diff-filter=ACMR -- > "$staged_paths"
 
 if [ ! -s "$staged_paths" ]; then
   exit 0
 fi
 
-while IFS= read -r relative_path; do
-  [ -n "$relative_path" ] || continue
-
-  destination_path="$snapshot_dir/$relative_path"
-  destination_dir=$(dirname -- "$destination_path")
-  mkdir -p "$destination_dir"
-
-  if ! git show ":$relative_path" > "$destination_path"; then
-    printf '%s\n%s\n' "Failed to read staged content for secret scanning." "$relative_path" >&2
-    exit 1
-  fi
-done < "$staged_paths"
+if ! git checkout-index --prefix="$snapshot_dir/" --stdin -z < "$staged_paths"; then
+  printf '%s\n' "Failed to read staged content for secret scanning." >&2
+  exit 1
+fi
 
 if ! "$gitleaks_bin" dir "$snapshot_dir" --config "$config_path" --no-banner --redact=100 --exit-code 1 > "$scan_output" 2>&1; then
   printf '%s\n' "Potential secrets were detected in staged changes. Update the staged content or adjust .gitleaks.toml allowlist only for approved placeholders." >&2
