@@ -31,7 +31,7 @@ def test_materialize_run_creates_expected_files(tmp_path: Path):
                         "id": "tc-001",
                         "prompt": "プルリクして",
                         "assertions": [
-                            {"type": "contains", "value": "github-pr-workflow", "weight": 1.0},
+                            {"type": "contains", "value": "gh-pr-workflow", "weight": 1.0},
                             {"type": "llm_grade", "value": "route is correct", "weight": 1.0},
                         ],
                     }
@@ -47,8 +47,8 @@ def test_materialize_run_creates_expected_files(tmp_path: Path):
             {
                 "run_id": "run-001",
                 "responses": {
-                    "with_skill": {"tc-001": "github-pr-workflow で進めます"},
-                    "baseline": {"tc-001": "github-pr-workflow で進めます"},
+                    "with_skill": {"tc-001": "gh-pr-workflow で進めます"},
+                    "baseline": {"tc-001": "gh-pr-workflow で進めます"},
                 },
                 "llm_grade": {
                     "with_skill": {"tc-001": [{"passed": True, "detail": "ok"}]},
@@ -83,7 +83,7 @@ def test_materialize_run_supports_baseline_legacy_current_layout(tmp_path: Path)
                         "id": "tc-001",
                         "prompt": "プルリクして",
                         "assertions": [
-                            {"type": "contains", "value": "github-pr-workflow", "weight": 1.0},
+                            {"type": "contains", "value": "gh-pr-workflow", "weight": 1.0},
                             {"type": "regex", "value": "workflow", "weight": 1.0},
                         ],
                     }
@@ -99,9 +99,9 @@ def test_materialize_run_supports_baseline_legacy_current_layout(tmp_path: Path)
             {
                 "run_id": "run-002",
                 "responses": {
-                    "baseline": {"tc-001": "github-pr-workflow baseline"},
-                    "legacy": {"tc-001": "github-pr-workflow legacy"},
-                    "current": {"tc-001": "github-pr-workflow current"},
+                    "baseline": {"tc-001": "gh-pr-workflow baseline"},
+                    "legacy": {"tc-001": "gh-pr-workflow legacy"},
+                    "current": {"tc-001": "gh-pr-workflow current"},
                 },
                 "llm_grade": {
                     "baseline": {"tc-001": []},

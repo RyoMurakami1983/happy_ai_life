@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-- `copilot-authoring-beta` を `copilot-authoring` に正式化し、repo-wide / path-specific instructions を扱う `instructions-authoring` sub-skill を追加できた。
+- `copilot-authoring` を正式化し、repo-wide / path-specific instructions を扱う `instructions-authoring` sub-skill を追加できた。
 - 事前Review、PR 作成、マージ、`main` 復帰まで 1 セッションで閉じられた。PR は [#60](https://github.com/RyoMurakami1983/happy_ai_life_coding_Environment/pull/60) としてマージ済み。
 - 途中の実害は pre-commit の `gitleaks` 検出だけで、導入済み実体パスを指定して前進できた。設計先行と事前Reviewの効きは大きかった。
 
@@ -51,7 +51,7 @@
 
 ## Session Notes
 
-- 使った主な skill: `design-workshop`, `copilot-authoring-beta`, `deep-review-preflight`, `github-pr-workflow`, `furikaeri-practice`
+- 使った主な skill: `design-workshop`, `copilot-authoring`, `deep-review-preflight`, `gh-pr-workflow`, `furikaeri-practice`
 - 事前Reviewでの blocker は `tests/test_validate_agent.py` の fixture インデントずれ 1 件だけだった。
 - PR: [#60 feat: copilot-authoring を正式化し instructions authoring を追加する](https://github.com/RyoMurakami1983/happy_ai_life_coding_Environment/pull/60)
 - merge 後は `main` に fast-forward で戻し、feature branch は local / remote とも削除した。

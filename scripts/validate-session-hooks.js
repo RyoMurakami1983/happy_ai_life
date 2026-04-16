@@ -232,7 +232,7 @@ run('extractSectionListItems: Next Steps の番号付き項目を拾う', () => 
     '# Furikaeri Share',
     '',
     '## Next Steps',
-    '1. `copilot-authoring-beta` に「抽象化 → review → 発展」の型を追加する案を Issue 化する。',
+    '1. `copilot-authoring` に「抽象化 → review → 発展」の型を追加する案を Issue 化する。',
     '2. hooks 追加時の設計・review の型を再利用可能な形で整理する。',
     '',
     '## Other Recent Shared Furikaeri',
@@ -240,19 +240,19 @@ run('extractSectionListItems: Next Steps の番号付き項目を拾う', () => 
   ].join('\n');
 
   assert.deepStrictEqual(extractSectionListItems(content, 'Next Steps'), [
-    '`copilot-authoring-beta` に「抽象化 → review → 発展」の型を追加する案を Issue 化する。',
+    '`copilot-authoring` に「抽象化 → review → 発展」の型を追加する案を Issue 化する。',
     'hooks 追加時の設計・review の型を再利用可能な形で整理する。',
   ]);
 });
 
 run('parseOpenIssues: gh issue list の JSON を読む', () => {
   const issues = parseOpenIssues(JSON.stringify([
-    { number: 56, title: 'copilot-authoring-beta: hooks追加の抽象→review→発展の型を追加する', url: 'https://example.com/56' },
+    { number: 56, title: 'copilot-authoring: hooks追加の抽象→review→発展の型を追加する', url: 'https://example.com/56' },
     { number: 57, title: 'session-start: open issue と前回の Try/T をもとに次の一手を提案する', url: 'https://example.com/57' },
   ]));
 
   assert.deepStrictEqual(issues, [
-    { number: 56, title: 'copilot-authoring-beta: hooks追加の抽象→review→発展の型を追加する', url: 'https://example.com/56' },
+    { number: 56, title: 'copilot-authoring: hooks追加の抽象→review→発展の型を追加する', url: 'https://example.com/56' },
     { number: 57, title: 'session-start: open issue と前回の Try/T をもとに次の一手を提案する', url: 'https://example.com/57' },
   ]);
 });
@@ -280,7 +280,7 @@ run('buildInstructionsContent: suggested next steps に open issue を含む', (
     '# Furikaeri Share',
     '',
     '## Next Steps',
-    '1. `copilot-authoring-beta` に「抽象化 → review → 発展」の型を追加する案を Issue 化する。',
+    '1. `copilot-authoring` に「抽象化 → review → 発展」の型を追加する案を Issue 化する。',
     '2. hooks 追加時の設計・review の型を再利用可能な形で整理する。',
     '',
   ].join('\n'), 'utf8');
@@ -291,7 +291,7 @@ run('buildInstructionsContent: suggested next steps に open issue を含む', (
     [],
     [{ basename: '20260401-121500-beta.md', path: sharedPath }],
     [
-      { number: 56, title: 'copilot-authoring-beta: hooks追加の抽象→review→発展の型を追加する', url: 'https://example.com/56' },
+      { number: 56, title: 'copilot-authoring: hooks追加の抽象→review→発展の型を追加する', url: 'https://example.com/56' },
       { number: 57, title: 'session-start: open issue と前回の Try/T をもとに次の一手を提案する', url: 'https://example.com/57' },
     ]
   );
@@ -299,7 +299,7 @@ run('buildInstructionsContent: suggested next steps に open issue を含む', (
   assert.ok(written.includes('## Suggested Next Steps'));
   assert.ok(written.includes('### From latest furikaeri'));
   assert.ok(written.includes('### Open issues'));
-  assert.ok(written.includes('#56: copilot-authoring-beta: hooks追加の抽象→review→発展の型を追加する'));
+  assert.ok(written.includes('#56: copilot-authoring: hooks追加の抽象→review→発展の型を追加する'));
   assert.ok(written.includes('> Suggested next move:'));
 });
 
