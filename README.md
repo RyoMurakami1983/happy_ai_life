@@ -42,16 +42,19 @@ uv sync --dev
 
 ### Direct PowerShell fallback
 
-PowerShell を直接叩く既存導線も引き続き使えます。
+home sync 済みの環境では、PowerShell を直接叩く運用導線として `%USERPROFILE%\.copilot\scripts\` を優先します。
+ここから実行すると、script の既定値で `%USERPROFILE%\.copilot` が `SourceRoot` として使われます。
 
 ```powershell
-./scripts/sync-to-home.ps1
-./scripts/sync-to-home.ps1 -DryRun
-./scripts/sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo
-./scripts/sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo -DryRun
-./scripts/install-git-hooks.ps1 -TargetRepoPath C:\path\to\your-repo
-./scripts/repo-secure-check.ps1 -TargetRepoPath C:\path\to\your-repo
+%USERPROFILE%\.copilot\scripts\sync-to-home.ps1
+%USERPROFILE%\.copilot\scripts\sync-to-home.ps1 -DryRun
+%USERPROFILE%\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo
+%USERPROFILE%\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo -DryRun
+%USERPROFILE%\.copilot\scripts\install-git-hooks.ps1 -TargetRepoPath C:\path\to\your-repo
+%USERPROFILE%\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath C:\path\to\your-repo
 ```
+
+母艦 repo 直下の `./scripts/` は正本であり、template 開発や検証で使います。運用で target repo を bootstrap するときは `%USERPROFILE%\.copilot\scripts\` を既定導線とします。
 
 `sync-to-repo.ps1` は `repo-template/.github/` を target repo に配布するため、`.github/copilot-instructions.md` と `.github/instructions/*.instructions.md` もこの導線で入ります。`/sdd` で pilot / downstream repo を触る前に、target repo 側へこの配布が済んでいるか、`git init` 済みか、fixed build/test/launch command があるか確認してください。
 

@@ -91,11 +91,11 @@ contract checkpoint → slice 単位の done / 非対象 / test 観点を固定
 - 各フェーズの中身を sdd 内に再実装しない。委譲先の skill や PLAN mode が正本。
 - 計画の正本は PLAN mode の出力または明示的な plan artifact に置く。
 - target repo を触る flow では、実装前に `repo-secure-check` で local safety valve を確認し、`git init` 済みか、fixed build/test/launch command があるかを確認する。
-- local safety valve が不足している場合は、次の具体手順で bootstrap を完了させてから先へ進む。以下は **母艦 repo のルートディレクトリ** から実行する前提とし、script の既定値でそのルートを `SourceRoot` として扱う。
+- local safety valve が不足している場合は、次の具体手順で bootstrap を完了させてから先へ進む。以下は **home sync 済みの `%USERPROFILE%\.copilot\scripts\`** から実行する前提とし、script の既定値で `%USERPROFILE%\.copilot` を `SourceRoot` として扱う。
   1. `git init`
-  2. `./scripts/sync-to-repo.ps1 -TargetRepoPath <repo>`
-  3. `./scripts/install-git-hooks.ps1 -TargetRepoPath <repo>`
-  4. `./scripts/repo-secure-check.ps1 -TargetRepoPath <repo>`
+  2. `%USERPROFILE%\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath <repo>`
+  3. `%USERPROFILE%\.copilot\scripts\install-git-hooks.ps1 -TargetRepoPath <repo>`
+  4. `%USERPROFILE%\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath <repo>`
   5. `repoInstructions / Copilot hooks / .githooks / core.hooksPath` がすべて `OK` になったことを evidence として残す
 - `.github/` 未配布のまま実装に入らない。特に downstream repo では「`git init` 済み」だけで bootstrap 完了と見なさない。
 - interactive app の比較 pilot では、deterministic seed / state dump schema / command runner などの comparable harness contract を先に確認する。
