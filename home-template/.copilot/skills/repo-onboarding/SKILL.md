@@ -26,10 +26,15 @@ license: Personal
 1. まず README、docs、solution / workspace / manifest 系ファイルを確認する。
 2. 次に、ビルド・テスト・依存関係・lint に関わる設定ファイルを確認する。
 3. target repo を触る前提作業なら、`repo-secure-check` で repo instructions / Copilot hooks / `.githooks` / `core.hooksPath` の不足を確認する。
-4. 主要ディレクトリの役割を要約する。
-5. エントリーポイント候補を特定する。
-6. テストの場所、実行手段、カバレッジの有無を確認する。
-7. 不明点は推測で断定せず、「未確認事項」として分離する。
+4. 不足がある場合は onboarding を続ける前に bootstrap task として次を実行する。
+   - `git init`
+   - `<mother-ship>\\.copilot\\scripts\\sync-to-repo.ps1 -TargetRepoPath <repo> -SourceRoot <mother-ship>\\.copilot`
+   - `<mother-ship>\\.copilot\\scripts\\install-git-hooks.ps1 -TargetRepoPath <repo> -SourceRoot <mother-ship>\\.copilot`
+   - `<mother-ship>\\.copilot\\scripts\\repo-secure-check.ps1 -TargetRepoPath <repo> -SourceRoot <mother-ship>\\.copilot`
+5. `repoInstructions / Copilot hooks / .githooks / core.hooksPath` がすべて `OK` になったら、主要ディレクトリの役割を要約する。
+6. エントリーポイント候補を特定する。
+7. テストの場所、実行手段、カバレッジの有無を確認する。
+8. 不明点は推測で断定せず、「未確認事項」として分離する。
 
 ## 特に見るファイル
 - C#: `*.sln`, `*.slnx`, `*.csproj`, `Directory.Build.*`, `global.json`
@@ -53,3 +58,5 @@ license: Personal
 - 見つけたコマンドは、設定ファイルや README に根拠があるものを優先する
 - 学習用の説明では「何が入口か」を明確にする
 - local safety valve が不足している repo は、その事実を先に明示し、必要なら repo bootstrap を提案してから深掘りする
+- ただし downstream repo を触る flow では、**提案で止めず** `.github/` と `.githooks/` の同期、`core.hooksPath` 設定、再チェック完了までを bootstrap の一部として扱う
+- `.github` がない repo を「onboarding 完了」とは扱わない。最低でも `repo-secure-check` の4項目が `OK` になってから本調査へ進む
