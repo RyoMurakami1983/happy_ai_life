@@ -26,6 +26,7 @@
 
 ## Skill ディスパッチ（必須）
 - 調査・一次情報確認・現状のベストプラクティス把握 → built-in 機能または自分で実施する。
+- .NET / C# / WPF / XAML / desktop app が見えたら、実装前にまず `dotnet` を入口として思い出し、leaf skill の要否を確認する。
 - 仕様作成・要件定義・前提条件の整理 → `spec-workshop` を使う。仕様の骨子づくりに集中する。
 - 設計・構造検証 → `design-workshop` を使う。仕様書を受け取り、標準設計と Balanced Coupling レンズ設計を振り分け、planning handoff を作る。
 - 実装計画・フェーズ分割・段取り整理 → PLAN mode を使う。目的、制約、段階、Why、検証、リスク、今決めなくてよいことを残す。
@@ -43,6 +44,8 @@
 
 ## Conventions
 - 言語別の追加ルールは `.github/instructions/*.instructions.md` を参照し、このファイルに重複記載しない。
+- XAML / binding / MVVM の局所ルールは `.github/instructions/xaml.instructions.md` に寄せる。
+- Serial / VISA / database / LAN / file I/O / DAQ / hardware / OS 連携の局所ルールは `.github/instructions/infrastructure.instructions.md` に寄せる。
 - フック運用の正本は `.github/hooks/*.json` と `.github/hooks/scripts/` のみとする。
 - Git client hooks は `.githooks/` に配置し `core.hooksPath` で有効化する。
 - `.github/sessions/` と `.github/instructions/session-context.instructions.md` は hook 生成物として、配布先の `.github/.gitignore` でローカル扱いにする。
