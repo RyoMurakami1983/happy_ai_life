@@ -333,7 +333,7 @@
 
 ### Values: 成長の複利 / 基礎と型
 
-詳細は `skills/git-commit-practices` と `skills/github-pr-workflow` を参照してください。
+詳細は `skills/git-commit-practices` と `skills/gh-pr-workflow` を参照してください。
 
 **要点**:
 - ✅ **Conventional Commits形式**を使用

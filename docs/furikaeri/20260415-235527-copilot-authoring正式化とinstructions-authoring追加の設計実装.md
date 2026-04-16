@@ -51,7 +51,7 @@
 
 ## Session Notes
 
-- 使った主な skill: `design-workshop`, `copilot-authoring-beta`, `deep-review-preflight`, `github-pr-workflow`, `furikaeri-practice`
+- 使った主な skill: `design-workshop`, `copilot-authoring-beta`, `deep-review-preflight`, `gh-pr-workflow`, `furikaeri-practice`
 - 事前Reviewでの blocker は `tests/test_validate_agent.py` の fixture インデントずれ 1 件だけだった。
 - PR: [#60 feat: copilot-authoring を正式化し instructions authoring を追加する](https://github.com/RyoMurakami1983/happy_ai_life_coding_Environment/pull/60)
 - merge 後は `main` に fast-forward で戻し、feature branch は local / remote とも削除した。

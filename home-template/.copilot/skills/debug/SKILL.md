@@ -21,8 +21,8 @@ license: Personal
 
 ## 関連スキル
 
-- **`github-pr-workflow`** - 修正と検証が終わった後に、証拠付きで PR へつなぐ
-- **`github-pr-review-response`** - レビューで追加説明が必要になったときに、before/after の根拠で返す
+- **`gh-pr-workflow`** - 修正と検証が終わった後に、証拠付きで PR へつなぐ
+- **`gh-pr-review-response`** - レビューで追加説明が必要になったときに、before/after の根拠で返す
 - **`knowledge-capture`** - デバッグで学んだ再利用可能な知見を整理する
 
 ## コア原則

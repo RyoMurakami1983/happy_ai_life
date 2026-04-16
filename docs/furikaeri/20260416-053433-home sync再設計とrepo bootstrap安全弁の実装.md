@@ -51,13 +51,13 @@
 
 ## Session Notes
 
-- 使った主な skill / flow: `spec-workshop`, `design-workshop`, `deep-review-preflight`, `github-pr-workflow`, `furikaeri-practice`
+- 使った主な skill / flow: `spec-workshop`, `design-workshop`, `deep-review-preflight`, `gh-pr-workflow`, `furikaeri-practice`
 - 主要変更: `sync-to-home.ps1` の partial-mirror 化、`repo-secure-check.ps1` 追加、`happy_env.py` の `repo-secure-check` / `repo-bootstrap` 導線追加、README / skill docs / ADR / tests 更新
 - PR: [#63 feat: home sync と repo bootstrap の安全弁を再設計する](https://github.com/RyoMurakami1983/happy_ai_life_coding_Environment/pull/63)
-- local worktree には別件の `home-template/.copilot/skills/github-issue-intake/SKILL.md` 未コミット差分が残っており、この PR には含めていない
+- local worktree には別件の `home-template/.copilot/skills/gh-issue-intake/SKILL.md` 未コミット差分が残っており、この PR には含めていない
 
 ## Next Steps
 
-1. PR #63 の review signal を待ち、来たら `github-pr-review-response` 相当の流れで修正と返信を行う。
+1. PR #63 の review signal を待ち、来たら `gh-pr-review-response` 相当の流れで修正と返信を行う。
 2. HOME 側へ配布した bootstrap package を、実際の downstream repo から直接使う運用確認を 1 回行う。
 3. 今回は merge せず待機し、ユーザーの明示指示後に merge と `main` 復帰を進める。

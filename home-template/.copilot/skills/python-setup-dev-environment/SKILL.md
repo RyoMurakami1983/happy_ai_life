@@ -68,7 +68,7 @@ uv run ty check .
 
 - `skill`
 - `git-commit-practices`
-- `github-pr-workflow`
+- `gh-pr-workflow`
 
 ## FAQ
 

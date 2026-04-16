@@ -21,8 +21,8 @@ description: >
 
 ## 関連スキル
 
-- **`github-pr-workflow`** - PR作成とマージ運用
-- **`github-issue-intake`** - Issue作成とトリアージ
+- **`gh-pr-workflow`** - PR作成とマージ運用
+- **`gh-issue-intake`** - Issue作成とトリアージ
 
 ---
 
