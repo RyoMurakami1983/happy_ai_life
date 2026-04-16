@@ -26,11 +26,11 @@ license: Personal
 1. まず README、docs、solution / workspace / manifest 系ファイルを確認する。
 2. 次に、ビルド・テスト・依存関係・lint に関わる設定ファイルを確認する。
 3. target repo を触る前提作業なら、`repo-secure-check` で repo instructions / Copilot hooks / `.githooks` / `core.hooksPath` の不足を確認する。
-4. 不足がある場合は onboarding を続ける前に bootstrap task として次を実行する。
+4. 不足がある場合は onboarding を続ける前に bootstrap task として次を実行する。以下は **母艦 repo のルートディレクトリ** から実行する前提とし、script の既定値でそのルートを `SourceRoot` として扱う。
    - `git init`
-   - `<mother-ship>\\.copilot\\scripts\\sync-to-repo.ps1 -TargetRepoPath <repo> -SourceRoot <mother-ship>\\.copilot`
-   - `<mother-ship>\\.copilot\\scripts\\install-git-hooks.ps1 -TargetRepoPath <repo> -SourceRoot <mother-ship>\\.copilot`
-   - `<mother-ship>\\.copilot\\scripts\\repo-secure-check.ps1 -TargetRepoPath <repo> -SourceRoot <mother-ship>\\.copilot`
+   - `./scripts/sync-to-repo.ps1 -TargetRepoPath <repo>`
+   - `./scripts/install-git-hooks.ps1 -TargetRepoPath <repo>`
+   - `./scripts/repo-secure-check.ps1 -TargetRepoPath <repo>`
 5. `repoInstructions / Copilot hooks / .githooks / core.hooksPath` がすべて `OK` になったら、主要ディレクトリの役割を要約する。
 6. エントリーポイント候補を特定する。
 7. テストの場所、実行手段、カバレッジの有無を確認する。
