@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -145,6 +146,64 @@ def test_render_slides_falls_back_to_powerpoint_if_soffice_fails_on_windows(
     result = module.render_slides(input_file, tmp_path / "slide")
 
     assert result == expected
+
+
+def test_render_with_soffice_uses_timeout(monkeypatch, tmp_path: Path) -> None:
+    module = _load_module("pptx_render_timeout_soffice")
+    input_file = tmp_path / "deck.pptx"
+    input_file.write_bytes(b"pptx")
+    output_prefix = tmp_path / "slide"
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    monkeypatch.setattr(module.shutil, "which", lambda name: "pdftoppm" if name == "pdftoppm" else None)
+
+    def fake_run(cmd, **kwargs):
+        calls.append((list(cmd), kwargs))
+        if cmd[0] == "pdftoppm":
+            prefix = Path(cmd[-1])
+            (prefix.parent / f"{prefix.name}-01.jpg").write_bytes(b"jpg")
+        else:
+            outdir = Path(cmd[cmd.index("--outdir") + 1])
+            pdf_path = outdir / f"{input_file.stem}.pdf"
+            pdf_path.write_bytes(b"%PDF")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    result = module._render_with_soffice(
+        Path(r"C:\Program Files\LibreOffice\program\soffice.exe"),
+        input_file,
+        output_prefix,
+        "jpeg",
+        module.DEFAULT_DPI,
+    )
+
+    assert result == [tmp_path / "slide-01.jpg"]
+    assert all(call_kwargs["timeout"] == module.SUBPROCESS_TIMEOUT_SECONDS for _, call_kwargs in calls)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="PowerPoint fallback is Windows-only")
+def test_render_with_powerpoint_uses_timeout(monkeypatch, tmp_path: Path) -> None:
+    module = _load_module("pptx_render_timeout_powerpoint")
+    input_file = tmp_path / "deck.pptx"
+    input_file.write_bytes(b"pptx")
+    output_prefix = tmp_path / "slide"
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    monkeypatch.setattr(module.shutil, "which", lambda name: r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
+
+    def fake_run(cmd, **kwargs):
+        calls.append((list(cmd), kwargs))
+        export_dir = Path(cmd[cmd.index("-OutputDir") + 1])
+        (export_dir / "スライド1.png").write_bytes(b"png")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    result = module._render_with_powerpoint(input_file, output_prefix, "png")
+
+    assert result == [tmp_path / "slide-01.png"]
+    assert calls and calls[0][1]["timeout"] == module.SUBPROCESS_TIMEOUT_SECONDS
 
 
 def test_normalize_powerpoint_exports_sorts_and_renames(tmp_path: Path) -> None:
