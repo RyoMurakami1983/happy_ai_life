@@ -3,6 +3,7 @@ Base validator with common validation logic for document files.
 """
 
 import re
+import xml.parsers.expat
 from pathlib import Path
 
 import defusedxml.minidom
@@ -124,6 +125,7 @@ class BaseSchemaValidator:
 
     def repair_whitespace_preservation(self) -> int:
         repairs = 0
+        failures = []
 
         for xml_file in self.xml_files:
             try:
@@ -145,8 +147,15 @@ class BaseSchemaValidator:
                 if modified:
                     xml_file.write_bytes(dom.toxml(encoding="UTF-8"))
 
-            except Exception:
-                pass
+            except (OSError, UnicodeError, xml.parsers.expat.ExpatError) as exc:
+                failures.append(
+                    f"  {xml_file.relative_to(self.unpacked_dir)}: Could not repair whitespace preservation: {exc}"
+                )
+
+        if failures:
+            print(f"FAILED - Could not repair whitespace preservation in {len(failures)} file(s):")
+            for failure in failures:
+                print(failure)
 
         return repairs
 
@@ -565,8 +574,8 @@ class BaseSchemaValidator:
                             f"  {path_str}: File with <{root_name}> root not declared in [Content_Types].xml"
                         )
 
-                except Exception:
-                    continue  
+                except (lxml.etree.XMLSyntaxError, OSError) as exc:
+                    errors.append(f"  {path_str}: Error parsing XML: {exc}")
 
             for file_path in all_files:
                 if file_path.suffix.lower() in {".xml", ".rels"}:

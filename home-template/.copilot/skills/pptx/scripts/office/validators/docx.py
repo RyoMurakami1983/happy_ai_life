@@ -6,6 +6,7 @@ import random
 import re
 import tempfile
 import zipfile
+import xml.parsers.expat
 from pathlib import Path
 
 import defusedxml.minidom
@@ -286,8 +287,10 @@ class DOCXSchemaValidator(BaseSchemaValidator):
                                     f"  {xml_file.name}:{elem.sourceline}: "
                                     f"durableId={val} >= 0x7FFFFFFF"
                                 )
-            except Exception:
-                pass
+            except (lxml.etree.XMLSyntaxError, OSError) as exc:
+                errors.append(f"  {xml_file.name}: Error parsing XML: {exc}")
+            except Exception as exc:
+                errors.append(f"  {xml_file.name}: Unexpected error: {exc}")
 
         if errors:
             print(f"FAILED - {len(errors)} ID constraint violations:")
@@ -392,6 +395,7 @@ class DOCXSchemaValidator(BaseSchemaValidator):
 
     def repair_durableId(self) -> int:
         repairs = 0
+        failures = []
 
         for xml_file in self.xml_files:
             try:
@@ -438,8 +442,15 @@ class DOCXSchemaValidator(BaseSchemaValidator):
                 if modified:
                     xml_file.write_bytes(dom.toxml(encoding="UTF-8"))
 
-            except Exception:
-                pass
+            except (OSError, UnicodeError, xml.parsers.expat.ExpatError) as exc:
+                failures.append(
+                    f"  {xml_file.relative_to(self.unpacked_dir)}: Could not repair durableId: {exc}"
+                )
+
+        if failures:
+            print(f"FAILED - Could not repair durableId in {len(failures)} file(s):")
+            for failure in failures:
+                print(failure)
 
         return repairs
 

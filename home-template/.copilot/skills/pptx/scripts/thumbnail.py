@@ -149,6 +149,11 @@ def build_slide_list(
             if visible_idx < len(visible_images):
                 slides.append((visible_images[visible_idx], info["name"]))
                 visible_idx += 1
+            else:
+                placeholder_path = temp_dir / f"missing-{info['name']}.jpg"
+                placeholder_img = create_missing_placeholder(placeholder_size)
+                placeholder_img.save(placeholder_path, "JPEG")
+                slides.append((placeholder_path, f"{info['name']} (missing)"))
 
     return slides
 
@@ -159,6 +164,15 @@ def create_hidden_placeholder(size: tuple[int, int]) -> Image.Image:
     line_width = max(5, min(size) // 100)
     draw.line([(0, 0), size], fill="#CCCCCC", width=line_width)
     draw.line([(size[0], 0), (0, size[1])], fill="#CCCCCC", width=line_width)
+    return img
+
+
+def create_missing_placeholder(size: tuple[int, int]) -> Image.Image:
+    img = Image.new("RGB", size, color="#FFF4E5")
+    draw = ImageDraw.Draw(img)
+    line_width = max(5, min(size) // 100)
+    draw.line([(0, 0), size], fill="#D97706", width=line_width)
+    draw.line([(size[0], 0), (0, size[1])], fill="#D97706", width=line_width)
     return img
 
 
@@ -177,6 +191,9 @@ def create_grids(
     width: int,
     output_path: Path,
 ) -> list[str]:
+    if not slides:
+        raise RuntimeError("No slides available for thumbnail grid generation.")
+
     max_per_grid = cols * (cols + 1)
     grid_files = []
 
@@ -205,6 +222,9 @@ def create_grid(
     cols: int,
     width: int,
 ) -> Image.Image:
+    if not slides:
+        raise RuntimeError("No slides available for thumbnail grid generation.")
+
     font_size = int(width * FONT_SIZE_RATIO)
     label_padding = int(font_size * LABEL_PADDING_RATIO)
 

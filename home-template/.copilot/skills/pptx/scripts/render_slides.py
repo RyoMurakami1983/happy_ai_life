@@ -41,6 +41,7 @@ if __package__ in {None, ""}:
 from office.soffice import get_soffice_env  # noqa: E402
 
 ImageFormat = Literal["png", "jpeg"]
+SUBPROCESS_TIMEOUT_SECONDS = 300
 DEFAULT_DPI = 150
 JPEG_QUALITY = 95
 
@@ -172,20 +173,26 @@ def _render_with_soffice(
         temp_path = Path(temp_dir)
         pdf_path = temp_path / f"{input_path.stem}.pdf"
 
-        pdf_result = subprocess.run(
-            [
-                str(soffice_path),
-                "--headless",
-                "--convert-to",
-                "pdf",
-                "--outdir",
-                str(temp_path),
-                str(input_path),
-            ],
-            capture_output=True,
-            text=True,
-            env=get_soffice_env(),
-        )
+        try:
+            pdf_result = subprocess.run(
+                [
+                    str(soffice_path),
+                    "--headless",
+                    "--convert-to",
+                    "pdf",
+                    "--outdir",
+                    str(temp_path),
+                    str(input_path),
+                ],
+                capture_output=True,
+                text=True,
+                env=get_soffice_env(),
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"LibreOffice PDF conversion timed out after {SUBPROCESS_TIMEOUT_SECONDS} seconds."
+            ) from exc
         if pdf_result.returncode != 0 or not pdf_path.exists():
             raise RuntimeError(
                 _format_subprocess_error(
@@ -194,18 +201,24 @@ def _render_with_soffice(
             )
 
         image_flag, extension = _format_details(image_format)
-        image_result = subprocess.run(
-            [
-                "pdftoppm",
-                f"-{image_flag}",
-                "-r",
-                str(dpi),
-                str(pdf_path),
-                str(output_prefix),
-            ],
-            capture_output=True,
-            text=True,
-        )
+        try:
+            image_result = subprocess.run(
+                [
+                    "pdftoppm",
+                    f"-{image_flag}",
+                    "-r",
+                    str(dpi),
+                    str(pdf_path),
+                    str(output_prefix),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"Slide image conversion timed out after {SUBPROCESS_TIMEOUT_SECONDS} seconds."
+            ) from exc
         if image_result.returncode != 0:
             raise RuntimeError(
                 _format_subprocess_error("Slide image conversion failed", image_result)
@@ -235,23 +248,29 @@ def _render_with_powerpoint(
     helper_script = Path(__file__).with_name("export_slides_via_powerpoint.ps1")
     with tempfile.TemporaryDirectory() as temp_dir:
         export_dir = Path(temp_dir)
-        result = subprocess.run(
-            [
-                powershell_path,
-                "-Sta",
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                str(helper_script),
-                "-InputPath",
-                str(input_path),
-                "-OutputDir",
-                str(export_dir),
-            ],
-            capture_output=True,
-            text=True,
-        )
+        try:
+            result = subprocess.run(
+                [
+                    powershell_path,
+                    "-Sta",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    str(helper_script),
+                    "-InputPath",
+                    str(input_path),
+                    "-OutputDir",
+                    str(export_dir),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"PowerPoint slide export timed out after {SUBPROCESS_TIMEOUT_SECONDS} seconds."
+            ) from exc
         if result.returncode != 0:
             raise RuntimeError(
                 _format_subprocess_error("PowerPoint slide export failed", result)
