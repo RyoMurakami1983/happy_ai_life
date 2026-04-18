@@ -48,21 +48,34 @@
   - `uv run app.py home [--dry-run]` — home-template を `$HOME/.copilot/` に同期
   - `uv run app.py repo <path> [--dry-run]` — repo-template を対象 repo に同期
   - `uv run app.py hooks <path>` — Git client hooks を対象 repo にインストール
+  - `uv run app.py repo-secure-check <path>` — downstream / pilot repo の local safety valve を確認
+  - `uv run app.py repo-bootstrap <path>` — downstream / pilot repo の不足安全弁に対する bootstrap をドライランで確認
+  - `uv run app.py repo-bootstrap <path> --apply` — 確認済み bootstrap を実適用
   - `./scripts/sync-to-home.ps1` — home-template を `$HOME/.copilot/` に同期
   - `./scripts/sync-to-repo.ps1 -TargetRepoPath <path>` — repo-template を対象 repo に同期
   - `./scripts/install-git-hooks.ps1` — Git client hooks のインストール
   - `uv run pytest -q`
+  - `uv run pytest -q tests/test_happy_env.py` — launcher / sync orchestration 周りを 1 ファイルだけ確認
+  - `uv run pytest -q tests/test_happy_env.py -k bootstrap` — repo bootstrap まわりを絞って確認
+  - `uv run pytest -q tests/test_repo_secure_check.py` — Windows では local safety valve 判定を確認、非 Windows 環境では `os.name != 'nt'` により skip される
   - `uv run ruff check .`
   - `uv run ty check .`
 - 品質ゲートは `.github/workflows/quality.yml` を参照する（gitleaks は常時有効、textlint は必要時に有効化）。
+- downstream / pilot repo を触る前は、まず `uv run app.py repo-secure-check <path>` で repo instructions・Copilot hooks・`.githooks`・`core.hooksPath` の不足を確認する。
+- 不足がある場合は `uv run app.py repo-bootstrap <path>` を既定のドライランで確認し、内容に問題がなければ `--apply` を付けて実適用する。`repo-bootstrap` は内部で safety check の結果に応じて repo sync と Git hooks install をつなぐ。
 - 変更後の検証手順: sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
 
 ## DeepReview
-- PR 前の重要変更や「事前レビュー」依頼は、built-in レビュー機能または自分で段階的にチェックする。
+- **PR を作成する前は、規模によらず必ず built-in レビュー機能または自分で段階的にセルフチェックする形で事前レビューを実施する。**
+- 事前レビューでは、変更点を説明しながら「意図」「想定リスク」「壊れうる箇所」を順に洗い出し、指摘されそうな点を先に列挙して潰す。
+- GitHub Copilot のレビューは 4〜5 回のループになることがある。事前レビューで局所修正の往復を防ぐ。
+- 「事前レビュー」と明示されていない通常の実装依頼でも、PR 作成前に必ず実施する。
 
 ## Conventions
+- **変更は必ず feature branch → PR → merge の流れで行う。どんな小さな変更でも `main` に直接 commit・push してはならない。**
+- **テスト目的で作成した一時ファイルは、タスク完了前に必ず削除する。commit 前に `git status` で意図しないファイルが含まれていないことを確認する。**
 - フック運用の正本は `.github/hooks/*.json` と `.github/hooks/scripts/` のみとする。
-- `repo-template/.github/hooks/` や `home-template/.copilot/hooks/` に hook 実装を重複配置しない。
+- `repo-template/.github/hooks/` や `home-template/.copilot/hooks/` に hook 実装を重複配置しない。**実装前に必ずこの配布経路を確認する。`sync-to-repo.ps1` が `.github/hooks/` を downstream repo に配布するため、他の場所に JS 実装を置いても無意味なうえ混乱を招く。**
 - Git client hooks は `repo-template/.githooks/` を正本にし、target repo では `.githooks/` に同期して `core.hooksPath` で有効化する。GitHub の branch protection / ruleset は別途必須とする。
 - target repo に配布する local ignore の正本は `repo-template/.github/.gitignore`、母艦 repo の generated files は root `.gitignore` でローカル扱いにする。
 - `mcp-config.json` は user-owned live file として扱い、home sync では上書きしない。tracked 側は `mcp-config.sample.json` を配る。
