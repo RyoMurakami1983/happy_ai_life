@@ -2,21 +2,21 @@
 name: from-design
 description: >
   設計書がある状態から計画以降を進める。
-  Use when: 設計は終わっていて、計画と実装に入りたいとき。
+  Use when: 設計は終わっていて、計画フェーズに入りたいとき。
 ---
 
 # From Design
 
-技術設計書が手元にある状態から、計画 → 実装 → レビュー を進める sub-skill です。design-workshop を経由せず、PLAN mode から開始します。
+技術設計書が手元にある状態から、計画 → impl-and-ship handoff を進める sub-skill です。design-workshop を経由せず、PLAN mode から開始します。
 
 ## こんなときに使う
 
 このスキルは次のようなときに使います:
 - 設計書が既に存在し、実装計画に入りたいとき
 - design-workshop で設計を完了した後に中断し、再開するとき
-- 外部で設計された仕様を実装するとき
+- 外部で設計された仕様を計画フェーズから進めるとき
 
-## ワークフロー: 設計から計画以降を通す
+## ワークフロー: 設計から plan handoff まで通す
 
 ### ステップ 1 — 設計書の存在確認
 
@@ -29,17 +29,13 @@ description: >
 
 ### ステップ 2 — 実装計画を立てる（PLAN mode）
 
-設計書を PLAN mode に渡し、実装計画を立てます。ここで受け入れ条件とテスト方針の下地も揃えます。
+設計書を PLAN mode に渡し、実装計画を立てます。受け入れ条件とテスト方針の下地も揃えます。
 
-### ステップ 3 — テスト戦略と target repo bootstrap を確認する
+### ステップ 3 — impl-and-ship へ handoff する
 
-計画を読み、TDD またはテストファーストで進められる粒度になっているかを確認します。テスト可能な受け入れ条件、主要な境界値、エラーパス、外部依存のモック境界が不足していれば、PLAN mode で計画補完を行います。
+plan artifact が揃ったら `impl-and-ship` に引き継ぎます。`impl-and-ship` が bootstrap 確認、contract checkpoint、実装、eval gate、review、furikaeri、PR サイクルを担います。
 
-target repo を触る場合は、`.github/instructions/` が配布済みかもここで確認します。interactive app では `sdd/references/interactive-app-bootstrap-checklist.md` の前提も確認します。
-
-### ステップ 4 — contract checkpoint → 実装 → implementation eval gate → 最終レビュー
-
-`sdd/sub_skills/from-scratch/` のステップ 5-8 と同じ流れで進めます。
+interactive app の場合は `sdd/references/interactive-app-bootstrap-checklist.md` を handoff に添付します。
 
 ## 注意点
 

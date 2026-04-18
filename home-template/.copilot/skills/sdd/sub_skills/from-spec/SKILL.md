@@ -7,7 +7,7 @@ description: >
 
 # From Spec
 
-仕様書が手元にある状態から、設計 → 計画 → 実装 → レビュー を進める sub-skill です。spec-workshop を経由せず、design-workshop から開始します。
+仕様書が手元にある状態から、設計 → 計画 → impl-and-ship handoff を進める sub-skill です。spec-workshop を経由せず、design-workshop から開始します。
 
 ## こんなときに使う
 
@@ -16,7 +16,7 @@ description: >
 - 外部から仕様を受け取って開発を進めたいとき
 - spec-workshop で仕様を固めた後に中断し、再開するとき
 
-## ワークフロー: 仕様から設計以降を通す
+## ワークフロー: 仕様から plan handoff まで通す
 
 ### ステップ 1 — 仕様の充足確認
 
@@ -31,9 +31,9 @@ description: >
 
 仕様書を `design-workshop` に渡し、判断表に従い standard または balanced-coupling-design ルートで設計を進めます。
 
-### ステップ 3 — 計画 → bootstrap / テスト戦略レビュー → contract checkpoint → 実装 → implementation eval gate → 最終レビュー
+### ステップ 3 — 計画 → impl-and-ship へ handoff
 
-`sdd/sub_skills/from-scratch/` のステップ 3-8 と同じ流れで進めます。
+`sdd/sub_skills/from-scratch/` のステップ 3-4 と同じ流れで進めます（PLAN mode → impl-and-ship handoff）。
 
 ## 注意点
 
