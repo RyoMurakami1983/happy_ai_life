@@ -55,9 +55,9 @@
   - `./scripts/sync-to-repo.ps1 -TargetRepoPath <path>` — repo-template を対象 repo に同期
   - `./scripts/install-git-hooks.ps1` — Git client hooks のインストール
   - `uv run pytest -q`
-  - `uv run pytest -q tests\test_happy_env.py` — launcher / sync orchestration 周りを 1 ファイルだけ確認
-  - `uv run pytest -q tests\test_happy_env.py -k bootstrap` — repo bootstrap まわりを絞って確認
-  - `uv run pytest -q tests\test_repo_secure_check.py` — local safety valve 判定だけ確認
+  - `uv run pytest -q tests/test_happy_env.py` — launcher / sync orchestration 周りを 1 ファイルだけ確認
+  - `uv run pytest -q tests/test_happy_env.py -k bootstrap` — repo bootstrap まわりを絞って確認
+  - `uv run pytest -q tests/test_repo_secure_check.py` — Windows では local safety valve 判定を確認、非 Windows 環境では `os.name != 'nt'` により skip される
   - `uv run ruff check .`
   - `uv run ty check .`
 - 品質ゲートは `.github/workflows/quality.yml` を参照する（gitleaks は常時有効、textlint は必要時に有効化）。
@@ -66,9 +66,9 @@
 - 変更後の検証手順: sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
 
 ## DeepReview
-- **PR を作成する前は、規模によらず必ず rubber-duck で事前レビューを実施する。**
+- **PR を作成する前は、規模によらず必ず built-in レビュー機能または自分で段階的にセルフチェックする形で事前レビューを実施する。**
+- 事前レビューでは、変更点を説明しながら「意図」「想定リスク」「壊れうる箇所」を順に洗い出し、指摘されそうな点を先に列挙して潰す。
 - GitHub Copilot のレビューは 4〜5 回のループになることがある。事前レビューで局所修正の往復を防ぐ。
-- 実装後に「指摘されそうな点を先に列挙して潰す」視点でセルフチェックしてから PR を作る。
 - 「事前レビュー」と明示されていない通常の実装依頼でも、PR 作成前に必ず実施する。
 
 ## Conventions
