@@ -29,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _run_check(target_repo: Path, *, source_root: Path | None = None) -> Any:
+def _run_check(target_repo: Path, *, source_root: Path | None = None) -> dict[str, Any]:
     effective_source_root = source_root or ROOT
     completed = subprocess.run(
         [
@@ -51,7 +51,9 @@ def _run_check(target_repo: Path, *, source_root: Path | None = None) -> Any:
         text=True,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
-    return json.loads(completed.stdout)
+    report = json.loads(completed.stdout)
+    assert isinstance(report, dict), f"repo-secure-check output must be a JSON object, got: {type(report)}"
+    return report
 
 
 def _git(repo: Path, *args: str) -> None:
