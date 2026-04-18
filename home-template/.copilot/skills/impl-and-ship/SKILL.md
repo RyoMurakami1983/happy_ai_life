@@ -92,13 +92,13 @@ fleet を選ぶ場合は `/fleet` コマンドで narrow generator として `td
 
 ### ステップ 8 — PR 作成（github-pr-workflow）
 
-`github-pr-workflow` を使い、feature branch → PR → レビュー待機 → 人間へのマージ引き継ぎを進めます。
+`gh-pr-workflow` を使い、feature branch → PR → レビュー待機 → 人間へのマージ引き継ぎを進めます。
 
-### ステップ 9 — PR review 対応（github-pr-review-response）
+### ステップ 9 — PR review 対応（gh-pr-review-response）
 
-PR にレビューコメントが届いたら `github-pr-review-response` を使い、分類・修正・返信・再レビュー依頼まで標準フローで進めます。
+PR にレビューコメントが届いたら `gh-pr-review-response` を使い、分類・修正・返信・再レビュー依頼まで標準フローで進めます。
 
-### ステップ 10 — furikaeri（github-pr-review-response 完了後）
+### ステップ 10 — furikaeri（gh-pr-review-response 完了後）
 
 PR review が一段落したら `furikaeri-practice` で学びを整理します。PR review で得た気づきも含めて振り返ることで、最も充実した記録になります。
 
@@ -106,8 +106,8 @@ PR review が一段落したら `furikaeri-practice` で学びを整理します
 
 - `home-template/.copilot/skills/implementation-eval-gate/SKILL.md` — 実装 slice の批判的 gate
 - `home-template/.copilot/skills/deep-review-preflight/SKILL.md` — PR 前の DeepReview
-- `home-template/.copilot/skills/github-pr-workflow/SKILL.md` — PR 作成・管理
-- `home-template/.copilot/skills/github-pr-review-response/SKILL.md` — PR レビュー対応
+- `home-template/.copilot/skills/gh-pr-workflow/SKILL.md` — PR 作成・管理
+- `home-template/.copilot/skills/gh-pr-review-response/SKILL.md` — PR レビュー対応
 - `home-template/.copilot/skills/furikaeri-practice/SKILL.md` — ふりかえり記録
 - `references/interactive-app-bootstrap-checklist.md` — interactive app の bootstrap 前提
 - `references/interactive-app-comparable-harness-contract.md` — interactive app の比較前提
@@ -117,5 +117,5 @@ PR review が一段落したら `furikaeri-practice` で学びを整理します
 - **bootstrap を飛ばさない**: 未配布の instructions や未確認の bootstrap 状態で実装を始めると、後で大きな修正が発生します。
 - **fleet 判定は bootstrap + contract 後**: 未確定の slice や未 bootstrap repo に fleet をかけると失敗しやすいです。
 - **slice loop と ship flow を混ぜない**: eval gate の `PASS` は「次の slice へ」です。全 slice 完了後に初めて review → PR フローへ進みます。
-- **furikaeri は PR review 後**: PR review で得る学びが反映されるよう、原則として `github-pr-review-response` の後に行います。
+- **furikaeri は PR review 後**: PR review で得る学びが反映されるよう、原則として `gh-pr-review-response` の後に行います。
 - **eval は別タスクで行う**: generator の自己正当化を避けるため、実装と評価を同じ流れに閉じ込めません。

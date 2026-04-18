@@ -40,7 +40,7 @@ description: >
 
 plan artifact が揃ったら `impl-and-ship` に引き継ぎます。`impl-and-ship` が bootstrap 確認、contract checkpoint、実装、eval gate、review、furikaeri、PR サイクルを担います。
 
-interactive app の場合は `sdd/references/interactive-app-bootstrap-checklist.md` と `interactive-app-comparable-harness-contract.md` を handoff に添付します。
+interactive app の場合は `sdd/references/interactive-app-bootstrap-checklist.md` と `sdd/references/interactive-app-comparable-harness-contract.md` を handoff に添付します。
 
 ## 注意点
 
