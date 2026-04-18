@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
-
-import happy_env
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _run_check(target_repo: Path, *, source_root: Path | None = None) -> happy_env.RepoSecurityCheckReport:
+def _run_check(target_repo: Path, *, source_root: Path | None = None) -> dict[str, Any]:
     effective_source_root = source_root or ROOT
     completed = subprocess.run(
         [
@@ -51,7 +51,9 @@ def _run_check(target_repo: Path, *, source_root: Path | None = None) -> happy_e
         text=True,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
-    return happy_env.parse_repo_security_report(completed.stdout)
+    report = json.loads(completed.stdout)
+    assert isinstance(report, dict), f"repo-secure-check output must be a JSON object, got: {type(report)}"
+    return report
 
 
 def _git(repo: Path, *args: str) -> None:

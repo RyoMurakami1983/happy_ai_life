@@ -61,16 +61,14 @@ uv run ty check .
 uv run app.py
 ```
 
-CLI で使いたい場合は次も使えます。
+CLI で home sync を直接実行する場合。
 
 ```powershell
 uv run app.py home --dry-run
-uv run app.py repo C:\path\to\your-repo --dry-run
-uv run app.py repo C:\path\to\your-repo
-uv run app.py hooks C:\path\to\your-repo
+uv run app.py home
 ```
 
-`app.py` は既存の `scripts\*.ps1` を呼ぶ orchestration であり、同期ロジックの正本は PowerShell 側に残します。
+`app.py` は home sync 専用の launcher であり、`scripts\sync-to-home.ps1` を呼び出します。repo sync / hooks install は `$HOME\.copilot\scripts\` の PowerShell スクリプトを直接使います。
 
 ### Step 5 — MCP config を初回化する
 
