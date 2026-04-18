@@ -44,25 +44,18 @@
 ## Build and Test
 - このリポジトリはアプリ本体ではないが、運用用 launcher と Python の quality command は持つ。
 - 主要運用コマンドは以下。
-  - `uv run app.py` — GUI launcher から home/repo sync と hooks install を呼ぶ
+  - `uv run app.py` — GUI launcher から home sync を呼ぶ
   - `uv run app.py home [--dry-run]` — home-template を `$HOME/.copilot/` に同期
-  - `uv run app.py repo <path> [--dry-run]` — repo-template を対象 repo に同期
-  - `uv run app.py hooks <path>` — Git client hooks を対象 repo にインストール
-  - `uv run app.py repo-secure-check <path>` — downstream / pilot repo の local safety valve を確認
-  - `uv run app.py repo-bootstrap <path>` — downstream / pilot repo の不足安全弁に対する bootstrap をドライランで確認
-  - `uv run app.py repo-bootstrap <path> --apply` — 確認済み bootstrap を実適用
   - `./scripts/sync-to-home.ps1` — home-template を `$HOME/.copilot/` に同期
   - `./scripts/sync-to-repo.ps1 -TargetRepoPath <path>` — repo-template を対象 repo に同期
   - `./scripts/install-git-hooks.ps1` — Git client hooks のインストール
   - `uv run pytest -q`
   - `uv run pytest -q tests/test_happy_env.py` — launcher / sync orchestration 周りを 1 ファイルだけ確認
-  - `uv run pytest -q tests/test_happy_env.py -k bootstrap` — repo bootstrap まわりを絞って確認
   - `uv run pytest -q tests/test_repo_secure_check.py` — Windows では local safety valve 判定を確認、非 Windows 環境では `os.name != 'nt'` により skip される
   - `uv run ruff check .`
   - `uv run ty check .`
 - 品質ゲートは `.github/workflows/quality.yml` を参照する（gitleaks は常時有効、textlint は必要時に有効化）。
-- downstream / pilot repo を触る前は、まず `uv run app.py repo-secure-check <path>` で repo instructions・Copilot hooks・`.githooks`・`core.hooksPath` の不足を確認する。
-- 不足がある場合は `uv run app.py repo-bootstrap <path>` を既定のドライランで確認し、内容に問題がなければ `--apply` を付けて実適用する。`repo-bootstrap` は内部で safety check の結果に応じて repo sync と Git hooks install をつなぐ。
+- downstream / pilot repo を触る前は、`$HOME\.copilot\scripts\repo-secure-check.ps1` で repo instructions・Copilot hooks・`.githooks`・`core.hooksPath` の不足を確認する。不足がある場合は `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1` で補う。
 - 変更後の検証手順: sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
 
 ## DeepReview

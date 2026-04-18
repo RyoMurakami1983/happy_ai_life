@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import locale
 import os
 import shutil
@@ -10,10 +9,9 @@ import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TypedDict
 
 import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -37,21 +35,6 @@ class CommandResult:
     def succeeded(self) -> bool:
         return self.returncode == 0
 
-
-class RepoSecurityCheckItem(TypedDict):
-    key: str
-    label: str
-    ok: bool
-    path: str
-    details: str
-
-
-class RepoSecurityCheckReport(TypedDict):
-    targetRepoPath: str
-    isGitRepo: bool
-    missing: list[str]
-    warnings: list[str]
-    checks: list[RepoSecurityCheckItem]
 
 
 def resolve_powershell_executable() -> str:
@@ -91,41 +74,6 @@ def build_home_sync_arguments(
         arguments.append("-VerboseLog")
     return tuple(arguments)
 
-
-def build_repo_sync_arguments(
-    target_repo_path: Path,
-    *,
-    mirror: bool = False,
-    dry_run: bool = False,
-    verbose_log: bool = False,
-) -> tuple[str, ...]:
-    arguments = ["-TargetRepoPath", str(target_repo_path)]
-    if mirror:
-        arguments.append("-Mirror")
-    if dry_run:
-        arguments.append("-DryRun")
-    if verbose_log:
-        arguments.append("-VerboseLog")
-    return tuple(arguments)
-
-
-def build_install_git_hooks_arguments(target_repo_path: Path) -> tuple[str, ...]:
-    return ("-TargetRepoPath", str(target_repo_path))
-
-
-def build_repo_secure_check_arguments(
-    target_repo_path: Path,
-    *,
-    as_json: bool = False,
-) -> tuple[str, ...]:
-    arguments = ["-TargetRepoPath", str(target_repo_path)]
-    if as_json:
-        arguments.append("-AsJson")
-    return tuple(arguments)
-
-
-def normalize_user_path(path: Path) -> Path:
-    return path.expanduser().resolve(strict=False)
 
 
 def build_mcp_config_notes(destination_path: Path = HOME_COPILOT_DIR) -> tuple[str, ...]:
@@ -177,213 +125,6 @@ def run_home_sync(*, mirror: bool = False, dry_run: bool = False, verbose_log: b
     )
 
 
-def run_repo_sync(
-    target_repo_path: Path,
-    *,
-    mirror: bool = False,
-    dry_run: bool = False,
-    verbose_log: bool = False,
-) -> CommandResult:
-    normalized_target_repo_path = normalize_user_path(target_repo_path)
-    return run_script(
-        "sync-to-repo.ps1",
-        build_repo_sync_arguments(
-            normalized_target_repo_path,
-            mirror=mirror,
-            dry_run=dry_run,
-            verbose_log=verbose_log,
-        ),
-        label="リポジトリ同期",
-    )
-
-
-def run_install_git_hooks(target_repo_path: Path) -> CommandResult:
-    normalized_target_repo_path = normalize_user_path(target_repo_path)
-    return run_script(
-        "install-git-hooks.ps1",
-        build_install_git_hooks_arguments(normalized_target_repo_path),
-        label="Git hooks インストール",
-    )
-
-
-def run_repo_secure_check(target_repo_path: Path, *, as_json: bool = False) -> CommandResult:
-    normalized_target_repo_path = normalize_user_path(target_repo_path)
-    return run_script(
-        "repo-secure-check.ps1",
-        build_repo_secure_check_arguments(normalized_target_repo_path, as_json=as_json),
-        label="リポジトリ安全弁チェック",
-    )
-
-
-def parse_repo_security_report(stdout: str) -> RepoSecurityCheckReport:
-    raw = json.loads(stdout)
-    if not isinstance(raw, dict):
-        raise ValueError("repo-secure-check output must be a JSON object")
-
-    target_repo_path = raw.get("targetRepoPath")
-    is_git_repo = raw.get("isGitRepo")
-    missing = raw.get("missing")
-    warnings = raw.get("warnings")
-    checks = raw.get("checks")
-
-    if not isinstance(target_repo_path, str):
-        raise ValueError("repo-secure-check output missing targetRepoPath")
-    if not isinstance(is_git_repo, bool):
-        raise ValueError("repo-secure-check output missing isGitRepo")
-    if not isinstance(missing, list) or not all(isinstance(item, str) for item in missing):
-        raise ValueError("repo-secure-check output missing missing list")
-    if not isinstance(warnings, list) or not all(isinstance(item, str) for item in warnings):
-        raise ValueError("repo-secure-check output missing warnings list")
-    if not isinstance(checks, list):
-        raise ValueError("repo-secure-check output missing checks list")
-
-    parsed_checks: list[RepoSecurityCheckItem] = []
-    for item in checks:
-        if not isinstance(item, dict):
-            raise ValueError("repo-secure-check check entry must be an object")
-
-        key = item.get("key")
-        label = item.get("label")
-        ok = item.get("ok")
-        path = item.get("path")
-        details = item.get("details")
-        if not isinstance(key, str):
-            raise ValueError("repo-secure-check check entry missing key")
-        if not isinstance(label, str):
-            raise ValueError("repo-secure-check check entry missing label")
-        if not isinstance(ok, bool):
-            raise ValueError("repo-secure-check check entry missing ok flag")
-        if not isinstance(path, str):
-            raise ValueError("repo-secure-check check entry missing path")
-        if not isinstance(details, str):
-            raise ValueError("repo-secure-check check entry missing details")
-
-        parsed_checks.append(
-            {
-                "key": key,
-                "label": label,
-                "ok": ok,
-                "path": path,
-                "details": details,
-            }
-        )
-
-    return {
-        "targetRepoPath": target_repo_path,
-        "isGitRepo": is_git_repo,
-        "missing": missing,
-        "warnings": warnings,
-        "checks": parsed_checks,
-    }
-
-
-def inspect_repo_security(target_repo_path: Path) -> RepoSecurityCheckReport:
-    result = run_repo_secure_check(target_repo_path, as_json=True)
-    if not result.succeeded:
-        message = result.stderr or result.stdout or "repo-secure-check failed"
-        raise RuntimeError(message)
-    return parse_repo_security_report(result.stdout)
-
-
-def format_repo_security_report(report: RepoSecurityCheckReport) -> str:
-    lines = [
-        "== リポジトリ安全弁チェック ==",
-        f"対象       : {report['targetRepoPath']}",
-        f"Git 初期化 : {'済み' if report['isGitRepo'] else '未初期化'}",
-    ]
-
-    for check in report["checks"]:
-        status = "OK" if check["ok"] else "MISSING"
-        lines.extend(
-            (
-                f"[{status}] {check['label']}",
-                f"  Path    : {check['path']}",
-                f"  Details : {check['details']}",
-            )
-        )
-
-    if report["missing"]:
-        lines.append(f"不足項目   : {', '.join(report['missing'])}")
-    else:
-        lines.append("不足項目   : なし")
-
-    return "\n".join(lines)
-
-
-def run_repo_bootstrap(
-    target_repo_path: Path,
-    *,
-    apply: bool = False,
-    verbose_log: bool = False,
-) -> CommandResult:
-    normalized_target_repo_path = normalize_user_path(target_repo_path)
-    report = inspect_repo_security(normalized_target_repo_path)
-    summary = format_repo_security_report(report)
-    notes = tuple(report["warnings"])
-
-    if not report["missing"]:
-        return CommandResult(
-            label="リポジトリ bootstrap",
-            command=("repo-bootstrap", str(normalized_target_repo_path)),
-            returncode=0,
-            stdout=summary,
-            stderr="",
-            notes=notes,
-        )
-
-    if not apply:
-        repo_sync_result = run_repo_sync(
-            normalized_target_repo_path,
-            dry_run=True,
-            verbose_log=verbose_log,
-        )
-        return CommandResult(
-            label="リポジトリ bootstrap（ドライラン）",
-            command=("repo-bootstrap", str(normalized_target_repo_path)),
-            returncode=repo_sync_result.returncode,
-            stdout="\n\n".join(
-                (
-                    summary,
-                    "不足があるため、repo bootstrap のドライランを実行しました。",
-                    "実適用では repo sync の後に Git hooks インストールも実行します。",
-                    format_command_result(repo_sync_result),
-                )
-            ),
-            stderr="",
-            notes=notes,
-        )
-
-    repo_sync_result = run_repo_sync(
-        normalized_target_repo_path,
-        dry_run=False,
-        verbose_log=verbose_log,
-    )
-    if not repo_sync_result.succeeded:
-        return CommandResult(
-            label="リポジトリ bootstrap",
-            command=("repo-bootstrap", str(normalized_target_repo_path)),
-            returncode=repo_sync_result.returncode,
-            stdout="\n\n".join((summary, format_command_result(repo_sync_result))),
-            stderr="",
-            notes=notes,
-        )
-
-    install_hooks_result = run_install_git_hooks(normalized_target_repo_path)
-    return CommandResult(
-        label="リポジトリ bootstrap",
-        command=("repo-bootstrap", str(normalized_target_repo_path)),
-        returncode=install_hooks_result.returncode,
-        stdout="\n\n".join(
-            (
-                summary,
-                format_command_result(repo_sync_result),
-                format_command_result(install_hooks_result),
-            )
-        ),
-        stderr="",
-        notes=notes,
-    )
-
 
 def format_command_result(result: CommandResult) -> str:
     lines = [
@@ -405,21 +146,14 @@ def format_command_result(result: CommandResult) -> str:
     return "\n".join(lines)
 
 
-def build_option_summary(*, dry_run: bool, mirror: bool, verbose_log: bool) -> str:
+def build_option_summary(*, dry_run: bool, verbose_log: bool) -> str:
     lines = []
     if dry_run:
         lines.append("現在はドライランです。ファイルは変更せず、何が起こるかだけを確認します。")
     else:
         lines.append("現在は実行モードです。選んだ同期内容が実際に反映されます。")
 
-    if mirror:
-        if dry_run:
-            lines.append("ミラー指定の影響を確認します。")
-            lines.append("補足: リポジトリ同期ではミラー削除が有効です。同期先だけのファイルやディレクトリは完全削除されます。ホーム同期は skills/、agents/、repo-template/、.github/hooks/ を常に template 一致へ同期します。")
-        else:
-            lines.append("補足: リポジトリ同期ではミラー削除が有効です。同期先だけのファイルやディレクトリは完全削除されます。ホーム同期は skills/、agents/、repo-template/、.github/hooks/ を常に template 一致へ同期します。")
-    else:
-        lines.append("通常同期です。ホーム同期は skills/、agents/、repo-template/、.github/hooks/ を template 一致へ同期し、docs/furikaeri と user-owned file は保持します。")
+    lines.append("通常同期です。ホーム同期は skills/、agents/、repo-template/、.github/hooks/ を template 一致へ同期し、docs/furikaeri と user-owned file は保持します。")
 
     if verbose_log:
         lines.append("詳細ログを表示します。robocopy の出力が増えるため、実行内容を追いやすくなります。")
@@ -442,55 +176,7 @@ def build_parser() -> argparse.ArgumentParser:
     home_parser.add_argument("--dry-run", action="store_true", help="書き込み前に差分だけ確認します。")
     home_parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
 
-    repo_parser = subparsers.add_parser("repo", help="repo-template/.github を対象リポジトリへ同期します。")
-    repo_parser.add_argument("target_repo_path", type=Path, help="対象リポジトリのパス。")
-    repo_parser.add_argument("--mirror", action="store_true", help="同期先をミラーします。")
-    repo_parser.add_argument("--dry-run", action="store_true", help="書き込み前に差分だけ確認します。")
-    repo_parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
-
-    hooks_parser = subparsers.add_parser("hooks", help="対象リポジトリへ Git hooks をインストールします。")
-    hooks_parser.add_argument("target_repo_path", type=Path, help="対象リポジトリのパス。")
-
-    secure_check_parser = subparsers.add_parser("repo-secure-check", help="対象リポジトリの local safety valve を確認します。")
-    secure_check_parser.add_argument("target_repo_path", type=Path, help="対象リポジトリのパス。")
-
-    bootstrap_parser = subparsers.add_parser("repo-bootstrap", help="対象リポジトリへ安全弁不足時の bootstrap を行います。既定はドライランです。")
-    bootstrap_parser.add_argument("target_repo_path", type=Path, help="対象リポジトリのパス。")
-    bootstrap_parser.add_argument("--apply", action="store_true", help="確認済みの bootstrap を実際に適用します。")
-    bootstrap_parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
-
     return parser
-
-
-_MIRROR_CONFIRM_PROMPT = (
-    "警告: リポジトリのミラー同期では同期先にだけあるファイル・ディレクトリが\n"
-    "完全削除されます（ゴミ箱には入りません）。\n"
-    "続けるには 'yes' と入力してください: "
-)
-
-
-_BOOTSTRAP_CONFIRM_PROMPT = (
-    "警告: repo bootstrap は対象リポジトリの .github と .githooks を上書きコピーし、"
-    "Git hooks の設定を更新します。\n"
-    "続けるには 'yes' と入力してください: "
-)
-
-
-def confirm_mirror_sync() -> bool:
-    """Return True if the user explicitly confirms mirror sync."""
-    try:
-        answer = input(_MIRROR_CONFIRM_PROMPT).strip().lower()
-        return answer == "yes"
-    except EOFError:
-        return False
-
-
-def confirm_repo_bootstrap() -> bool:
-    try:
-        answer = input(_BOOTSTRAP_CONFIRM_PROMPT).strip().lower()
-        return answer == "yes"
-    except EOFError:
-        return False
 
 
 def run_cli(namespace: argparse.Namespace) -> int:
@@ -498,30 +184,6 @@ def run_cli(namespace: argparse.Namespace) -> int:
         result = run_home_sync(
             mirror=namespace.mirror,
             dry_run=namespace.dry_run,
-            verbose_log=namespace.verbose_log,
-        )
-    elif namespace.command == "repo":
-        if namespace.mirror and not namespace.dry_run:
-            if not confirm_mirror_sync():
-                print("中断しました。")
-                return 1
-        result = run_repo_sync(
-            namespace.target_repo_path,
-            mirror=namespace.mirror,
-            dry_run=namespace.dry_run,
-            verbose_log=namespace.verbose_log,
-        )
-    elif namespace.command == "hooks":
-        result = run_install_git_hooks(namespace.target_repo_path)
-    elif namespace.command == "repo-secure-check":
-        result = run_repo_secure_check(namespace.target_repo_path)
-    elif namespace.command == "repo-bootstrap":
-        if namespace.apply and not confirm_repo_bootstrap():
-            print("中断しました。")
-            return 1
-        result = run_repo_bootstrap(
-            namespace.target_repo_path,
-            apply=namespace.apply,
             verbose_log=namespace.verbose_log,
         )
     else:
@@ -537,7 +199,6 @@ class HappyEnvGui:
         self.root.title("happy env ランチャー")
         self.root.minsize(760, 480)
         self.dry_run_var = tk.BooleanVar(value=True)
-        self.mirror_var = tk.BooleanVar(value=False)
         self.verbose_log_var = tk.BooleanVar(value=False)
         self.option_summary_var = tk.StringVar()
         self._is_running = False
@@ -570,16 +231,10 @@ class HappyEnvGui:
         ).grid(row=0, column=0, padx=(0, 12))
         ttk.Checkbutton(
             options,
-            text="ミラー同期（リポジトリ同期では同期先だけのファイルやディレクトリを削除）",
-            variable=self.mirror_var,
-            command=self._update_option_summary,
-        ).grid(row=1, column=0, padx=(0, 12), pady=(6, 0), sticky="w")
-        ttk.Checkbutton(
-            options,
             text="詳細ログ（robocopy の出力を詳しく表示）",
             variable=self.verbose_log_var,
             command=self._update_option_summary,
-        ).grid(row=2, column=0, padx=(0, 12), pady=(6, 0), sticky="w")
+        ).grid(row=1, column=0, padx=(0, 12), pady=(6, 0), sticky="w")
 
         ttk.Label(
             frame,
@@ -592,9 +247,7 @@ class HappyEnvGui:
         actions = ttk.Frame(frame)
         actions.grid(row=3, column=0, sticky="w", pady=(0, 12))
         self._register_action_button(actions, "ホームへ同期", self._run_home_sync).grid(row=0, column=0, padx=(0, 8))
-        self._register_action_button(actions, "リポジトリへ同期...", self._run_repo_sync).grid(row=0, column=1, padx=(0, 8))
-        self._register_action_button(actions, "Git hooks をインストール...", self._run_install_hooks).grid(row=0, column=2, padx=(0, 8))
-        ttk.Button(actions, text="ログをクリア", command=self._clear_log).grid(row=0, column=3)
+        ttk.Button(actions, text="ログをクリア", command=self._clear_log).grid(row=0, column=1)
 
         self.output = ScrolledText(frame, wrap="word", height=16)
         self.output.grid(row=4, column=0, sticky="nsew")
@@ -630,7 +283,6 @@ class HappyEnvGui:
         self.option_summary_var.set(
             build_option_summary(
                 dry_run=self.dry_run_var.get(),
-                mirror=self.mirror_var.get(),
                 verbose_log=self.verbose_log_var.get(),
             )
         )
@@ -662,43 +314,10 @@ class HappyEnvGui:
     def _run_home_sync(self) -> None:
         self._run_in_background(
             lambda: run_home_sync(
-                mirror=self.mirror_var.get(),
                 dry_run=self.dry_run_var.get(),
                 verbose_log=self.verbose_log_var.get(),
             )
         )
-
-    def _select_directory(self) -> Path | None:
-        selected = filedialog.askdirectory(initialdir=str(ROOT_DIR), mustexist=True)
-        if not selected:
-            self._append_output("操作をキャンセルしました。")
-            return None
-        return Path(selected)
-
-    def _run_repo_sync(self) -> None:
-        target_repo_path = self._select_directory()
-        if target_repo_path is None:
-            return
-
-        if self.mirror_var.get() and not self.dry_run_var.get():
-            self._append_output("警告: リポジトリのミラー同期では、同期先だけにあるファイルやディレクトリは削除されます。")
-            self._append_output("robocopy の '*EXTRA' は同期先だけにある項目を表します。本番の /MIR では削除対象です。")
-
-        self._run_in_background(
-            lambda: run_repo_sync(
-                target_repo_path,
-                mirror=self.mirror_var.get(),
-                dry_run=self.dry_run_var.get(),
-                verbose_log=self.verbose_log_var.get(),
-            )
-        )
-
-    def _run_install_hooks(self) -> None:
-        target_repo_path = self._select_directory()
-        if target_repo_path is None:
-            return
-
-        self._run_in_background(lambda: run_install_git_hooks(target_repo_path))
 
 
 def launch_gui() -> int:
