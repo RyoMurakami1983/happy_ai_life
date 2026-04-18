@@ -24,17 +24,19 @@ description: >
 
 | 成果物 | 存在する場合の意味 | 次のフェーズ |
 | --- | --- | --- |
-| 実装中のコード + テスト | 実装フェーズまで進んでいる | 実装の続き → eval gate → 最終レビュー |
-| 実装計画（plan.md / todos） | 計画フェーズまで進んでいる | `from-plan` へ |
+| 実装中のコード + テスト | 実装フェーズまで進んでいる | `impl-and-ship` へ（bootstrap 確認 → 残 slice の実装継続） |
+| 実装計画（plan.md / todos） | 計画フェーズまで進んでいる | `impl-and-ship` へ（plan handoff 完了済みとして渡す） |
 | 技術設計書 | 設計フェーズまで進んでいる | `from-design` へ |
 | 仕様書 | 仕様フェーズまで進んでいる | `from-spec` へ |
 | 何もない | まだ始まっていない | `from-scratch` へ |
 
-### ステップ 2 — 該当フェーズの sub-skill に振り分ける
+### ステップ 2 — 該当フェーズへ振り分ける
 
-判定結果に基づいて、該当する sub-skill に委譲します。成果物の品質が不十分な場合は、1つ前のフェーズに戻ることを提案します。
+判定結果に基づいて、該当する skill / sub-skill に委譲します。
 
-target repo を触る再開では、`from-plan` 以降に入る前に `.github/instructions/` の配布状態と bootstrap 状態も確認します。
+- **実装中のコード + テスト** または **実装計画** がある場合は `impl-and-ship` に委譲します。`impl-and-ship` が残りの実装・eval gate・review・PR サイクルを担います。
+- **設計書のみ** がある場合は `from-design` に委譲し、PLAN mode → impl-and-ship handoff の流れで再開します。
+- 成果物の品質が不十分な場合は、1つ前のフェーズに戻ることを提案します。
 
 ## 注意点
 
