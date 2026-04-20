@@ -67,6 +67,7 @@ skill では `skill` の template / validator、agent では `create-agents` の
 ## 共通リソース
 
 - `../skill/` — skill authoring の既存 router と sub-skill 群
+- `../skill-eval/` — skill の behavioral eval（benchmark / empirical の 2 ルート）
 - `../skill/_foundation/CONVENTIONS.md` — naming / frontmatter / writing style
 - `../create-agents/` — agent authoring の既存 workflow
 - `../create-agents/references/agent-template.md` — agent 定義の雛形

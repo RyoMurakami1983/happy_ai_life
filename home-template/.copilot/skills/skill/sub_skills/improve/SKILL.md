@@ -56,7 +56,7 @@ behavior change まで測りたい場合は `../evaluate/` へ進めます。eva
 - `_foundation/CONVENTIONS.md` — naming / frontmatter / writing style
 - `../../_eval/scripts/validate_skill.py` — L1/L2 validation
 - `../validate/` — 改善後の構造チェックへ戻る導線
-- `../evaluate/` — behavior change を測りたい場合の次ルート
+- `../evaluate/` — behavior change を測りたい場合の次ルート（`skill-eval` への委譲ポインター）
 
 ## 注意点
 
