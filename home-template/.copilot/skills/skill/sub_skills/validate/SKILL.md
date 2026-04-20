@@ -48,7 +48,7 @@ team-wide に使う skill なら、governance、security、ownership、operation
 
 - `_foundation/QUALITY.md` — Critical / Recommended の基準
 - `../../_eval/scripts/validate_skill.py` — validator 本体
-- `../evaluate/` — behavior を測る次ルート
+- `../evaluate/` — behavior を測る次ルート（`skill-eval` への委譲ポインター）
 - `../improve/` — 指摘を反映して戻る改善ルート
 
 ## 注意点

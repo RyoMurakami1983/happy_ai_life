@@ -1,82 +1,39 @@
 ---
 name: evaluate
 description: >
-  baseline / legacy / current を比較し、skill の行動変化を測定する。Use when:
-  trigger 精度、出力品質、回帰リスクを実証的に確認したいとき。
-compatibility: "_eval/agents/, _eval/scripts/, _eval/schemas/"
+  スキルの行動変化を測定する。Use when: trigger 精度、出力品質、回帰リスクを
+  実証的に確認したいとき。
 ---
 
-# スキルを評価する
+# スキルを評価する（委譲ポインター）
 
-静的レビューだけでは足りないときに、skill が本当に挙動改善を生むかを比較評価する sub-skill です。比較で見る理由は、単発の好例ではなく、baseline / legacy / current の差分として改善を確かめるためです。
+このルートは `skill-eval` skill に移管されました。
+
+behavioral eval の全手順（ケース設計、benchmark 比較、artifact 昇格、次アクション判断）は `skill-eval` の `sub_skills/benchmark/` に定義されています。指示の明瞭性確認には `sub_skills/empirical/` を使います。
 
 ## こんなときに使う
 
-- should-trigger / near-miss ケースを実運用に近い形で設計したいとき
-- 同じ prompt で baseline / legacy / current を比較したいとき
-- benchmark summary や history ledger を生成したいとき
-- 採用、改訂、ケース追加の次アクションを決めたいとき
+- baseline / legacy / current を比較して skill の効果を測りたいとき
+- 改善候補が本当に良くなったかを実証したいとき
+- prompt の指示が別の実行者にも明瞭かを確認したいとき
 
-## ワークフロー: スキルを評価する
+## ワークフロー: 委譲ルート
 
-### ステップ 1 — 良い eval ケースを設計する
+このページは router です。以下のように使い分けてください：
 
-should-trigger と should-not-trigger を、実際の user request に近い形で作ります。near-miss case は false positive を見つけやすいので、明らかに無関係な prompt より重要です。
+### スキル行動を比較したいとき
+→ `skill-eval/sub_skills/benchmark/` へ進む
+- ケース設計、baseline / legacy / current 実行、集計、次アクション判定
 
-### ステップ 2 — 3 variant を同条件で実行する
+### プロンプト明瞭性を確認したいとき
+→ `skill-eval/sub_skills/empirical/` へ進む
+- バイアス排除の実行者に動かしてもらい、両面評価
 
-`_eval/agents/runner.md` を使い、各ケースを baseline / legacy / current で実行します。条件が揃っていない比較は信用できません。
+## 移行先
 
-### ステップ 3 — 結果を集計する
+- **benchmark 比較**: `skill-eval` → `sub_skills/benchmark/`
+- **指示明瞭性の確認**: `skill-eval` → `sub_skills/empirical/`
 
-`uv run python skills/skill/_eval/scripts/aggregate_benchmark.py --skill-id <skill-id> --run-id <run-id>` で baseline / legacy / current の比較と summary delta を集計します。単発ケースでは見えない傾向を、集計で可視化します。
+## このルートに残っているもの
 
-### ステップ 4 — review artifact を作る
-
-`uv run python skills/skill/_eval/scripts/generate_viewer.py --skill-id <skill-id>` と `assets/eval_review.html` を使い、人がすばやく結果と履歴を見られる形にします。iteration を回すには、review の速さが重要です。
-
-### ステップ 4.5 — 昇格する artifact を判断する
-
-eval artifact は**セッションワークスペースを既定**とします。改善の経緯や一時的な試行を残しつつ、未成熟な artifact で repo を汚さないためです。
-
-- `evals.json` が複数 iteration で再利用できそうなら、repo の `evals/<skill-id>/evals.json` へ昇格候補にします
-- `benchmark_summary.json` と `benchmark_history.jsonl` が共有価値の高い結果なら、repo の `evals/<skill-id>/` へ昇格候補にします
-- `viewer.html` と raw run artifact は session 側に残します
-
-迷ったら session に残します。昇格は後からできますが、repo に入った transient artifact を整理するほうが高コストです。
-
-### ステップ 5 — 次のアクションを決める
-
-current が legacy より明確に良ければ accept、悪化していれば revise、evidence が薄ければケース追加、回帰が大きければ escalation を選びます。accept した current は、次回 campaign では legacy に昇格させます。
-
-## 昇格ルール
-
-- `baseline` は常に no-skill の固定基準です。
-- `legacy` は直前に採用した版です。
-- `current` は今回の候補です。
-- `current` を accept したら、その snapshot を次回の `legacy` にします。
-- 以前の `legacy` は履歴 ledger には残しつつ、active benchmark からは外します。
-- artifact 配置は `baseline / legacy / current` の variant 昇格とは別に考えます。配置の既定は session 側で、repo へは `evals.json` と `benchmark_summary/history` だけを必要時に昇格します。
-
-## 早見表
-
-| 段階 | 見るもの |
-| --- | --- |
-| ケース設計 | should-trigger、near-miss、false-positive guard |
-| 実行 | baseline / legacy / current の条件一致 |
-| 集計 | pass rate、summary delta、傾向 |
-| artifact | reviewer が追える形か、repo に昇格する価値があるか |
-| 判断 | accept / revise / add cases / escalate |
-
-## 共通リソース
-
-- `_eval/agents/runner.md` — baseline / legacy / current 実行
-- `_eval/scripts/aggregate_benchmark.py` — 集計
-- `_eval/scripts/generate_viewer.py` — viewer 生成
-- `../validate/` — static 検証へ戻る導線
-
-## 注意点
-
-- **happy path だけで評価しない**: near-miss がないと trigger precision を判断できません。
-- **variant 間で prompt を変えない**: 条件がずれた時点で比較の意味が壊れます。
-- **1 回の好結果を証拠にしない**: anecdotal win より、繰り返し観測される evidence を重視します。
+`../validate/` の L4 段階（「behavior が焦点のときだけ L4 へ回す」）からの参照は引き続き機能します。回された先として `skill-eval` を呼んでください。
