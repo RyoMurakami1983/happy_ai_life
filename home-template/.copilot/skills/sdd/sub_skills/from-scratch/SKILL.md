@@ -18,6 +18,18 @@ description: >
 
 ## ワークフロー: ゼロから plan handoff まで通す
 
+### ステップ 0.5 — 環境判定（multirepository の確認）
+
+対象プロジェクトが複数の関連リポを含むかを確認します。これにより、後続の設計フェーズでのハンドオフ形式が決まります。
+
+**判定項目**:
+- 「このプロジェクトに関連するリポは複数か」を質問。関連リポ（フロントエンド、バックエンド、モバイル、SDK など）を列挙する。
+- 複数リポが判定された場合、その旨を design-workshop へ受け渡してください。design-workshop の判断表で「balanced-coupling-design」ルートが推奨される可能性があります。
+
+**関連ドキュメント**: `deep-research-preflight` skill でも multirepository 環境判定を行うことが可能です。調査段階（preflight）で multirepository 判定を済ませた場合は、ここで「判定は既に済んでいる」と明示してください。判定が不明な場合は、「このプロジェクトに関連するリポは複数か」を改めて質問し、重複判定のリスクよりも、single-repo を誤認するリスクを優先します。
+
+---
+
 ### ステップ 1 — 仕様を固める（spec-workshop）
 
 `spec-workshop` を呼び出し、仕様書を作成します。ゼロからの場合は `spec-workshop/sub_skills/from-scratch/` route に振り分けられ、対話で論点を掘り、必要な根拠だけを targeted research で固めます。

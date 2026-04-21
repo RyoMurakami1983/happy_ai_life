@@ -18,20 +18,30 @@ description: >
 
 ## ワークフロー: 仕様から plan handoff まで通す
 
-### ステップ 1 — 仕様の充足確認
+### ステップ 0 — 仕様の充足確認と multirepository 判定
 
-仕様書が存在し、設計に進める状態かを確認します。以下が揃っているかをチェックします:
+仕様書が設計に進める状態かを確認し、同時に multirepository 環境かを判定します。以下を確認してください:
+
+**仕様充足確認**:
 - 機能要件と受け入れ条件
 - 対象の技術スタック
 - 非機能要件の言及
 
+**multirepository 判定**:
+- 「このプロジェクトに関連するリポは複数か」を質問。関連リポを列挙する。
+- 複数リポが判定された場合、複数リポ構成をそのまま design-workshop へ受け渡してください。
+
 不足があれば `spec-workshop` に戻ることを提案します。
 
-### ステップ 2 — 設計を検証する（design-workshop）
+**関連ドキュメント**: `deep-research-preflight` skill でも multirepository 環境判定を行うことが可能です。調査段階（preflight）で multirepository 判定を済ませた場合は、ここで「判定は既に済んでいる」と明示してください。判定が不明な場合は、「このプロジェクトに関連するリポは複数か」を改めて質問し、重複判定のリスクよりも、single-repo を誤認するリスクを優先します。
+
+---
+
+### ステップ 1 — 設計を検証する（design-workshop）
 
 仕様書を `design-workshop` に渡し、判断表に従い standard または balanced-coupling-design ルートで設計を進めます。
 
-### ステップ 3 — 計画 → impl-and-ship へ handoff
+### ステップ 2 — 計画 → impl-and-ship へ handoff
 
 `sdd/sub_skills/from-scratch/` のステップ 3-4 と同じ流れで進めます（PLAN mode → impl-and-ship handoff）。
 
