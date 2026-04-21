@@ -67,6 +67,14 @@ description: >
 - sdd 自体はモデル選定を持たず、入口と接続だけを担う。
 - plan handoff が完成したら、実装の入口は `impl-and-ship` に委譲する。
 
+## multirepository 環境での handoff
+
+複数リポが関連する場合、plan handoff は以下の形式で各リポごとに作成してください：
+
+- **複数リポ構成の確認**: from-scratch ステップ 0.5 または from-spec ステップ 0 で multirepository 判定が行われます。
+- **設計フェーズでの分割**: design-workshop で balanced-coupling-design ルート（context map + bounded context 分類）を選択し、リポ境界に沿った設計書を作成します。
+- **PLAN mode への受け渡し**: 複数リポの場合、各リポに対応する plan artifact を作成するか、統合 plan 上で「リポ間の依存関係と実装順序」を明記してください。`impl-and-ship` がリポごとの並列実装や順序制御を行います。
+
 ## 注意点
 
 - **各段の中身を再実装しない**: sdd はフローを繋ぐだけです。仕様は spec-workshop、設計は design-workshop、計画は PLAN mode または plan artifact が正本です。
