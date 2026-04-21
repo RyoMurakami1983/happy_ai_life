@@ -69,11 +69,42 @@ description: >
 
 ## multirepository 環境での handoff
 
-複数リポが関連する場合、plan handoff は以下の形式で各リポごとに作成してください：
+複数リポが関連する場合、plan handoff は以下の形式で作成してください：
 
-- **複数リポ構成の確認**: from-scratch ステップ 0.5 または from-spec ステップ 0 で multirepository 判定が行われます。
-- **設計フェーズでの分割**: design-workshop で balanced-coupling-design ルート（context map + bounded context 分類）を選択し、リポ境界に沿った設計書を作成します。
-- **PLAN mode への受け渡し**: 複数リポの場合、各リポに対応する plan artifact を作成するか、統合 plan 上で「リポ間の依存関係と実装順序」を明記してください。`impl-and-ship` がリポごとの並列実装や順序制御を行います。
+### Handoff フォーマット
+
+**メタデータ** （plan.md の冒頭に記載）:
+```markdown
+# Implementation Plan
+
+## Project Context
+- **Multirepository Structure**: Yes
+- **Related Repositories**: 
+  - Frontend (TypeScript/React) → `frontend/`
+  - Backend (Python/FastAPI) → `backend/`
+  - Mobile (Dart/Flutter) → `mobile/`
+
+## Dependency Order
+1. Backend API (core interface)
+2. Frontend & Mobile (in parallel)
+```
+
+### 各フェーズでの処理
+
+- **複数リポ構成の確認**: from-scratch ステップ 0.5 または from-spec ステップ 0 で multirepository 判定が行われ、関連リポを列挙します
+- **設計フェーズでの分割**: design-workshop で balanced-coupling-design ルート（context map + bounded context 分類）を選択し、リポごとに分割された設計書を作成します。各リポの設計書に「この bounded context が他のリポのどの context に依存するか」を記述
+- **PLAN mode への受け渡し**: 
+  - **オプション A**: 各リポに対応する独立した plan artifact を作成（`plan-backend.md`, `plan-frontend.md`, `plan-mobile.md`）し、`## Dependency Order` で実装順序を指定
+  - **オプション B**: 統合 plan 上で「## リポ別実装フェーズ」セクションを作成し、各リポの実装タスクと依存関係を一元管理
+
+### impl-and-ship への引き継ぎ
+
+`impl-and-ship` は以下の情報を受け取ります：
+- Multirepository フラグ（構造識別）
+- 各リポの plan artifact または統合 plan
+- リポ間の依存関係と並列実装可能な箇所
+
+`impl-and-ship` がリポごとの bootstrap 確認、contract checkpoint、実装、eval gate を並列・順序付きで実行します。
 
 ## 注意点
 

@@ -33,7 +33,7 @@ description: >
 
 不足があれば `spec-workshop` に戻ることを提案します。
 
-**関連ドキュメント**: `deep-research-preflight` skill でも multirepository 環境判定を行うことが可能です。調査段階で既に multirepository 判定が済んでいる場合は、ここで再確認する必要はありません。
+**関連ドキュメント**: `deep-research-preflight` skill でも multirepository 環境判定を行うことが可能です。調査段階（preflight）で multirepository 判定を済ませた場合は、ここで「判定は既に済んでいる」と明示してください。判定が不明な場合は、「このプロジェクトに関連するリポは複数か」を改めて質問し、重複判定のリスクよりも、single-repo を誤認するリスクを優先します。
 
 ---
 
@@ -41,7 +41,7 @@ description: >
 
 仕様書を `design-workshop` に渡し、判断表に従い standard または balanced-coupling-design ルートで設計を進めます。
 
-### ステップ 3 — 計画 → impl-and-ship へ handoff
+### ステップ 2 — 計画 → impl-and-ship へ handoff
 
 `sdd/sub_skills/from-scratch/` のステップ 3-4 と同じ流れで進めます（PLAN mode → impl-and-ship handoff）。
 
