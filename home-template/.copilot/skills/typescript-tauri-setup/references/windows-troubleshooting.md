@@ -49,9 +49,12 @@ Vite で `root` を変えている場合は `outDir` の解決先に注意しま
 // ❌ root が src/editor のとき、src/editor/dist に出る
 outDir: "dist"
 
-// ✅ project root の dist に固定する
+// ✅ project root の dist に固定する（ESM の vite.config.ts でも動く）
 import { resolve } from "path";
-outDir: resolve(__dirname, "dist");
+import { fileURLToPath } from "node:url";
+
+const projectRoot = fileURLToPath(new URL(".", import.meta.url));
+outDir: resolve(projectRoot, "dist");
 ```
 
 ## 5. ARM Windows で x64 build したい
