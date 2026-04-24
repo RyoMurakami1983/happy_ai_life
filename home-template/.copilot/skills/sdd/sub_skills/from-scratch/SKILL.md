@@ -24,11 +24,26 @@ description: >
 
 **判定項目**:
 - 「このプロジェクトに関連するリポは複数か」を質問。関連リポ（フロントエンド、バックエンド、モバイル、SDK など）を列挙する。
-- 複数リポが判定された場合、その旨を design-workshop へ受け渡してください。design-workshop の判断表で「balanced-coupling-design」ルートが推奨される可能性があります。
 
-**関連ドキュメント**: `deep-research-preflight` skill でも multirepository 環境判定を行うことが可能です。調査段階（preflight）で multirepository 判定を済ませた場合は、ここで「判定は既に済んでいる」と明示してください。判定が不明な場合は、「このプロジェクトに関連するリポは複数か」を改めて質問し、重複判定のリスクよりも、single-repo を誤認するリスクを優先します。
+**判定結果の受け渡し**:
+複数リポが判定された場合、以下のように **明示的に design-workshop へ handoff** してください：
 
----
+```
+【multirepository handoff】
+- Multirepository: Yes
+- Related Repositories:
+  - Frontend (TypeScript/React)
+  - Backend (Python/FastAPI)
+  - ...
+- Expected design route: balanced-coupling-design (Context Map 推奨)
+```
+
+単一リポの場合は、この情報を設計フェーズで記述する必要はありません。
+
+**deep-research-preflight との関係**:
+- `deep-research-preflight` skill でも multirepository 判定を行う場合があります
+- preflight で判定済みの場合は、「既に preflight で multirepository = Yes と判定済み」と明示してください
+- preflight と異なる判定が出た場合は、その旨をメモ（「preflight では single-repo、ここで multirepository 判定」）として design-workshop へ引き継ぎます
 
 ### ステップ 1 — 仕様を固める（spec-workshop）
 
@@ -44,7 +59,20 @@ description: >
 
 ### ステップ 3 — 実装計画を立てる（PLAN mode）
 
-設計書と handoff サマリを PLAN mode に渡し、実装計画を立てます。受け入れ条件と依存関係に加えて、実装前に確認すべきテスト方針の下地も揃えます。
+設計書と planning handoff サマリを使用し、実装計画を立てます。以下のいずれかの方法で進めてください：
+
+**方法 A: built-in PLAN mode を使う場合**
+- セッション中に Shift+Tab で PLAN mode に切り替える
+- 設計からの制約、依存関係、リスクを整理する
+- plan.md が自動生成され、以下セクションが揃う：
+  - Project Context
+  - Phase Breakdown
+  - Acceptance Criteria & Test Strategy
+  - Risks & Mitigations
+
+**multirepository 環境の場合の追加対応**:
+- plan.md の「Project Context」に必ずリポ構成と依存順序を記述
+- sdd/SKILL.md の「multirepository 環境での handoff」セクションを参照し、handoff フォーマットを合わせる
 
 成果物: 実装計画（フェーズ分割、依存関係、実行順序）
 
