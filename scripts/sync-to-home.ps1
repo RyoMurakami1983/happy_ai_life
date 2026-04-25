@@ -203,11 +203,75 @@ function Invoke-Robocopy {
 
         Test-RobocopyResult -ExitCode $exitCode
 
-        # ドライラン時は統計情報をログファイルから抽出
+        # ドライラン時は統計情報とファイルリストをログファイルから抽出
         if ($WhatIfMode -and $statsLogPath -and (Test-Path -LiteralPath $statsLogPath)) {
             $logContent = Get-Content -LiteralPath $statsLogPath -Raw -Encoding UTF8
             $stats = Get-RobocopyStats -RobocopyOutput $logContent
             Write-SyncSummary -Added $stats.Added -Updated $stats.Updated -Deleted $stats.Deleted -DryRun:$true
+
+            # ドライラン時のみファイル詳細を抽出
+            $addedFiles = @()
+            $updatedFiles = @()
+            $deletedFiles = @()
+
+            foreach ($line in $logContent -split "`n") {
+                # robocopy ドライランログ形式: "New File", "Newer", "EXTRA File"
+                if ($line -match "^\s+New File\s+") {
+                    # New File の行からパスを抽出（最後のカラムがパス）
+                    $parts = $line -split "\s{2,}" | Where-Object { $_ -and $_.Trim() }
+                    if ($parts.Count -gt 1) {
+                        $filePath = $parts[-1].Trim()
+                        if ($filePath -and $filePath.Length -gt 0) {
+                            $addedFiles += $filePath
+                        }
+                    }
+                }
+                elseif ($line -match "^\s+Newer\s+") {
+                    # Newer の行からパスを抽出
+                    $parts = $line -split "\s{2,}" | Where-Object { $_ -and $_.Trim() }
+                    if ($parts.Count -gt 1) {
+                        $filePath = $parts[-1].Trim()
+                        if ($filePath -and $filePath.Length -gt 0) {
+                            $updatedFiles += $filePath
+                        }
+                    }
+                }
+                elseif ($line -match "^\s+EXTRA File\s+") {
+                    # EXTRA File の行からパスを抽出
+                    $parts = $line -split "\s{2,}" | Where-Object { $_ -and $_.Trim() }
+                    if ($parts.Count -gt 1) {
+                        $filePath = $parts[-1].Trim()
+                        if ($filePath -and $filePath.Length -gt 0) {
+                            $deletedFiles += $filePath
+                        }
+                    }
+                }
+            }
+
+            # ファイルリストを JSON 形式で出力（truncate）
+            $addedTruncated = $addedFiles | Select-Object -First 20
+            $updatedTruncated = $updatedFiles | Select-Object -First 20
+            $deletedTruncated = $deletedFiles | Select-Object -First 20
+
+            $addedJson = @($addedTruncated) | ConvertTo-Json -Compress
+            $updatedJson = @($updatedTruncated) | ConvertTo-Json -Compress
+            $deletedJson = @($deletedTruncated) | ConvertTo-Json -Compress
+
+            Write-Host "SYNC_STATS:ADDED=$($stats.Added),UPDATED=$($stats.Updated),DELETED=$($stats.Deleted)"
+            Write-Host "SYNC_FILES_DRY:ADDED=$addedJson"
+            Write-Host "SYNC_FILES_DRY:UPDATED=$updatedJson"
+            Write-Host "SYNC_FILES_DRY:DELETED=$deletedJson"
+
+            # Overflow counters
+            if ($addedFiles.Count -gt 20) {
+                Write-Host "SYNC_FILES_OVERFLOW:ADDED_MORE=$($addedFiles.Count - 20)"
+            }
+            if ($updatedFiles.Count -gt 20) {
+                Write-Host "SYNC_FILES_OVERFLOW:UPDATED_MORE=$($updatedFiles.Count - 20)"
+            }
+            if ($deletedFiles.Count -gt 20) {
+                Write-Host "SYNC_FILES_OVERFLOW:DELETED_MORE=$($deletedFiles.Count - 20)"
+            }
         }
         else {
             # ログが取得できなかった場合のフォールバック
