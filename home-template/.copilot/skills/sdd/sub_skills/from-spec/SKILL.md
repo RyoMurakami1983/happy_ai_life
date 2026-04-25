@@ -27,23 +27,40 @@ description: >
 - 対象の技術スタック
 - 非機能要件の言及
 
-**multirepository 判定**:
+**multirepository 判定と explicit handoff**:
 - 「このプロジェクトに関連するリポは複数か」を質問。関連リポを列挙する。
-- 複数リポが判定された場合、複数リポ構成をそのまま design-workshop へ受け渡してください。
+- 判定結果を **明示的に design-workshop へ handoff** してください：
+
+```
+【multirepository handoff】
+- Multirepository: Yes/No
+- Related Repositories（複数の場合）:
+  - Frontend (TypeScript/React)
+  - Backend (Python/FastAPI)
+  - ...
+- Expected design route（複数の場合）: balanced-coupling-design (Context Map 推奨)
+```
+
+**deep-research-preflight との関係**:
+- preflight で multirepository 判定済みの場合は、「preflight で既に判定済み（multirepository = Yes）」と明示してください
+- 調査段階で判定が不明だった場合は、ここで改めて「複数関連リポがあるか」を質問します
 
 不足があれば `spec-workshop` に戻ることを提案します。
 
-**関連ドキュメント**: `deep-research-preflight` skill でも multirepository 環境判定を行うことが可能です。調査段階（preflight）で multirepository 判定を済ませた場合は、ここで「判定は既に済んでいる」と明示してください。判定が不明な場合は、「このプロジェクトに関連するリポは複数か」を改めて質問し、重複判定のリスクよりも、single-repo を誤認するリスクを優先します。
-
 ---
 
-### ステップ 1 — 設計を検証する（design-workshop）
+### ステップ 2 — 設計を検証する（design-workshop）
 
 仕様書を `design-workshop` に渡し、判断表に従い standard または balanced-coupling-design ルートで設計を進めます。
 
-### ステップ 2 — 計画 → impl-and-ship へ handoff
+### ステップ 3 — 実装計画と impl-and-ship handoff
 
-`sdd/sub_skills/from-scratch/` のステップ 3-4 と同じ流れで進めます（PLAN mode → impl-and-ship handoff）。
+設計書が完成したら、from-design または from-plan を使用して PLAN mode → impl-and-ship へ引き継ぎます：
+
+**ルート選択**:
+- 計画をゼロから立てる場合は `sdd/sub_skills/from-design/` を呼び出す
+- 計画が既に存在する場合は `sdd/sub_skills/from-plan/` を呼び出す
+- どちらでも最終的には `impl-and-ship` へ handoff します
 
 ## 注意点
 

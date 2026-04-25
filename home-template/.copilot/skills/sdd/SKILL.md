@@ -45,6 +45,56 @@ description: >
                     → impl-and-ship（実装・eval・review・furikaeri・PR の後半サイクル）
 ```
 
+## PLAN mode について
+
+**PLAN mode** は、design-workshop の完了後に **実装計画を整理・確認する段階** です。以下のいずれかの方法で実行します：
+
+### PLAN mode の起動方法
+
+1. **built-in PLAN mode 機能を使う場合**:
+   - Copilot CLI でセッション中に PLAN mode（Shift+Tab で切り替え）に入る
+   - 計画の構造化、リスク整理、フェーズ分割を対話的に進める
+   - plan.md が session-state フォルダに自動生成される
+
+2. **plan artifact-driven の場合**:
+   - 既に存在する plan.md が以下の必須セクションを満たしていれば、from-design をスキップして `impl-and-ship` へ直接進める
+   - PLAN mode の新規実行は不要
+
+### 必須 handoff セクション（plan.md に含める）
+
+PLAN mode 完了または既存 plan.md が以下を満たす状態で、`impl-and-ship` へ handoff します：
+
+```markdown
+# Implementation Plan
+
+## Project Context
+- Related Repositories（単一 repo 場合は省略可）
+- Trust Boundaries（設計で確認したもの）
+- Key Constraints
+
+## Phase Breakdown
+- Phase 1: 〇〇（条件: 〇〇完了）
+- Phase 2: 〇〇（条件: Phase 1 完了）
+
+## Acceptance Criteria & Test Strategy
+- User story 1: 〇〇テスト
+- User story 2: 〇〇テスト
+
+## Risks & Mitigations
+- Risk 1: 対策〇〇
+- Risk 2: 対策〇〇
+```
+
+### PLAN mode スキップ条件
+
+以下の場合、PLAN mode をスキップして `impl-and-ship` へ直接進められます：
+- plan.md が既に「Project Context」「Phase Breakdown」「Acceptance Criteria」「Risks」セクションを満たしている
+- ただし、multirepository 環境の場合はリポ間依存が明記されていること
+
+### multirepository 時の PLAN mode
+
+複数リポが関連する場合は、PLAN mode で必ず以下を明記してください（後述）。
+
 ## セキュリティ checkpoint（設計時）
 
 設計フェーズでは design-workshop 内で trust boundary と設計方針を確認します。実装中のセキュリティ checkpoint は `impl-and-ship` が担います。
@@ -94,8 +144,10 @@ description: >
 - **複数リポ構成の確認**: from-scratch ステップ 0.5 または from-spec ステップ 0 で multirepository 判定が行われ、関連リポを列挙します
 - **設計フェーズでの分割**: design-workshop で balanced-coupling-design ルート（context map + bounded context 分類）を選択し、リポごとに分割された設計書を作成します。各リポの設計書に「この bounded context が他のリポのどの context に依存するか」を記述
 - **PLAN mode への受け渡し**: 
-  - **オプション A**: 各リポに対応する独立した plan artifact を作成（`plan-backend.md`, `plan-frontend.md`, `plan-mobile.md`）し、`## Dependency Order` で実装順序を指定
-  - **オプション B**: 統合 plan 上で「## リポ別実装フェーズ」セクションを作成し、各リポの実装タスクと依存関係を一元管理
+  - **オプション A（分割 plan）**: 各リポに対応する独立した plan artifact を作成（`plan-backend.md`, `plan-frontend.md`, `plan-mobile.md`）し、各 plan に `## Dependency Order` セクションで実装順序を指定
+    - **推奨対象**: 3 リポ以上の規模 / リポの進捗管理が独立している場合
+  - **オプション B（統合 plan）**: 統合 plan 上で「## リポ別実装フェーズ」セクションを作成し、各リポの実装タスクと依存関係を一元管理
+    - **推奨対象**: 小規模（2 リポ）/ リポ間依存が密結合 / 全体を 1 つの計画で管理したい場合
 
 ### impl-and-ship への引き継ぎ
 
