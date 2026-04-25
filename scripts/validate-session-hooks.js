@@ -21,6 +21,8 @@ const {
   SUMMARY_START_MARKER,
   SUMMARY_END_MARKER,
   findRecentFurikaeriDocs,
+  isRegularFileNoSymlink,
+  readFileSafe,
 } = require('../.github/hooks/scripts/lib/session-utils.js');
 
 function makeTempFile(name) {
@@ -445,6 +447,62 @@ run('updateExistingSession: marker あり再実行でも手書き領域を保持
   assert.ok(written.includes('- keep notes'));
   assert.ok(written.includes('src/context.js'));
   assert.ok(written.includes('レビュー対応を実施した'));
+});
+
+// --- セキュリティ: symlink テスト ---
+
+run('isRegularFileNoSymlink: 通常ファイルは true を返す', () => {
+  const tempFile = makeTempFile('regular-file.txt');
+  fs.writeFileSync(tempFile, 'content', 'utf8');
+
+  assert.strictEqual(isRegularFileNoSymlink(tempFile), true);
+});
+
+run('isRegularFileNoSymlink: 存在しないファイルは false を返す', () => {
+  const tempFile = makeTempFile('nonexistent.txt');
+  assert.strictEqual(isRegularFileNoSymlink(tempFile), false);
+});
+
+run('isRegularFileNoSymlink: symlink は false を返す', () => {
+  const targetFile = makeTempFile('target.txt');
+  fs.writeFileSync(targetFile, 'target content', 'utf8');
+
+  const linkFile = makeTempFile('symlink.txt');
+  try {
+    fs.symlinkSync(targetFile, linkFile);
+    assert.strictEqual(isRegularFileNoSymlink(linkFile), false);
+  } catch (err) {
+    if (err.code === 'EPERM' || err.code === 'ENOTSUP') {
+      // symlink 作成権限がない場合はスキップ（テスト成功扱い）
+      return;
+    }
+    throw err;
+  }
+});
+
+run('readFileSafe: symlink ファイルは null を返す', () => {
+  const targetFile = makeTempFile('target-safe.txt');
+  fs.writeFileSync(targetFile, 'secret content', 'utf8');
+
+  const linkFile = makeTempFile('symlink-safe.txt');
+  try {
+    fs.symlinkSync(targetFile, linkFile);
+    assert.strictEqual(readFileSafe(linkFile), null);
+  } catch (err) {
+    if (err.code === 'EPERM' || err.code === 'ENOTSUP') {
+      // symlink 作成権限がない場合はスキップ
+      return;
+    }
+    throw err;
+  }
+});
+
+run('readFileSafe: 通常ファイルは内容を返す', () => {
+  const tempFile = makeTempFile('regular-safe.txt');
+  const content = 'regular content';
+  fs.writeFileSync(tempFile, content, 'utf8');
+
+  assert.strictEqual(readFileSafe(tempFile), content);
 });
 
 if (process.exitCode) {

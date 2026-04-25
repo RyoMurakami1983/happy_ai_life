@@ -31,8 +31,57 @@ function ensureDir(dirPath) {
   }
 }
 
+/**
+ * symlink チェック（lstat で symlink を検出）
+ * @param {string} filePath ファイルパス
+ * @returns {boolean} true = symlink ではない（通常ファイル）/ false = symlink または存在しない
+ */
+function isRegularFileNoSymlink(filePath) {
+  try {
+    const stat = fs.lstatSync(filePath);
+    return stat.isFile() && !stat.isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 安全なファイル読み込み（symlink TOCTOU 対策）
+ * POSIX 環境では O_NOFOLLOW で FD を開き、fstat で通常ファイル確認後に読み込む。
+ * 非対応環境では lstatSync 併用フォールバック。
+ * @param {string} filePath ファイルパス
+ * @returns {string|null} ファイル内容 or null
+ */
 function readFileSafe(filePath) {
   try {
+    // POSIX 環境で O_NOFOLLOW を使用（symlink のすり替え防止）
+    if (process.platform !== 'win32' && fs.openSync.length > 2) {
+      try {
+        const fd = fs.openSync(filePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+        try {
+          const stat = fs.fstatSync(fd);
+          if (!stat.isFile()) {
+            return null;
+          }
+          return fs.readFileSync(fd, 'utf8');
+        } finally {
+          fs.closeSync(fd);
+        }
+      } catch (err) {
+        // O_NOFOLLOW 非対応の場合は TOCTOU フォールバック
+        if (err.code === 'EACCES' || err.code === 'ENOENT' || err.code === 'EISDIR') {
+          // symlink または権限エラー
+          return null;
+        }
+        // 他のエラーは通常のファイル読み込みを試す
+      }
+    }
+
+    // TOCTOU フォールバック: lstat → readFileSync の順序
+    // セキュリティ: symlink は読み込まない
+    if (!isRegularFileNoSymlink(filePath)) {
+      return null;
+    }
     return fs.readFileSync(filePath, 'utf8');
   } catch {
     return null;
@@ -444,6 +493,7 @@ module.exports = {
   SESSION_SEPARATOR,
   SESSION_MAX_AGE_DAYS,
   ensureDir,
+  isRegularFileNoSymlink,
   readFileSafe,
   writeFileSafe,
   getGitBranch,

@@ -31,6 +31,7 @@ const {
   getProjectName,
   getProjectSessionsDir,
   getGlobalSessionStateDir,
+  isRegularFileNoSymlink,
   extractSessionSummary,
   buildSessionHeader,
   mergeSessionHeader,
@@ -94,6 +95,7 @@ async function main() {
 /**
  * cwd に対応する最新の events.jsonl を ~/.copilot/session-state/ から探す。
  * workspace.yaml の cwd / git_root が一致するセッションのうち最新を返す。
+ * セキュリティ: symlink は無視（読み込まない）
  */
 function findLatestEventsForProject(cwd) {
   const stateDir = getGlobalSessionStateDir();
@@ -111,7 +113,12 @@ function findLatestEventsForProject(cwd) {
 
       if (!fs.existsSync(events)) continue;
 
+      // セキュリティ: events.jsonl が symlink の場合はスキップ
+      // isRegularFileNoSymlink() で一箇所に集約
+      if (!isRegularFileNoSymlink(events)) continue;
+
       // workspace.yaml からプロジェクトパスを簡易マッチ
+      // readFileSafe() は内部で symlink チェック済み
       const yaml = readFileSafe(wsYaml);
       if (yaml) {
         const cwdMatch = yaml.match(/^cwd:\s*(.+)$/m);
