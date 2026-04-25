@@ -31,6 +31,7 @@ const {
   getProjectName,
   getProjectSessionsDir,
   getGlobalSessionStateDir,
+  isRegularFileNoSymlink,
   extractSessionSummary,
   buildSessionHeader,
   mergeSessionHeader,
@@ -113,13 +114,8 @@ function findLatestEventsForProject(cwd) {
       if (!fs.existsSync(events)) continue;
 
       // セキュリティ: events.jsonl が symlink の場合はスキップ
-      try {
-        const eventStat = fs.lstatSync(events);
-        if (eventStat.isSymbolicLink()) continue;
-      } catch {
-        // lstat 失敗はスキップ
-        continue;
-      }
+      // isRegularFileNoSymlink() で一箇所に集約
+      if (!isRegularFileNoSymlink(events)) continue;
 
       // workspace.yaml からプロジェクトパスを簡易マッチ
       // readFileSafe() は内部で symlink チェック済み

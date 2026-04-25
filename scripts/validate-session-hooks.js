@@ -463,44 +463,47 @@ run('isRegularFileNoSymlink: 存在しないファイルは false を返す', ()
   assert.strictEqual(isRegularFileNoSymlink(tempFile), false);
 });
 
-if (os.platform() !== 'win32') {
-  // Windows は symlink 作成が制限されているのでスキップ
-  run('isRegularFileNoSymlink: symlink は false を返す', () => {
-    const targetFile = makeTempFile('target.txt');
-    fs.writeFileSync(targetFile, 'target content', 'utf8');
+run('isRegularFileNoSymlink: symlink は false を返す', () => {
+  const targetFile = makeTempFile('target.txt');
+  fs.writeFileSync(targetFile, 'target content', 'utf8');
 
-    const linkFile = makeTempFile('symlink.txt');
-    try {
-      fs.symlinkSync(targetFile, linkFile);
-      assert.strictEqual(isRegularFileNoSymlink(linkFile), false);
-    } catch (err) {
-      if (err.code !== 'EPERM') throw err;
-      // symlink 作成権限がない場合はスキップ
+  const linkFile = makeTempFile('symlink.txt');
+  try {
+    fs.symlinkSync(targetFile, linkFile);
+    assert.strictEqual(isRegularFileNoSymlink(linkFile), false);
+  } catch (err) {
+    if (err.code === 'EPERM' || err.code === 'ENOTSUP') {
+      // symlink 作成権限がない場合はスキップ（テスト成功扱い）
+      return;
     }
-  });
+    throw err;
+  }
+});
 
-  run('readFileSafe: symlink ファイルは null を返す', () => {
-    const targetFile = makeTempFile('target-safe.txt');
-    fs.writeFileSync(targetFile, 'secret content', 'utf8');
+run('readFileSafe: symlink ファイルは null を返す', () => {
+  const targetFile = makeTempFile('target-safe.txt');
+  fs.writeFileSync(targetFile, 'secret content', 'utf8');
 
-    const linkFile = makeTempFile('symlink-safe.txt');
-    try {
-      fs.symlinkSync(targetFile, linkFile);
-      assert.strictEqual(readFileSafe(linkFile), null);
-    } catch (err) {
-      if (err.code !== 'EPERM') throw err;
+  const linkFile = makeTempFile('symlink-safe.txt');
+  try {
+    fs.symlinkSync(targetFile, linkFile);
+    assert.strictEqual(readFileSafe(linkFile), null);
+  } catch (err) {
+    if (err.code === 'EPERM' || err.code === 'ENOTSUP') {
       // symlink 作成権限がない場合はスキップ
+      return;
     }
-  });
+    throw err;
+  }
+});
 
-  run('readFileSafe: 通常ファイルは内容を返す', () => {
-    const tempFile = makeTempFile('regular-safe.txt');
-    const content = 'regular content';
-    fs.writeFileSync(tempFile, content, 'utf8');
+run('readFileSafe: 通常ファイルは内容を返す', () => {
+  const tempFile = makeTempFile('regular-safe.txt');
+  const content = 'regular content';
+  fs.writeFileSync(tempFile, content, 'utf8');
 
-    assert.strictEqual(readFileSafe(tempFile), content);
-  });
-}
+  assert.strictEqual(readFileSafe(tempFile), content);
+});
 
 if (process.exitCode) {
   process.exit(process.exitCode);
