@@ -17,6 +17,78 @@ function Write-Section {
     Write-Host "=== $Message ===" -ForegroundColor Cyan
 }
 
+function Write-SyncSummary {
+    param(
+        [int]$Added,
+        [int]$Updated,
+        [int]$Deleted,
+        [bool]$DryRun
+    )
+    
+    $summary = "追加 $Added 個 / 更新 $Updated 個 / 削除 $Deleted 個"
+    
+    if ($DryRun) {
+        Write-Host ""
+        Write-Host "✓ ドライラン確認: $summary" -ForegroundColor Green
+    }
+    else {
+        Write-Host ""
+        Write-Host "✓ 同期完了: $summary" -ForegroundColor Green
+    }
+}
+
+function Write-SyncError {
+    param([string]$ErrorMessage)
+    
+    Write-Host ""
+    Write-Host "✗ 同期失敗: $ErrorMessage" -ForegroundColor Red
+}
+
+function Get-RobocopyStats {
+    param([string]$RobocopyOutput)
+    
+    $stats = @{ Added = 0; Updated = 0; Deleted = 0 }
+    
+    # robocopy ログの最後から統計情報を抽出
+    # フォーマット例:
+    #   Files : 123 copied, 45 updated, 6 deleted
+    #   Extras : 3
+    
+    $lines = $RobocopyOutput -split "`r?`n"
+    
+    foreach ($line in $lines) {
+        # "Files :" という行を探す
+        if ($line -match "Files\s*:\s*(\d+)\s+copied") {
+            $stats.Added = [int]$matches[1]
+        }
+        if ($line -match "updated[,\s]+(\d+)") {
+            $stats.Updated = [int]$matches[1]
+        }
+        
+        # "Extras :" という行を削除ファイル数として扱う
+        if ($line -match "Extras\s*:\s*(\d+)") {
+            $stats.Deleted = [int]$matches[1]
+        }
+    }
+    
+    # 統計行が見つからない場合は、行ごとのカウントにフォールバック
+    if ($stats.Added -eq 0 -and $stats.Updated -eq 0 -and $stats.Deleted -eq 0) {
+        foreach ($line in $lines) {
+            if ($line -match "^\s+New File\s+") {
+                $stats.Added++
+            }
+            elseif ($line -match "^\s+Newer\s+") {
+                $stats.Updated++
+            }
+            elseif ($line -match "^\s+EXTRA File\s+") {
+                $stats.Deleted++
+            }
+        }
+    }
+    
+    return $stats
+}
+
 function Warn-IfPathExists {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -61,22 +133,13 @@ function Invoke-Robocopy {
         New-Item -ItemType Directory -Path $Destination -Force | Out-Null
     }
 
-    # Robocopy statistics gathering: use a temporary stats file for counting operations
-    $statsLogPath = Join-Path ([System.IO.Path]::GetTempPath()) ("robocopy-stats-{0}.log" -f [guid]::NewGuid())
-    
     $robocopyArgs = @(
         $Source
         $Destination
         "/E"
         "/R:2"
         "/W:1"
-        "/NFL"
-        "/NDL"
-        "/NP"
-        "/NJH"
-        "/NJS"
         "/XJ"
-        "/LOG+:$statsLogPath"
     )
 
     if ($MirrorMode) {
@@ -85,9 +148,26 @@ function Invoke-Robocopy {
 
     if ($WhatIfMode) {
         $robocopyArgs += "/L"
+        # ドライラン時は統計情報を取得するため、抑制フラグを使わない
+    }
+    else {
+        # 実行時のみ冗長出力を抑制（本運用）
+        $robocopyArgs += "/NFL"
+        $robocopyArgs += "/NDL"
+        $robocopyArgs += "/NP"
+        $robocopyArgs += "/NJH"
+        $robocopyArgs += "/NJS"
     }
 
     $verboseLogPath = $null
+    $statsLogPath = $null
+
+    # ドライラン時はログファイルを出力して統計抽出
+    if ($WhatIfMode -and -not $ShowVerboseLog) {
+        $statsLogPath = Join-Path ([System.IO.Path]::GetTempPath()) ("happy-env-robocopy-stats-{0}.log" -f [guid]::NewGuid())
+        # 統計用ログは UNILOG で正確なエンコーディング保証
+        $robocopyArgs += "/UNILOG:$statsLogPath"
+    }
 
     if ($ShowVerboseLog) {
         $robocopyArgs = @(
@@ -97,7 +177,6 @@ function Invoke-Robocopy {
             "/R:2"
             "/W:1"
             "/XJ"
-            "/LOG+:$statsLogPath"
         )
         if ($MirrorMode) { $robocopyArgs += "/MIR" }
         if ($WhatIfMode) { $robocopyArgs += "/L" }
@@ -105,19 +184,18 @@ function Invoke-Robocopy {
         $robocopyArgs += "/UNILOG:$verboseLogPath"
     }
 
-    Write-Host "robocopy $($robocopyArgs -join ' ')" -ForegroundColor DarkGray
-
     try {
         if ($ShowVerboseLog) {
             & robocopy @robocopyArgs | Out-Null
         }
         else {
+            # 通常モード：robocopy を実行
             & robocopy @robocopyArgs | Out-Null
         }
         $exitCode = $LASTEXITCODE
 
         if ($ShowVerboseLog -and $verboseLogPath -and (Test-Path -LiteralPath $verboseLogPath)) {
-            $verboseLogContent = Get-Content -LiteralPath $verboseLogPath -Raw -Encoding Unicode
+            $verboseLogContent = Get-Content -LiteralPath $verboseLogPath -Raw -Encoding UTF8
             if (-not [string]::IsNullOrWhiteSpace($verboseLogContent)) {
                 Write-Host $verboseLogContent -NoNewline
             }
@@ -125,95 +203,30 @@ function Invoke-Robocopy {
 
         Test-RobocopyResult -ExitCode $exitCode
 
-        # Parse statistics and file lists from the robocopy log
-        if (Test-Path -LiteralPath $statsLogPath) {
-            $statsContent = Get-Content -LiteralPath $statsLogPath -Raw -Encoding Unicode
-            
-            # Parse: Files: 123 (or similar pattern)
-            $filesMatch = [regex]::Match($statsContent, 'Files\s+:\s+(\d+)')
-            $dirsMatch = [regex]::Match($statsContent, 'Dirs\s+:\s+(\d+)')
-            $extraMatch = [regex]::Match($statsContent, 'Extra\s+:\s+(\d+)')
-            
-            $filesCount = if ($filesMatch.Success) { [int]$filesMatch.Groups[1].Value } else { 0 }
-            $dirsCount = if ($dirsMatch.Success) { [int]$dirsMatch.Groups[1].Value } else { 0 }
-            $extraCount = if ($extraMatch.Success) { [int]$extraMatch.Groups[1].Value } else { 0 }
-            
-            # Output sync stats in parseable format for Python side
-            Write-Host "SYNC_STATS:ADDED=$filesCount,UPDATED=$dirsCount,DELETED=$extraCount"
-            
-            # For dry-run, extract detailed file lists
-            if ($WhatIfMode) {
-                $addedFiles = @()
-                $updatedFiles = @()
-                $deletedFiles = @()
-                
-                # Parse file paths from robocopy log
-                foreach ($line in $statsContent -split "`n") {
-                    # robocopy dry-run log format: "New File" for added, "EXTRA File" for deleted
-                    if ($line -match "New File\s+(.+)") {
-                        $filePath = $matches[1].Trim()
-                        if ($filePath -and $filePath.Length -gt 0) {
-                            $addedFiles += $filePath
-                        }
-                    }
-                    elseif ($line -match "Newer\s+(.+)" -or $line -match ".*\s+(.+)\s+\*$") {
-                        # Updated files
-                        $filePath = $matches[1].Trim()
-                        if ($filePath -and $filePath.Length -gt 0) {
-                            $updatedFiles += $filePath
-                        }
-                    }
-                    elseif ($line -match "EXTRA File\s+(.+)") {
-                        # Deleted files
-                        $filePath = $matches[1].Trim()
-                        if ($filePath -and $filePath.Length -gt 0) {
-                            $deletedFiles += $filePath
-                        }
-                    }
-                }
-                
-                # Output as JSON-like KEY=VALUE for Python parsing
-                # Limit output to first 20 per category for readability
-                $addedTruncated = $addedFiles | Select-Object -First 20
-                $updatedTruncated = $updatedFiles | Select-Object -First 20
-                $deletedTruncated = $deletedFiles | Select-Object -First 20
-                
-                $addedJson = @($addedTruncated) | ConvertTo-Json -Compress
-                $updatedJson = @($updatedTruncated) | ConvertTo-Json -Compress
-                $deletedJson = @($deletedTruncated) | ConvertTo-Json -Compress
-                
-                Write-Host "SYNC_FILES_DRY:ADDED=$addedJson"
-                Write-Host "SYNC_FILES_DRY:UPDATED=$updatedJson"
-                Write-Host "SYNC_FILES_DRY:DELETED=$deletedJson"
-                
-                if ($addedFiles.Count -gt 20) {
-                    Write-Host "SYNC_FILES_OVERFLOW:ADDED_MORE=$($addedFiles.Count - 20)"
-                }
-                if ($updatedFiles.Count -gt 20) {
-                    Write-Host "SYNC_FILES_OVERFLOW:UPDATED_MORE=$($updatedFiles.Count - 20)"
-                }
-                if ($deletedFiles.Count -gt 20) {
-                    Write-Host "SYNC_FILES_OVERFLOW:DELETED_MORE=$($deletedFiles.Count - 20)"
-                }
-            }
-        } else {
-            # Fallback when stats file is not available
-            Write-Host "SYNC_STATS:ADDED=0,UPDATED=0,DELETED=0"
-        }
-
-        if ($WhatIfMode) {
-            Write-Host "DryRun completed. ExitCode=$exitCode" -ForegroundColor Yellow
+        # ドライラン時は統計情報をログファイルから抽出
+        if ($WhatIfMode -and $statsLogPath -and (Test-Path -LiteralPath $statsLogPath)) {
+            $logContent = Get-Content -LiteralPath $statsLogPath -Raw -Encoding UTF8
+            $stats = Get-RobocopyStats -RobocopyOutput $logContent
+            Write-SyncSummary -Added $stats.Added -Updated $stats.Updated -Deleted $stats.Deleted -DryRun:$true
         }
         else {
-            Write-Host "Sync completed. ExitCode=$exitCode" -ForegroundColor Green
+            # ログが取得できなかった場合のフォールバック
+            if ($WhatIfMode) {
+                Write-Host ""
+                Write-Host "✓ ドライラン完了" -ForegroundColor Green
+            }
+            else {
+                Write-Host ""
+                Write-Host "✓ 同期完了" -ForegroundColor Green
+            }
         }
     }
     finally {
         if ($verboseLogPath -and (Test-Path -LiteralPath $verboseLogPath)) {
-            Remove-Item -LiteralPath $verboseLogPath -Force
+            Remove-Item -LiteralPath $verboseLogPath -Force -ErrorAction SilentlyContinue
         }
         if ($statsLogPath -and (Test-Path -LiteralPath $statsLogPath)) {
-            Remove-Item -LiteralPath $statsLogPath -Force
+            Remove-Item -LiteralPath $statsLogPath -Force -ErrorAction SilentlyContinue
         }
     }
 
@@ -245,16 +258,17 @@ function Copy-TrackedFile {
     Write-Host "Copied $Source -> $Destination" -ForegroundColor Green
 }
 
-Write-Section "Sync to HOME (.copilot)"
+Write-Section "ホーム同期"
 
 $sourcePath = Join-Path $SourceRoot $TemplateRelativePath
 $sourcePath = [System.IO.Path]::GetFullPath($sourcePath)
 $destinationPath = [System.IO.Path]::GetFullPath($DestinationPath)
 
-Write-Host "Source      : $sourcePath"
-Write-Host "Destination : $destinationPath"
-Write-Host "Mirror      : $Mirror"
-Write-Host "DryRun      : $DryRun"
+Write-Host ""
+Write-Host "準備完了。ホーム同期は managed directory を template 一致へ同期し、"
+Write-Host "mcp-config.json や docs/furikaeri など user-owned 領域は保護します。"
+Write-Host "実行中..."
+Write-Host ""
 
 $trackedDirectories = @(
     @{
@@ -312,7 +326,8 @@ if ($Mirror) {
 }
 
 foreach ($entry in $trackedDirectories) {
-    Write-Host "Directory   : $($entry.Label)" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "◆ $($entry.Label)" -ForegroundColor Cyan
     Invoke-Robocopy `
         -Source $entry.Source `
         -Destination $entry.Destination `

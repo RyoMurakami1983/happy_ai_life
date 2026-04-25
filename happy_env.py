@@ -149,28 +149,32 @@ def format_command_result(result: CommandResult) -> str:
 
 def parse_sync_stats(stdout: str) -> dict[str, int] | None:
     """
-    PowerShell から出力された "SYNC_STATS:..." 行を parse
+    PowerShell から出力された "SYNC_STATS:..." 行を parse（複数実行に対応）
     
     例: "SYNC_STATS:ADDED=123,UPDATED=45,DELETED=0"
+    複数の robocopy 実行がある場合は全行を集計
     """
-    match = re.search(r'SYNC_STATS:ADDED=(\d+),UPDATED=(\d+),DELETED=(\d+)', stdout)
-    if match:
-        return {
-            'added': int(match.group(1)),
-            'updated': int(match.group(2)),
-            'deleted': int(match.group(3)),
-        }
+    matches = re.findall(r'SYNC_STATS:ADDED=(\d+),UPDATED=(\d+),DELETED=(\d+)', stdout)
+    if matches:
+        total = {'added': 0, 'updated': 0, 'deleted': 0}
+        for added, updated, deleted in matches:
+            total['added'] += int(added)
+            total['updated'] += int(updated)
+            total['deleted'] += int(deleted)
+        return total
     return None
 
 
 def parse_sync_files_dry(stdout: str) -> dict[str, list[str] | int] | None:
     """
-    PowerShell から出力された "SYNC_FILES_DRY:..." 行を parse（ドライラン時のみ）
+    PowerShell から出力された "SYNC_FILES_DRY:..." 行を parse（複数実行に対応）
     
     例: 
     SYNC_FILES_DRY:ADDED=["file1.md","file2.json"]
     SYNC_FILES_DRY:UPDATED=["file3.md"]
     SYNC_FILES_DRY:DELETED=[]
+    
+    複数の robocopy 実行がある場合は全ファイルをマージ
     """
     import json
     
@@ -183,42 +187,45 @@ def parse_sync_files_dry(stdout: str) -> dict[str, list[str] | int] | None:
         'deleted_more': 0,
     }
     
-    # Parse added files
-    match = re.search(r'SYNC_FILES_DRY:ADDED=(\[.*?\])', stdout, re.DOTALL)
-    if match:
+    # Parse added files（全行をマージ）
+    matches = re.findall(r'SYNC_FILES_DRY:ADDED=(\[.*?\])', stdout, re.DOTALL)
+    for match_str in matches:
         try:
-            result['added'] = json.loads(match.group(1))
+            files = json.loads(match_str)
+            if isinstance(files, list):
+                result['added'].extend(files)
         except json.JSONDecodeError:
             pass
     
-    # Parse updated files
-    match = re.search(r'SYNC_FILES_DRY:UPDATED=(\[.*?\])', stdout, re.DOTALL)
-    if match:
+    # Parse updated files（全行をマージ）
+    matches = re.findall(r'SYNC_FILES_DRY:UPDATED=(\[.*?\])', stdout, re.DOTALL)
+    for match_str in matches:
         try:
-            result['updated'] = json.loads(match.group(1))
+            files = json.loads(match_str)
+            if isinstance(files, list):
+                result['updated'].extend(files)
         except json.JSONDecodeError:
             pass
     
-    # Parse deleted files
-    match = re.search(r'SYNC_FILES_DRY:DELETED=(\[.*?\])', stdout, re.DOTALL)
-    if match:
+    # Parse deleted files（全行をマージ）
+    matches = re.findall(r'SYNC_FILES_DRY:DELETED=(\[.*?\])', stdout, re.DOTALL)
+    for match_str in matches:
         try:
-            result['deleted'] = json.loads(match.group(1))
+            files = json.loads(match_str)
+            if isinstance(files, list):
+                result['deleted'].extend(files)
         except json.JSONDecodeError:
             pass
     
-    # Parse overflow counts
-    match = re.search(r'SYNC_FILES_OVERFLOW:ADDED_MORE=(\d+)', stdout)
-    if match:
-        result['added_more'] = int(match.group(1))
+    # Parse overflow counts（合算）
+    matches = re.findall(r'SYNC_FILES_OVERFLOW:ADDED_MORE=(\d+)', stdout)
+    result['added_more'] = sum(int(m) for m in matches)
     
-    match = re.search(r'SYNC_FILES_OVERFLOW:UPDATED_MORE=(\d+)', stdout)
-    if match:
-        result['updated_more'] = int(match.group(1))
+    matches = re.findall(r'SYNC_FILES_OVERFLOW:UPDATED_MORE=(\d+)', stdout)
+    result['updated_more'] = sum(int(m) for m in matches)
     
-    match = re.search(r'SYNC_FILES_OVERFLOW:DELETED_MORE=(\d+)', stdout)
-    if match:
-        result['deleted_more'] = int(match.group(1))
+    matches = re.findall(r'SYNC_FILES_OVERFLOW:DELETED_MORE=(\d+)', stdout)
+    result['deleted_more'] = sum(int(m) for m in matches)
     
     return result if any(result[k] for k in ['added', 'updated', 'deleted']) else None
 
@@ -227,22 +234,38 @@ def normalize_path_to_relative(abs_path: str, base_path: str | None = None) -> s
     r"""
     絶対パスを相対パスに正規化。Windows パス区切りを Unix スタイルに統一
     
+    相対パスが渡された場合はそのまま返す。
+    
     例: C:\Users\xxx\.copilot\skills\foo.md → skills/foo.md
+    例: skills/foo.md → skills/foo.md
     """
     try:
+        path_obj = Path(abs_path)
+        
+        # すでに相対パスの場合はそのまま返す
+        if not path_obj.is_absolute():
+            return str(abs_path).replace('\\', '/')
+        
         if base_path:
-            rel = Path(abs_path).relative_to(base_path)
+            rel = path_obj.relative_to(base_path)
         else:
-            # Fallback: home-template/.copilot/ 以降を抽出
-            copilot_idx = abs_path.lower().find('.copilot')
+            # Fallback: .copilot 以降を抽出（大文字小文字を区別しない）
+            lower_path = abs_path.lower().replace('\\', '/')
+            copilot_idx = lower_path.find('.copilot')
             if copilot_idx >= 0:
-                rel = Path(abs_path[copilot_idx + 9:])  # Skip ".copilot\" or ".copilot/"
+                # ".copilot/" または ".copilot\" の次の位置から抽出
+                start_idx = copilot_idx + 9  # len(".copilot/") = 9
+                rel_part = abs_path[start_idx:]
+                return rel_part.replace('\\', '/')
             else:
-                rel = Path(abs_path).name
+                # .copilot が見つからない場合は、ファイル名だけではなく末尾の部分を抽出
+                # robocopy ログ形式は "path/to/file" で来るはずなので、そのまま返す
+                return str(abs_path).replace('\\', '/')
         
         return str(rel).replace('\\', '/')
     except (ValueError, OSError):
-        return str(Path(abs_path).name)
+        # パス正規化に失敗した場合はそのまま返す
+        return str(abs_path).replace('\\', '/')
 
 
 def format_file_details(files: dict[str, list[str] | int] | None, dry_run: bool = False) -> str:
