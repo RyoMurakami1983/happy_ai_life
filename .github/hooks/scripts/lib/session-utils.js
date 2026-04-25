@@ -31,8 +31,26 @@ function ensureDir(dirPath) {
   }
 }
 
+/**
+ * symlink チェック（lstat で symlink を検出）
+ * @param {string} filePath ファイルパス
+ * @returns {boolean} true = symlink ではない（通常ファイル）/ false = symlink または存在しない
+ */
+function isRegularFileNoSymlink(filePath) {
+  try {
+    const stat = fs.lstatSync(filePath);
+    return stat.isFile() && !stat.isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
 function readFileSafe(filePath) {
   try {
+    // セキュリティ: symlink は読み込まない
+    if (!isRegularFileNoSymlink(filePath)) {
+      return null;
+    }
     return fs.readFileSync(filePath, 'utf8');
   } catch {
     return null;
@@ -444,6 +462,7 @@ module.exports = {
   SESSION_SEPARATOR,
   SESSION_MAX_AGE_DAYS,
   ensureDir,
+  isRegularFileNoSymlink,
   readFileSafe,
   writeFileSafe,
   getGitBranch,
