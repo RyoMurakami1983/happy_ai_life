@@ -167,4 +167,92 @@ def test_run_cli_mirror_with_dry_run_skips_confirmation(monkeypatch) -> None:
     assert called == [True]
 
 
+def test_parse_sync_stats_single_execution() -> None:
+    """単一 robocopy 実行の統計集計"""
+    stdout = "SYNC_STATS:ADDED=10,UPDATED=5,DELETED=2"
+    result = happy_env.parse_sync_stats(stdout)
+    assert result == {"added": 10, "updated": 5, "deleted": 2}
+
+
+def test_parse_sync_stats_multiple_executions() -> None:
+    """複数 robocopy 実行の統計合算"""
+    stdout = """\
+SYNC_STATS:ADDED=10,UPDATED=5,DELETED=2
+SYNC_STATS:ADDED=3,UPDATED=2,DELETED=0
+SYNC_STATS:ADDED=0,UPDATED=1,DELETED=1"""
+    result = happy_env.parse_sync_stats(stdout)
+    assert result == {"added": 13, "updated": 8, "deleted": 3}
+
+
+def test_parse_sync_stats_no_match() -> None:
+    """マッチしない場合は None を返す"""
+    result = happy_env.parse_sync_stats("no stats here")
+    assert result is None
+
+
+def test_parse_sync_files_dry_single_execution() -> None:
+    """単一ドライラン実行のファイルリスト抽出"""
+    stdout = """\
+SYNC_FILES_DRY:ADDED=["file1.md","file2.json"]
+SYNC_FILES_DRY:UPDATED=["file3.md"]
+SYNC_FILES_DRY:DELETED=[]"""
+    result = happy_env.parse_sync_files_dry(stdout)
+    assert result is not None
+    assert result["added"] == ["file1.md", "file2.json"]
+    assert result["updated"] == ["file3.md"]
+    assert result["deleted"] == []
+    assert result["added_more"] == 0
+
+
+def test_parse_sync_files_dry_multiple_executions() -> None:
+    """複数 robocopy 実行のファイルリストマージ"""
+    stdout = """\
+SYNC_FILES_DRY:ADDED=["skills/foo.md"]
+SYNC_FILES_DRY:UPDATED=["agents/bar.json"]
+SYNC_FILES_DRY:DELETED=[]
+SYNC_FILES_DRY:ADDED=["repo-template/baz.md"]
+SYNC_FILES_DRY:UPDATED=[]
+SYNC_FILES_DRY:DELETED=["old.md"]
+SYNC_FILES_OVERFLOW:ADDED_MORE=5
+SYNC_FILES_OVERFLOW:UPDATED_MORE=3"""
+    result = happy_env.parse_sync_files_dry(stdout)
+    assert result is not None
+    assert result["added"] == ["skills/foo.md", "repo-template/baz.md"]
+    assert result["updated"] == ["agents/bar.json"]
+    assert result["deleted"] == ["old.md"]
+    assert result["added_more"] == 5
+    assert result["updated_more"] == 3
+
+
+def test_parse_sync_files_dry_no_match() -> None:
+    """マッチしない場合は None を返す"""
+    result = happy_env.parse_sync_files_dry("no sync files here")
+    assert result is None
+
+
+def test_normalize_path_to_relative_with_copilot_prefix() -> None:
+    """絶対パスから .copilot 以降を抽出"""
+    abs_path = r"C:\Users\test\.copilot\skills\foo\bar.md"
+    result = happy_env.normalize_path_to_relative(abs_path)
+    # .copilot の次の 9 文字（/.copilot/）をスキップして、skills/foo/bar.md を取得
+    assert "skills" in result and "bar.md" in result
+
+
+def test_normalize_path_to_relative_already_relative() -> None:
+    """相対パスはそのまま返す"""
+    rel_path = "skills/foo/bar.md"
+    result = happy_env.normalize_path_to_relative(rel_path)
+    assert result == "skills/foo/bar.md"
+
+
+def test_normalize_path_to_relative_no_copilot_prefix() -> None:
+    """
+    .copilot が見つからない場合は、相対パスをそのまま返す
+    (robocopy ログから渡ってくる相対パスはそのまま返すべき)
+    """
+    rel_path = "other/path/file.md"
+    result = happy_env.normalize_path_to_relative(rel_path)
+    assert result == "other/path/file.md"
+
+
 
