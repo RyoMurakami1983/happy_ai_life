@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import locale
 import os
+import re
 import shutil
 import subprocess
 import threading
@@ -146,6 +147,245 @@ def format_command_result(result: CommandResult) -> str:
     return "\n".join(lines)
 
 
+def parse_sync_stats(stdout: str) -> dict[str, int] | None:
+    """
+    PowerShell から出力された "SYNC_STATS:..." 行を parse
+    
+    例: "SYNC_STATS:ADDED=123,UPDATED=45,DELETED=0"
+    """
+    match = re.search(r'SYNC_STATS:ADDED=(\d+),UPDATED=(\d+),DELETED=(\d+)', stdout)
+    if match:
+        return {
+            'added': int(match.group(1)),
+            'updated': int(match.group(2)),
+            'deleted': int(match.group(3)),
+        }
+    return None
+
+
+def parse_sync_files_dry(stdout: str) -> dict[str, list[str] | int] | None:
+    """
+    PowerShell から出力された "SYNC_FILES_DRY:..." 行を parse（ドライラン時のみ）
+    
+    例: 
+    SYNC_FILES_DRY:ADDED=["file1.md","file2.json"]
+    SYNC_FILES_DRY:UPDATED=["file3.md"]
+    SYNC_FILES_DRY:DELETED=[]
+    """
+    import json
+    
+    result: dict[str, list[str] | int] = {
+        'added': [],
+        'updated': [],
+        'deleted': [],
+        'added_more': 0,
+        'updated_more': 0,
+        'deleted_more': 0,
+    }
+    
+    # Parse added files
+    match = re.search(r'SYNC_FILES_DRY:ADDED=(\[.*?\])', stdout, re.DOTALL)
+    if match:
+        try:
+            result['added'] = json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+    
+    # Parse updated files
+    match = re.search(r'SYNC_FILES_DRY:UPDATED=(\[.*?\])', stdout, re.DOTALL)
+    if match:
+        try:
+            result['updated'] = json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+    
+    # Parse deleted files
+    match = re.search(r'SYNC_FILES_DRY:DELETED=(\[.*?\])', stdout, re.DOTALL)
+    if match:
+        try:
+            result['deleted'] = json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+    
+    # Parse overflow counts
+    match = re.search(r'SYNC_FILES_OVERFLOW:ADDED_MORE=(\d+)', stdout)
+    if match:
+        result['added_more'] = int(match.group(1))
+    
+    match = re.search(r'SYNC_FILES_OVERFLOW:UPDATED_MORE=(\d+)', stdout)
+    if match:
+        result['updated_more'] = int(match.group(1))
+    
+    match = re.search(r'SYNC_FILES_OVERFLOW:DELETED_MORE=(\d+)', stdout)
+    if match:
+        result['deleted_more'] = int(match.group(1))
+    
+    return result if any(result[k] for k in ['added', 'updated', 'deleted']) else None
+
+
+def normalize_path_to_relative(abs_path: str, base_path: str | None = None) -> str:
+    r"""
+    絶対パスを相対パスに正規化。Windows パス区切りを Unix スタイルに統一
+    
+    例: C:\Users\xxx\.copilot\skills\foo.md → skills/foo.md
+    """
+    try:
+        if base_path:
+            rel = Path(abs_path).relative_to(base_path)
+        else:
+            # Fallback: home-template/.copilot/ 以降を抽出
+            copilot_idx = abs_path.lower().find('.copilot')
+            if copilot_idx >= 0:
+                rel = Path(abs_path[copilot_idx + 9:])  # Skip ".copilot\" or ".copilot/"
+            else:
+                rel = Path(abs_path).name
+        
+        return str(rel).replace('\\', '/')
+    except (ValueError, OSError):
+        return str(Path(abs_path).name)
+
+
+def format_file_details(files: dict[str, list[str] | int] | None, dry_run: bool = False) -> str:
+    """
+    ドライラン時のファイル詳細情報をフォーマット
+    
+    実行時は空文字列を返す（ファイル一覧は表示しない）
+    """
+    if not dry_run or not files:
+        return ""
+    
+    lines: list[str] = []
+    
+    # 追加ファイル
+    added = files.get('added')
+    if added and isinstance(added, list):
+        added_more = files.get('added_more', 0)
+        added_more_int = added_more if isinstance(added_more, int) else 0
+        lines.append("")
+        lines.append("")
+        lines.append(f"◆ 追加ファイル ({len(added) + added_more_int} 個)")
+        for file_path in added:
+            rel_path = normalize_path_to_relative(file_path)
+            lines.append(f"  {rel_path}")
+        if added_more_int > 0:
+            lines.append(f"  ... 残り {added_more_int} 個")
+    
+    # 更新ファイル
+    updated = files.get('updated')
+    if updated and isinstance(updated, list):
+        updated_more = files.get('updated_more', 0)
+        updated_more_int = updated_more if isinstance(updated_more, int) else 0
+        lines.append("")
+        lines.append(f"◆ 更新ファイル ({len(updated) + updated_more_int} 個)")
+        for file_path in updated:
+            rel_path = normalize_path_to_relative(file_path)
+            lines.append(f"  {rel_path}")
+        if updated_more_int > 0:
+            lines.append(f"  ... 残り {updated_more_int} 個")
+    
+    # 削除ファイル
+    deleted = files.get('deleted')
+    if deleted and isinstance(deleted, list):
+        deleted_more = files.get('deleted_more', 0)
+        deleted_more_int = deleted_more if isinstance(deleted_more, int) else 0
+        lines.append("")
+        lines.append(f"◆ 削除ファイル ({len(deleted) + deleted_more_int} 個)")
+        for file_path in deleted:
+            rel_path = normalize_path_to_relative(file_path)
+            lines.append(f"  {rel_path}")
+        if deleted_more_int > 0:
+            lines.append(f"  ... 残り {deleted_more_int} 個")
+    elif not added and not updated:
+        # すべて空の場合
+        lines.append("")
+        lines.append("")
+        lines.append("◆ 変更ファイルなし")
+    
+    return "\n".join(lines)
+
+
+def format_sync_summary(stats: dict[str, int] | None, dry_run: bool = False, success: bool = False) -> str:
+    """
+    同期統計情報を非技術層向けにフォーマット
+    
+    - ドライラン: "✓ ドライラン確認: 追加 X 個 / 更新 Y 個 / 削除 Z 個"
+    - 実行成功: "✓ 同期完了: 追加 X 個 / 更新 Y 個 / 削除 Z 個"
+    """
+    if not stats:
+        return "同期結果が取得できませんでした"
+    
+    added, updated, deleted = stats['added'], stats['updated'], stats['deleted']
+    summary = f"追加 {added} 個 / 更新 {updated} 個 / 削除 {deleted} 個"
+    
+    if dry_run:
+        return f"✓ ドライラン確認: {summary}"
+    elif success:
+        return f"✓ 同期完了: {summary}"
+    else:
+        return "✗ 同期失敗"
+
+
+def suggest_error_resolution(stderr: str) -> str:
+    """
+    stderr から一般的なエラーを検出し、ユーザー向け対処法を提示
+    """
+    stderr_lower = stderr.lower()
+    if "access denied" in stderr_lower or "権限" in stderr:
+        return "✗ 権限エラー — Admin 権限で再実行してください"
+    elif "path" in stderr_lower or "見つかりません" in stderr:
+        return "✗ パスエラー — パスが正しいか確認してください"
+    elif "network" in stderr_lower or "ネットワーク" in stderr:
+        return "✗ ネットワークエラー — インターネット接続を確認してください"
+    else:
+        return "✗ 同期失敗 — 詳細はログを確認してください"
+
+
+def format_command_result_improved(result: CommandResult, dry_run: bool = False) -> str:
+    """
+    改善版: robocopy 生ログを人間が読める形に変換
+    
+    成功時は統計情報を表示、失敗時は対処法を提示
+    ドライラン時はファイル詳細を追加表示
+    """
+    if not result.succeeded:
+        return suggest_error_resolution(result.stderr)
+    
+    stats = parse_sync_stats(result.stdout)
+    message = format_sync_summary(stats, dry_run=dry_run, success=True)
+    
+    # ドライラン時のみファイル詳細を追加
+    if dry_run:
+        files = parse_sync_files_dry(result.stdout)
+        file_details = format_file_details(files, dry_run=True)
+        message += file_details
+    
+    return message
+
+
+def build_option_summary_improved(*, dry_run: bool, verbose_log: bool) -> str:
+    """
+    改善版: ドライラン/実行モードの説明を見やすく
+    """
+    lines = []
+    if dry_run:
+        lines.append("◆ ドライランモード")
+        lines.append("このモードではファイルは実際に変更されません。何が同期されるか確認できます。")
+    else:
+        lines.append("◆ 実行モード")
+        lines.append("確認後、同期内容が実際に反映されます。")
+    
+    lines.append("")
+    lines.append("ホーム同期は skills/、agents/、repo-template/、.github/hooks/ を template 一致へ同期します。")
+    lines.append("mcp-config.json や docs/furikaeri など user-owned 領域は保護されます。")
+    
+    if verbose_log:
+        lines.append("")
+        lines.append("◆ 詳細ログ表示")
+        lines.append("同期の詳細な実行内容を表示します。")
+    
+    return "\n".join(lines)
+
+
 def build_option_summary(*, dry_run: bool, verbose_log: bool) -> str:
     lines = []
     if dry_run:
@@ -189,7 +429,7 @@ def run_cli(namespace: argparse.Namespace) -> int:
     else:
         raise ValueError(f"未対応の CLI コマンドです: {namespace.command}")
 
-    print(format_command_result(result))
+    print(format_command_result_improved(result, dry_run=namespace.dry_run))
     return result.returncode
 
 
@@ -281,7 +521,7 @@ class HappyEnvGui:
 
     def _update_option_summary(self) -> None:
         self.option_summary_var.set(
-            build_option_summary(
+            build_option_summary_improved(
                 dry_run=self.dry_run_var.get(),
                 verbose_log=self.verbose_log_var.get(),
             )
@@ -298,7 +538,10 @@ class HappyEnvGui:
         def worker() -> None:
             try:
                 result = runner()
-                message = format_command_result(result)
+                message = format_command_result_improved(
+                    result,
+                    dry_run=self.dry_run_var.get(),
+                )
             except Exception as exc:  # pragma: no cover - defensive boundary to keep GUI alive.
                 message = f"実行前に処理が失敗しました:\n{exc}"
             finally:

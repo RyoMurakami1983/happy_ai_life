@@ -61,6 +61,9 @@ function Invoke-Robocopy {
         New-Item -ItemType Directory -Path $Destination -Force | Out-Null
     }
 
+    # Robocopy statistics gathering: use a temporary stats file for counting operations
+    $statsLogPath = Join-Path ([System.IO.Path]::GetTempPath()) ("robocopy-stats-{0}.log" -f [guid]::NewGuid())
+    
     $robocopyArgs = @(
         $Source
         $Destination
@@ -73,6 +76,7 @@ function Invoke-Robocopy {
         "/NJH"
         "/NJS"
         "/XJ"
+        "/LOG+:$statsLogPath"
     )
 
     if ($MirrorMode) {
@@ -93,6 +97,7 @@ function Invoke-Robocopy {
             "/R:2"
             "/W:1"
             "/XJ"
+            "/LOG+:$statsLogPath"
         )
         if ($MirrorMode) { $robocopyArgs += "/MIR" }
         if ($WhatIfMode) { $robocopyArgs += "/L" }
@@ -107,7 +112,7 @@ function Invoke-Robocopy {
             & robocopy @robocopyArgs | Out-Null
         }
         else {
-            & robocopy @robocopyArgs
+            & robocopy @robocopyArgs | Out-Null
         }
         $exitCode = $LASTEXITCODE
 
@@ -120,6 +125,82 @@ function Invoke-Robocopy {
 
         Test-RobocopyResult -ExitCode $exitCode
 
+        # Parse statistics and file lists from the robocopy log
+        if (Test-Path -LiteralPath $statsLogPath) {
+            $statsContent = Get-Content -LiteralPath $statsLogPath -Raw -Encoding Unicode
+            
+            # Parse: Files: 123 (or similar pattern)
+            $filesMatch = [regex]::Match($statsContent, 'Files\s+:\s+(\d+)')
+            $dirsMatch = [regex]::Match($statsContent, 'Dirs\s+:\s+(\d+)')
+            $extraMatch = [regex]::Match($statsContent, 'Extra\s+:\s+(\d+)')
+            
+            $filesCount = if ($filesMatch.Success) { [int]$filesMatch.Groups[1].Value } else { 0 }
+            $dirsCount = if ($dirsMatch.Success) { [int]$dirsMatch.Groups[1].Value } else { 0 }
+            $extraCount = if ($extraMatch.Success) { [int]$extraMatch.Groups[1].Value } else { 0 }
+            
+            # Output sync stats in parseable format for Python side
+            Write-Host "SYNC_STATS:ADDED=$filesCount,UPDATED=$dirsCount,DELETED=$extraCount"
+            
+            # For dry-run, extract detailed file lists
+            if ($WhatIfMode) {
+                $addedFiles = @()
+                $updatedFiles = @()
+                $deletedFiles = @()
+                
+                # Parse file paths from robocopy log
+                foreach ($line in $statsContent -split "`n") {
+                    # robocopy dry-run log format: "New File" for added, "EXTRA File" for deleted
+                    if ($line -match "New File\s+(.+)") {
+                        $filePath = $matches[1].Trim()
+                        if ($filePath -and $filePath.Length -gt 0) {
+                            $addedFiles += $filePath
+                        }
+                    }
+                    elseif ($line -match "Newer\s+(.+)" -or $line -match ".*\s+(.+)\s+\*$") {
+                        # Updated files
+                        $filePath = $matches[1].Trim()
+                        if ($filePath -and $filePath.Length -gt 0) {
+                            $updatedFiles += $filePath
+                        }
+                    }
+                    elseif ($line -match "EXTRA File\s+(.+)") {
+                        # Deleted files
+                        $filePath = $matches[1].Trim()
+                        if ($filePath -and $filePath.Length -gt 0) {
+                            $deletedFiles += $filePath
+                        }
+                    }
+                }
+                
+                # Output as JSON-like KEY=VALUE for Python parsing
+                # Limit output to first 20 per category for readability
+                $addedTruncated = $addedFiles | Select-Object -First 20
+                $updatedTruncated = $updatedFiles | Select-Object -First 20
+                $deletedTruncated = $deletedFiles | Select-Object -First 20
+                
+                $addedJson = @($addedTruncated) | ConvertTo-Json -Compress
+                $updatedJson = @($updatedTruncated) | ConvertTo-Json -Compress
+                $deletedJson = @($deletedTruncated) | ConvertTo-Json -Compress
+                
+                Write-Host "SYNC_FILES_DRY:ADDED=$addedJson"
+                Write-Host "SYNC_FILES_DRY:UPDATED=$updatedJson"
+                Write-Host "SYNC_FILES_DRY:DELETED=$deletedJson"
+                
+                if ($addedFiles.Count -gt 20) {
+                    Write-Host "SYNC_FILES_OVERFLOW:ADDED_MORE=$($addedFiles.Count - 20)"
+                }
+                if ($updatedFiles.Count -gt 20) {
+                    Write-Host "SYNC_FILES_OVERFLOW:UPDATED_MORE=$($updatedFiles.Count - 20)"
+                }
+                if ($deletedFiles.Count -gt 20) {
+                    Write-Host "SYNC_FILES_OVERFLOW:DELETED_MORE=$($deletedFiles.Count - 20)"
+                }
+            }
+        } else {
+            # Fallback when stats file is not available
+            Write-Host "SYNC_STATS:ADDED=0,UPDATED=0,DELETED=0"
+        }
+
         if ($WhatIfMode) {
             Write-Host "DryRun completed. ExitCode=$exitCode" -ForegroundColor Yellow
         }
@@ -130,6 +211,9 @@ function Invoke-Robocopy {
     finally {
         if ($verboseLogPath -and (Test-Path -LiteralPath $verboseLogPath)) {
             Remove-Item -LiteralPath $verboseLogPath -Force
+        }
+        if ($statsLogPath -and (Test-Path -LiteralPath $statsLogPath)) {
+            Remove-Item -LiteralPath $statsLogPath -Force
         }
     }
 
