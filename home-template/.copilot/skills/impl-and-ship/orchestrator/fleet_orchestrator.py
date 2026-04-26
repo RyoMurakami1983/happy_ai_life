@@ -38,10 +38,10 @@ def validate_repo_dependencies(repo_plans: dict[str, dict]) -> list[str]:
     """
     Validate that all referenced repos exist.
 
-    Checks all blocking dependencies to ensure they reference existing repos.
+    Checks all blocking dependencies and contracts.requires[*].source_repo to ensure they reference existing repos.
 
     Args:
-        repo_plans: Dictionary of {repo_name: plan_dict} with dependencies.blocking
+        repo_plans: Dictionary of {repo_name: plan_dict} with dependencies.blocking and dependencies.contracts.requires
 
     Returns:
         List of error messages (empty if all references are valid).
@@ -50,12 +50,27 @@ def validate_repo_dependencies(repo_plans: dict[str, dict]) -> list[str]:
     errors = []
 
     for repo_name, plan in repo_plans.items():
+        # Validate blocking dependencies
         blocking_deps = plan.get("dependencies", {}).get("blocking", [])
         for dep in blocking_deps:
             if dep not in all_repos:
                 errors.append(
-                    f"Repo '{repo_name}' references unknown dependency: '{dep}'"
+                    f"Repo '{repo_name}' references unknown blocking dependency: '{dep}'"
                 )
+        
+        # Validate requires[*].source_repo references
+        contracts = plan.get("dependencies", {}).get("contracts", {})
+        requires = contracts.get("requires", [])
+        unknown_repos = set()
+        for req in requires:
+            source_repo = req.get("source_repo", "")
+            if source_repo and source_repo not in all_repos:
+                unknown_repos.add(source_repo)
+        
+        if unknown_repos:
+            errors.append(
+                f"Repo '{repo_name}' references unknown source repos in contracts.requires: {sorted(unknown_repos)}"
+            )
 
     return errors
 
@@ -163,9 +178,9 @@ def orchestrate_multi_repo_impl_and_ship(
 
     Args:
         repo_plans: Dictionary of {repo_name: plan_dict} with dependencies
-        polling_interval_sec: Polling interval in seconds (default 30s)
-        timeout_sec: Overall timeout in seconds (default 3600s)
-        mock_mode: If True, simulate execution for testing
+        polling_interval_sec: (Reserved for future polling implementation; currently unused)
+        timeout_sec: (Reserved for future polling implementation; currently unused)
+        mock_mode: If True, simulate execution without actual side effects (default behavior)
         mock_failures: List of repo names to simulate as failures (mock_mode only)
 
     Returns:
@@ -248,7 +263,9 @@ def orchestrate_multi_repo_impl_and_ship(
                     provided_checksum = provide.get("checksum")
                     break
 
-            if provided_checksum and provided_checksum != required_checksum:
+            # Only enforce checksum mismatch when required_checksum is non-null
+            # (Phase 1 placeholder is null, filled on Phase 3 first run)
+            if required_checksum is not None and provided_checksum != required_checksum:
                 repo_status[repo_name] = "BLOCKED"
                 status_log.append(
                     f"[{repo_name}] BLOCKED by checksum mismatch from {source_repo}"

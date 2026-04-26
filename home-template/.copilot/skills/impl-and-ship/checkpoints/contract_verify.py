@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 
 @dataclass(frozen=True)
 class CheckpointResult:
@@ -198,18 +200,15 @@ def save_plan_with_updated_checksums(plan_path: Path, plan_dict: dict) -> None:
     if yaml_end_idx is None:
         return  # No YAML front-matter found, can't update
 
-    # Reconstruct YAML front-matter from plan_dict
-    yaml_lines = ["---"]
-    
-    # Add project_context if present
+    # Serialize YAML front-matter using PyYAML
+    front_matter = {}
     if "project_context" in plan_dict:
-        yaml_lines.extend(_dict_to_yaml_lines(plan_dict["project_context"]))
-    
-    # Add dependencies if present
+        front_matter["project_context"] = plan_dict["project_context"]
     if "dependencies" in plan_dict:
-        yaml_lines.extend(_dict_to_yaml_lines(plan_dict["dependencies"]))
+        front_matter["dependencies"] = plan_dict["dependencies"]
     
-    yaml_lines.append("---")
+    yaml_str = yaml.dump(front_matter, default_flow_style=False, sort_keys=False)
+    yaml_lines = ["---", *yaml_str.rstrip("\n").split("\n"), "---"]
     
     # Combine YAML with rest of file
     rest_of_file = "\n".join(lines[yaml_end_idx + 1 :])
@@ -219,55 +218,3 @@ def save_plan_with_updated_checksums(plan_path: Path, plan_dict: dict) -> None:
     plan_path.write_text(updated_content)
 
 
-def _dict_to_yaml_lines(obj: Any, indent: int = 0) -> list[str]:
-    """Convert dict to YAML lines (basic, not production-grade YAML)."""
-    yaml_lines = []
-    spaces = " " * indent
-
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if isinstance(value, dict):
-                yaml_lines.append(f"{spaces}{key}:")
-                yaml_lines.extend(_dict_to_yaml_lines(value, indent + 2))
-            elif isinstance(value, list):
-                if value and isinstance(value[0], dict):
-                    # List of dicts
-                    yaml_lines.append(f"{spaces}{key}:")
-                    for item in value:
-                        yaml_lines.append(f"{spaces}  - " + _format_yaml_dict_item(item))
-                else:
-                    # List of scalars
-                    yaml_lines.append(f"{spaces}{key}:")
-                    for item in value:
-                        yaml_lines.append(f"{spaces}  - {_format_yaml_value(item)}")
-            else:
-                yaml_lines.append(f"{spaces}{key}: {_format_yaml_value(value)}")
-
-    return yaml_lines
-
-
-def _format_yaml_dict_item(item: dict[str, Any]) -> str:
-    """Format a dict item for YAML list (inline if possible)."""
-    if not item:
-        return "{}"
-    
-    # For now, return as multi-line format
-    lines = []
-    for key, value in item.items():
-        lines.append(f"{key}: {_format_yaml_value(value)}")
-    return "\n      ".join(lines)
-
-
-def _format_yaml_value(value: Any) -> str:
-    """Format a value for YAML."""
-    if value is None:
-        return "null"
-    elif isinstance(value, bool):
-        return "true" if value else "false"
-    elif isinstance(value, str):
-        # Quote strings with spaces or special chars
-        if " " in value or ":" in value or "#" in value:
-            return f'"{value}"'
-        return value
-    else:
-        return str(value)

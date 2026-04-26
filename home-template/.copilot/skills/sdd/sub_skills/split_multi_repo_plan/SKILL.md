@@ -100,11 +100,11 @@ dependencies:
 ### Phase 1: Setup and Dependencies
 
 #### Blocking Dependencies
-- Requires `ui_schema` (vv1) from `frontend`
+- Requires `ui_schema` (v1) from `frontend`
 
 #### Provided Artifacts
-- Provides `openapi` (vv1) at `docs/openapi.yaml`
-- Provides `db_schema` (vv1) at `schema.sql`
+- Provides `openapi` (v1) at `docs/openapi.yaml`
+- Provides `db_schema` (v1) at `schema.sql`
 
 ...
 ```

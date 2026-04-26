@@ -218,7 +218,7 @@ project_context:
   related_repositories: {sorted(list(related_repos)) if related_repos else "[]"}
 
 dependencies:
-  blocking: {sorted([req.get('source_repo', '') for req in requires]) if requires else "[]"}
+  blocking: {sorted({req.get('source_repo', '') for req in requires if req.get('source_repo', '')}) if requires else []}
   contracts:
     provides:
 """
@@ -232,7 +232,7 @@ dependencies:
         version: "{artifact.get('version', '')}"
 """
     else:
-        yaml_fm += "      []"
+        yaml_fm += "      []\n"
 
     # Add requires section with relative paths
     yaml_fm += "    requires:\n"
@@ -242,12 +242,13 @@ dependencies:
             artifact_name = req.get("artifact", "")
             version = req.get("version", "")
             
-            # Find the actual path from provides of source repo
+            # Find the actual path from provides of source repo (match by artifact + version)
             source_artifact_path = ""
             for source in all_repos:
                 if source["name"] == source_repo:
                     for provided in source.get("provides", []):
-                        if provided.get("artifact") == artifact_name:
+                        if (provided.get("artifact") == artifact_name and 
+                            provided.get("version") == version):
                             source_artifact_path = provided.get("path", "")
                             break
                     break
@@ -272,9 +273,13 @@ dependencies:
     if requires:
         narrative += "#### Blocking Dependencies\n\n"
         for req in requires:
+            version_str = req.get('version', '')
+            # Remove 'v' prefix if already present to avoid duplication
+            if version_str.startswith('v'):
+                version_str = version_str[1:]
             narrative += (
                 f"- Requires `{req.get('artifact', '')}` "
-                f"(v{req.get('version', '')}) from `{req.get('source_repo', '')}`\n"
+                f"(v{version_str}) from `{req.get('source_repo', '')}`\n"
             )
         narrative += "\n"
 
