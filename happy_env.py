@@ -449,7 +449,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="app.py",
         description="既存の PowerShell を正本のまま呼び出す Python launcher（CLI モードのみ）。",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command")
 
     home_parser = subparsers.add_parser("home", help="home-template/.copilot を $HOME/.copilot へ同期します。")
     home_parser.add_argument("--mirror", action="store_true", help="互換オプションです。ホーム同期の managed directory は常に template 一致へ同期します。")
@@ -542,5 +542,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = list(argv) if argv is not None else None
     namespace = parser.parse_args(args)
+
+    # デフォルトコマンド: サブコマンド省略時は "home" を使用
+    if namespace.command is None:
+        namespace.command = "home"
+        namespace.mirror = False
+        namespace.dry_run = False
+        namespace.verbose_log = False
 
     return run_cli_interactive(namespace)
