@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import subprocess
 import tkinter as tk
 from pathlib import Path
@@ -103,6 +104,42 @@ def test_run_script_decodes_stdout_and_stderr_with_locale(monkeypatch) -> None:
     assert result.returncode == 3
     assert result.stdout == "詳細ログ"
     assert result.stderr == "警告"
+
+
+def test_write_console_line_replaces_unencodable_characters() -> None:
+    buffer = io.BytesIO()
+    stream = io.TextIOWrapper(buffer, encoding="ascii", newline="\n")
+
+    happy_env.write_console_line("status ✓", stream=stream)
+
+    stream.flush()
+    assert buffer.getvalue() == b"status ?\n"
+
+
+def test_run_cli_handles_non_utf8_stdout(monkeypatch) -> None:
+    buffer = io.BytesIO()
+    stream = io.TextIOWrapper(buffer, encoding="ascii", newline="\n")
+
+    monkeypatch.setattr(happy_env.sys, "stdout", stream)
+    monkeypatch.setattr(
+        happy_env,
+        "run_home_sync",
+        lambda **kw: happy_env.CommandResult(
+            label="test",
+            command=(),
+            returncode=0,
+            stdout="SYNC_STATS:ADDED=1,UPDATED=0,DELETED=0",
+            stderr="",
+        ),
+    )
+
+    exit_code = happy_env.run_cli(
+        happy_env.build_parser().parse_args(["home", "--dry-run"])
+    )
+
+    stream.flush()
+    assert exit_code == 0
+    assert b"?" in buffer.getvalue()
 
 
 def test_gui_gives_extra_vertical_space_to_log_pane() -> None:
@@ -313,6 +350,5 @@ def test_format_file_details_no_changes_when_all_empty() -> None:
     result = happy_env.format_file_details(files, dry_run=True)
     assert "変更ファイルなし" in result
     assert "一覧取得に失敗" not in result
-
 
 

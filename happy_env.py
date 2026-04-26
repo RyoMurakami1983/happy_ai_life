@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import io
 import locale
 import os
 import re
@@ -12,6 +11,7 @@ import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TextIO
 
 import tkinter as tk
 from tkinter import ttk
@@ -230,8 +230,21 @@ def parse_sync_files_dry(stdout: str) -> dict[str, list[str] | int] | None:
     result['deleted_more'] = sum(int(m) for m in matches)
     
     # リストが空でも、オーバーフロー情報がある場合は結果を返す
-    has_files = any(result[k] for k in ['added', 'updated', 'deleted'])
-    has_overflow = any(result[k] > 0 for k in ['added_more', 'updated_more', 'deleted_more'])
+    added_files = result["added"]
+    updated_files = result["updated"]
+    deleted_files = result["deleted"]
+    added_more = result["added_more"]
+    updated_more = result["updated_more"]
+    deleted_more = result["deleted_more"]
+
+    has_files = any(
+        isinstance(files, list) and files
+        for files in (added_files, updated_files, deleted_files)
+    )
+    has_overflow = any(
+        isinstance(count, int) and count > 0
+        for count in (added_more, updated_more, deleted_more)
+    )
     return result if (has_files or has_overflow) else None
 
 
@@ -467,6 +480,14 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def write_console_line(message: str, *, stream: TextIO | None = None) -> None:
+    target = stream if stream is not None else sys.stdout
+    encoding = target.encoding or locale.getpreferredencoding(False) or "utf-8"
+    safe_message = message.encode(encoding, errors="replace").decode(encoding, errors="replace")
+    target.write(f"{safe_message}\n")
+    target.flush()
+
+
 def run_cli(namespace: argparse.Namespace) -> int:
     if namespace.command == "home":
         result = run_home_sync(
@@ -478,15 +499,8 @@ def run_cli(namespace: argparse.Namespace) -> int:
         raise ValueError(f"未対応の CLI コマンドです: {namespace.command}")
 
     message = format_command_result_improved(result, dry_run=namespace.dry_run)
-    
-    # Print with UTF-8 encoding to handle Unicode characters like ✓
-    # Use sys.stdout.buffer to write bytes directly, avoiding encoding issues
-    if hasattr(sys.stdout, 'buffer'):
-        sys.stdout.buffer.write(message.encode('utf-8'))
-        sys.stdout.buffer.write(b'\n')
-    else:
-        print(message)  # Fallback for environments without buffer
-    
+    write_console_line(message)
+
     return result.returncode
 
 
