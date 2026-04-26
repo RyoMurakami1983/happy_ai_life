@@ -255,4 +255,64 @@ def test_normalize_path_to_relative_no_copilot_prefix() -> None:
     assert result == "other/path/file.md"
 
 
+def test_parse_sync_files_dry_overflow_only_returns_dict() -> None:
+    """
+    オーバーフロー情報のみがある場合、dict を返す（None ではない）
+    ファイルリスト取得に失敗したが、ファイルが存在することは検出できたケース
+    """
+    stdout = """\
+SYNC_FILES_DRY:ADDED=[]
+SYNC_FILES_DRY:UPDATED=[]
+SYNC_FILES_DRY:DELETED=[]
+SYNC_FILES_OVERFLOW:ADDED_MORE=100
+SYNC_FILES_OVERFLOW:UPDATED_MORE=50
+SYNC_FILES_OVERFLOW:DELETED_MORE=10"""
+    result = happy_env.parse_sync_files_dry(stdout)
+    assert result is not None
+    assert result["added"] == []
+    assert result["updated"] == []
+    assert result["deleted"] == []
+    assert result["added_more"] == 100
+    assert result["updated_more"] == 50
+    assert result["deleted_more"] == 10
+
+
+def test_format_file_details_shows_overflow_message_when_list_unavailable() -> None:
+    """
+    オーバーフロー情報のみがある場合、「一覧取得に失敗」メッセージを表示
+    """
+    files = {
+        'added': [],
+        'updated': [],
+        'deleted': [],
+        'added_more': 100,
+        'updated_more': 50,
+        'deleted_more': 10,
+    }
+    result = happy_env.format_file_details(files, dry_run=True)
+    assert "一覧取得に失敗" in result
+    assert "100 個以上" in result
+    assert "50 個以上" in result
+    assert "10 個以上" in result
+    # "変更ファイルなし" は表示されないこと
+    assert "変更ファイルなし" not in result
+
+
+def test_format_file_details_no_changes_when_all_empty() -> None:
+    """
+    ファイルリストもオーバーフロー情報もない場合、「変更ファイルなし」を表示
+    """
+    files = {
+        'added': [],
+        'updated': [],
+        'deleted': [],
+        'added_more': 0,
+        'updated_more': 0,
+        'deleted_more': 0,
+    }
+    result = happy_env.format_file_details(files, dry_run=True)
+    assert "変更ファイルなし" in result
+    assert "一覧取得に失敗" not in result
+
+
 

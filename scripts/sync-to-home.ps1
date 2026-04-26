@@ -49,39 +49,76 @@ function Get-RobocopyStats {
     
     $stats = @{ Added = 0; Updated = 0; Deleted = 0 }
     
-    # robocopy ログの最後から統計情報を抽出
-    # フォーマット例:
+    # robocopy ログの最後から統計情報を抽出（ロケール対応）
+    # フォーマット例（英語）:
     #   Files : 123 copied, 45 updated, 6 deleted
     #   Extras : 3
+    # フォーマット例（日本語）:
+    #   ファイル:       248         1       247         0         0      8238
     
     $lines = $RobocopyOutput -split "`r?`n"
     
+    # Strategy: Try line-by-line counting first (more reliable for locales),
+    # fall back to summary line parsing only if no individual file markers found
+    $foundIndividualMarkers = $false
+    
     foreach ($line in $lines) {
-        # "Files :" という行を探す
-        if ($line -match "Files\s*:\s*(\d+)\s+copied") {
-            $stats.Added = [int]$matches[1]
+        # 英語と日本語の両パターンに対応（最優先）
+        if ($line -match "^\s+(New File|新しいファイル)\s+") {
+            $stats.Added++
+            $foundIndividualMarkers = $true
         }
-        if ($line -match "updated[,\s]+(\d+)") {
-            $stats.Updated = [int]$matches[1]
+        elseif ($line -match "^\s+(Newer|新しい)\s+") {
+            $stats.Updated++
+            $foundIndividualMarkers = $true
         }
-        
-        # "Extras :" という行を削除ファイル数として扱う
-        if ($line -match "Extras\s*:\s*(\d+)") {
-            $stats.Deleted = [int]$matches[1]
+        elseif ($line -match "^\s+(EXTRA File|EXTRA)\s+") {
+            $stats.Deleted++
+            $foundIndividualMarkers = $true
         }
     }
     
-    # 統計行が見つからない場合は、行ごとのカウントにフォールバック
+    # If no individual markers found, try summary line parsing (英語パターン)
+    if (-not $foundIndividualMarkers) {
+        foreach ($line in $lines) {
+            # 英語パターン: "Files : 123 copied, 45 updated, 6 deleted"
+            if ($line -match "Files\s*:\s*(\d+)\s+copied(?:,\s*(\d+)\s+updated)?(?:,\s*(\d+)\s+deleted)?") {
+                $stats.Added = [int]$matches[1]
+                if ($matches[2]) {
+                    $stats.Updated = [int]$matches[2]
+                }
+                if ($matches[3]) {
+                    $stats.Deleted = [int]$matches[3]
+                }
+                break
+            }
+        }
+    }
+    
+    # If still nothing, try 日本語 summary line: "ファイル:       248         1       247         0         0      8238"
     if ($stats.Added -eq 0 -and $stats.Updated -eq 0 -and $stats.Deleted -eq 0) {
         foreach ($line in $lines) {
-            if ($line -match "^\s+New File\s+") {
-                $stats.Added++
+            if ($line -match "^\s*ファイル:") {
+                $parts = @($line -split "\s+" | Where-Object { $_ -and $_ -ne "ファイル:" })
+                if ($parts.Count -ge 2) {
+                    # parts[0]=合計, parts[1]=コピー済み
+                    $stats.Added = [int]$parts[1]
+                }
+                if ($parts.Count -ge 3) {
+                    # parts[2]=スキップ（削除と捉える判定）
+                    $stats.Deleted = [int]$parts[2]
+                }
+                break
             }
-            elseif ($line -match "^\s+Newer\s+") {
-                $stats.Updated++
-            }
-            elseif ($line -match "^\s+EXTRA File\s+") {
-                $stats.Deleted++
+        }
+    }
+    
+    # Try "Extras" line for delete count as last resort
+    if ($stats.Deleted -eq 0) {
+        foreach ($line in $lines) {
+            if ($line -match "Extras\s*:\s*(\d+)") {
+                $stats.Deleted = [int]$matches[1]
+                break
             }
         }
     }
