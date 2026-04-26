@@ -134,6 +134,59 @@ Edit `.gitleaks.toml` to add allowlist entries for documentation example placeho
 that should not be treated as real secrets.
 The local `pre-commit` hook reuses the same `.gitleaks.toml`, so allowlist tuning is shared between local commits and CI for repositories that opt in to gitleaks scanning by adding the config file.
 
+### Troubleshooting: gitleaks not found in PATH
+
+If you see the error `gitleaks is required for the pre-commit secret scan, but it was not found`, the hook cannot locate the gitleaks binary. Follow these steps to resolve it:
+
+#### Step 1: Find the gitleaks executable path
+
+**Windows:**
+```powershell
+where gitleaks
+# or if you installed via scoop:
+scoop which gitleaks
+```
+
+**macOS / Linux:**
+```bash
+which gitleaks
+```
+
+#### Step 2: Retry the commit with GITLEAKS_BIN set
+
+Once you have the path, retry the commit by setting the `GITLEAKS_BIN` environment variable:
+
+**Windows (PowerShell):**
+```powershell
+$env:GITLEAKS_BIN="C:\Program Files\gitleaks.exe"
+git commit -m "your message"
+# or as a one-liner:
+$env:GITLEAKS_BIN="C:\Program Files\gitleaks.exe"; git commit -m "your message"
+```
+
+**macOS / Linux (bash/zsh):**
+```bash
+GITLEAKS_BIN=/usr/local/bin/gitleaks git commit -m "your message"
+```
+
+#### Step 3 (optional): Make it permanent
+
+To avoid setting `GITLEAKS_BIN` on every commit, add it to your shell profile:
+
+**Windows (PowerShell):**
+Add this line to your PowerShell profile (`$PROFILE`):
+```powershell
+$env:GITLEAKS_BIN="C:\Program Files\gitleaks.exe"
+```
+
+**macOS / Linux:**
+Add this line to `~/.bashrc`, `~/.zshrc`, or your shell's rc file:
+```bash
+export GITLEAKS_BIN=/usr/local/bin/gitleaks
+```
+
+Then reload your shell or open a new terminal window.
+
 ## License
 
 TODO: Add license.
