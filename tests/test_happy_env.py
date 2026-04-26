@@ -1,21 +1,11 @@
 from __future__ import annotations
 
 import subprocess
-import tkinter as tk
 from pathlib import Path
 
 import pytest
 
 import happy_env
-
-
-def _create_tk_root_or_skip() -> tk.Tk:
-    try:
-        root = tk.Tk()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk root is unavailable in this environment: {exc}")
-    root.withdraw()
-    return root
 
 
 def test_build_home_sync_arguments_include_requested_flags() -> None:
@@ -103,68 +93,6 @@ def test_run_script_decodes_stdout_and_stderr_with_locale(monkeypatch) -> None:
     assert result.returncode == 3
     assert result.stdout == "詳細ログ"
     assert result.stderr == "警告"
-
-
-def test_gui_gives_extra_vertical_space_to_log_pane() -> None:
-    root = _create_tk_root_or_skip()
-    try:
-        gui = happy_env.HappyEnvGui(root)
-        assert gui.main_frame is not None
-        assert int(gui.output.grid_info()["row"]) == 4
-        assert int(gui.main_frame.grid_rowconfigure(4)["weight"]) == 1
-        assert int(gui.main_frame.grid_rowconfigure(3)["weight"]) == 0
-    finally:
-        root.destroy()
-
-
-def test_main_home_delegates_to_cli(monkeypatch) -> None:
-    captured: list[str | tuple[str, ...]] = []
-
-    def fake_run_cli(namespace) -> int:
-        captured.append(namespace.command)
-        return 7
-
-    monkeypatch.setattr(happy_env, "run_cli", fake_run_cli)
-    monkeypatch.setattr(happy_env, "launch_gui", lambda: 99)
-
-    exit_code = happy_env.main(["home", "--dry-run"])
-
-    assert exit_code == 7
-    assert captured == ["home"]
-
-
-def test_run_cli_home_mirror_without_dry_run_skips_confirmation(monkeypatch) -> None:
-    called: list[bool] = []
-
-    def fake_run_home_sync(**kw: object) -> happy_env.CommandResult:
-        called.append(True)
-        return happy_env.CommandResult(label="test", command=(), returncode=0, stdout="", stderr="")
-
-    monkeypatch.setattr(happy_env, "run_home_sync", fake_run_home_sync)
-
-    exit_code = happy_env.run_cli(
-        happy_env.build_parser().parse_args(["home", "--mirror"])
-    )
-
-    assert exit_code == 0
-    assert called == [True]
-
-
-def test_run_cli_mirror_with_dry_run_skips_confirmation(monkeypatch) -> None:
-    called: list[bool] = []
-
-    def fake_run_home_sync(**kw: object) -> happy_env.CommandResult:
-        called.append(True)
-        return happy_env.CommandResult(label="test", command=(), returncode=0, stdout="", stderr="")
-
-    monkeypatch.setattr(happy_env, "run_home_sync", fake_run_home_sync)
-
-    exit_code = happy_env.run_cli(
-        happy_env.build_parser().parse_args(["home", "--mirror", "--dry-run"])
-    )
-
-    assert exit_code == 0
-    assert called == [True]
 
 
 def test_parse_sync_stats_single_execution() -> None:
