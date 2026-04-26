@@ -24,6 +24,13 @@ const {
   isRegularFileNoSymlink,
   readFileSafe,
 } = require('../.github/hooks/scripts/lib/session-utils.js');
+const {
+  extractTechnologies,
+  parseTechnologyFromDecisionLog,
+  findDecisionLogFiles,
+  validateTechnologyConsistency,
+  validateDecisionLogFormat,
+} = require('../.github/hooks/scripts/lib/decision-validation.js');
 
 function makeTempFile(name) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'session-hooks-'));
@@ -503,6 +510,235 @@ run('readFileSafe: 通常ファイルは内容を返す', () => {
   fs.writeFileSync(tempFile, content, 'utf8');
 
   assert.strictEqual(readFileSafe(tempFile), content);
+});
+
+// --- Decision Log Validation テスト ---
+
+run('extractTechnologies: セッション内から技術を抽出', () => {
+  const content = [
+    '# Session: tech-test',
+    '---',
+    '### Y（やったこと）',
+    '- Node.js で REST API を実装した',
+    '- React コンポーネントをリファクタリングした',
+    '',
+  ].join('\n');
+
+  const techs = extractTechnologies(content);
+  assert.ok(techs.has('Node.js'));
+  assert.ok(techs.has('React'));
+});
+
+run('extractTechnologies: 技術なしの場合は空 Set を返す', () => {
+  const content = [
+    '# Session: no-tech',
+    '---',
+    '### Y（やったこと）',
+    '- ドキュメント作成',
+    '',
+  ].join('\n');
+
+  const techs = extractTechnologies(content);
+  assert.strictEqual(techs.size, 0);
+});
+
+run('extractTechnologies: 複数形や別表記も検出', () => {
+  const content = 'Python と C# を比較検討した。TypeScript も検討中。';
+  const techs = extractTechnologies(content);
+  
+  assert.ok(techs.has('Python'));
+  assert.ok(techs.has('C#/.NET'));
+  assert.ok(techs.has('TypeScript'));
+});
+
+run('parseTechnologyFromDecisionLog: 決定ログから技術を抽出', () => {
+  const content = [
+    '# Decision Log: JIS Handbook Checker',
+    '',
+    'Date: 2026-04-22',
+    'Technology Selected: Node.js',
+    'Rationale: Lightweight, fast setup',
+    '',
+  ].join('\n');
+
+  const tech = parseTechnologyFromDecisionLog(content);
+  assert.strictEqual(tech, 'Node.js');
+});
+
+run('parseTechnologyFromDecisionLog: 複数形式の技術宣言に対応', () => {
+  const formats = [
+    'Technology: Python',
+    'Technology Selected: C#',
+    'Technology Choice: Go',
+  ];
+
+  for (const format of formats) {
+    const tech = parseTechnologyFromDecisionLog(format);
+    assert.ok(tech !== null);
+  }
+});
+
+run('parseTechnologyFromDecisionLog: 技術見つからない場合は null を返す', () => {
+  const content = [
+    '# Decision Log: No Tech',
+    '',
+    'Date: 2026-04-22',
+    'Rationale: Some decision',
+    '',
+  ].join('\n');
+
+  const tech = parseTechnologyFromDecisionLog(content);
+  assert.strictEqual(tech, null);
+});
+
+run('findDecisionLogFiles: 決定ログディレクトリが存在しない場合は空配列', () => {
+  const tempDir = makeTempDir('no-decisions-');
+  const files = findDecisionLogFiles(tempDir);
+  
+  assert.strictEqual(files.length, 0);
+});
+
+run('findDecisionLogFiles: 決定ログファイルを新しい順に返す', () => {
+  const tempDir = makeTempDir('decisions-');
+  const decisionsDir = path.join(tempDir, '.github', 'decisions', 'tech-selection');
+  fs.mkdirSync(decisionsDir, { recursive: true });
+
+  fs.writeFileSync(path.join(decisionsDir, '2026-04-20-old.md'), '# Old', 'utf8');
+  fs.writeFileSync(path.join(decisionsDir, '2026-04-22-new.md'), '# New', 'utf8');
+  fs.writeFileSync(path.join(decisionsDir, 'ignore.txt'), 'x', 'utf8');
+
+  const files = findDecisionLogFiles(tempDir);
+  
+  assert.strictEqual(files.length, 2);
+  assert.strictEqual(files[0].basename, '2026-04-22-new.md');
+  assert.strictEqual(files[1].basename, '2026-04-20-old.md');
+});
+
+run('validateTechnologyConsistency: 一致する技術は警告なし', () => {
+  const tempDir = makeTempDir('tech-match-');
+  const decisionsDir = path.join(tempDir, '.github', 'decisions', 'tech-selection');
+  fs.mkdirSync(decisionsDir, { recursive: true });
+
+  // Prior decision: Node.js
+  fs.writeFileSync(
+    path.join(decisionsDir, '2026-04-20-api.md'),
+    [
+      '# Decision: API Backend',
+      'Technology Selected: Node.js',
+      'Rationale: Fast, lightweight',
+    ].join('\n'),
+    'utf8'
+  );
+
+  // Current session also mentions Node.js
+  const sessionContent = [
+    '# Session: api-work',
+    'Implemented Node.js endpoints',
+  ].join('\n');
+
+  const result = validateTechnologyConsistency(sessionContent, tempDir);
+  assert.strictEqual(result.warnings.length, 0);
+  assert.strictEqual(result.isValid, true);
+});
+
+run('validateTechnologyConsistency: 不一致する技術は警告あり', () => {
+  const tempDir = makeTempDir('tech-mismatch-');
+  const decisionsDir = path.join(tempDir, '.github', 'decisions', 'tech-selection');
+  fs.mkdirSync(decisionsDir, { recursive: true });
+
+  // Prior decision: C#
+  fs.writeFileSync(
+    path.join(decisionsDir, '2026-04-20-jis.md'),
+    [
+      '# Decision: JIS Handbook Checker',
+      'Technology Selected: C#',
+      'Rationale: Strong typing, platform support',
+    ].join('\n'),
+    'utf8'
+  );
+
+  // Current session mentions Node.js (different technology)
+  const sessionContent = [
+    '# Session: jis-work',
+    'Implemented Node.js solution instead',
+  ].join('\n');
+
+  const result = validateTechnologyConsistency(sessionContent, tempDir);
+  assert.ok(result.warnings.length > 0);
+  assert.ok(result.warnings[0].includes('⚠️'));
+  assert.ok(result.warnings[0].includes('C#'));
+  assert.ok(result.warnings[0].includes('Node.js'));
+});
+
+run('validateTechnologyConsistency: 決定ログがない場合は警告なし', () => {
+  const tempDir = makeTempDir('no-decisions-check-');
+
+  const sessionContent = [
+    '# Session: any-work',
+    'Using Python for prototyping',
+  ].join('\n');
+
+  const result = validateTechnologyConsistency(sessionContent, tempDir);
+  assert.strictEqual(result.warnings.length, 0);
+  assert.strictEqual(result.isValid, true);
+});
+
+run('validateTechnologyConsistency: 技術が検出されない場合は何もしない', () => {
+  const tempDir = makeTempDir('no-tech-detect-');
+  const decisionsDir = path.join(tempDir, '.github', 'decisions', 'tech-selection');
+  fs.mkdirSync(decisionsDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(decisionsDir, '2026-04-20-prev.md'),
+    'Technology Selected: Go',
+    'utf8'
+  );
+
+  const sessionContent = [
+    '# Session: docs',
+    'Updated documentation only',
+  ].join('\n');
+
+  const result = validateTechnologyConsistency(sessionContent, tempDir);
+  assert.strictEqual(result.warnings.length, 0);
+  assert.strictEqual(result.isValid, true);
+});
+
+run('validateDecisionLogFormat: 正常なファイルは有効', () => {
+  const tempFile = makeTempFile('decision-valid.md');
+  fs.writeFileSync(tempFile, [
+    '# Decision Log',
+    'Technology Selected: Python',
+    'Rationale: Quick development',
+  ].join('\n'), 'utf8');
+
+  const result = validateDecisionLogFormat(tempFile);
+  assert.strictEqual(result.isValid, true);
+  assert.strictEqual(result.errors.length, 0);
+});
+
+run('validateDecisionLogFormat: Heading がない場合はエラー', () => {
+  const tempFile = makeTempFile('decision-no-heading.md');
+  fs.writeFileSync(tempFile, [
+    'Technology Selected: Python',
+    'Some content',
+  ].join('\n'), 'utf8');
+
+  const result = validateDecisionLogFormat(tempFile);
+  assert.strictEqual(result.isValid, false);
+  assert.ok(result.errors.length > 0);
+});
+
+run('validateDecisionLogFormat: Technology 宣言がない場合はエラー', () => {
+  const tempFile = makeTempFile('decision-no-tech.md');
+  fs.writeFileSync(tempFile, [
+    '# Decision Log',
+    'Rationale: Some reason',
+  ].join('\n'), 'utf8');
+
+  const result = validateDecisionLogFormat(tempFile);
+  assert.strictEqual(result.isValid, false);
+  assert.ok(result.errors.length > 0);
 });
 
 if (process.exitCode) {
