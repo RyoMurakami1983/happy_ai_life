@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import argparse
-import io
 import locale
 import os
 import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TextIO
 
 ROOT_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = ROOT_DIR / "scripts"
@@ -225,8 +225,21 @@ def parse_sync_files_dry(stdout: str) -> dict[str, list[str] | int] | None:
     result['deleted_more'] = sum(int(m) for m in matches)
     
     # リストが空でも、オーバーフロー情報がある場合は結果を返す
-    has_files = any(result[k] for k in ['added', 'updated', 'deleted'])
-    has_overflow = any(result[k] > 0 for k in ['added_more', 'updated_more', 'deleted_more'])
+    added_files = result["added"]
+    updated_files = result["updated"]
+    deleted_files = result["deleted"]
+    added_more = result["added_more"]
+    updated_more = result["updated_more"]
+    deleted_more = result["deleted_more"]
+
+    has_files = any(
+        isinstance(files, list) and files
+        for files in (added_files, updated_files, deleted_files)
+    )
+    has_overflow = any(
+        isinstance(count, int) and count > 0
+        for count in (added_more, updated_more, deleted_more)
+    )
     return result if (has_files or has_overflow) else None
 
 
@@ -466,6 +479,22 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def write_console_line(message: str, *, stream: TextIO | None = None) -> None:
+    target = stream if stream is not None else sys.stdout
+    encoding = target.encoding or locale.getpreferredencoding(False) or "utf-8"
+    safe_message = message.encode(encoding, errors="replace").decode(encoding, errors="replace")
+    target.write(f"{safe_message}\n")
+    target.flush()
+
+
+def stdin_is_interactive(stream: TextIO | None = None) -> bool:
+    target = stream if stream is not None else sys.stdin
+    isatty = getattr(target, "isatty", None)
+    if not callable(isatty):
+        return False
+    return bool(isatty())
+
+
 def prompt_sync_options() -> tuple[bool, bool]:
     """
     ホーム同期のオプションをインタラクティブに選択
@@ -476,36 +505,36 @@ def prompt_sync_options() -> tuple[bool, bool]:
     dry_run = True
     verbose_log = False
     
-    print("\n◆ ホーム同期モード設定")
-    print()
+    write_console_line("")
+    write_console_line("◆ ホーム同期モード設定")
+    write_console_line("")
     
     while True:
-        print(f"1. ドライランモード: {'✓ enabled' if dry_run else '✗ disabled'}")
-        print(f"2. 詳細ログ表示: {'✓ enabled' if verbose_log else '✗ disabled'}")
-        print()
-        print("実行するには Enter キーを押してください。")
-        print("設定を変更するには「1」または「2」を入力してください。")
-        print()
-        
+        write_console_line(f"1. ドライランモード: {'[ON] enabled' if dry_run else '[OFF] disabled'}")
+        write_console_line(f"2. 詳細ログ表示: {'[ON] enabled' if verbose_log else '[OFF] disabled'}")
+        write_console_line("")
+        write_console_line("実行するには Enter キーを押してください。")
+        write_console_line("設定を変更するには「1」または「2」を入力してください。")
+        write_console_line("")
+
         choice = input("> ").strip()
-        
+
         if choice == "":
-            # Enter キーで実行
             break
         elif choice == "1":
             dry_run = not dry_run
-            print()
+            write_console_line("")
         elif choice == "2":
             verbose_log = not verbose_log
-            print()
+            write_console_line("")
         else:
-            print("無効な選択です。もう一度入力してください。")
-            print()
-    
-    print()
-    print(build_option_summary_improved(dry_run=dry_run, verbose_log=verbose_log))
-    print()
-    
+            write_console_line("無効な選択です。もう一度入力してください。")
+            write_console_line("")
+
+    write_console_line("")
+    write_console_line(build_option_summary_improved(dry_run=dry_run, verbose_log=verbose_log))
+    write_console_line("")
+
     return dry_run, verbose_log
 
 
@@ -520,13 +549,19 @@ def run_cli_interactive(namespace: argparse.Namespace, *, has_explicit_flags: bo
         has_explicit_flags: --dry-run や --verbose-log が明示的に指定されたか
     """
     if namespace.command == "home":
-        # フラグが明示的に指定されていない場合はインタラクティブモードに入る
-        if not has_explicit_flags:
-            dry_run, verbose_log = prompt_sync_options()
-        else:
+        if has_explicit_flags:
             dry_run = namespace.dry_run
             verbose_log = namespace.verbose_log
-        
+        elif stdin_is_interactive():
+            try:
+                dry_run, verbose_log = prompt_sync_options()
+            except EOFError:
+                dry_run = True
+                verbose_log = False
+        else:
+            dry_run = True
+            verbose_log = False
+
         result = run_home_sync(
             mirror=namespace.mirror,
             dry_run=dry_run,
@@ -535,15 +570,9 @@ def run_cli_interactive(namespace: argparse.Namespace, *, has_explicit_flags: bo
         message = format_command_result_improved(result, dry_run=dry_run)
     else:
         raise ValueError(f"未対応の CLI コマンドです: {namespace.command}")
-    
-    # Print with UTF-8 encoding to handle Unicode characters like ✓
-    # Use sys.stdout.buffer to write bytes directly, avoiding encoding issues
-    if hasattr(sys.stdout, 'buffer'):
-        sys.stdout.buffer.write(message.encode('utf-8'))
-        sys.stdout.buffer.write(b'\n')
-    else:
-        print(message)  # Fallback for environments without buffer
-    
+
+    write_console_line(message)
+
     return result.returncode
 
 
