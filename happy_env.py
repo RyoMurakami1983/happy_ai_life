@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import io
 import locale
 import os
 import re
 import shutil
 import subprocess
+import sys
 import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -475,7 +477,16 @@ def run_cli(namespace: argparse.Namespace) -> int:
     else:
         raise ValueError(f"未対応の CLI コマンドです: {namespace.command}")
 
-    print(format_command_result_improved(result, dry_run=namespace.dry_run))
+    message = format_command_result_improved(result, dry_run=namespace.dry_run)
+    
+    # Print with UTF-8 encoding to handle Unicode characters like ✓
+    # Use sys.stdout.buffer to write bytes directly, avoiding encoding issues
+    if hasattr(sys.stdout, 'buffer'):
+        sys.stdout.buffer.write(message.encode('utf-8'))
+        sys.stdout.buffer.write(b'\n')
+    else:
+        print(message)  # Fallback for environments without buffer
+    
     return result.returncode
 
 
