@@ -138,6 +138,7 @@ standard ワークフローと同じ型に加え、以下を追加する:
 - **standard ワークフローの成果も使える**: standard で始めて結合分析が必要になった場合、そこまでの設計成果をこのワークフローのステップ 2 に持ち込んでよい
 - **1次元だけで結合を評価しない**: 統合強度・距離・変動性の3つを常にセットで見る
 - **本質的変動性と偶発的変動性を区別する**: コミット頻度が高いことは変動性が高いことを意味しない
+- **multirepository 時の split_multi_repo_plan**: 複数リポの設計を完成させた後、このワークフローの結合評価表と統合方針を `split_multi_repo_plan` に渡し、リポごとの独立した plan.md に分割します。各リポの plan.md 内で、他リポへの依存（provide/require）が明記されます。
 
 ## 関連リソース
 
@@ -145,3 +146,4 @@ standard ワークフローと同じ型に加え、以下を追加する:
 - `home-template/.copilot/skills/design-workshop/_foundation/IMPLEMENTATION_HEURISTICS.md` — 実装の経験則（判断ツリー）
 - `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド
 - `home-template/.copilot/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
+- `home-template/.copilot/skills/sdd/sub_skills/split_multi_repo_plan/SKILL.md` — multirepository での plan 分割（複数リポの設計を per-repo plan に分割するとき）

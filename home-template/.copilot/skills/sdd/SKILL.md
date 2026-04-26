@@ -3,7 +3,9 @@ name: sdd
 description: >
   仕様駆動開発の前半工程（spec → design → plan handoff）を1つの入口で進める。
   途中の spec / design / planning フェーズからも再開できる。
-  Use when: 仕様駆動で開発を始めたいとき、途中のフェーズから再開したいとき。
+  複数リポが関連する場合は split_multi_repo_plan で unified architecture を分割し、
+  各リポの plan.md を生成します。
+  Use when: 仕様駆動で開発を始めたいとき、途中のフェーズから再開したいとき、multirepository 環境で計画を分割したいとき。
 ---
 
 # SDD — Spec-Driven Development
@@ -40,6 +42,9 @@ description: >
   ↓                    design-workshop が構造判断として扱う
   ↓
 計画フェーズ        → PLAN mode
+  ↓
+  ↓                 ＊ multirepository 時（以下オプション）＊
+  ↓                 → split_multi_repo_plan（unified architecture → per-repo plans）
   ↓
                     ＊ここで sdd の責務は終わり ＊
                     → impl-and-ship（実装・eval・review・furikaeri・PR の後半サイクル）
@@ -94,6 +99,31 @@ PLAN mode 完了または既存 plan.md が以下を満たす状態で、`impl-a
 ### multirepository 時の PLAN mode
 
 複数リポが関連する場合は、PLAN mode で必ず以下を明記してください（後述）。
+
+## For Multi-Repo Project（マルチリポジトリ対応）
+
+複数リポが関連する開発では、PLAN mode で unified architecture を完成させた後、`split_multi_repo_plan` sub-skill を使い、リポごとの独立した plan.md を生成します。
+
+### split_multi_repo_plan の役割
+
+- **入力**: PLAN mode または design-workshop の unified architecture
+  - リポ一覧（name, modules）
+  - リポ間の provide/require artifacts（コンポーネント間の依存関係）
+- **処理**: DAG 構築 → サイクル検出 → contract 検証 → per-repo plan.md 生成
+- **出力**: 各リポの plan.md
+  - リポの project context（依存リポ、提供 artifact）
+  - 当該リポ内の phase breakdown
+  - 実装順序の明示
+
+### split_multi_repo_plan を使うとき
+
+- リポ数が 2 つ以上
+- リポ間に明確な依存関係（provide/require）がある
+- 各リポの実装フェーズを並列または順序付きで管理したい場合
+
+### split_multi_repo_plan の後
+
+各リポの plan.md が生成されたら、各リポに対して `impl-and-ship` を起動し、並列実装を開始します（dependencies の順序に従う）。
 
 ## セキュリティ checkpoint（設計時）
 
