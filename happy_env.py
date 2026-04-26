@@ -276,17 +276,26 @@ def format_file_details(files: dict[str, list[str] | int] | None, dry_run: bool 
     ドライラン時のファイル詳細情報をフォーマット
     
     実行時は空文字列を返す（ファイル一覧は表示しない）
+    オーバーフロー情報があれば「一覧取得に失敗したが N 件以上の変更あり」と表示
     """
     if not dry_run or not files:
         return ""
     
     lines: list[str] = []
     
+    # Check if we have any overflow (file list unavailable but changes detected)
+    added_more = files.get('added_more', 0)
+    updated_more = files.get('updated_more', 0)
+    deleted_more = files.get('deleted_more', 0)
+    added_more_int = added_more if isinstance(added_more, int) else 0
+    updated_more_int = updated_more if isinstance(updated_more, int) else 0
+    deleted_more_int = deleted_more if isinstance(deleted_more, int) else 0
+    
+    has_overflow = added_more_int > 0 or updated_more_int > 0 or deleted_more_int > 0
+    
     # 追加ファイル
     added = files.get('added')
-    if added and isinstance(added, list):
-        added_more = files.get('added_more', 0)
-        added_more_int = added_more if isinstance(added_more, int) else 0
+    if added and isinstance(added, list) and len(added) > 0:
         lines.append("")
         lines.append("")
         lines.append(f"◆ 追加ファイル ({len(added) + added_more_int} 個)")
@@ -295,12 +304,14 @@ def format_file_details(files: dict[str, list[str] | int] | None, dry_run: bool 
             lines.append(f"  {rel_path}")
         if added_more_int > 0:
             lines.append(f"  ... 残り {added_more_int} 個")
+    elif added_more_int > 0:
+        lines.append("")
+        lines.append("")
+        lines.append(f"◆ 追加ファイル ({added_more_int} 個以上 / 一覧取得に失敗)")
     
     # 更新ファイル
     updated = files.get('updated')
-    if updated and isinstance(updated, list):
-        updated_more = files.get('updated_more', 0)
-        updated_more_int = updated_more if isinstance(updated_more, int) else 0
+    if updated and isinstance(updated, list) and len(updated) > 0:
         lines.append("")
         lines.append(f"◆ 更新ファイル ({len(updated) + updated_more_int} 個)")
         for file_path in updated:
@@ -308,12 +319,13 @@ def format_file_details(files: dict[str, list[str] | int] | None, dry_run: bool 
             lines.append(f"  {rel_path}")
         if updated_more_int > 0:
             lines.append(f"  ... 残り {updated_more_int} 個")
+    elif updated_more_int > 0:
+        lines.append("")
+        lines.append(f"◆ 更新ファイル ({updated_more_int} 個以上 / 一覧取得に失敗)")
     
     # 削除ファイル
     deleted = files.get('deleted')
-    if deleted and isinstance(deleted, list):
-        deleted_more = files.get('deleted_more', 0)
-        deleted_more_int = deleted_more if isinstance(deleted_more, int) else 0
+    if deleted and isinstance(deleted, list) and len(deleted) > 0:
         lines.append("")
         lines.append(f"◆ 削除ファイル ({len(deleted) + deleted_more_int} 個)")
         for file_path in deleted:
@@ -321,8 +333,16 @@ def format_file_details(files: dict[str, list[str] | int] | None, dry_run: bool 
             lines.append(f"  {rel_path}")
         if deleted_more_int > 0:
             lines.append(f"  ... 残り {deleted_more_int} 個")
-    elif not added and not updated:
-        # すべて空の場合
+    elif deleted_more_int > 0:
+        lines.append("")
+        lines.append(f"◆ 削除ファイル ({deleted_more_int} 個以上 / 一覧取得に失敗)")
+    
+    # すべて空でオーバーフロー情報もない場合のみ「変更ファイルなし」を表示
+    added_count = len(added) if added and isinstance(added, list) else 0
+    updated_count = len(updated) if updated and isinstance(updated, list) else 0
+    deleted_count = len(deleted) if deleted and isinstance(deleted, list) else 0
+    
+    if added_count == 0 and updated_count == 0 and deleted_count == 0 and not has_overflow:
         lines.append("")
         lines.append("")
         lines.append("◆ 変更ファイルなし")
