@@ -227,7 +227,10 @@ def parse_sync_files_dry(stdout: str) -> dict[str, list[str] | int] | None:
     matches = re.findall(r'SYNC_FILES_OVERFLOW:DELETED_MORE=(\d+)', stdout)
     result['deleted_more'] = sum(int(m) for m in matches)
     
-    return result if any(result[k] for k in ['added', 'updated', 'deleted']) else None
+    # リストが空でも、オーバーフロー情報がある場合は結果を返す
+    has_files = any(result[k] for k in ['added', 'updated', 'deleted'])
+    has_overflow = any(result[k] > 0 for k in ['added_more', 'updated_more', 'deleted_more'])
+    return result if (has_files or has_overflow) else None
 
 
 def normalize_path_to_relative(abs_path: str, base_path: str | None = None) -> str:

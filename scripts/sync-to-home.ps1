@@ -49,23 +49,36 @@ function Get-RobocopyStats {
     
     $stats = @{ Added = 0; Updated = 0; Deleted = 0 }
     
-    # robocopy ログの最後から統計情報を抽出
-    # フォーマット例:
+    # robocopy ログの最後から統計情報を抽出（ロケール対応）
+    # フォーマット例（英語）:
     #   Files : 123 copied, 45 updated, 6 deleted
     #   Extras : 3
+    # フォーマット例（日本語）:
+    #   ファイル:       248         1       247         0         0      8238
     
     $lines = $RobocopyOutput -split "`r?`n"
     
     foreach ($line in $lines) {
-        # "Files :" という行を探す
+        # 英語パターン: "Files : 123 copied"
         if ($line -match "Files\s*:\s*(\d+)\s+copied") {
             $stats.Added = [int]$matches[1]
         }
+        # 英語パターン: "123 updated"
         if ($line -match "updated[,\s]+(\d+)") {
             $stats.Updated = [int]$matches[1]
         }
         
-        # "Extras :" という行を削除ファイル数として扱う
+        # 日本語パターン: "ファイル:       248         1       247         0         0      8238"
+        # コピー済み（第2列目）を読む
+        if ($line -match "^\s*ファイル:") {
+            $parts = @($line -split "\s+" | Where-Object { $_ -and $_ -ne "ファイル:" })
+            if ($parts.Count -ge 2) {
+                # parts[0]=合計, parts[1]=コピー済み
+                $stats.Added = [int]$parts[1]
+            }
+        }
+        
+        # 英語または日本語の "Extras" 行（削除ファイル）
         if ($line -match "Extras\s*:\s*(\d+)") {
             $stats.Deleted = [int]$matches[1]
         }
@@ -74,13 +87,14 @@ function Get-RobocopyStats {
     # 統計行が見つからない場合は、行ごとのカウントにフォールバック
     if ($stats.Added -eq 0 -and $stats.Updated -eq 0 -and $stats.Deleted -eq 0) {
         foreach ($line in $lines) {
-            if ($line -match "^\s+New File\s+") {
+            # 英語と日本語の両パターンに対応
+            if ($line -match "^\s+(New File|新しいファイル)\s+") {
                 $stats.Added++
             }
-            elseif ($line -match "^\s+Newer\s+") {
+            elseif ($line -match "^\s+(Newer|新しい)\s+") {
                 $stats.Updated++
             }
-            elseif ($line -match "^\s+EXTRA File\s+") {
+            elseif ($line -match "^\s+(EXTRA File|EXTRA)\s+") {
                 $stats.Deleted++
             }
         }
