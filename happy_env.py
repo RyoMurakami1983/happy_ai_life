@@ -449,9 +449,16 @@ def build_parser() -> argparse.ArgumentParser:
         prog="app.py",
         description="既存の PowerShell を正本のまま呼び出す Python launcher（CLI モードのみ）。",
     )
+    
+    # グローバルフラグ（サブコマンド前）
+    parser.add_argument("--mirror", action="store_true", help="互換オプションです。ホーム同期の managed directory は常に template 一致へ同期します。")
+    parser.add_argument("--dry-run", action="store_true", help="書き込み前に差分だけ確認します。")
+    parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
+    
     subparsers = parser.add_subparsers(dest="command")
 
     home_parser = subparsers.add_parser("home", help="home-template/.copilot を $HOME/.copilot へ同期します。")
+    # home サブコマンド用のフラグ（互換性のため）
     home_parser.add_argument("--mirror", action="store_true", help="互換オプションです。ホーム同期の managed directory は常に template 一致へ同期します。")
     home_parser.add_argument("--dry-run", action="store_true", help="書き込み前に差分だけ確認します。")
     home_parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
@@ -502,17 +509,19 @@ def prompt_sync_options() -> tuple[bool, bool]:
     return dry_run, verbose_log
 
 
-def run_cli_interactive(namespace: argparse.Namespace) -> int:
+def run_cli_interactive(namespace: argparse.Namespace, *, has_explicit_flags: bool = False) -> int:
     """
     CLI インタラクティブモード
     
-    --dry-run や --verbose-log が指定されていない場合、
-    input() でユーザーに選択肢を提示する
+    フラグが明示的に指定されていない場合、input() でユーザーに選択肢を提示する
+    
+    Args:
+        namespace: argparse のパース結果
+        has_explicit_flags: --dry-run や --verbose-log が明示的に指定されたか
     """
     if namespace.command == "home":
         # フラグが明示的に指定されていない場合はインタラクティブモードに入る
-        # argparse の仕様上、指定なしは False/action="store_true" なら False
-        if not namespace.dry_run and not namespace.verbose_log:
+        if not has_explicit_flags:
             dry_run, verbose_log = prompt_sync_options()
         else:
             dry_run = namespace.dry_run
@@ -543,11 +552,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = list(argv) if argv is not None else None
     namespace = parser.parse_args(args)
 
+    # フラグが明示的に指定されたか判定
+    args_str = " ".join(args) if args else " ".join(sys.argv[1:])
+    has_explicit_flags = "--dry-run" in args_str or "--verbose-log" in args_str
+
     # デフォルトコマンド: サブコマンド省略時は "home" を使用
     if namespace.command is None:
         namespace.command = "home"
         namespace.mirror = False
-        namespace.dry_run = False
+        namespace.dry_run = True  # デフォルトはドライランモード
         namespace.verbose_log = False
 
-    return run_cli_interactive(namespace)
+    return run_cli_interactive(namespace, has_explicit_flags=has_explicit_flags)
