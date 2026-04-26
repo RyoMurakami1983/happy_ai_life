@@ -151,6 +151,38 @@ def test_run_cli_interactive_uses_safe_defaults_when_stdin_is_not_tty(monkeypatc
     assert captured == {"mirror": False, "dry_run": True, "verbose_log": False}
 
 
+def test_run_cli_interactive_allows_non_interactive_live_mode(monkeypatch) -> None:
+    captured: dict[str, bool] = {}
+    output = io.StringIO()
+
+    class _FakeStdin:
+        def isatty(self) -> bool:
+            return False
+
+    def fake_run_home_sync(*, mirror: bool, dry_run: bool, verbose_log: bool) -> happy_env.CommandResult:
+        captured["mirror"] = mirror
+        captured["dry_run"] = dry_run
+        captured["verbose_log"] = verbose_log
+        return happy_env.CommandResult(
+            label="test",
+            command=(),
+            returncode=0,
+            stdout="SYNC_STATS:ADDED=1,UPDATED=0,DELETED=0",
+            stderr="",
+        )
+
+    monkeypatch.setattr(happy_env.sys, "stdin", _FakeStdin())
+    monkeypatch.setattr(happy_env.sys, "stdout", output)
+    monkeypatch.setattr(happy_env, "run_home_sync", fake_run_home_sync)
+
+    exit_code = happy_env.run_cli_interactive(
+        happy_env.build_parser().parse_args(["home", "--no-interactive"])
+    )
+
+    assert exit_code == 0
+    assert captured == {"mirror": False, "dry_run": False, "verbose_log": False}
+
+
 def test_run_cli_interactive_falls_back_to_safe_defaults_on_eof(monkeypatch) -> None:
     captured: dict[str, bool] = {}
     output = io.StringIO()
@@ -212,6 +244,21 @@ def test_main_detects_explicit_global_flags(monkeypatch) -> None:
 
     assert exit_code == 3
     assert captured == [(True, True, "home")]
+
+
+def test_main_detects_explicit_no_interactive_flag(monkeypatch) -> None:
+    captured: list[tuple[bool | None, bool, str]] = []
+
+    def fake_run_cli_interactive(namespace, *, has_explicit_flags: bool = False) -> int:
+        captured.append((namespace.interactive, has_explicit_flags, namespace.command))
+        return 5
+
+    monkeypatch.setattr(happy_env, "run_cli_interactive", fake_run_cli_interactive)
+
+    exit_code = happy_env.main(["home", "--no-interactive"])
+
+    assert exit_code == 5
+    assert captured == [(False, True, "home")]
 
 
 def test_parse_sync_stats_single_execution() -> None:

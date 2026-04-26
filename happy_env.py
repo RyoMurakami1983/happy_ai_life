@@ -467,6 +467,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mirror", action="store_true", help="互換オプションです。ホーム同期の managed directory は常に template 一致へ同期します。")
     parser.add_argument("--dry-run", action="store_true", help="書き込み前に差分だけ確認します。")
     parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
+    parser.add_argument(
+        "--interactive",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="未指定時は対話可能な端末でのみプロンプトを表示します。--no-interactive で非対話実行を強制できます。",
+    )
     
     subparsers = parser.add_subparsers(dest="command")
 
@@ -475,6 +481,12 @@ def build_parser() -> argparse.ArgumentParser:
     home_parser.add_argument("--mirror", action="store_true", help="互換オプションです。ホーム同期の managed directory は常に template 一致へ同期します。")
     home_parser.add_argument("--dry-run", action="store_true", help="書き込み前に差分だけ確認します。")
     home_parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
+    home_parser.add_argument(
+        "--interactive",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="未指定時は対話可能な端末でのみプロンプトを表示します。--no-interactive で非対話実行を強制できます。",
+    )
 
     return parser
 
@@ -549,7 +561,12 @@ def run_cli_interactive(namespace: argparse.Namespace, *, has_explicit_flags: bo
         has_explicit_flags: --dry-run や --verbose-log が明示的に指定されたか
     """
     if namespace.command == "home":
-        if has_explicit_flags:
+        interactive_override = getattr(namespace, "interactive", None)
+
+        if interactive_override is False:
+            dry_run = namespace.dry_run
+            verbose_log = namespace.verbose_log
+        elif has_explicit_flags and interactive_override is not True:
             dry_run = namespace.dry_run
             verbose_log = namespace.verbose_log
         elif stdin_is_interactive():
@@ -581,9 +598,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = list(argv) if argv is not None else None
     namespace = parser.parse_args(args)
 
-    # フラグが明示的に指定されたか判定
-    args_str = " ".join(args) if args else " ".join(sys.argv[1:])
-    has_explicit_flags = "--dry-run" in args_str or "--verbose-log" in args_str
+    raw_args = args if args is not None else sys.argv[1:]
+    has_explicit_flags = any(
+        flag in raw_args
+        for flag in ("--dry-run", "--verbose-log", "--interactive", "--no-interactive")
+    )
 
     # デフォルトコマンド: サブコマンド省略時は "home" を使用
     if namespace.command is None:
