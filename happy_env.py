@@ -6,14 +6,11 @@ import os
 import re
 import shutil
 import subprocess
-import threading
-from collections.abc import Callable, Sequence
+import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-
-import tkinter as tk
-from tkinter import ttk
-from tkinter.scrolledtext import ScrolledText
+from typing import TextIO
 
 ROOT_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = ROOT_DIR / "scripts"
@@ -228,8 +225,21 @@ def parse_sync_files_dry(stdout: str) -> dict[str, list[str] | int] | None:
     result['deleted_more'] = sum(int(m) for m in matches)
     
     # リストが空でも、オーバーフロー情報がある場合は結果を返す
-    has_files = any(result[k] for k in ['added', 'updated', 'deleted'])
-    has_overflow = any(result[k] > 0 for k in ['added_more', 'updated_more', 'deleted_more'])
+    added_files = result["added"]
+    updated_files = result["updated"]
+    deleted_files = result["deleted"]
+    added_more = result["added_more"]
+    updated_more = result["updated_more"]
+    deleted_more = result["deleted_more"]
+
+    has_files = any(
+        isinstance(files, list) and files
+        for files in (added_files, updated_files, deleted_files)
+    )
+    has_overflow = any(
+        isinstance(count, int) and count > 0
+        for count in (added_more, updated_more, deleted_more)
+    )
     return result if (has_files or has_overflow) else None
 
 
@@ -450,170 +460,137 @@ def build_option_summary(*, dry_run: bool, verbose_log: bool) -> str:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="app.py",
-        description="既存の PowerShell を正本のまま呼び出す Python launcher。",
+        description="既存の PowerShell を正本のまま呼び出す Python launcher（CLI モードのみ）。",
     )
+    
+    # グローバルフラグ（サブコマンド前）
+    parser.add_argument("--mirror", action="store_true", help="互換オプションです。ホーム同期の managed directory は常に template 一致へ同期します。")
+    parser.add_argument("--dry-run", action="store_true", help="書き込み前に差分だけ確認します。")
+    parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
+    parser.add_argument(
+        "--interactive",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="未指定時は対話可能な端末でのみプロンプトを表示します。--no-interactive で非対話実行を強制できます。",
+    )
+    
     subparsers = parser.add_subparsers(dest="command")
 
-    gui_parser = subparsers.add_parser("gui", help="GUI ランチャーを開きます。")
-    gui_parser.set_defaults(command="gui")
-
     home_parser = subparsers.add_parser("home", help="home-template/.copilot を $HOME/.copilot へ同期します。")
+    # home サブコマンド用のフラグ（互換性のため）
     home_parser.add_argument("--mirror", action="store_true", help="互換オプションです。ホーム同期の managed directory は常に template 一致へ同期します。")
     home_parser.add_argument("--dry-run", action="store_true", help="書き込み前に差分だけ確認します。")
     home_parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
+    home_parser.add_argument(
+        "--interactive",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="未指定時は対話可能な端末でのみプロンプトを表示します。--no-interactive で非対話実行を強制できます。",
+    )
 
     return parser
 
 
-def run_cli(namespace: argparse.Namespace) -> int:
+def write_console_line(message: str, *, stream: TextIO | None = None) -> None:
+    target = stream if stream is not None else sys.stdout
+    encoding = target.encoding or locale.getpreferredencoding(False) or "utf-8"
+    safe_message = message.encode(encoding, errors="replace").decode(encoding, errors="replace")
+    target.write(f"{safe_message}\n")
+    target.flush()
+
+
+def stdin_is_interactive(stream: TextIO | None = None) -> bool:
+    target = stream if stream is not None else sys.stdin
+    isatty = getattr(target, "isatty", None)
+    if not callable(isatty):
+        return False
+    return bool(isatty())
+
+
+def prompt_sync_options() -> tuple[bool, bool]:
+    """
+    ホーム同期のオプションをインタラクティブに選択
+    
+    Returns:
+        (dry_run, verbose_log) のタプル
+    """
+    dry_run = True
+    verbose_log = False
+    
+    write_console_line("")
+    write_console_line("◆ ホーム同期モード設定")
+    write_console_line("")
+    
+    while True:
+        write_console_line(f"1. ドライランモード: {'[ON] enabled' if dry_run else '[OFF] disabled'}")
+        write_console_line(f"2. 詳細ログ表示: {'[ON] enabled' if verbose_log else '[OFF] disabled'}")
+        write_console_line("")
+        write_console_line("実行するには Enter キーを押してください。")
+        write_console_line("設定を変更するには「1」または「2」を入力してください。")
+        write_console_line("")
+
+        choice = input("> ").strip()
+
+        if choice == "":
+            break
+        elif choice == "1":
+            dry_run = not dry_run
+            write_console_line("")
+        elif choice == "2":
+            verbose_log = not verbose_log
+            write_console_line("")
+        else:
+            write_console_line("無効な選択です。もう一度入力してください。")
+            write_console_line("")
+
+    write_console_line("")
+    write_console_line(build_option_summary_improved(dry_run=dry_run, verbose_log=verbose_log))
+    write_console_line("")
+
+    return dry_run, verbose_log
+
+
+def run_cli_interactive(namespace: argparse.Namespace, *, has_explicit_flags: bool = False) -> int:
+    """
+    CLI インタラクティブモード
+    
+    フラグが明示的に指定されていない場合、input() でユーザーに選択肢を提示する
+    
+    Args:
+        namespace: argparse のパース結果
+        has_explicit_flags: --dry-run や --verbose-log が明示的に指定されたか
+    """
     if namespace.command == "home":
+        interactive_override = getattr(namespace, "interactive", None)
+
+        if interactive_override is False:
+            dry_run = namespace.dry_run
+            verbose_log = namespace.verbose_log
+        elif has_explicit_flags and interactive_override is not True:
+            dry_run = namespace.dry_run
+            verbose_log = namespace.verbose_log
+        elif stdin_is_interactive():
+            try:
+                dry_run, verbose_log = prompt_sync_options()
+            except EOFError:
+                dry_run = True
+                verbose_log = False
+        else:
+            dry_run = True
+            verbose_log = False
+
         result = run_home_sync(
             mirror=namespace.mirror,
-            dry_run=namespace.dry_run,
-            verbose_log=namespace.verbose_log,
+            dry_run=dry_run,
+            verbose_log=verbose_log,
         )
+        message = format_command_result_improved(result, dry_run=dry_run)
     else:
         raise ValueError(f"未対応の CLI コマンドです: {namespace.command}")
 
-    print(format_command_result_improved(result, dry_run=namespace.dry_run))
+    write_console_line(message)
+
     return result.returncode
-
-
-class HappyEnvGui:
-    def __init__(self, root: tk.Tk) -> None:
-        self.root = root
-        self.root.title("happy env ランチャー")
-        self.root.minsize(760, 480)
-        self.dry_run_var = tk.BooleanVar(value=True)
-        self.verbose_log_var = tk.BooleanVar(value=False)
-        self.option_summary_var = tk.StringVar()
-        self._is_running = False
-        self._action_buttons: list[ttk.Button] = []
-        self.main_frame: ttk.Frame | None = None
-        self._build_layout()
-        self._update_option_summary()
-
-    def _build_layout(self) -> None:
-        frame = ttk.Frame(self.root, padding=16)
-        self.main_frame = frame
-        frame.grid(sticky="nsew")
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        frame.columnconfigure(0, weight=1)
-        frame.rowconfigure(4, weight=1)
-
-        ttk.Label(
-            frame,
-            text="既存の PowerShell スクリプトを app.py から実行します。",
-        ).grid(row=0, column=0, sticky="w")
-
-        options = ttk.Frame(frame)
-        options.grid(row=1, column=0, sticky="w", pady=(12, 12))
-        ttk.Checkbutton(
-            options,
-            text="ドライラン（変更せず、何が起こるかだけ確認）",
-            variable=self.dry_run_var,
-            command=self._update_option_summary,
-        ).grid(row=0, column=0, padx=(0, 12))
-        ttk.Checkbutton(
-            options,
-            text="詳細ログ（robocopy の出力を詳しく表示）",
-            variable=self.verbose_log_var,
-            command=self._update_option_summary,
-        ).grid(row=1, column=0, padx=(0, 12), pady=(6, 0), sticky="w")
-
-        ttk.Label(
-            frame,
-            textvariable=self.option_summary_var,
-            wraplength=680,
-            justify="left",
-            foreground="#8B0000",
-        ).grid(row=2, column=0, sticky="w", pady=(0, 12))
-
-        actions = ttk.Frame(frame)
-        actions.grid(row=3, column=0, sticky="w", pady=(0, 12))
-        self._register_action_button(actions, "ホームへ同期", self._run_home_sync).grid(row=0, column=0, padx=(0, 8))
-        ttk.Button(actions, text="ログをクリア", command=self._clear_log).grid(row=0, column=1)
-
-        self.output = ScrolledText(frame, wrap="word", height=16)
-        self.output.grid(row=4, column=0, sticky="nsew")
-        self.output.insert(
-            "end",
-            "準備完了。ホーム同期は managed directory を template 一致へ同期し、mcp-config.json や docs/furikaeri など user-owned 領域は保護します。\n",
-        )
-        self.output.configure(state="disabled")
-
-    def _register_action_button(self, parent: ttk.Frame, text: str, command: Callable[[], None]) -> ttk.Button:
-        button = ttk.Button(parent, text=text, command=command)
-        self._action_buttons.append(button)
-        return button
-
-    def _set_running(self, value: bool) -> None:
-        self._is_running = value
-        state = "disabled" if value else "normal"
-        for button in self._action_buttons:
-            button.configure(state=state)
-
-    def _append_output(self, text: str) -> None:
-        self.output.configure(state="normal")
-        self.output.insert("end", f"{text}\n\n")
-        self.output.see("end")
-        self.output.configure(state="disabled")
-
-    def _clear_log(self) -> None:
-        self.output.configure(state="normal")
-        self.output.delete("1.0", "end")
-        self.output.configure(state="disabled")
-
-    def _update_option_summary(self) -> None:
-        self.option_summary_var.set(
-            build_option_summary_improved(
-                dry_run=self.dry_run_var.get(),
-                verbose_log=self.verbose_log_var.get(),
-            )
-        )
-
-    def _run_in_background(self, runner: Callable[[], CommandResult]) -> None:
-        if self._is_running:
-            self._append_output("別の処理を実行中です。")
-            return
-
-        self._set_running(True)
-        self._append_output("実行中...")
-
-        def worker() -> None:
-            try:
-                result = runner()
-                message = format_command_result_improved(
-                    result,
-                    dry_run=self.dry_run_var.get(),
-                )
-            except Exception as exc:  # pragma: no cover - defensive boundary to keep GUI alive.
-                message = f"実行前に処理が失敗しました:\n{exc}"
-            finally:
-                self.root.after(0, lambda: self._finish_run(message))
-
-        thread = threading.Thread(target=worker, daemon=True)
-        thread.start()
-
-    def _finish_run(self, message: str) -> None:
-        self._append_output(message)
-        self._set_running(False)
-
-    def _run_home_sync(self) -> None:
-        self._run_in_background(
-            lambda: run_home_sync(
-                dry_run=self.dry_run_var.get(),
-                verbose_log=self.verbose_log_var.get(),
-            )
-        )
-
-
-def launch_gui() -> int:
-    root = tk.Tk()
-    HappyEnvGui(root)
-    root.mainloop()
-    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -621,7 +598,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = list(argv) if argv is not None else None
     namespace = parser.parse_args(args)
 
-    if namespace.command in {None, "gui"}:
-        return launch_gui()
+    raw_args = args if args is not None else sys.argv[1:]
+    has_explicit_flags = any(
+        flag in raw_args
+        for flag in ("--dry-run", "--verbose-log", "--interactive", "--no-interactive")
+    )
 
-    return run_cli(namespace)
+    # デフォルトコマンド: サブコマンド省略時は "home" を使用
+    if namespace.command is None:
+        namespace.command = "home"
+        namespace.mirror = False
+        namespace.dry_run = True  # デフォルトはドライランモード
+        namespace.verbose_log = False
+
+    return run_cli_interactive(namespace, has_explicit_flags=has_explicit_flags)

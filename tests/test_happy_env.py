@@ -1,21 +1,10 @@
 from __future__ import annotations
 
+import io
 import subprocess
-import tkinter as tk
 from pathlib import Path
 
-import pytest
-
 import happy_env
-
-
-def _create_tk_root_or_skip() -> tk.Tk:
-    try:
-        root = tk.Tk()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk root is unavailable in this environment: {exc}")
-    root.withdraw()
-    return root
 
 
 def test_build_home_sync_arguments_include_requested_flags() -> None:
@@ -105,66 +94,171 @@ def test_run_script_decodes_stdout_and_stderr_with_locale(monkeypatch) -> None:
     assert result.stderr == "警告"
 
 
-def test_gui_gives_extra_vertical_space_to_log_pane() -> None:
-    root = _create_tk_root_or_skip()
-    try:
-        gui = happy_env.HappyEnvGui(root)
-        assert gui.main_frame is not None
-        assert int(gui.output.grid_info()["row"]) == 4
-        assert int(gui.main_frame.grid_rowconfigure(4)["weight"]) == 1
-        assert int(gui.main_frame.grid_rowconfigure(3)["weight"]) == 0
-    finally:
-        root.destroy()
+def test_write_console_line_replaces_unencodable_characters() -> None:
+    buffer = io.BytesIO()
+    stream = io.TextIOWrapper(buffer, encoding="ascii", newline="\n")
+
+    happy_env.write_console_line("status ✓", stream=stream)
+
+    stream.flush()
+    assert buffer.getvalue() == b"status ?\n"
 
 
-def test_main_home_delegates_to_cli(monkeypatch) -> None:
-    captured: list[str | tuple[str, ...]] = []
+def test_prompt_sync_options_toggles_requested_options(monkeypatch) -> None:
+    answers = iter(["1", "2", ""])
+    stream = io.StringIO()
 
-    def fake_run_cli(namespace) -> int:
-        captured.append(namespace.command)
+    monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))
+    monkeypatch.setattr(happy_env.sys, "stdout", stream)
+
+    dry_run, verbose_log = happy_env.prompt_sync_options()
+
+    assert (dry_run, verbose_log) == (False, True)
+    output = stream.getvalue()
+    assert "[ON] enabled" in output
+    assert "[OFF] disabled" in output
+
+
+def test_run_cli_interactive_uses_safe_defaults_when_stdin_is_not_tty(monkeypatch) -> None:
+    captured: dict[str, bool] = {}
+    output = io.StringIO()
+
+    class _FakeStdin:
+        def isatty(self) -> bool:
+            return False
+
+    def fake_run_home_sync(*, mirror: bool, dry_run: bool, verbose_log: bool) -> happy_env.CommandResult:
+        captured["mirror"] = mirror
+        captured["dry_run"] = dry_run
+        captured["verbose_log"] = verbose_log
+        return happy_env.CommandResult(
+            label="test",
+            command=(),
+            returncode=0,
+            stdout="SYNC_STATS:ADDED=1,UPDATED=0,DELETED=0",
+            stderr="",
+        )
+
+    monkeypatch.setattr(happy_env.sys, "stdin", _FakeStdin())
+    monkeypatch.setattr(happy_env.sys, "stdout", output)
+    monkeypatch.setattr(happy_env, "run_home_sync", fake_run_home_sync)
+
+    exit_code = happy_env.run_cli_interactive(
+        happy_env.build_parser().parse_args(["home"])
+    )
+
+    assert exit_code == 0
+    assert captured == {"mirror": False, "dry_run": True, "verbose_log": False}
+
+
+def test_run_cli_interactive_allows_non_interactive_live_mode(monkeypatch) -> None:
+    captured: dict[str, bool] = {}
+    output = io.StringIO()
+
+    class _FakeStdin:
+        def isatty(self) -> bool:
+            return False
+
+    def fake_run_home_sync(*, mirror: bool, dry_run: bool, verbose_log: bool) -> happy_env.CommandResult:
+        captured["mirror"] = mirror
+        captured["dry_run"] = dry_run
+        captured["verbose_log"] = verbose_log
+        return happy_env.CommandResult(
+            label="test",
+            command=(),
+            returncode=0,
+            stdout="SYNC_STATS:ADDED=1,UPDATED=0,DELETED=0",
+            stderr="",
+        )
+
+    monkeypatch.setattr(happy_env.sys, "stdin", _FakeStdin())
+    monkeypatch.setattr(happy_env.sys, "stdout", output)
+    monkeypatch.setattr(happy_env, "run_home_sync", fake_run_home_sync)
+
+    exit_code = happy_env.run_cli_interactive(
+        happy_env.build_parser().parse_args(["home", "--no-interactive"])
+    )
+
+    assert exit_code == 0
+    assert captured == {"mirror": False, "dry_run": False, "verbose_log": False}
+
+
+def test_run_cli_interactive_falls_back_to_safe_defaults_on_eof(monkeypatch) -> None:
+    captured: dict[str, bool] = {}
+    output = io.StringIO()
+
+    class _FakeStdin:
+        def isatty(self) -> bool:
+            return True
+
+    def fake_run_home_sync(*, mirror: bool, dry_run: bool, verbose_log: bool) -> happy_env.CommandResult:
+        captured["mirror"] = mirror
+        captured["dry_run"] = dry_run
+        captured["verbose_log"] = verbose_log
+        return happy_env.CommandResult(
+            label="test",
+            command=(),
+            returncode=0,
+            stdout="SYNC_STATS:ADDED=1,UPDATED=0,DELETED=0",
+            stderr="",
+        )
+
+    monkeypatch.setattr(happy_env.sys, "stdin", _FakeStdin())
+    monkeypatch.setattr(happy_env.sys, "stdout", output)
+    monkeypatch.setattr("builtins.input", lambda _prompt="": (_ for _ in ()).throw(EOFError()))
+    monkeypatch.setattr(happy_env, "run_home_sync", fake_run_home_sync)
+
+    exit_code = happy_env.run_cli_interactive(
+        happy_env.build_parser().parse_args(["home"])
+    )
+
+    assert exit_code == 0
+    assert captured == {"mirror": False, "dry_run": True, "verbose_log": False}
+
+
+def test_main_defaults_to_home_command(monkeypatch) -> None:
+    captured: list[tuple[str, bool]] = []
+
+    def fake_run_cli_interactive(namespace, *, has_explicit_flags: bool = False) -> int:
+        captured.append((namespace.command, has_explicit_flags))
         return 7
 
-    monkeypatch.setattr(happy_env, "run_cli", fake_run_cli)
-    monkeypatch.setattr(happy_env, "launch_gui", lambda: 99)
+    monkeypatch.setattr(happy_env, "run_cli_interactive", fake_run_cli_interactive)
 
-    exit_code = happy_env.main(["home", "--dry-run"])
+    exit_code = happy_env.main([])
 
     assert exit_code == 7
-    assert captured == ["home"]
+    assert captured == [("home", False)]
 
 
-def test_run_cli_home_mirror_without_dry_run_skips_confirmation(monkeypatch) -> None:
-    called: list[bool] = []
+def test_main_detects_explicit_global_flags(monkeypatch) -> None:
+    captured: list[tuple[bool, bool, str]] = []
 
-    def fake_run_home_sync(**kw: object) -> happy_env.CommandResult:
-        called.append(True)
-        return happy_env.CommandResult(label="test", command=(), returncode=0, stdout="", stderr="")
+    def fake_run_cli_interactive(namespace, *, has_explicit_flags: bool = False) -> int:
+        captured.append((namespace.dry_run, has_explicit_flags, namespace.command))
+        return 3
 
-    monkeypatch.setattr(happy_env, "run_home_sync", fake_run_home_sync)
+    monkeypatch.setattr(happy_env, "run_cli_interactive", fake_run_cli_interactive)
 
-    exit_code = happy_env.run_cli(
-        happy_env.build_parser().parse_args(["home", "--mirror"])
-    )
+    exit_code = happy_env.main(["--dry-run"])
 
-    assert exit_code == 0
-    assert called == [True]
+    assert exit_code == 3
+    assert captured == [(True, True, "home")]
 
 
-def test_run_cli_mirror_with_dry_run_skips_confirmation(monkeypatch) -> None:
-    called: list[bool] = []
+def test_main_detects_explicit_no_interactive_flag(monkeypatch) -> None:
+    captured: list[tuple[bool | None, bool, str]] = []
 
-    def fake_run_home_sync(**kw: object) -> happy_env.CommandResult:
-        called.append(True)
-        return happy_env.CommandResult(label="test", command=(), returncode=0, stdout="", stderr="")
+    def fake_run_cli_interactive(namespace, *, has_explicit_flags: bool = False) -> int:
+        captured.append((namespace.interactive, has_explicit_flags, namespace.command))
+        return 5
 
-    monkeypatch.setattr(happy_env, "run_home_sync", fake_run_home_sync)
+    monkeypatch.setattr(happy_env, "run_cli_interactive", fake_run_cli_interactive)
 
-    exit_code = happy_env.run_cli(
-        happy_env.build_parser().parse_args(["home", "--mirror", "--dry-run"])
-    )
+    exit_code = happy_env.main(["home", "--no-interactive"])
 
-    assert exit_code == 0
-    assert called == [True]
+    assert exit_code == 5
+    assert captured == [(False, True, "home")]
 
 
 def test_parse_sync_stats_single_execution() -> None:
@@ -313,6 +407,5 @@ def test_format_file_details_no_changes_when_all_empty() -> None:
     result = happy_env.format_file_details(files, dry_run=True)
     assert "変更ファイルなし" in result
     assert "一覧取得に失敗" not in result
-
 
 
