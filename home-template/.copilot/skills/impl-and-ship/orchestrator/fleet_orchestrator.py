@@ -77,7 +77,7 @@ def validate_repo_dependencies(repo_plans: dict[str, dict]) -> list[str]:
 
 def detect_circular_dependencies(repos: dict[str, dict]) -> None:
     """
-    Detect circular dependencies using DFS (Tarjan's algorithm).
+    Detect circular dependencies using DFS (depth-first search).
 
     Args:
         repos: Dictionary of {repo_name: plan_dict} with dependencies.blocking
@@ -258,8 +258,12 @@ def orchestrate_multi_repo_impl_and_ship(
                 .get("provides", [])
             )
             provided_checksum = None
+            req_artifact = req.get("artifact")
+            req_version = req.get("version")
             for provide in source_provides:
-                if provide.get("artifact") == req.get("artifact"):
+                # Match by artifact + version (when present)
+                if (provide.get("artifact") == req_artifact and 
+                    provide.get("version") == req_version):
                     provided_checksum = provide.get("checksum")
                     break
 
@@ -267,8 +271,9 @@ def orchestrate_multi_repo_impl_and_ship(
             # (Phase 1 placeholder is null, filled on Phase 3 first run)
             if required_checksum is not None and provided_checksum != required_checksum:
                 repo_status[repo_name] = "BLOCKED"
+                version_str = f" (v{req_version})" if req_version else ""
                 status_log.append(
-                    f"[{repo_name}] BLOCKED by checksum mismatch from {source_repo}"
+                    f"[{repo_name}] BLOCKED: checksum mismatch for {req_artifact}{version_str} from {source_repo}"
                 )
                 checksum_mismatch = True
                 break

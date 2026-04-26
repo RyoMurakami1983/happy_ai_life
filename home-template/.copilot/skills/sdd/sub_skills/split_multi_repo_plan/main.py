@@ -3,7 +3,7 @@ split_multi_repo_plan: Convert unified architecture to per-repo plans.
 
 Phase 1 Implementation - Core functionality:
 - DAG construction from repo dependencies
-- Cycle detection using Tarjan's algorithm
+- Cycle detection using DFS (depth-first search)
 - Contract validation (provides/requires matching)
 - Per-repo plan.md generation with YAML front-matter
 - Placeholder checksums (calculated on Phase 3 contract_verify)
@@ -104,8 +104,8 @@ def validate_contracts(repos: list[dict[str, Any]]) -> list[str]:
     """
     errors: list[str] = []
 
-    # Build a map of what each repo provides
-    provides_map: dict[str, dict[str, Any]] = {}
+    # Build a map of what each repo provides (keyed by (artifact, version) tuples)
+    provides_map: dict[str, dict[tuple[str, Any], dict[str, Any]]] = {}
     for repo in repos:
         repo_name = repo["name"]
         provides_map[repo_name] = {}
@@ -240,7 +240,7 @@ dependencies:
         for req in requires:
             source_repo = req.get("source_repo", "")
             artifact_name = req.get("artifact", "")
-            version = req.get("version", "")
+            version = req.get("version")  # None if missing, for consistency with validate_contracts
             
             # Find the actual path from provides of source repo (match by artifact + version)
             source_artifact_path = ""
@@ -251,6 +251,13 @@ dependencies:
                             provided.get("version") == version):
                             source_artifact_path = provided.get("path", "")
                             break
+                    
+                    # Fallback: if version is None, match by artifact name alone
+                    if not source_artifact_path and version is None:
+                        for provided in source.get("provides", []):
+                            if provided.get("artifact") == artifact_name:
+                                source_artifact_path = provided.get("path", "")
+                                break
                     break
             
             relative_path = get_relative_path(source_repo, source_artifact_path)
@@ -258,7 +265,9 @@ dependencies:
         artifact: "{artifact_name}"
         path: "{relative_path}"
         checksum: null
-        version: "{version}"
+"""
+            if version is not None:
+                yaml_fm += f"""        version: "{version}"
 """
     else:
         yaml_fm += "      []\n"

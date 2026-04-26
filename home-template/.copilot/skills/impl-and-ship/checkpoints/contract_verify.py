@@ -176,7 +176,7 @@ def _build_failure_result(
     return CheckpointResult(status="FAIL", reason=reason)
 
 
-def save_plan_with_updated_checksums(plan_path: Path, plan_dict: dict) -> None:
+def save_plan_with_updated_checksums(plan_path: Path, plan_dict: dict[str, Any]) -> None:
     """Save plan.md with updated checksums in YAML front-matter.
     
     Preserves non-YAML content while updating the YAML front-matter with new checksums.
@@ -185,7 +185,7 @@ def save_plan_with_updated_checksums(plan_path: Path, plan_dict: dict) -> None:
         return  # Nothing to save if no file
 
     # Read original file to preserve non-YAML content
-    original_content = plan_path.read_text()
+    original_content = plan_path.read_text(encoding="utf-8")
 
     # Find YAML front-matter boundaries
     lines = original_content.split("\n")
@@ -215,6 +215,6 @@ def save_plan_with_updated_checksums(plan_path: Path, plan_dict: dict) -> None:
     updated_content = "\n".join(yaml_lines) + "\n" + rest_of_file
 
     # Write back
-    plan_path.write_text(updated_content)
+    plan_path.write_text(updated_content, encoding="utf-8")
 
 
