@@ -1,0 +1,10 @@
+# This directory stores technology decision logs.
+#
+# Decision Log files document technology choices made for projects,
+# including rationale, tradeoff analysis, and implementation costs.
+#
+# Format: YYYY-MM-DD-project-name.md
+# Example: 2026-04-22-jis-handbook-checker.md
+#
+# Each file should include "Technology Selected: [technology name]"
+# for consistency checking in session end hooks.

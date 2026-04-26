@@ -40,6 +40,9 @@ const {
   log,
   readStdin,
 } = require('./lib/session-utils');
+const {
+  validateTechnologyConsistency,
+} = require('./lib/decision-validation');
 
 async function main() {
   const raw = await readStdin();
@@ -90,6 +93,9 @@ async function main() {
   } else {
     createNewSession(sessionFile, today, currentTime, metadata, summary);
   }
+
+  // Decision Log validation (soft validation — warnings only, non-blocking)
+  validateSessionForDecisionConsistency(sessionFile, cwd);
 }
 
 /**
@@ -150,6 +156,47 @@ function normalizePath(p) {
   if (!p) return '';
   return p.replace(/\\/g, '/').replace(/\/$/, '').toLowerCase();
 }
+
+/**
+ * Validate session for technology consistency with prior decisions.
+ * Appends warnings to session file if detected (soft validation).
+ *
+ * @param {string} sessionFile - Path to session file
+ * @param {string} cwd - Current working directory (repo root)
+ */
+function validateSessionForDecisionConsistency(sessionFile, cwd) {
+  const content = readFileSafe(sessionFile);
+  if (!content) {
+    return; // Can't read session — skip validation
+  }
+
+  const validation = validateTechnologyConsistency(content, cwd);
+  if (!validation.isValid || validation.warnings.length > 0) {
+    // Append validation warnings to session file
+    let updatedContent = content;
+
+    // Add validation warning section if there are warnings
+    if (validation.warnings.length > 0) {
+      const warningSection = [
+        '',
+        '---',
+        '## Validation Warnings',
+        '',
+        '### Technology Consistency',
+        ...validation.warnings.map(w => `${w}`),
+        '',
+      ].join('\n');
+
+      updatedContent = `${updatedContent.trimEnd()}${warningSection}`;
+    }
+
+    if (writeFileSafe(sessionFile, updatedContent)) {
+      log('Added Decision Log validation warnings to session file');
+    }
+  }
+}
+
+
 
 function buildHandwrittenSections() {
   return [
