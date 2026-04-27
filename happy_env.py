@@ -433,7 +433,7 @@ def build_option_summary_improved(*, dry_run: bool, verbose_log: bool) -> str:
     if verbose_log:
         lines.append("")
         lines.append("◆ 詳細ログ表示")
-        lines.append("同期の詳細な実行内容を表示します。")
+        lines.append("同期計画と適用対象の詳細を表示します。")
     
     return "\n".join(lines)
 
@@ -448,7 +448,7 @@ def build_option_summary(*, dry_run: bool, verbose_log: bool) -> str:
     lines.append("通常同期です。skills/ と agents/ は extra 項目を残しつつ差分同期し、同名更新時は archive を作成します。repo-template/、.github/hooks/、docs/furikaeri と user-owned file の扱いはスクリプト定義に従います。")
 
     if verbose_log:
-        lines.append("詳細ログを表示します。robocopy の出力が増えるため、実行内容を追いやすくなります。")
+        lines.append("詳細ログを表示します。同期計画と適用対象の詳細を追加表示します。")
 
     return "\n".join(lines)
 
@@ -462,7 +462,7 @@ def build_parser() -> argparse.ArgumentParser:
     # グローバルフラグ（サブコマンド前）
     parser.add_argument("--mirror", action="store_true", help="互換オプションです。ホーム同期の managed directory は常に template 一致へ同期します。")
     parser.add_argument("--dry-run", action="store_true", help="書き込み前に差分だけ確認します。")
-    parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
+    parser.add_argument("--verbose-log", action="store_true", help="同期計画と適用対象の詳細を表示します。")
     parser.add_argument(
         "--interactive",
         action=argparse.BooleanOptionalAction,
@@ -476,7 +476,7 @@ def build_parser() -> argparse.ArgumentParser:
     # home サブコマンド用のフラグ（互換性のため）
     home_parser.add_argument("--mirror", action="store_true", help="互換オプションです。ホーム同期の managed directory は常に template 一致へ同期します。")
     home_parser.add_argument("--dry-run", action="store_true", help="書き込み前に差分だけ確認します。")
-    home_parser.add_argument("--verbose-log", action="store_true", help="robocopy の詳細ログを表示します。")
+    home_parser.add_argument("--verbose-log", action="store_true", help="同期計画と適用対象の詳細を表示します。")
     home_parser.add_argument(
         "--interactive",
         action=argparse.BooleanOptionalAction,

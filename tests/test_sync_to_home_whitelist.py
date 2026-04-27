@@ -35,6 +35,7 @@ def _run_sync(
     *,
     archive_root: Path,
     dry_run: bool,
+    verbose_log: bool = False,
     mirror: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     command = [
@@ -55,6 +56,8 @@ def _run_sync(
     ]
     if dry_run:
         command.append("-DryRun")
+    if verbose_log:
+        command.append("-VerboseLog")
     if mirror:
         command.append("-Mirror")
 
@@ -197,6 +200,27 @@ def test_sync_to_home_mirror_flag_is_compatibility_only(tmp_path: Path) -> None:
     combined_output = result.stdout + result.stderr
     assert result.returncode == 0, combined_output
     assert "互換オプションです" in combined_output
+
+
+def test_sync_to_home_verbose_log_shows_detailed_plan(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    destination.mkdir(parents=True)
+
+    result = _run_sync(
+        source_root,
+        destination,
+        archive_root=archive_root,
+        dry_run=True,
+        verbose_log=True,
+    )
+
+    combined_output = result.stdout + result.stderr
+    assert result.returncode == 0, combined_output
+    assert "◆ 詳細ログ" in combined_output
+    assert "Planner actions" in combined_output
+    assert "[planner] copy-skill -> sample-skill" in combined_output
 
 
 def test_sync_to_home_does_not_delete_home_only_furikaeri_docs(tmp_path: Path) -> None:

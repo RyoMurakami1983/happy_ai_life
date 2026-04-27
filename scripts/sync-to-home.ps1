@@ -357,7 +357,6 @@ function Invoke-FileAction {
 
     switch ($Action.Kind) {
         "copy-file" {
-            Remove-PathItem -Path $Action.Destination
             Copy-PathItem -Source $Action.Source -Destination $Action.Destination
         }
         "delete-file" {
@@ -442,6 +441,44 @@ function Write-SyncMarkers {
     }
 }
 
+function Write-VerbosePlanDetails {
+    param(
+        [Parameter(Mandatory = $true)]$PlannerResult,
+        [Parameter(Mandatory = $true)][object[]]$DirectoryPlans,
+        [Parameter(Mandatory = $true)][object[]]$TrackedFilePlans,
+        [switch]$DryRunMode
+    )
+
+    Write-Host ""
+    Write-Host "◆ 詳細ログ" -ForegroundColor DarkCyan
+    Write-Host "Mode            : $(if ($DryRunMode) { 'dry-run' } else { 'live' })"
+
+    $plannerActions = @($PlannerResult.actions)
+    Write-Host "Planner actions : $($plannerActions.Count)"
+    foreach ($action in $plannerActions) {
+        $target = if ($action.item) { $action.item } else { $action.destination }
+        Write-Host "  [planner] $($action.kind) -> $target"
+    }
+
+    $allPlans = @($DirectoryPlans + $TrackedFilePlans)
+    foreach ($entry in $allPlans) {
+        $actions = @($entry.Plan.Actions)
+        if ($actions.Count -eq 0) {
+            continue
+        }
+
+        Write-Host "  [$($entry.Label)] actions=$($actions.Count)"
+        foreach ($action in $actions) {
+            $target = if ($action.Destination) { $action.Destination } else { $action.Source }
+            Write-Host "    - $($action.Kind): $target"
+        }
+    }
+
+    if ($plannerActions.Count -eq 0 -and -not ($allPlans | Where-Object { @($_.Plan.Actions).Count -gt 0 })) {
+        Write-Host "  no detailed actions"
+    }
+}
+
 function Invoke-PythonPlanner {
     param(
         [Parameter(Mandatory = $true)][string]$PlannerScriptPath,
@@ -462,12 +499,30 @@ function Invoke-PythonPlanner {
             "--archive-root", $PlannerArchiveRoot
         ))
 
-    $output = & $command[0] $command[1..($command.Count - 1)] 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "home_sync_planner.py failed.`n$($output -join [System.Environment]::NewLine)"
-    }
+    $stdoutPath = [System.IO.Path]::GetTempFileName()
+    $stderrPath = [System.IO.Path]::GetTempFileName()
+    try {
+        & $command[0] $command[1..($command.Count - 1)] 1> $stdoutPath 2> $stderrPath
+        $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
+        $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
 
-    return ($output -join [System.Environment]::NewLine) | ConvertFrom-Json -Depth 8
+        if ($LASTEXITCODE -ne 0) {
+            $errorMessage = "home_sync_planner.py failed."
+            if (-not [string]::IsNullOrWhiteSpace($stderr)) {
+                $errorMessage += "`nstderr:`n$stderr"
+            }
+            if (-not [string]::IsNullOrWhiteSpace($stdout)) {
+                $errorMessage += "`nstdout:`n$stdout"
+            }
+            throw $errorMessage
+        }
+
+        return $stdout | ConvertFrom-Json -Depth 8
+    }
+    finally {
+        Remove-Item -LiteralPath $stdoutPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
+    }
 }
 
 Write-Section "ホーム同期"
@@ -567,6 +622,14 @@ foreach ($entry in $directoryPlans) {
 foreach ($entry in $trackedFilePlans) {
     Add-PreviewItems -PreviewState $previewState -Bucket Added -Items @($entry.Plan.Added)
     Add-PreviewItems -PreviewState $previewState -Bucket Updated -Items @($entry.Plan.Updated)
+}
+
+if ($VerboseLog) {
+    Write-VerbosePlanDetails `
+        -PlannerResult $plannerResult `
+        -DirectoryPlans $directoryPlans `
+        -TrackedFilePlans $trackedFilePlans `
+        -DryRunMode:$DryRun
 }
 
 if (-not $DryRun) {

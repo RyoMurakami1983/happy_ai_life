@@ -28,6 +28,7 @@ def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
     assert "通常同期です。" in summary
     assert "skills/ と agents/ は extra 項目を残しつつ差分同期" in summary
     assert "詳細ログを表示します。" in summary
+    assert "同期計画と適用対象の詳細" in summary
 
 
 def test_build_mcp_config_notes_when_live_file_missing(tmp_path: Path) -> None:
