@@ -18,7 +18,7 @@ def test_build_option_summary_for_dry_run() -> None:
 
     assert "現在はドライランです。" in summary
     assert "通常同期です。" in summary
-    assert "ホーム同期は skills/、agents/、repo-template/、.github/hooks/" in summary
+    assert "skills/ と agents/ は extra 項目を残しつつ差分同期" in summary
 
 
 def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
@@ -26,8 +26,9 @@ def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
 
     assert "現在は実行モードです。" in summary
     assert "通常同期です。" in summary
-    assert "ホーム同期は skills/、agents/、repo-template/、.github/hooks/" in summary
+    assert "skills/ と agents/ は extra 項目を残しつつ差分同期" in summary
     assert "詳細ログを表示します。" in summary
+    assert "同期計画と適用対象の詳細" in summary
 
 
 def test_build_mcp_config_notes_when_live_file_missing(tmp_path: Path) -> None:
@@ -318,6 +319,19 @@ SYNC_FILES_OVERFLOW:UPDATED_MORE=3"""
     assert result["updated_more"] == 3
 
 
+def test_parse_sync_files_dry_accepts_single_string_payload() -> None:
+    """単一項目が JSON 文字列で来ても一覧に正規化する"""
+    stdout = """\
+SYNC_FILES_DRY:ADDED="skills/new-skill"
+SYNC_FILES_DRY:UPDATED=["agents/bar.json"]
+SYNC_FILES_DRY:DELETED=[]"""
+    result = happy_env.parse_sync_files_dry(stdout)
+    assert result is not None
+    assert result["added"] == ["skills/new-skill"]
+    assert result["updated"] == ["agents/bar.json"]
+    assert result["deleted"] == []
+
+
 def test_parse_sync_files_dry_no_match() -> None:
     """マッチしない場合は None を返す"""
     result = happy_env.parse_sync_files_dry("no sync files here")
@@ -388,13 +402,13 @@ def test_format_file_details_shows_overflow_message_when_list_unavailable() -> N
     assert "100 個以上" in result
     assert "50 個以上" in result
     assert "10 個以上" in result
-    # "変更ファイルなし" は表示されないこと
-    assert "変更ファイルなし" not in result
+    # "変更項目なし" は表示されないこと
+    assert "変更項目なし" not in result
 
 
 def test_format_file_details_no_changes_when_all_empty() -> None:
     """
-    ファイルリストもオーバーフロー情報もない場合、「変更ファイルなし」を表示
+    ファイルリストもオーバーフロー情報もない場合、「変更項目なし」を表示
     """
     files = {
         'added': [],
@@ -405,7 +419,6 @@ def test_format_file_details_no_changes_when_all_empty() -> None:
         'deleted_more': 0,
     }
     result = happy_env.format_file_details(files, dry_run=True)
-    assert "変更ファイルなし" in result
+    assert "変更項目なし" in result
     assert "一覧取得に失敗" not in result
-
 

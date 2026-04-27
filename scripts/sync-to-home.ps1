@@ -3,6 +3,8 @@ param(
     [string]$SourceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
     [string]$TemplateRelativePath = "home-template\.copilot",
     [string]$DestinationPath = (Join-Path $HOME ".copilot"),
+    [string]$ArchiveRoot = (Join-Path $HOME "copilot_archives"),
+    [string]$PythonExecutable = "",
     [switch]$Mirror,
     [switch]$DryRun,
     [switch]$VerboseLog
@@ -22,108 +24,18 @@ function Write-SyncSummary {
         [int]$Added,
         [int]$Updated,
         [int]$Deleted,
-        [bool]$DryRun
+        [bool]$DryRunMode
     )
-    
+
     $summary = "追加 $Added 個 / 更新 $Updated 個 / 削除 $Deleted 個"
-    
-    if ($DryRun) {
-        Write-Host ""
+
+    Write-Host ""
+    if ($DryRunMode) {
         Write-Host "✓ ドライラン確認: $summary" -ForegroundColor Green
     }
     else {
-        Write-Host ""
         Write-Host "✓ 同期完了: $summary" -ForegroundColor Green
     }
-}
-
-function Write-SyncError {
-    param([string]$ErrorMessage)
-    
-    Write-Host ""
-    Write-Host "✗ 同期失敗: $ErrorMessage" -ForegroundColor Red
-}
-
-function Get-RobocopyStats {
-    param([string]$RobocopyOutput)
-    
-    $stats = @{ Added = 0; Updated = 0; Deleted = 0 }
-    
-    # robocopy ログの最後から統計情報を抽出（ロケール対応）
-    # フォーマット例（英語）:
-    #   Files : 123 copied, 45 updated, 6 deleted
-    #   Extras : 3
-    # フォーマット例（日本語）:
-    #   ファイル:       248         1       247         0         0      8238
-    
-    $lines = $RobocopyOutput -split "`r?`n"
-    
-    # Strategy: Try line-by-line counting first (more reliable for locales),
-    # fall back to summary line parsing only if no individual file markers found
-    $foundIndividualMarkers = $false
-    
-    foreach ($line in $lines) {
-        # 英語と日本語の両パターンに対応（最優先）
-        if ($line -match "^\s+(New File|新しいファイル)\s+") {
-            $stats.Added++
-            $foundIndividualMarkers = $true
-        }
-        elseif ($line -match "^\s+(Newer|新しい)\s+") {
-            $stats.Updated++
-            $foundIndividualMarkers = $true
-        }
-        elseif ($line -match "^\s+(EXTRA File|EXTRA)\s+") {
-            $stats.Deleted++
-            $foundIndividualMarkers = $true
-        }
-    }
-    
-    # If no individual markers found, try summary line parsing (英語パターン)
-    if (-not $foundIndividualMarkers) {
-        foreach ($line in $lines) {
-            # 英語パターン: "Files : 123 copied, 45 updated, 6 deleted"
-            if ($line -match "Files\s*:\s*(\d+)\s+copied(?:,\s*(\d+)\s+updated)?(?:,\s*(\d+)\s+deleted)?") {
-                $stats.Added = [int]$matches[1]
-                if ($matches[2]) {
-                    $stats.Updated = [int]$matches[2]
-                }
-                if ($matches[3]) {
-                    $stats.Deleted = [int]$matches[3]
-                }
-                break
-            }
-        }
-    }
-    
-    # If still nothing, try 日本語 summary line: "ファイル:       248         1       247         0         0      8238"
-    if ($stats.Added -eq 0 -and $stats.Updated -eq 0 -and $stats.Deleted -eq 0) {
-        foreach ($line in $lines) {
-            if ($line -match "^\s*ファイル:") {
-                $parts = @($line -split "\s+" | Where-Object { $_ -and $_ -ne "ファイル:" })
-                if ($parts.Count -ge 2) {
-                    # parts[0]=合計, parts[1]=コピー済み
-                    $stats.Added = [int]$parts[1]
-                }
-                if ($parts.Count -ge 3) {
-                    # parts[2]=スキップ（削除と捉える判定）
-                    $stats.Deleted = [int]$parts[2]
-                }
-                break
-            }
-        }
-    }
-    
-    # Try "Extras" line for delete count as last resort
-    if ($stats.Deleted -eq 0) {
-        foreach ($line in $lines) {
-            if ($line -match "Extras\s*:\s*(\d+)") {
-                $stats.Deleted = [int]$matches[1]
-                break
-            }
-        }
-    }
-    
-    return $stats
 }
 
 function Warn-IfPathExists {
@@ -141,279 +53,494 @@ function Write-HomeMirrorCompatibilityWarning {
     param([Parameter(Mandatory = $true)][switch]$WhatIfMode)
 
     $prefix = if ($WhatIfMode) { "DRY-RUN WARNING" } else { "WARNING" }
-    Write-Warning "${prefix}: home sync では skills/、agents/、repo-template/、.github/hooks/ を常に template 一致の mirror-managed directory として扱います。"
-    Write-Warning "${prefix}: -Mirror は互換オプションとして受け付けますが、home sync では追加効果を持ちません。"
+    Write-Warning "${prefix}: -Mirror は互換オプションです。home sync の managed surface はスクリプト定義どおりに同期されます。"
 }
 
-function Test-RobocopyResult {
-    param([int]$ExitCode)
+function Resolve-HomeTemplateRoot {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceRootPath,
+        [Parameter(Mandatory = $true)][string]$TemplatePath
+    )
 
-    if ($ExitCode -ge 8) {
-        throw "robocopy failed. ExitCode=$ExitCode"
+    $nestedTemplatePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRootPath $TemplatePath))
+    if (Test-Path -LiteralPath $nestedTemplatePath) {
+        return $nestedTemplatePath
+    }
+
+    $packagedIndicators = @(
+        (Join-Path $SourceRootPath "skills"),
+        (Join-Path $SourceRootPath "agents"),
+        (Join-Path $SourceRootPath "copilot-instructions.md")
+    )
+    $isPackagedRoot = $true
+    foreach ($path in $packagedIndicators) {
+        if (-not (Test-Path -LiteralPath $path)) {
+            $isPackagedRoot = $false
+            break
+        }
+    }
+
+    if ($isPackagedRoot) {
+        return [System.IO.Path]::GetFullPath($SourceRootPath)
+    }
+
+    throw "Home template root not found. SourceRoot=$SourceRootPath TemplateRelativePath=$TemplatePath"
+}
+
+function Resolve-PythonCommand {
+    param([string]$RequestedExecutable)
+
+    if (-not [string]::IsNullOrWhiteSpace($RequestedExecutable)) {
+        return @($RequestedExecutable)
+    }
+
+    foreach ($candidate in @("python", "python3")) {
+        $resolved = Get-Command $candidate -ErrorAction SilentlyContinue
+        if ($resolved) {
+            return @($resolved.Source)
+        }
+    }
+
+    $pyLauncher = Get-Command "py" -ErrorAction SilentlyContinue
+    if ($pyLauncher) {
+        return @($pyLauncher.Source, "-3")
+    }
+
+    throw "Python executable not found. Pass -PythonExecutable or install python/py launcher."
+}
+
+function New-PreviewState {
+    return @{
+        Added = New-Object System.Collections.Generic.List[string]
+        Updated = New-Object System.Collections.Generic.List[string]
+        Deleted = New-Object System.Collections.Generic.List[string]
     }
 }
 
-function Invoke-Robocopy {
+function Add-PreviewItems {
+    param(
+        [Parameter(Mandatory = $true)]$PreviewState,
+        [Parameter(Mandatory = $true)][ValidateSet("Added", "Updated", "Deleted")][string]$Bucket,
+        [AllowEmptyCollection()][string[]]$Items = @()
+    )
+
+    foreach ($item in $Items) {
+        [void]$PreviewState[$Bucket].Add($item)
+    }
+}
+
+function Normalize-PreviewPath {
+    param(
+        [string]$RootPrefix,
+        [string]$RelativePath
+    )
+
+    $normalizedRelative = $RelativePath.Replace('\', '/')
+    if ([string]::IsNullOrWhiteSpace($RootPrefix)) {
+        return $normalizedRelative
+    }
+    if ([string]::IsNullOrWhiteSpace($normalizedRelative)) {
+        return $RootPrefix.Replace('\', '/')
+    }
+    return ("{0}/{1}" -f $RootPrefix.Replace('\', '/').TrimEnd('/'), $normalizedRelative.TrimStart('/'))
+}
+
+function Ensure-ParentDirectory {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $parent = Split-Path -Path $Path -Parent
+    if (-not [string]::IsNullOrWhiteSpace($parent) -and -not (Test-Path -LiteralPath $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+}
+
+function Remove-PathItem {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+
+    $item = Get-Item -LiteralPath $Path -Force
+    if ($item.PSIsContainer) {
+        Remove-Item -LiteralPath $Path -Recurse -Force
+        return
+    }
+
+    Remove-Item -LiteralPath $Path -Force
+}
+
+function Copy-PathItem {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+
+    $sourceItem = Get-Item -LiteralPath $Source -Force
+    Ensure-ParentDirectory -Path $Destination
+
+    if ($sourceItem.PSIsContainer) {
+        Copy-Item -LiteralPath $Source -Destination $Destination -Recurse
+        return
+    }
+
+    Copy-Item -LiteralPath $Source -Destination $Destination -Force
+}
+
+function Backup-PathItem {
+    param(
+        [Parameter(Mandatory = $true)][string]$ExistingPath,
+        [Parameter(Mandatory = $true)][string]$ArchivePath
+    )
+
+    Remove-PathItem -Path $ArchivePath
+    if (-not (Test-Path -LiteralPath $ExistingPath)) {
+        return
+    }
+
+    Copy-PathItem -Source $ExistingPath -Destination $ArchivePath
+}
+
+function Get-PathFileMap {
+    param([Parameter(Mandatory = $true)][string]$Root)
+
+    $map = @{}
+    if (-not (Test-Path -LiteralPath $Root)) {
+        return $map
+    }
+
+    $resolvedRoot = [System.IO.Path]::GetFullPath($Root)
+    foreach ($file in Get-ChildItem -LiteralPath $resolvedRoot -Recurse -File) {
+        $relative = [System.IO.Path]::GetRelativePath($resolvedRoot, $file.FullName)
+        $map[$relative] = $file.FullName
+    }
+    return $map
+}
+
+function Get-FileSha256 {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+}
+
+function Get-DirectorySyncPlan {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
         [Parameter(Mandatory = $true)][string]$Destination,
-        [switch]$MirrorMode,
-        [switch]$WhatIfMode,
-        [switch]$ShowVerboseLog
+        [Parameter(Mandatory = $true)][string]$PreviewRoot,
+        [switch]$MirrorMode
     )
 
     if (-not (Test-Path -LiteralPath $Source)) {
         throw "Source path not found: $Source"
     }
 
-    if (-not (Test-Path -LiteralPath $Destination)) {
-        New-Item -ItemType Directory -Path $Destination -Force | Out-Null
-    }
+    $actions = New-Object System.Collections.Generic.List[object]
+    $added = New-Object System.Collections.Generic.List[string]
+    $updated = New-Object System.Collections.Generic.List[string]
+    $deleted = New-Object System.Collections.Generic.List[string]
 
-    $robocopyArgs = @(
-        $Source
-        $Destination
-        "/E"
-        "/R:2"
-        "/W:1"
-        "/XJ"
-    )
+    $sourceFiles = Get-PathFileMap -Root $Source
+    $destinationFiles = Get-PathFileMap -Root $Destination
+
+    foreach ($relativePath in $sourceFiles.Keys | Sort-Object) {
+        $sourceFile = $sourceFiles[$relativePath]
+        $destinationFile = Join-Path $Destination $relativePath
+        $previewPath = Normalize-PreviewPath -RootPrefix $PreviewRoot -RelativePath $relativePath
+        if (-not $destinationFiles.ContainsKey($relativePath)) {
+            [void]$added.Add($previewPath)
+            [void]$actions.Add([pscustomobject]@{
+                    Kind = "copy-file"
+                    Source = $sourceFile
+                    Destination = $destinationFile
+                })
+            continue
+        }
+
+        if ((Get-FileSha256 -Path $sourceFile) -ne (Get-FileSha256 -Path $destinationFiles[$relativePath])) {
+            [void]$updated.Add($previewPath)
+            [void]$actions.Add([pscustomobject]@{
+                    Kind = "copy-file"
+                    Source = $sourceFile
+                    Destination = $destinationFile
+                })
+        }
+    }
 
     if ($MirrorMode) {
-        $robocopyArgs += "/MIR"
-    }
-
-    if ($WhatIfMode) {
-        $robocopyArgs += "/L"
-        # ドライラン時は統計情報を取得するため、抑制フラグを使わない
-    }
-    else {
-        # 実行時のみ冗長出力を抑制（本運用）
-        $robocopyArgs += "/NFL"
-        $robocopyArgs += "/NDL"
-        $robocopyArgs += "/NP"
-        $robocopyArgs += "/NJH"
-        $robocopyArgs += "/NJS"
-    }
-
-    $verboseLogPath = $null
-    $statsLogPath = $null
-
-    # ドライラン時はログファイルを出力して統計抽出
-    if ($WhatIfMode -and -not $ShowVerboseLog) {
-        $statsLogPath = Join-Path ([System.IO.Path]::GetTempPath()) ("happy-env-robocopy-stats-{0}.log" -f [guid]::NewGuid())
-        # 統計用ログは UNILOG で正確なエンコーディング保証
-        $robocopyArgs += "/UNILOG:$statsLogPath"
-    }
-
-    if ($ShowVerboseLog) {
-        $robocopyArgs = @(
-            $Source
-            $Destination
-            "/E"
-            "/R:2"
-            "/W:1"
-            "/XJ"
-        )
-        if ($MirrorMode) { $robocopyArgs += "/MIR" }
-        if ($WhatIfMode) { $robocopyArgs += "/L" }
-        $verboseLogPath = Join-Path ([System.IO.Path]::GetTempPath()) ("happy-env-robocopy-{0}.log" -f [guid]::NewGuid())
-        $robocopyArgs += "/UNILOG:$verboseLogPath"
-    }
-
-    try {
-        if ($ShowVerboseLog) {
-            & robocopy @robocopyArgs | Out-Null
-        }
-        else {
-            # 通常モード：robocopy を実行
-            & robocopy @robocopyArgs | Out-Null
-        }
-        $exitCode = $LASTEXITCODE
-
-        if ($ShowVerboseLog -and $verboseLogPath -and (Test-Path -LiteralPath $verboseLogPath)) {
-            $verboseLogContent = Get-Content -LiteralPath $verboseLogPath -Raw -Encoding UTF8
-            if (-not [string]::IsNullOrWhiteSpace($verboseLogContent)) {
-                Write-Host $verboseLogContent -NoNewline
-            }
-        }
-
-        Test-RobocopyResult -ExitCode $exitCode
-
-        # ドライラン時は統計情報とファイルリストをログファイルから抽出
-        if ($WhatIfMode -and $statsLogPath -and (Test-Path -LiteralPath $statsLogPath)) {
-            $logContent = Get-Content -LiteralPath $statsLogPath -Raw -Encoding UTF8
-            $stats = Get-RobocopyStats -RobocopyOutput $logContent
-            Write-SyncSummary -Added $stats.Added -Updated $stats.Updated -Deleted $stats.Deleted -DryRun:$true
-
-            # ドライラン時のみファイル詳細を抽出
-            $addedFiles = @()
-            $updatedFiles = @()
-            $deletedFiles = @()
-
-            foreach ($line in $logContent -split "`n") {
-                # robocopy ドライランログ形式: "New File", "Newer", "EXTRA File"
-                if ($line -match "^\s+New File\s+") {
-                    # New File の行からパスを抽出（最後のカラムがパス）
-                    $parts = $line -split "\s{2,}" | Where-Object { $_ -and $_.Trim() }
-                    if ($parts.Count -gt 1) {
-                        $filePath = $parts[-1].Trim()
-                        if ($filePath -and $filePath.Length -gt 0) {
-                            $addedFiles += $filePath
-                        }
-                    }
-                }
-                elseif ($line -match "^\s+Newer\s+") {
-                    # Newer の行からパスを抽出
-                    $parts = $line -split "\s{2,}" | Where-Object { $_ -and $_.Trim() }
-                    if ($parts.Count -gt 1) {
-                        $filePath = $parts[-1].Trim()
-                        if ($filePath -and $filePath.Length -gt 0) {
-                            $updatedFiles += $filePath
-                        }
-                    }
-                }
-                elseif ($line -match "^\s+EXTRA File\s+") {
-                    # EXTRA File の行からパスを抽出
-                    $parts = $line -split "\s{2,}" | Where-Object { $_ -and $_.Trim() }
-                    if ($parts.Count -gt 1) {
-                        $filePath = $parts[-1].Trim()
-                        if ($filePath -and $filePath.Length -gt 0) {
-                            $deletedFiles += $filePath
-                        }
-                    }
-                }
+        foreach ($relativePath in $destinationFiles.Keys | Sort-Object) {
+            if ($sourceFiles.ContainsKey($relativePath)) {
+                continue
             }
 
-            # ファイルリストを JSON 形式で出力（truncate）
-            $addedTruncated = $addedFiles | Select-Object -First 20
-            $updatedTruncated = $updatedFiles | Select-Object -First 20
-            $deletedTruncated = $deletedFiles | Select-Object -First 20
-
-            $addedJson = @($addedTruncated) | ConvertTo-Json -Compress
-            $updatedJson = @($updatedTruncated) | ConvertTo-Json -Compress
-            $deletedJson = @($deletedTruncated) | ConvertTo-Json -Compress
-
-            Write-Host "SYNC_STATS:ADDED=$($stats.Added),UPDATED=$($stats.Updated),DELETED=$($stats.Deleted)"
-            Write-Host "SYNC_FILES_DRY:ADDED=$addedJson"
-            Write-Host "SYNC_FILES_DRY:UPDATED=$updatedJson"
-            Write-Host "SYNC_FILES_DRY:DELETED=$deletedJson"
-
-            # Overflow counters
-            if ($addedFiles.Count -gt 20) {
-                Write-Host "SYNC_FILES_OVERFLOW:ADDED_MORE=$($addedFiles.Count - 20)"
-            }
-            if ($updatedFiles.Count -gt 20) {
-                Write-Host "SYNC_FILES_OVERFLOW:UPDATED_MORE=$($updatedFiles.Count - 20)"
-            }
-            if ($deletedFiles.Count -gt 20) {
-                Write-Host "SYNC_FILES_OVERFLOW:DELETED_MORE=$($deletedFiles.Count - 20)"
-            }
-        }
-        else {
-            # ログが取得できなかった場合のフォールバック
-            if ($WhatIfMode) {
-                Write-Host ""
-                Write-Host "✓ ドライラン完了" -ForegroundColor Green
-            }
-            else {
-                Write-Host ""
-                Write-Host "✓ 同期完了" -ForegroundColor Green
-            }
-        }
-    }
-    finally {
-        if ($verboseLogPath -and (Test-Path -LiteralPath $verboseLogPath)) {
-            Remove-Item -LiteralPath $verboseLogPath -Force -ErrorAction SilentlyContinue
-        }
-        if ($statsLogPath -and (Test-Path -LiteralPath $statsLogPath)) {
-            Remove-Item -LiteralPath $statsLogPath -Force -ErrorAction SilentlyContinue
+            [void]$deleted.Add((Normalize-PreviewPath -RootPrefix $PreviewRoot -RelativePath $relativePath))
+            [void]$actions.Add([pscustomobject]@{
+                    Kind = "delete-file"
+                    Source = $null
+                    Destination = $destinationFiles[$relativePath]
+                })
         }
     }
 
-    $global:LASTEXITCODE = 0
+    return [pscustomobject]@{
+        Label = $PreviewRoot
+        Actions = $actions.ToArray()
+        Added = $added.ToArray()
+        Updated = $updated.ToArray()
+        Deleted = $deleted.ToArray()
+        MirrorMode = $MirrorMode.IsPresent
+        DestinationRoot = $Destination
+    }
 }
 
-function Copy-TrackedFile {
+function Get-TrackedFilePlan {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
         [Parameter(Mandatory = $true)][string]$Destination,
-        [switch]$WhatIfMode
+        [Parameter(Mandatory = $true)][string]$PreviewPath
     )
 
     if (-not (Test-Path -LiteralPath $Source)) {
         throw "Source file not found: $Source"
     }
 
-    $destinationDir = Split-Path -Parent $Destination
-    if (-not [string]::IsNullOrWhiteSpace($destinationDir) -and -not (Test-Path -LiteralPath $destinationDir)) {
-        New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+    $actions = New-Object System.Collections.Generic.List[object]
+    $added = New-Object System.Collections.Generic.List[string]
+    $updated = New-Object System.Collections.Generic.List[string]
+
+    if (-not (Test-Path -LiteralPath $Destination)) {
+        [void]$added.Add($PreviewPath)
+        [void]$actions.Add([pscustomobject]@{
+                Kind = "copy-file"
+                Source = $Source
+                Destination = $Destination
+            })
+    }
+    elseif ((Get-FileSha256 -Path $Source) -ne (Get-FileSha256 -Path $Destination)) {
+        [void]$updated.Add($PreviewPath)
+        [void]$actions.Add([pscustomobject]@{
+                Kind = "copy-file"
+                Source = $Source
+                Destination = $Destination
+            })
     }
 
-    if ($WhatIfMode) {
-        Write-Host "Would copy $Source -> $Destination" -ForegroundColor Yellow
+    return [pscustomobject]@{
+        Label = $PreviewPath
+        Actions = $actions.ToArray()
+        Added = $added.ToArray()
+        Updated = $updated.ToArray()
+        Deleted = @()
+        MirrorMode = $false
+        DestinationRoot = Split-Path -Path $Destination -Parent
+    }
+}
+
+function Remove-EmptyDirectories {
+    param([Parameter(Mandatory = $true)][string]$Root)
+
+    if (-not (Test-Path -LiteralPath $Root)) {
         return
     }
 
-    Copy-Item -LiteralPath $Source -Destination $Destination -Force
-    Write-Host "Copied $Source -> $Destination" -ForegroundColor Green
+    $directories = Get-ChildItem -LiteralPath $Root -Directory -Recurse | Sort-Object FullName -Descending
+    foreach ($directory in $directories) {
+        $children = @(Get-ChildItem -LiteralPath $directory.FullName -Force)
+        if ($children.Count -eq 0) {
+            Remove-Item -LiteralPath $directory.FullName -Force
+        }
+    }
+}
+
+function Invoke-FileAction {
+    param([Parameter(Mandatory = $true)]$Action)
+
+    switch ($Action.Kind) {
+        "copy-file" {
+            Copy-PathItem -Source $Action.Source -Destination $Action.Destination
+        }
+        "delete-file" {
+            Remove-PathItem -Path $Action.Destination
+        }
+        default {
+            throw "Unsupported file action kind: $($Action.Kind)"
+        }
+    }
+}
+
+function Invoke-PlannerAction {
+    param([Parameter(Mandatory = $true)]$Action)
+
+    switch ($Action.kind) {
+        "copy-skill" {
+            Remove-PathItem -Path $Action.destination
+            Copy-PathItem -Source $Action.source -Destination $Action.destination
+        }
+        "update-skill" {
+            Backup-PathItem -ExistingPath $Action.destination -ArchivePath $Action.archive
+            Remove-PathItem -Path $Action.destination
+            Copy-PathItem -Source $Action.source -Destination $Action.destination
+        }
+        "preserve-skill-extra" {
+            return
+        }
+        "copy-agent" {
+            Remove-PathItem -Path $Action.destination
+            Copy-PathItem -Source $Action.source -Destination $Action.destination
+        }
+        "update-agent" {
+            Backup-PathItem -ExistingPath $Action.destination -ArchivePath $Action.archive
+            Remove-PathItem -Path $Action.destination
+            Copy-PathItem -Source $Action.source -Destination $Action.destination
+        }
+        "preserve-agent-extra" {
+            return
+        }
+        default {
+            throw "Unsupported planner action kind: $($Action.kind)"
+        }
+    }
+}
+
+function Write-SyncMarkers {
+    param(
+        [Parameter(Mandatory = $true)]$PreviewState,
+        [switch]$WhatIfMode
+    )
+
+    $added = @($PreviewState.Added)
+    $updated = @($PreviewState.Updated)
+    $deleted = @($PreviewState.Deleted)
+
+    Write-Host "SYNC_STATS:ADDED=$($added.Count),UPDATED=$($updated.Count),DELETED=$($deleted.Count)"
+
+    if (-not $WhatIfMode) {
+        return
+    }
+
+    $addedPreviewItems = @($added | Select-Object -First 20)
+    $updatedPreviewItems = @($updated | Select-Object -First 20)
+    $deletedPreviewItems = @($deleted | Select-Object -First 20)
+
+    $addedPreview = if ($addedPreviewItems.Count -eq 0) { "[]" } else { ConvertTo-Json -InputObject ([object[]]$addedPreviewItems) -Compress }
+    $updatedPreview = if ($updatedPreviewItems.Count -eq 0) { "[]" } else { ConvertTo-Json -InputObject ([object[]]$updatedPreviewItems) -Compress }
+    $deletedPreview = if ($deletedPreviewItems.Count -eq 0) { "[]" } else { ConvertTo-Json -InputObject ([object[]]$deletedPreviewItems) -Compress }
+
+    Write-Host "SYNC_FILES_DRY:ADDED=$addedPreview"
+    Write-Host "SYNC_FILES_DRY:UPDATED=$updatedPreview"
+    Write-Host "SYNC_FILES_DRY:DELETED=$deletedPreview"
+
+    if ($added.Count -gt 20) {
+        Write-Host "SYNC_FILES_OVERFLOW:ADDED_MORE=$($added.Count - 20)"
+    }
+    if ($updated.Count -gt 20) {
+        Write-Host "SYNC_FILES_OVERFLOW:UPDATED_MORE=$($updated.Count - 20)"
+    }
+    if ($deleted.Count -gt 20) {
+        Write-Host "SYNC_FILES_OVERFLOW:DELETED_MORE=$($deleted.Count - 20)"
+    }
+}
+
+function Write-VerbosePlanDetails {
+    param(
+        [Parameter(Mandatory = $true)]$PlannerResult,
+        [Parameter(Mandatory = $true)][object[]]$DirectoryPlans,
+        [Parameter(Mandatory = $true)][object[]]$TrackedFilePlans,
+        [switch]$DryRunMode
+    )
+
+    Write-Host ""
+    Write-Host "◆ 詳細ログ" -ForegroundColor DarkCyan
+    Write-Host "Mode            : $(if ($DryRunMode) { 'dry-run' } else { 'live' })"
+
+    $plannerActions = @($PlannerResult.actions)
+    Write-Host "Planner actions : $($plannerActions.Count)"
+    foreach ($action in $plannerActions) {
+        $target = if ($action.item) { $action.item } else { $action.destination }
+        Write-Host "  [planner] $($action.kind) -> $target"
+    }
+
+    $allPlans = @($DirectoryPlans + $TrackedFilePlans)
+    foreach ($entry in $allPlans) {
+        $actions = @($entry.Plan.Actions)
+        if ($actions.Count -eq 0) {
+            continue
+        }
+
+        Write-Host "  [$($entry.Label)] actions=$($actions.Count)"
+        foreach ($action in $actions) {
+            $target = if ($action.Destination) { $action.Destination } else { $action.Source }
+            Write-Host "    - $($action.Kind): $target"
+        }
+    }
+
+    if ($plannerActions.Count -eq 0 -and -not ($allPlans | Where-Object { @($_.Plan.Actions).Count -gt 0 })) {
+        Write-Host "  no detailed actions"
+    }
+}
+
+function Invoke-PythonPlanner {
+    param(
+        [Parameter(Mandatory = $true)][string]$PlannerScriptPath,
+        [Parameter(Mandatory = $true)][string]$PlannerSourceRoot,
+        [Parameter(Mandatory = $true)][string]$PlannerDestinationRoot,
+        [Parameter(Mandatory = $true)][string]$PlannerArchiveRoot,
+        [Parameter(Mandatory = $true)][string[]]$PythonCommand
+    )
+
+    if (-not (Test-Path -LiteralPath $PlannerScriptPath)) {
+        throw "Planner script not found: $PlannerScriptPath"
+    }
+
+    $command = @($PythonCommand + @(
+            $PlannerScriptPath,
+            "--source-root", $PlannerSourceRoot,
+            "--destination-root", $PlannerDestinationRoot,
+            "--archive-root", $PlannerArchiveRoot
+        ))
+
+    $stdoutPath = [System.IO.Path]::GetTempFileName()
+    $stderrPath = [System.IO.Path]::GetTempFileName()
+    try {
+        & $command[0] $command[1..($command.Count - 1)] 1> $stdoutPath 2> $stderrPath
+        $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
+        $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
+
+        if ($LASTEXITCODE -ne 0) {
+            $errorMessage = "home_sync_planner.py failed."
+            if (-not [string]::IsNullOrWhiteSpace($stderr)) {
+                $errorMessage += "`nstderr:`n$stderr"
+            }
+            if (-not [string]::IsNullOrWhiteSpace($stdout)) {
+                $errorMessage += "`nstdout:`n$stdout"
+            }
+            throw $errorMessage
+        }
+
+        return $stdout | ConvertFrom-Json -Depth 8
+    }
+    finally {
+        Remove-Item -LiteralPath $stdoutPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
+    }
 }
 
 Write-Section "ホーム同期"
 
-$sourcePath = Join-Path $SourceRoot $TemplateRelativePath
-$sourcePath = [System.IO.Path]::GetFullPath($sourcePath)
+$sourceRootPath = [System.IO.Path]::GetFullPath($SourceRoot)
 $destinationPath = [System.IO.Path]::GetFullPath($DestinationPath)
+$templateRoot = Resolve-HomeTemplateRoot -SourceRootPath $sourceRootPath -TemplatePath $TemplateRelativePath
+$archiveRoot = [System.IO.Path]::GetFullPath($ArchiveRoot)
+$plannerScriptPath = Join-Path (Join-Path $sourceRootPath "scripts") "home_sync_planner.py"
+$pythonCommand = Resolve-PythonCommand -RequestedExecutable $PythonExecutable
 
 Write-Host ""
-Write-Host "準備完了。ホーム同期は managed directory を template 一致へ同期し、"
-Write-Host "mcp-config.json や docs/furikaeri など user-owned 領域は保護します。"
+Write-Host "準備完了。skills/ と agents/ は filesystem diff + archive 付きで同期し、"
+Write-Host "repo-template/ と .github/hooks/ は managed surface として比較同期します。"
 Write-Host "実行中..."
 Write-Host ""
 
-$trackedDirectories = @(
-    @{
-        Source = (Join-Path $sourcePath "skills")
-        Destination = (Join-Path $destinationPath "skills")
-        MirrorMode = $true
-        Label = "skills/ (mirror-managed)"
-    },
-    @{
-        Source = (Join-Path $sourcePath "agents")
-        Destination = (Join-Path $destinationPath "agents")
-        MirrorMode = $true
-        Label = "agents/ (mirror-managed)"
-    },
-    @{
-        Source = (Join-Path $SourceRoot "repo-template")
-        Destination = (Join-Path $destinationPath "repo-template")
-        MirrorMode = $true
-        Label = "repo-template/ (mirror-managed)"
-    },
-    @{
-        Source = (Join-Path (Join-Path $SourceRoot ".github") "hooks")
-        Destination = (Join-Path (Join-Path $destinationPath ".github") "hooks")
-        MirrorMode = $true
-        Label = ".github/hooks/ (mirror-managed)"
-    },
-    # Shared furikaeri archives are part of the writable home template.
-    @{
-        Source = (Join-Path (Join-Path $sourcePath "docs") "furikaeri")
-        Destination = (Join-Path (Join-Path $destinationPath "docs") "furikaeri")
-        MirrorMode = $false
-        Label = "docs/furikaeri (copy-only)"
-    }
-)
-
-$trackedFiles = @(
-    @{ Source = (Join-Path $sourcePath "copilot-instructions.md"); Destination = (Join-Path $destinationPath "copilot-instructions.md") },
-    @{ Source = (Join-Path $sourcePath "mcp-config.sample.json"); Destination = (Join-Path $destinationPath "mcp-config.sample.json") },
-    @{ Source = (Join-Path (Join-Path $SourceRoot "scripts") "sync-to-repo.ps1"); Destination = (Join-Path (Join-Path $destinationPath "scripts") "sync-to-repo.ps1") },
-    @{ Source = (Join-Path (Join-Path $SourceRoot "scripts") "install-git-hooks.ps1"); Destination = (Join-Path (Join-Path $destinationPath "scripts") "install-git-hooks.ps1") },
-    @{ Source = (Join-Path (Join-Path $SourceRoot "scripts") "repo-secure-check.ps1"); Destination = (Join-Path (Join-Path $destinationPath "scripts") "repo-secure-check.ps1") }
-)
-
-$unsupportedHooksPath = Join-Path $sourcePath "hooks"
+$unsupportedHooksPath = Join-Path $templateRoot "hooks"
 Warn-IfPathExists `
     -Path $unsupportedHooksPath `
     -Message "home-template/.copilot/hooks is ignored. Officially supported hook configuration is repository-scoped under .github/hooks."
@@ -426,23 +553,114 @@ if ($Mirror) {
     Write-HomeMirrorCompatibilityWarning -WhatIfMode:$DryRun
 }
 
-foreach ($entry in $trackedDirectories) {
+$previewState = New-PreviewState
+
+Write-Host ""
+Write-Host "◆ skills/ + agents/ (planner-managed)" -ForegroundColor Cyan
+$plannerResult = Invoke-PythonPlanner `
+    -PlannerScriptPath $plannerScriptPath `
+    -PlannerSourceRoot $sourceRootPath `
+    -PlannerDestinationRoot $destinationPath `
+    -PlannerArchiveRoot $archiveRoot `
+    -PythonCommand $pythonCommand
+
+$plannerPreview = $plannerResult.preview
+Add-PreviewItems -PreviewState $previewState -Bucket Added -Items @($plannerPreview.added)
+Add-PreviewItems -PreviewState $previewState -Bucket Updated -Items @($plannerPreview.updated)
+Add-PreviewItems -PreviewState $previewState -Bucket Deleted -Items @($plannerPreview.deleted)
+
+$directoryPlans = @(
+    [pscustomobject]@{
+        Label = "repo-template/ (managed)"
+        Plan = (Get-DirectorySyncPlan -Source (Join-Path $sourceRootPath "repo-template") -Destination (Join-Path $destinationPath "repo-template") -PreviewRoot "repo-template" -MirrorMode)
+    },
+    [pscustomobject]@{
+        Label = ".github/hooks/ (managed)"
+        Plan = (Get-DirectorySyncPlan -Source (Join-Path (Join-Path $sourceRootPath ".github") "hooks") -Destination (Join-Path (Join-Path $destinationPath ".github") "hooks") -PreviewRoot ".github/hooks" -MirrorMode)
+    },
+    [pscustomobject]@{
+        Label = "docs/furikaeri (copy-only)"
+        Plan = (Get-DirectorySyncPlan -Source (Join-Path (Join-Path $templateRoot "docs") "furikaeri") -Destination (Join-Path (Join-Path $destinationPath "docs") "furikaeri") -PreviewRoot "docs/furikaeri")
+    }
+)
+
+$trackedFilePlans = @(
+    [pscustomobject]@{
+        Label = "copilot-instructions.md"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path $templateRoot "copilot-instructions.md") -Destination (Join-Path $destinationPath "copilot-instructions.md") -PreviewPath "copilot-instructions.md")
+    },
+    [pscustomobject]@{
+        Label = "mcp-config.sample.json"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path $templateRoot "mcp-config.sample.json") -Destination (Join-Path $destinationPath "mcp-config.sample.json") -PreviewPath "mcp-config.sample.json")
+    },
+    [pscustomobject]@{
+        Label = "scripts/sync-to-repo.ps1"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "sync-to-repo.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "sync-to-repo.ps1") -PreviewPath "scripts/sync-to-repo.ps1")
+    },
+    [pscustomobject]@{
+        Label = "scripts/install-git-hooks.ps1"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "install-git-hooks.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "install-git-hooks.ps1") -PreviewPath "scripts/install-git-hooks.ps1")
+    },
+    [pscustomobject]@{
+        Label = "scripts/repo-secure-check.ps1"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "repo-secure-check.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "repo-secure-check.ps1") -PreviewPath "scripts/repo-secure-check.ps1")
+    },
+    [pscustomobject]@{
+        Label = "scripts/home_sync_planner.py"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "home_sync_planner.py") -Destination (Join-Path (Join-Path $destinationPath "scripts") "home_sync_planner.py") -PreviewPath "scripts/home_sync_planner.py")
+    }
+)
+
+foreach ($entry in $directoryPlans) {
     Write-Host ""
     Write-Host "◆ $($entry.Label)" -ForegroundColor Cyan
-    Invoke-Robocopy `
-        -Source $entry.Source `
-        -Destination $entry.Destination `
-        -MirrorMode:$entry.MirrorMode `
-        -WhatIfMode:$DryRun `
-        -ShowVerboseLog:$VerboseLog
+    Add-PreviewItems -PreviewState $previewState -Bucket Added -Items @($entry.Plan.Added)
+    Add-PreviewItems -PreviewState $previewState -Bucket Updated -Items @($entry.Plan.Updated)
+    Add-PreviewItems -PreviewState $previewState -Bucket Deleted -Items @($entry.Plan.Deleted)
 }
 
-foreach ($entry in $trackedFiles) {
-    Copy-TrackedFile `
-        -Source $entry.Source `
-        -Destination $entry.Destination `
-        -WhatIfMode:$DryRun
+foreach ($entry in $trackedFilePlans) {
+    Add-PreviewItems -PreviewState $previewState -Bucket Added -Items @($entry.Plan.Added)
+    Add-PreviewItems -PreviewState $previewState -Bucket Updated -Items @($entry.Plan.Updated)
 }
+
+if ($VerboseLog) {
+    Write-VerbosePlanDetails `
+        -PlannerResult $plannerResult `
+        -DirectoryPlans $directoryPlans `
+        -TrackedFilePlans $trackedFilePlans `
+        -DryRunMode:$DryRun
+}
+
+if (-not $DryRun) {
+    foreach ($action in @($plannerResult.actions)) {
+        Invoke-PlannerAction -Action $action
+    }
+
+    foreach ($entry in $directoryPlans) {
+        foreach ($action in @($entry.Plan.Actions)) {
+            Invoke-FileAction -Action $action
+        }
+
+        if ($entry.Plan.MirrorMode) {
+            Remove-EmptyDirectories -Root $entry.Plan.DestinationRoot
+        }
+    }
+
+    foreach ($entry in $trackedFilePlans) {
+        foreach ($action in @($entry.Plan.Actions)) {
+            Invoke-FileAction -Action $action
+        }
+    }
+}
+
+Write-SyncSummary `
+    -Added $previewState.Added.Count `
+    -Updated $previewState.Updated.Count `
+    -Deleted $previewState.Deleted.Count `
+    -DryRunMode:$DryRun
+
+Write-SyncMarkers -PreviewState $previewState -WhatIfMode:$DryRun
 
 $mcpSamplePath = Join-Path $destinationPath "mcp-config.sample.json"
 $mcpLivePath = Join-Path $destinationPath "mcp-config.json"

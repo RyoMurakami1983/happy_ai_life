@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -10,8 +11,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "sync-to-home.ps1"
-ROBOCOPY = shutil.which("robocopy")
-SKIP_REASON = "sync-to-home.ps1 requires Windows robocopy"
+SKIP_REASON = "sync-to-home.ps1 tests require Windows"
 
 
 def _powershell_executable() -> str:
@@ -24,7 +24,7 @@ def _powershell_executable() -> str:
 
 
 pytestmark = pytest.mark.skipif(
-    os.name != "nt" or ROBOCOPY is None,
+    os.name != "nt",
     reason=SKIP_REASON,
 )
 
@@ -33,7 +33,9 @@ def _run_sync(
     source_root: Path,
     destination: Path,
     *,
+    archive_root: Path,
     dry_run: bool,
+    verbose_log: bool = False,
     mirror: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     command = [
@@ -47,9 +49,15 @@ def _run_sync(
         str(source_root),
         "-DestinationPath",
         str(destination),
+        "-ArchiveRoot",
+        str(archive_root),
+        "-PythonExecutable",
+        str(Path(sys.executable)),
     ]
     if dry_run:
         command.append("-DryRun")
+    if verbose_log:
+        command.append("-VerboseLog")
     if mirror:
         command.append("-Mirror")
 
@@ -90,6 +98,10 @@ def _create_minimal_source_root(base: Path) -> Path:
     (scripts_dir / "sync-to-repo.ps1").write_text("Write-Host 'sync repo'\n", encoding="utf-8")
     (scripts_dir / "install-git-hooks.ps1").write_text("Write-Host 'install hooks'\n", encoding="utf-8")
     (scripts_dir / "repo-secure-check.ps1").write_text("Write-Host 'secure check'\n", encoding="utf-8")
+    (scripts_dir / "home_sync_planner.py").write_text(
+        (ROOT / "scripts" / "home_sync_planner.py").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
     return base
 
 
@@ -112,12 +124,13 @@ def _create_extra_files(base: Path) -> None:
 def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
     destination.mkdir(parents=True)
     (destination / "config.json").write_text('{"user":true}', encoding="utf-8")
     (destination / "session-state").mkdir()
     (destination / "keep.txt").write_text("keep", encoding="utf-8")
 
-    result = _run_sync(source_root, destination, dry_run=False)
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert (destination / "skills" / "sample-skill" / "SKILL.md").exists()
@@ -127,6 +140,7 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     assert (destination / "scripts" / "sync-to-repo.ps1").exists()
     assert (destination / "scripts" / "install-git-hooks.ps1").exists()
     assert (destination / "scripts" / "repo-secure-check.ps1").exists()
+    assert (destination / "scripts" / "home_sync_planner.py").exists()
     assert (destination / "copilot-instructions.md").exists()
     assert (destination / "mcp-config.sample.json").exists()
     assert (destination / "docs" / "furikaeri" / ".gitkeep").exists()
@@ -135,55 +149,91 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     assert (destination / "session-state").exists()
 
 
-def test_sync_to_home_mirrors_skills_and_agents_to_template(tmp_path: Path) -> None:
+def test_sync_to_home_preserves_extra_skills_and_agents_and_archives_updates(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
+    archive_root = tmp_path / "archive"
     source_agents = source_root / "home-template" / ".copilot" / "agents"
+    source_skills = source_root / "home-template" / ".copilot" / "skills"
     (source_agents / "draft.agent.md").write_text("# draft\n", encoding="utf-8")
 
     destination = tmp_path / "home"
+    (destination / "skills" / "sample-skill").mkdir(parents=True)
+    (destination / "skills" / "sample-skill" / "SKILL.md").write_text("# old skill\n", encoding="utf-8")
+    (destination / "skills" / "local-extra").mkdir(parents=True)
+    (destination / "skills" / "local-extra" / "SKILL.md").write_text("# local extra skill\n", encoding="utf-8")
     _create_extra_files(destination / "skills")
+
+    (destination / "agents").mkdir(parents=True, exist_ok=True)
+    (destination / "agents" / "tdd-coder.agent.md").write_text("# old agent\n", encoding="utf-8")
+    (destination / "agents" / "custom.agent.md").write_text("# custom agent\n", encoding="utf-8")
     _create_extra_files(destination / "agents")
 
-    result = _run_sync(source_root, destination, dry_run=False)
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
 
     combined_output = result.stdout + result.stderr
     assert result.returncode == 0, combined_output
 
-    for top_level in ("skills", "agents"):
-        assert not (destination / top_level / "a" / "b.md").exists()
-        assert not (destination / top_level / "c.py").exists()
-        assert not (destination / top_level / "d" / "e.ps1").exists()
-        assert not (destination / top_level / "a").exists()
-        assert not (destination / top_level / "d").exists()
+    assert (destination / "skills" / "sample-skill" / "SKILL.md").read_text(encoding="utf-8") == (
+        source_skills / "sample-skill" / "SKILL.md"
+    ).read_text(encoding="utf-8")
+    assert (destination / "skills" / "local-extra" / "SKILL.md").read_text(encoding="utf-8") == "# local extra skill\n"
+    assert (destination / "skills" / "a" / "b.md").exists()
+    assert (destination / "skills" / "c.py").exists()
+    assert (destination / "skills" / "d" / "e.ps1").exists()
+    assert (archive_root / "skills" / "sample-skill" / "SKILL.md").read_text(encoding="utf-8") == "# old skill\n"
 
-    assert _collect_relative_files(destination / "skills") == _collect_relative_files(
-        source_root / "home-template" / ".copilot" / "skills"
-    )
-    assert _collect_relative_files(destination / "agents") == _collect_relative_files(source_agents)
+    assert (destination / "agents" / "tdd-coder.agent.md").read_text(encoding="utf-8") == "# agent\n"
+    assert (destination / "agents" / "draft.agent.md").exists()
+    assert (destination / "agents" / "custom.agent.md").read_text(encoding="utf-8") == "# custom agent\n"
+    assert (destination / "agents" / "a" / "b.md").exists()
+    assert (archive_root / "agents" / "tdd-coder.agent.md").read_text(encoding="utf-8") == "# old agent\n"
 
 
 def test_sync_to_home_mirror_flag_is_compatibility_only(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
     destination.mkdir(parents=True)
 
-    result = _run_sync(source_root, destination, dry_run=True, mirror=True)
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=True, mirror=True)
 
     combined_output = result.stdout + result.stderr
     assert result.returncode == 0, combined_output
-    assert "追加効果を持ちません" in combined_output
+    assert "互換オプションです" in combined_output
+
+
+def test_sync_to_home_verbose_log_shows_detailed_plan(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    destination.mkdir(parents=True)
+
+    result = _run_sync(
+        source_root,
+        destination,
+        archive_root=archive_root,
+        dry_run=True,
+        verbose_log=True,
+    )
+
+    combined_output = result.stdout + result.stderr
+    assert result.returncode == 0, combined_output
+    assert "◆ 詳細ログ" in combined_output
+    assert "Planner actions" in combined_output
+    assert "[planner] copy-skill -> sample-skill" in combined_output
 
 
 def test_sync_to_home_does_not_delete_home_only_furikaeri_docs(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
     destination.mkdir(parents=True)
     furikaeri_dir = destination / "docs" / "furikaeri"
     furikaeri_dir.mkdir(parents=True)
     user_doc = furikaeri_dir / "20260101-120000-my-session.md"
     user_doc.write_text("# user furikaeri\n", encoding="utf-8")
 
-    result = _run_sync(source_root, destination, dry_run=False)
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert user_doc.exists(), "home-only furikaeri doc must not be deleted by sync"
