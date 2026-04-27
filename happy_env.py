@@ -115,9 +115,13 @@ def run_script(script_name: str, arguments: Sequence[str], *, label: str, notes:
 
 
 def run_home_sync(*, mirror: bool = False, dry_run: bool = False, verbose_log: bool = False) -> CommandResult:
+    arguments = list(build_home_sync_arguments(mirror=mirror, dry_run=dry_run, verbose_log=verbose_log))
+    if sys.executable:
+        arguments.extend(["-PythonExecutable", sys.executable])
+
     return run_script(
         "sync-to-home.ps1",
-        build_home_sync_arguments(mirror=mirror, dry_run=dry_run, verbose_log=verbose_log),
+        tuple(arguments),
         label="ホーム同期",
         notes=build_mcp_config_notes(),
     )
@@ -184,35 +188,27 @@ def parse_sync_files_dry(stdout: str) -> dict[str, list[str] | int] | None:
         'deleted_more': 0,
     }
     
-    # Parse added files（全行をマージ）
-    matches = re.findall(r'SYNC_FILES_DRY:ADDED=(\[.*?\])', stdout, re.DOTALL)
-    for match_str in matches:
-        try:
-            files = json.loads(match_str)
+    def extend_from_json_line(bucket: str) -> None:
+        pattern = rf"SYNC_FILES_DRY:{bucket.upper()}=(.+)"
+        matches = re.findall(pattern, stdout)
+        file_bucket = result[bucket]
+        if not isinstance(file_bucket, list):
+            return
+        for match_str in matches:
+            candidate = match_str.strip()
+            try:
+                files = json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+
             if isinstance(files, list):
-                result['added'].extend(files)
-        except json.JSONDecodeError:
-            pass
-    
-    # Parse updated files（全行をマージ）
-    matches = re.findall(r'SYNC_FILES_DRY:UPDATED=(\[.*?\])', stdout, re.DOTALL)
-    for match_str in matches:
-        try:
-            files = json.loads(match_str)
-            if isinstance(files, list):
-                result['updated'].extend(files)
-        except json.JSONDecodeError:
-            pass
-    
-    # Parse deleted files（全行をマージ）
-    matches = re.findall(r'SYNC_FILES_DRY:DELETED=(\[.*?\])', stdout, re.DOTALL)
-    for match_str in matches:
-        try:
-            files = json.loads(match_str)
-            if isinstance(files, list):
-                result['deleted'].extend(files)
-        except json.JSONDecodeError:
-            pass
+                file_bucket.extend(files)
+            elif isinstance(files, str):
+                file_bucket.append(files)
+
+    extend_from_json_line("added")
+    extend_from_json_line("updated")
+    extend_from_json_line("deleted")
     
     # Parse overflow counts（合算）
     matches = re.findall(r'SYNC_FILES_OVERFLOW:ADDED_MORE=(\d+)', stdout)
@@ -303,12 +299,12 @@ def format_file_details(files: dict[str, list[str] | int] | None, dry_run: bool 
     
     has_overflow = added_more_int > 0 or updated_more_int > 0 or deleted_more_int > 0
     
-    # 追加ファイル
+    # 追加項目
     added = files.get('added')
     if added and isinstance(added, list) and len(added) > 0:
         lines.append("")
         lines.append("")
-        lines.append(f"◆ 追加ファイル ({len(added) + added_more_int} 個)")
+        lines.append(f"◆ 追加項目 ({len(added) + added_more_int} 個)")
         for file_path in added:
             rel_path = normalize_path_to_relative(file_path)
             lines.append(f"  {rel_path}")
@@ -317,13 +313,13 @@ def format_file_details(files: dict[str, list[str] | int] | None, dry_run: bool 
     elif added_more_int > 0:
         lines.append("")
         lines.append("")
-        lines.append(f"◆ 追加ファイル ({added_more_int} 個以上 / 一覧取得に失敗)")
+        lines.append(f"◆ 追加項目 ({added_more_int} 個以上 / 一覧取得に失敗)")
     
-    # 更新ファイル
+    # 更新項目
     updated = files.get('updated')
     if updated and isinstance(updated, list) and len(updated) > 0:
         lines.append("")
-        lines.append(f"◆ 更新ファイル ({len(updated) + updated_more_int} 個)")
+        lines.append(f"◆ 更新項目 ({len(updated) + updated_more_int} 個)")
         for file_path in updated:
             rel_path = normalize_path_to_relative(file_path)
             lines.append(f"  {rel_path}")
@@ -331,13 +327,13 @@ def format_file_details(files: dict[str, list[str] | int] | None, dry_run: bool 
             lines.append(f"  ... 残り {updated_more_int} 個")
     elif updated_more_int > 0:
         lines.append("")
-        lines.append(f"◆ 更新ファイル ({updated_more_int} 個以上 / 一覧取得に失敗)")
+        lines.append(f"◆ 更新項目 ({updated_more_int} 個以上 / 一覧取得に失敗)")
     
-    # 削除ファイル
+    # 削除項目
     deleted = files.get('deleted')
     if deleted and isinstance(deleted, list) and len(deleted) > 0:
         lines.append("")
-        lines.append(f"◆ 削除ファイル ({len(deleted) + deleted_more_int} 個)")
+        lines.append(f"◆ 削除項目 ({len(deleted) + deleted_more_int} 個)")
         for file_path in deleted:
             rel_path = normalize_path_to_relative(file_path)
             lines.append(f"  {rel_path}")
@@ -345,9 +341,9 @@ def format_file_details(files: dict[str, list[str] | int] | None, dry_run: bool 
             lines.append(f"  ... 残り {deleted_more_int} 個")
     elif deleted_more_int > 0:
         lines.append("")
-        lines.append(f"◆ 削除ファイル ({deleted_more_int} 個以上 / 一覧取得に失敗)")
+        lines.append(f"◆ 削除項目 ({deleted_more_int} 個以上 / 一覧取得に失敗)")
     
-    # すべて空でオーバーフロー情報もない場合のみ「変更ファイルなし」を表示
+    # すべて空でオーバーフロー情報もない場合のみ「変更項目なし」を表示
     added_count = len(added) if added and isinstance(added, list) else 0
     updated_count = len(updated) if updated and isinstance(updated, list) else 0
     deleted_count = len(deleted) if deleted and isinstance(deleted, list) else 0
@@ -355,7 +351,7 @@ def format_file_details(files: dict[str, list[str] | int] | None, dry_run: bool 
     if added_count == 0 and updated_count == 0 and deleted_count == 0 and not has_overflow:
         lines.append("")
         lines.append("")
-        lines.append("◆ 変更ファイルなし")
+        lines.append("◆ 変更項目なし")
     
     return "\n".join(lines)
 
@@ -431,8 +427,8 @@ def build_option_summary_improved(*, dry_run: bool, verbose_log: bool) -> str:
         lines.append("確認後、同期内容が実際に反映されます。")
     
     lines.append("")
-    lines.append("ホーム同期は skills/、agents/、repo-template/、.github/hooks/ を template 一致へ同期します。")
-    lines.append("mcp-config.json や docs/furikaeri など user-owned 領域は保護されます。")
+    lines.append("ホーム同期は skills/ と agents/ を filesystem diff で比較し、同名更新時は archive を残して置き換えます。")
+    lines.append("repo-template/ と .github/hooks/ は managed surface として同期し、mcp-config.json や docs/furikaeri など user-owned 領域は保護されます。")
     
     if verbose_log:
         lines.append("")
@@ -449,7 +445,7 @@ def build_option_summary(*, dry_run: bool, verbose_log: bool) -> str:
     else:
         lines.append("現在は実行モードです。選んだ同期内容が実際に反映されます。")
 
-    lines.append("通常同期です。ホーム同期は skills/、agents/、repo-template/、.github/hooks/ を template 一致へ同期し、docs/furikaeri と user-owned file は保持します。")
+    lines.append("通常同期です。skills/ と agents/ は extra 項目を残しつつ差分同期し、同名更新時は archive を作成します。repo-template/、.github/hooks/、docs/furikaeri と user-owned file の扱いはスクリプト定義に従います。")
 
     if verbose_log:
         lines.append("詳細ログを表示します。robocopy の出力が増えるため、実行内容を追いやすくなります。")
