@@ -2,7 +2,7 @@
 
 ## このリポジトリの使命
 - このリポジトリは、楽しく AI とコーディングライフを続けるための環境を構築する母艦である。
-- `.github/` と `home-template/.copilot/` の設定を同期し、ホームディレクトリや各 Repository で同じ開発体験を再現することを目指す。
+- reusable skills / agents は Copilot CLI plugin を primary distribution とし、home sync は trusted local author bootstrap として残す。
 - 思想と背景は `docs/PHILOSOPHY.md` を参照し、このファイルでは運用ルールに絞って定義する。
 
 ## 基本姿勢
@@ -10,12 +10,12 @@
 - 一般的な品質・テスト・セキュリティ・Git の横断原則は home instructions に定義済み。このファイルでは repo 固有の事実に集中する。
 
 ## Architecture
-- 配布対象の共有設定は `.github/` 配下で管理する。
-- 個人用設定の雛形は `home-template/.copilot/` に保持する。
+- 公開・共有向けの primary distribution は `plugins/happy-ai-life/` の Copilot CLI plugin とする。
+- 個人用設定の雛形は `home-template/.copilot/` に保持し、trusted local author bootstrap としてだけ home sync する。
 - 配布テンプレートは `repo-template/` に置く。各 repo に同期する際の雛形となる。
 - 同期は `scripts/sync-to-home.ps1` と `scripts/sync-to-repo.ps1` を起点に行う。
 - `app.py` は公開 launcher として既存 PowerShell を呼ぶ。内部実装は Python module に置いても、同期ロジックの正本は `scripts/` に残す。
-- 依存方向: `home-template/` → `$HOME/.copilot/`、`repo-template/` → 対象 repo の `.github/`
+- 配布方向: `plugins/happy-ai-life/` → Copilot CLI installed plugin、`home-template/` → `$HOME/.copilot/`、`repo-template/` → 対象 repo の `.github/`
 - `docs/` は PHILOSOPHY.md、ADR、ローカルリファレンス、セッション記録を管理する。
 - `scripts/` は同期・インストール・検証用スクリプトを管理する。
 
@@ -26,8 +26,8 @@
 - `.instructions.md` は言語やファイル種別に閉じた局所ルールを担う。
 
 ## 調査の原則
-- 根拠の優先順位は `repo 内 source of truth` → `GitHub official docs` → `Context7` → `その他の公開資料` とする。
-- GitHub / Copilot / MCP / Actions のように仕様が変わりやすい領域は official docs を優先し、Context7 は補助情報として使う。
+- 根拠の優先順位は `repo 内 source of truth` → `GitHub official docs` → `installed plugins` → `その他の公開資料` とする。
+- GitHub / Copilot / Actions / plugin のように仕様が変わりやすい領域は official docs を優先し、外部 plugin や公開資料は補助情報として使う。
 - 結論は `事実` / `推論` / `未確認事項` に分け、曖昧さを埋めない。
 - 構造判断と実行順序は分け、調査結果をそのまま実装へ流し込まない。
 
@@ -42,9 +42,10 @@
 - 仕様駆動開発（ゼロから / 途中再開）→ `sdd` を使う。内部で spec-workshop / design-workshop / PLAN mode 等につなぐ。
 
 ## Build and Test
-- このリポジトリはアプリ本体ではないが、運用用 launcher と Python の quality command は持つ。
+- このリポジトリはアプリ本体ではないが、Copilot CLI plugin package、運用用 launcher、Python の quality command は持つ。
 - 主要運用コマンドは以下。
-  - `uv run app.py` — GUI launcher から home sync を呼ぶ
+  - `copilot plugin install RyoMurakami1983/happy_ai_life_coding_Environment:plugins/happy-ai-life` — public/shared primary install path（branch push 後に GitHub subdirectory install を検証）
+  - `uv run app.py` — GUI launcher から trusted local home sync を呼ぶ
   - `uv run app.py home [--dry-run]` — home-template を `$HOME/.copilot/` に同期
   - `./scripts/sync-to-home.ps1` — home-template を `$HOME/.copilot/` に同期
   - `./scripts/sync-to-repo.ps1 -TargetRepoPath <path>` — repo-template を対象 repo に同期
@@ -56,7 +57,7 @@
   - `uv run ty check .`
 - 品質ゲートは `.github/workflows/quality.yml` を参照する（gitleaks は常時有効、textlint は必要時に有効化）。
 - downstream / pilot repo を触る前は、`$HOME\.copilot\scripts\repo-secure-check.ps1` で repo instructions・Copilot hooks・`.githooks`・`core.hooksPath` の不足を確認する。不足がある場合は `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1` で補う。
-- 変更後の検証手順: sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
+- plugin 変更後の検証手順: repository subdirectory install / list / uninstall は branch push 後に確認する。local filesystem path install は現在の Copilot CLI では前提にしない。sync 変更時は sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
 
 ## DeepReview
 - **PR を作成する前は、規模によらず必ず built-in レビュー機能または自分で段階的にセルフチェックする形で事前レビューを実施する。**
@@ -71,7 +72,7 @@
 - `repo-template/.github/hooks/` や `home-template/.copilot/hooks/` に hook 実装を重複配置しない。**実装前に必ずこの配布経路を確認する。`sync-to-repo.ps1` が `.github/hooks/` を downstream repo に配布するため、他の場所に JS 実装を置いても無意味なうえ混乱を招く。**
 - Git client hooks は `repo-template/.githooks/` を正本にし、target repo では `.githooks/` に同期して `core.hooksPath` で有効化する。GitHub の branch protection / ruleset は別途必須とする。
 - target repo に配布する local ignore の正本は `repo-template/.github/.gitignore`、母艦 repo の generated files は root `.gitignore` でローカル扱いにする。
-- `mcp-config.json` は user-owned live file として扱い、home sync では上書きしない。tracked 側は `mcp-config.sample.json` を配る。
+- `mcp-config.json` は user-owned live file として扱い、home sync では上書きしない。この母艦 repo は MCP config sample を primary path として配布しない。Context7 が必要な場合は外部 Copilot CLI plugin として案内する。
 - コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
 - 仕様、設定、使い方、設計判断が変わる場合は README、関連 docs、ADR も更新する。
 
