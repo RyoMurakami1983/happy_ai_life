@@ -164,3 +164,39 @@ description: トリガー表現がない説明。
     assert report.critical_passed is False
     failed_ids = {check.id for check in report.critical if not check.passed}
     assert "C3" in failed_ids
+
+
+def test_l2_r13_fails_without_goal_driven_terms(tmp_path: Path):
+    mod = load_module()
+    skill_path = write_skill(
+        tmp_path,
+        "plain-skill",
+        """---
+name: plain-skill
+description: >
+  単純な skill を検証する。Use when: 構造だけを満たす draft を確認したいとき。
+---
+
+# Plain Skill
+
+理由を短く説明する。
+
+## こんなときに使う
+
+- draft の構造だけを確認したいとき
+- workflow を最小構成で試したいとき
+- validator の他の recommended check を見たいとき
+
+## ワークフロー: Minimal
+
+### ステップ 1 — 確認する
+次の行動と理由を短く説明する。
+
+## 注意点
+
+- **構造だけで満足しない**: 追加 guidance がない draft は recommended check が不足しやすい。
+""",
+    )
+    report = mod.validate(skill_path, "L2")
+    assert report.critical_passed is True
+    assert next(check for check in report.recommended if check.id == "R13").passed is False

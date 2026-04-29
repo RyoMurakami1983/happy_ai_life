@@ -19,11 +19,13 @@ TRIGGER_PATTERNS = (
 WHEN_TO_USE_HEADINGS = ("When to Use This Skill", "こんなときに使う")
 QUICK_REFERENCE_HEADINGS = ("Quick Reference", "クイックリファレンス", "早見表")
 PITFALL_HEADINGS = ("Pitfalls", "注意点")
-GOAL_DRIVEN_TERMS = (
+GOAL_DRIVEN_ENGLISH_TERMS = (
     "goal",
     "success criteria",
     "verify",
     "verification",
+)
+GOAL_DRIVEN_JAPANESE_TERMS = (
     "ゴール",
     "成功条件",
     "確認手段",
@@ -164,8 +166,8 @@ def has_title_heading(content: str) -> bool:
 
 def has_goal_driven_guidance(content: str) -> bool:
     """skill がゴール、成功条件、確認手段のいずれかを示すか判定する。"""
-    lowered = content.lower()
-    return any(term in lowered for term in GOAL_DRIVEN_TERMS[:4]) or any(term in content for term in GOAL_DRIVEN_TERMS[4:])
+    lowered = content.casefold()
+    return any(term in lowered for term in GOAL_DRIVEN_ENGLISH_TERMS) or any(term in content for term in GOAL_DRIVEN_JAPANESE_TERMS)
 
 
 def validate(path: Path, level: str) -> ValidationReport:
