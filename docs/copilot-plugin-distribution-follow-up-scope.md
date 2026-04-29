@@ -8,8 +8,8 @@ The first plugin-distribution implementation intentionally used the smallest saf
 copilot plugin install RyoMurakami1983/happy_ai_life_coding_Environment:plugins/happy-ai-life
 ```
 
-This is the current Option A: a direct Copilot CLI plugin install from `plugins/happy-ai-life`.
-It moves reusable skills and the narrow `tdd-coder` agent into an isolated plugin package without treating marketplace publication, repo bootstrap automation, plugin hooks, or MCP server work as part of the first change.
+This was the initial Option A: a direct Copilot CLI plugin install from `plugins/happy-ai-life`, now kept only as a deprecated fallback.
+It moved reusable skills and the narrow `tdd-coder` agent into an isolated plugin package without treating marketplace publication, repo bootstrap automation, plugin hooks, or MCP server work as part of the first change.
 
 Phase 2 promotes that same plugin package through this repository's owner-managed marketplace because Copilot CLI warns that direct repository, URL, and local path installs are deprecated:
 

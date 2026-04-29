@@ -9,9 +9,11 @@ copilot plugin marketplace add RyoMurakami1983/happy_ai_life_coding_Environment
 copilot plugin install happy-ai-life@happy-ai-life-marketplace
 ```
 
-Local filesystem path installs are not supported by the current Copilot CLI plugin spec, and direct repository installs now emit a deprecation warning. For local development, validate the package structure and smoke test the marketplace install after pushing a branch:
+Local filesystem path installs are not supported by the current Copilot CLI plugin spec, and direct repository installs now emit a deprecation warning. Note that `copilot plugin marketplace add <owner>/<repo>` generally reads the marketplace manifest from the default branch, so it will not reflect a PR branch until after merge. To pre-merge smoke test branch changes, add the repository root as a local marketplace instead:
 
 ```powershell
+copilot plugin marketplace add ..\..
+copilot plugin install happy-ai-life@happy-ai-life-marketplace
 copilot plugin marketplace browse happy-ai-life-marketplace
 copilot plugin list
 ```

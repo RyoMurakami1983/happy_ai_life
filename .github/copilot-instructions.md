@@ -58,7 +58,7 @@
   - `uv run ty check .`
 - 品質ゲートは `.github/workflows/quality.yml` を参照する（gitleaks は常時有効、textlint は必要時に有効化）。
 - downstream / pilot repo を触る前は、`$HOME\.copilot\scripts\repo-secure-check.ps1` で repo instructions・Copilot hooks・`.githooks`・`core.hooksPath` の不足を確認する。不足がある場合は `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1` で補う。
-- plugin 変更後の検証手順: marketplace add / browse / install / list / uninstall / remove は branch push 後に確認する。direct repository / URL / local path install は deprecated fallback とし、primary path にはしない。sync 変更時は sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
+- plugin 変更後の検証手順: remote の marketplace add / browse / install / list / uninstall / remove は merge 後の default branch 状態を確認する手順として扱う。feature branch を push しただけでは `<owner>/<repo>` 指定の marketplace 経由で PR ブランチの manifest 変更は通常確認できないため、merge 前の smoke test が必要な場合はローカル checkout の repo root を marketplace として add して確認する。direct repository / URL / local path install は deprecated fallback とし、primary path にはしない。sync 変更時は sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
 
 ## DeepReview
 - **PR を作成する前は、規模によらず必ず built-in レビュー機能または自分で段階的にセルフチェックする形で事前レビューを実施する。**

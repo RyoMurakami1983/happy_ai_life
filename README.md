@@ -22,7 +22,7 @@ copilot plugin install happy-ai-life@happy-ai-life-marketplace
 
 この plugin は `plugins/happy-ai-life` の curated package で、reusable skills と narrow agent（`tdd-coder`）を配布します。repo-local instructions、hooks、Git client hooks、MCP server 設定は plugin install の副作用として書き込みません。
 
-Copilot CLI は direct repository / URL / local path install を deprecated として警告するため、primary path は `plugin@marketplace` 形式にします。ローカル checkout では package 構造を確認し、branch push 後に marketplace add / browse / install を smoke test してください。
+Copilot CLI は direct repository / URL / local path install を deprecated として警告するため、primary path は `plugin@marketplace` 形式にします。`copilot plugin marketplace add <owner>/<repo>` は通常 default branch の manifest を読むため、ローカル checkout では package 構造を確認し、merge 前の smoke test が必要な場合は repo root を marketplace として add して確認してください。remote の marketplace add / browse / install は default branch 反映後に実施します。
 
 既に direct install 版を使っている場合は、marketplace 版と共存して重複表示されるため、先に direct install 版を uninstall してから marketplace 版を入れてください。
 
