@@ -68,8 +68,6 @@ function Resolve-HomeTemplateRoot {
     }
 
     $packagedIndicators = @(
-        (Join-Path $SourceRootPath "skills"),
-        (Join-Path $SourceRootPath "agents"),
         (Join-Path $SourceRootPath "copilot-instructions.md")
     )
     $isPackagedRoot = $true
@@ -368,40 +366,6 @@ function Invoke-FileAction {
     }
 }
 
-function Invoke-PlannerAction {
-    param([Parameter(Mandatory = $true)]$Action)
-
-    switch ($Action.kind) {
-        "copy-skill" {
-            Remove-PathItem -Path $Action.destination
-            Copy-PathItem -Source $Action.source -Destination $Action.destination
-        }
-        "update-skill" {
-            Backup-PathItem -ExistingPath $Action.destination -ArchivePath $Action.archive
-            Remove-PathItem -Path $Action.destination
-            Copy-PathItem -Source $Action.source -Destination $Action.destination
-        }
-        "preserve-skill-extra" {
-            return
-        }
-        "copy-agent" {
-            Remove-PathItem -Path $Action.destination
-            Copy-PathItem -Source $Action.source -Destination $Action.destination
-        }
-        "update-agent" {
-            Backup-PathItem -ExistingPath $Action.destination -ArchivePath $Action.archive
-            Remove-PathItem -Path $Action.destination
-            Copy-PathItem -Source $Action.source -Destination $Action.destination
-        }
-        "preserve-agent-extra" {
-            return
-        }
-        default {
-            throw "Unsupported planner action kind: $($Action.kind)"
-        }
-    }
-}
-
 function Write-SyncMarkers {
     param(
         [Parameter(Mandatory = $true)]$PreviewState,
@@ -443,7 +407,6 @@ function Write-SyncMarkers {
 
 function Write-VerbosePlanDetails {
     param(
-        [Parameter(Mandatory = $true)]$PlannerResult,
         [Parameter(Mandatory = $true)][object[]]$DirectoryPlans,
         [Parameter(Mandatory = $true)][object[]]$TrackedFilePlans,
         [switch]$DryRunMode
@@ -452,13 +415,6 @@ function Write-VerbosePlanDetails {
     Write-Host ""
     Write-Host "◆ 詳細ログ" -ForegroundColor DarkCyan
     Write-Host "Mode            : $(if ($DryRunMode) { 'dry-run' } else { 'live' })"
-
-    $plannerActions = @($PlannerResult.actions)
-    Write-Host "Planner actions : $($plannerActions.Count)"
-    foreach ($action in $plannerActions) {
-        $target = if ($action.item) { $action.item } else { $action.destination }
-        Write-Host "  [planner] $($action.kind) -> $target"
-    }
 
     $allPlans = @($DirectoryPlans + $TrackedFilePlans)
     foreach ($entry in $allPlans) {
@@ -474,54 +430,8 @@ function Write-VerbosePlanDetails {
         }
     }
 
-    if ($plannerActions.Count -eq 0 -and -not ($allPlans | Where-Object { @($_.Plan.Actions).Count -gt 0 })) {
+    if (-not ($allPlans | Where-Object { @($_.Plan.Actions).Count -gt 0 })) {
         Write-Host "  no detailed actions"
-    }
-}
-
-function Invoke-PythonPlanner {
-    param(
-        [Parameter(Mandatory = $true)][string]$PlannerScriptPath,
-        [Parameter(Mandatory = $true)][string]$PlannerSourceRoot,
-        [Parameter(Mandatory = $true)][string]$PlannerDestinationRoot,
-        [Parameter(Mandatory = $true)][string]$PlannerArchiveRoot,
-        [Parameter(Mandatory = $true)][string[]]$PythonCommand
-    )
-
-    if (-not (Test-Path -LiteralPath $PlannerScriptPath)) {
-        throw "Planner script not found: $PlannerScriptPath"
-    }
-
-    $command = @($PythonCommand + @(
-            $PlannerScriptPath,
-            "--source-root", $PlannerSourceRoot,
-            "--destination-root", $PlannerDestinationRoot,
-            "--archive-root", $PlannerArchiveRoot
-        ))
-
-    $stdoutPath = [System.IO.Path]::GetTempFileName()
-    $stderrPath = [System.IO.Path]::GetTempFileName()
-    try {
-        & $command[0] $command[1..($command.Count - 1)] 1> $stdoutPath 2> $stderrPath
-        $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
-        $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
-
-        if ($LASTEXITCODE -ne 0) {
-            $errorMessage = "home_sync_planner.py failed."
-            if (-not [string]::IsNullOrWhiteSpace($stderr)) {
-                $errorMessage += "`nstderr:`n$stderr"
-            }
-            if (-not [string]::IsNullOrWhiteSpace($stdout)) {
-                $errorMessage += "`nstdout:`n$stdout"
-            }
-            throw $errorMessage
-        }
-
-        return $stdout | ConvertFrom-Json -Depth 8
-    }
-    finally {
-        Remove-Item -LiteralPath $stdoutPath -Force -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -531,12 +441,9 @@ $sourceRootPath = [System.IO.Path]::GetFullPath($SourceRoot)
 $destinationPath = [System.IO.Path]::GetFullPath($DestinationPath)
 $templateRoot = Resolve-HomeTemplateRoot -SourceRootPath $sourceRootPath -TemplatePath $TemplateRelativePath
 $archiveRoot = [System.IO.Path]::GetFullPath($ArchiveRoot)
-$plannerScriptPath = Join-Path (Join-Path $sourceRootPath "scripts") "home_sync_planner.py"
-$pythonCommand = Resolve-PythonCommand -RequestedExecutable $PythonExecutable
-
 Write-Host ""
-Write-Host "準備完了。skills/ と agents/ は filesystem diff + archive 付きで同期し、"
-Write-Host "repo-template/ と .github/hooks/ は managed surface として比較同期します。"
+Write-Host "準備完了。home sync は Copilot instructions と repo bootstrap 資産だけを同期し、"
+Write-Host "skills/、agents/、docs/ は plugin install / user-owned surface として触りません。"
 Write-Host "実行中..."
 Write-Host ""
 
@@ -555,20 +462,6 @@ if ($Mirror) {
 
 $previewState = New-PreviewState
 
-Write-Host ""
-Write-Host "◆ skills/ + agents/ (planner-managed)" -ForegroundColor Cyan
-$plannerResult = Invoke-PythonPlanner `
-    -PlannerScriptPath $plannerScriptPath `
-    -PlannerSourceRoot $sourceRootPath `
-    -PlannerDestinationRoot $destinationPath `
-    -PlannerArchiveRoot $archiveRoot `
-    -PythonCommand $pythonCommand
-
-$plannerPreview = $plannerResult.preview
-Add-PreviewItems -PreviewState $previewState -Bucket Added -Items @($plannerPreview.added)
-Add-PreviewItems -PreviewState $previewState -Bucket Updated -Items @($plannerPreview.updated)
-Add-PreviewItems -PreviewState $previewState -Bucket Deleted -Items @($plannerPreview.deleted)
-
 $directoryPlans = @(
     [pscustomobject]@{
         Label = "repo-template/ (managed)"
@@ -577,10 +470,6 @@ $directoryPlans = @(
     [pscustomobject]@{
         Label = ".github/hooks/ (managed)"
         Plan = (Get-DirectorySyncPlan -Source (Join-Path (Join-Path $sourceRootPath ".github") "hooks") -Destination (Join-Path (Join-Path $destinationPath ".github") "hooks") -PreviewRoot ".github/hooks" -MirrorMode)
-    },
-    [pscustomobject]@{
-        Label = "docs/furikaeri (copy-only)"
-        Plan = (Get-DirectorySyncPlan -Source (Join-Path (Join-Path $templateRoot "docs") "furikaeri") -Destination (Join-Path (Join-Path $destinationPath "docs") "furikaeri") -PreviewRoot "docs/furikaeri")
     }
 )
 
@@ -600,10 +489,6 @@ $trackedFilePlans = @(
     [pscustomobject]@{
         Label = "scripts/repo-secure-check.ps1"
         Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "repo-secure-check.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "repo-secure-check.ps1") -PreviewPath "scripts/repo-secure-check.ps1")
-    },
-    [pscustomobject]@{
-        Label = "scripts/home_sync_planner.py"
-        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "home_sync_planner.py") -Destination (Join-Path (Join-Path $destinationPath "scripts") "home_sync_planner.py") -PreviewPath "scripts/home_sync_planner.py")
     }
 )
 
@@ -622,17 +507,12 @@ foreach ($entry in $trackedFilePlans) {
 
 if ($VerboseLog) {
     Write-VerbosePlanDetails `
-        -PlannerResult $plannerResult `
         -DirectoryPlans $directoryPlans `
         -TrackedFilePlans $trackedFilePlans `
         -DryRunMode:$DryRun
 }
 
 if (-not $DryRun) {
-    foreach ($action in @($plannerResult.actions)) {
-        Invoke-PlannerAction -Action $action
-    }
-
     foreach ($entry in $directoryPlans) {
         foreach ($action in @($entry.Plan.Actions)) {
             Invoke-FileAction -Action $action

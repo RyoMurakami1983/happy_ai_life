@@ -154,5 +154,5 @@ handoff サマリに含めるもの:
 
 ## 関連リソース
 
-- `home-template/.copilot/skills/spec-workshop/SKILL.md` — 前段: 仕様書作成
-- `home-template/.copilot/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — DDD 用語集
+- `plugins/happy-ai-life/skills/spec-workshop/SKILL.md` — 前段: 仕様書作成
+- `plugins/happy-ai-life/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — DDD 用語集

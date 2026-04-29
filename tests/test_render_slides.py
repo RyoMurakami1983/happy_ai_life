@@ -12,8 +12,8 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = (
     ROOT
-    / "home-template"
-    / ".copilot"
+    / "plugins"
+    / "happy-ai-life"
     / "skills"
     / "pptx"
     / "scripts"

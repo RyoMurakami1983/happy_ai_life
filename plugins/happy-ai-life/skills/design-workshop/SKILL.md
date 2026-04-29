@@ -53,6 +53,6 @@ description: >
 
 ## 関連リソース
 
-- `home-template/.copilot/skills/spec-workshop/SKILL.md` — 前段: 仕様書作成
-- `home-template/.copilot/skills/sdd/SKILL.md` — 仕様駆動開発の全工程を通すとき
-- `home-template/.copilot/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
+- `plugins/happy-ai-life/skills/spec-workshop/SKILL.md` — 前段: 仕様書作成
+- `plugins/happy-ai-life/skills/sdd/SKILL.md` — 仕様駆動開発の全工程を通すとき
+- `plugins/happy-ai-life/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析

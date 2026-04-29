@@ -64,6 +64,12 @@ home sync は既存の `%USERPROFILE%\.copilot\agents\` を削除せず、legacy
 
 live `%USERPROFILE%\.copilot\mcp-config.json` は引き続き user-owned file とし、home sync は作成・上書き・削除しない。Context7 はこの repo の MCP sample ではなく、外部 Copilot CLI plugin として案内する。
 
+## 補遺: Phase 5 — skills / agents / docs の plugin source-of-truth 化
+
+Copilot CLI plugin marketplace 方式を primary path にしたため、開発者自身も reusable skills / agents は plugin install で取り込む方針に変更した。
+
+これにより、home sync の tracked 対象から `skills/`、`agents/`、`docs/furikaeri/` を外した。`home-template/.copilot/` は `copilot-instructions.md` だけを持つ最小 bootstrap とし、HOME 側の `skills/`、`agents/`、`docs/` は user-owned surface として作成・更新・削除しない。
+
 ## 状態
 
 承認

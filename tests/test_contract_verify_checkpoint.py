@@ -20,12 +20,12 @@ import hashlib
 import sys
 from pathlib import Path
 
-# Add home-template to path for skill imports
+# Add plugin package to path for skill imports
 ROOT_DIR = Path(__file__).resolve().parents[1]
 CHECKPOINT_DIR = (
     ROOT_DIR
-    / "home-template"
-    / ".copilot"
+    / "plugins"
+    / "happy-ai-life"
     / "skills"
     / "impl-and-ship"
     / "checkpoints"
@@ -492,4 +492,3 @@ class TestContractVerifyNullChecksum:
         # Should FAIL because checksum doesn't match
         assert result.status == "FAIL"
         assert "mismatch" in result.reason.lower() or "checksum" in result.reason.lower()
-

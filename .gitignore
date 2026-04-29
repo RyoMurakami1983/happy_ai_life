@@ -124,6 +124,7 @@ site/
 !.github/sessions/.gitkeep
 .github/instructions/session-context.instructions.md
 /.githooks/
+/archive/
 *.local
 
 # Git patches

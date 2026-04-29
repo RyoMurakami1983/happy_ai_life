@@ -77,31 +77,13 @@ uv run app.py home
    uv run app.py home --dry-run
    ```
 
-   `skills/` と `agents/` の追加・更新予定、`repo-template/` と `.github/hooks/` の managed surface の変更予定が表示されます。
+   `repo-template/` と `.github/hooks/` の managed surface、bootstrap 用 scripts、`copilot-instructions.md` の変更予定が表示されます。`skills/`、`agents/`、`docs/` は plugin install / user-owned surface として home sync では触りません。
 
 2. 問題なければ本適用
 
    ```powershell
    uv run app.py home
    ```
-
-3. 更新前バックアップが必要だった場合は archive を確認
-
-   ```powershell
-   Get-ChildItem $HOME\copilot_archives\skills
-   Get-ChildItem $HOME\copilot_archives\agents -Recurse
-   ```
-
-   `skills/` は `%USERPROFILE%\copilot_archives\skills\<skill-name>\`、`agents/` は `%USERPROFILE%\copilot_archives\agents\...` に 1 世代だけ退避されます。
-
-4. 必要なら手動で復元
-
-   ```powershell
-   Copy-Item $HOME\copilot_archives\skills\<skill-name> $HOME\.copilot\skills\<skill-name> -Recurse -Force
-   Copy-Item $HOME\copilot_archives\agents\<agent-file> $HOME\.copilot\agents\<agent-file> -Force
-   ```
-
-   archive は自動復元ではなく、当面は manual operation 前提です。
 
 ### Repo-local bootstrap: instructions and hooks
 
@@ -120,20 +102,16 @@ repo instructions、path-specific instructions、Copilot hooks、Git client hook
 
 > **注意: `home` sync の同期境界について**
 > home sync は次の境界で挙動が分かれます。
-> - `skills/`: skill directory 単位で diff 同期。extra skill は残し、同名更新時は `%USERPROFILE%\copilot_archives\skills\<skill-name>\` に旧版を 1 世代だけ退避します。
-> - `agents/`: `*.agent.md` 単位で diff 同期。extra agent は残し、同名更新時は `%USERPROFILE%\copilot_archives\agents\...` に旧版を 1 世代だけ退避します。
 > - `repo-template/`
 > - `.github/hooks/`
 >
 > さらに次の tracked 項目を追加・更新します。
-> - `docs/furikaeri/`
 > - `scripts/sync-to-repo.ps1`
 > - `scripts/install-git-hooks.ps1`
 > - `scripts/repo-secure-check.ps1`
-> - `scripts/home_sync_planner.py`
 > - `copilot-instructions.md`
 >
-> `repo-template/` と `.github/hooks/` は managed surface として template に無い項目を削除します。`skills/` と `agents/` の extra 項目は削除しません。`docs/furikaeri/`、既存の `%USERPROFILE%\.copilot\` 配下にある runtime data、live `mcp-config.json` のような user-owned file も削除しません。
+> `repo-template/` と `.github/hooks/` は managed surface として template に無い項目を削除します。`skills/`、`agents/`、`docs/`、既存の `%USERPROFILE%\.copilot\` 配下にある runtime data、live `mcp-config.json` のような user-owned file は削除・更新しません。
 > home sync の dry-run は robocopy ログではなく、自前の filesystem diff を正本にしています。repo sync の `-Mirror`（`$HOME\.copilot\scripts\sync-to-repo.ps1 -Mirror`）は引き続き同期先にのみ存在するファイルを**完全削除**するため、使用前に必ず `-DryRun` で事前確認してください。
 
 ### First run when `uv` is missing
@@ -153,9 +131,7 @@ uv sync --dev
 - `repo-template/.github/.gitignore`: target repo に配布する local ignore の正本
 - `repo-template/.github/instructions/`: target repo に配布する言語別 instructions の正本
 - `repo-template/docs/furikaeri/`: target repo に配布する共有ふりかえり保存先の雛形
-- `home-template/.copilot/`: 信頼済みローカル author bootstrap 用テンプレート。home sync では `skills/`、`agents/`、`docs/furikaeri/`、`copilot-instructions.md`、`repo-template/`、`.github/hooks/`、bootstrap 用 scripts、`scripts/home_sync_planner.py` を HOME 配下へ配布する
-- `home-template/.copilot/docs/furikaeri/`: home 側に同期されるふりかえり archive の雛形
-- `home-template/.copilot/agents/`: home sync で配る custom agents の置き場。現状は `tdd-coder` を含み、将来は最大 3 agent までを保持する前提
+- `home-template/.copilot/`: 信頼済みローカル author bootstrap 用テンプレート。home sync では `copilot-instructions.md` だけを HOME 配下へ配布し、`skills/`、`agents/`、`docs/` は触らない
 - `scripts/`: 同期スクリプト
 - `app.py`: trusted local home sync 用 launcher。`uv run app.py` で GUI、`uv run app.py home` で CLI 実行
 - `docs/PHILOSOPHY.md`: この母艦の思想と開発憲法
@@ -164,7 +140,7 @@ uv sync --dev
 
 このリポジトリはアプリ本体ではありませんが、Copilot CLI plugin package、運用用 launcher、quality command は持ちます。
 変更時は、同期先への影響（scripts、hooks、workflows、instructions）を確認してください。
-Skill / Agent / repository instructions authoring の公開入口は `home-template/.copilot/skills/copilot-authoring` です。設計は `design-workshop`、計画は PLAN mode を使い、custom agent は原則増やさず、必要時だけ `tdd-coder` のような narrow specialist を `/fleet` または明示指名で使います。repo-wide と path-specific instructions は `copilot-authoring` 配下の instructions authoring ルートで扱い、常時読み込む rule と詳細 workflow を分離します。実装中の独立 gate は `implementation-eval-gate` を使い、`/sdd` から bootstrap checkpoint → contract checkpoint → generator → eval の順でつなぎます。
+Skill / Agent / repository instructions authoring の公開入口は plugin package の `plugins/happy-ai-life/skills/copilot-authoring` です。設計は `design-workshop`、計画は PLAN mode を使い、custom agent は原則増やさず、必要時だけ `tdd-coder` のような narrow specialist を `/fleet` または明示指名で使います。repo-wide と path-specific instructions は `copilot-authoring` 配下の instructions authoring ルートで扱い、常時読み込む rule と詳細 workflow を分離します。実装中の独立 gate は `implementation-eval-gate` を使い、`/sdd` から bootstrap checkpoint → contract checkpoint → generator → eval の順でつなぎます。
 Git の client hooks は `repo-template/.githooks/` を正本にし、`core.hooksPath` で有効化します。GitHub の branch protection / ruleset は別途必須です。
 downstream repo の local safety valve を確認するときは `$HOME\.copilot\scripts\repo-secure-check.ps1` を使い、repo instructions / Copilot hooks / `.githooks` / `core.hooksPath` の不足があれば `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1` で補います。
 `pre-commit` の secret guard は、repo ルートに `.gitleaks.toml` がある場合に staged diff を `gitleaks` で検査します。`gitleaks` 導入前に opt-in していない repo では scan をスキップし、`SECRET_GUARD_REQUIRE_CONFIG=1` を設定した場合だけ設定欠如を hard fail にできます。

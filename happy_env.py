@@ -408,8 +408,8 @@ def build_option_summary_improved(*, dry_run: bool, verbose_log: bool) -> str:
         lines.append("確認後、同期内容が実際に反映されます。")
     
     lines.append("")
-    lines.append("ホーム同期は skills/ と agents/ を filesystem diff で比較し、同名更新時は archive を残して置き換えます。")
-    lines.append("repo-template/ と .github/hooks/ は managed surface として同期し、docs/furikaeri など user-owned 領域は保護されます。")
+    lines.append("ホーム同期は Copilot instructions と repo bootstrap 資産だけを同期します。")
+    lines.append("skills/、agents/、docs/ は plugin install / user-owned surface として触りません。")
     
     if verbose_log:
         lines.append("")
@@ -426,7 +426,7 @@ def build_option_summary(*, dry_run: bool, verbose_log: bool) -> str:
     else:
         lines.append("現在は実行モードです。選んだ同期内容が実際に反映されます。")
 
-    lines.append("通常同期です。skills/ と agents/ は extra 項目を残しつつ差分同期し、同名更新時は archive を作成します。repo-template/、.github/hooks/、docs/furikaeri と user-owned file の扱いはスクリプト定義に従います。")
+    lines.append("通常同期です。Copilot instructions と repo bootstrap 資産だけを同期し、skills/、agents/、docs/ は plugin install / user-owned surface として触りません。")
 
     if verbose_log:
         lines.append("詳細ログを表示します。同期計画と適用対象の詳細を追加表示します。")

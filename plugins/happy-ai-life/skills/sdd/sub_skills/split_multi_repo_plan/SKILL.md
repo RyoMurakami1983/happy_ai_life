@@ -332,9 +332,9 @@ pytest tests/test_split_multi_repo_plan.py -v
 
 ## 関連リソース
 
-- `home-template/.copilot/skills/design-workshop/SKILL.md` — 前段：アーキテクチャ設計
-- `home-template/.copilot/skills/sdd/sub_skills/from-design/SKILL.md` — 後段：design から plan 生成
-- `home-template/.copilot/skills/sdd/sub_skills/from-plan/SKILL.md` — 次段：plan から impl-and-ship
+- `plugins/happy-ai-life/skills/design-workshop/SKILL.md` — 前段：アーキテクチャ設計
+- `plugins/happy-ai-life/skills/sdd/sub_skills/from-design/SKILL.md` — 後段：design から plan 生成
+- `plugins/happy-ai-life/skills/sdd/sub_skills/from-plan/SKILL.md` — 次段：plan から impl-and-ship
 
 ## Version History
 

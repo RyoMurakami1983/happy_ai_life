@@ -144,8 +144,8 @@ standard ワークフローと同じ型に加え、以下を追加する:
 
 ## 関連リソース
 
-- `home-template/.copilot/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — DDD 用語集
-- `home-template/.copilot/skills/design-workshop/_foundation/IMPLEMENTATION_HEURISTICS.md` — 実装の経験則（判断ツリー）
+- `plugins/happy-ai-life/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — DDD 用語集
+- `plugins/happy-ai-life/skills/design-workshop/_foundation/IMPLEMENTATION_HEURISTICS.md` — 実装の経験則（判断ツリー）
 - `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド
-- `home-template/.copilot/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
-- `home-template/.copilot/skills/sdd/sub_skills/split_multi_repo_plan/SKILL.md` — multirepository での plan 分割（複数リポの設計を per-repo plan に分割するとき）
+- `plugins/happy-ai-life/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
+- `plugins/happy-ai-life/skills/sdd/sub_skills/split_multi_repo_plan/SKILL.md` — multirepository での plan 分割（複数リポの設計を per-repo plan に分割するとき）

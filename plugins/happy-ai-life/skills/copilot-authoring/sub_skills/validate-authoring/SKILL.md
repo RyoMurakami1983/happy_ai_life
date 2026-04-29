@@ -30,8 +30,8 @@ compatibility: "../../../skill/_eval/scripts/validate_skill.py, ../../_eval/scri
 skill では既存の `validate_skill.py` を使い、まず L1、必要なら L2 まで進めます。最小構造が崩れている skill は、その先の review に進めません。
 
 ```powershell
-uv run python home-template/.copilot/skills/skill/_eval/scripts/validate_skill.py home-template/.copilot/skills/<skill-name>/SKILL.md --level L1
-uv run python home-template/.copilot/skills/skill/_eval/scripts/validate_skill.py home-template/.copilot/skills/<skill-name>/SKILL.md --level L2
+uv run python plugins/happy-ai-life/skills/skill/_eval/scripts/validate_skill.py plugins/happy-ai-life/skills/<skill-name>/SKILL.md --level L1
+uv run python plugins/happy-ai-life/skills/skill/_eval/scripts/validate_skill.py plugins/happy-ai-life/skills/<skill-name>/SKILL.md --level L2
 ```
 
 ### ステップ 3 — agent は同梱 validator を通す
@@ -39,8 +39,8 @@ uv run python home-template/.copilot/skills/skill/_eval/scripts/validate_skill.p
 agent では `name` / filename 一致、`Use when:`、必須 section、構造の型を確認します。`## 1. 役割` のような番号付き H2、`## 設計プロセス` / `## レビュープロセス`、師範 agent の legacy mode 構成も許容し、既存 agent 群と同じ型を保ちます。template 系 agent では `原則` と step 構造を最低線とします。これは prose の良し悪しではなく、利用者が agent を見つけて安全に使えるかの最低線です。
 
 ```powershell
-uv run python home-template/.copilot/skills/copilot-authoring/_eval/scripts/validate_agent.py home-template/.copilot/agents/<agent-name>.agent.md --level L1
-uv run python home-template/.copilot/skills/copilot-authoring/_eval/scripts/validate_agent.py home-template/.copilot/agents/<agent-name>.agent.md --level L2
+uv run python plugins/happy-ai-life/skills/copilot-authoring/_eval/scripts/validate_agent.py plugins/happy-ai-life/agents/<agent-name>.agent.md --level L1
+uv run python plugins/happy-ai-life/skills/copilot-authoring/_eval/scripts/validate_agent.py plugins/happy-ai-life/agents/<agent-name>.agent.md --level L2
 ```
 
 ### ステップ 4 — 境界変更なら周辺も見る

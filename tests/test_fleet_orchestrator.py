@@ -20,18 +20,17 @@ Tests cover:
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-# Add home-template to path for skill imports
+# Add plugin package to path for skill imports
 ROOT_DIR = Path(__file__).resolve().parents[1]
 ORCHESTRATOR_DIR = (
     ROOT_DIR
-    / "home-template"
-    / ".copilot"
+    / "plugins"
+    / "happy-ai-life"
     / "skills"
     / "impl-and-ship"
     / "orchestrator"

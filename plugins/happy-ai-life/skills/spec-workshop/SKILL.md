@@ -31,8 +31,8 @@ compatibility: GitHub Copilot
 
 - `_foundation/` — 仕様作成時の共通論点、確認順、共有メモを置く
 - `sub_skills/` — ゼロ開始とドラフト開始の分岐を置く
-- `home-template/.copilot/skills/design-workshop/SKILL.md` — 仕様完成後の設計入口
-- `home-template/.copilot/skills/sdd/SKILL.md` — 仕様駆動開発の全工程を通すとき
+- `plugins/happy-ai-life/skills/design-workshop/SKILL.md` — 仕様完成後の設計入口
+- `plugins/happy-ai-life/skills/sdd/SKILL.md` — 仕様駆動開発の全工程を通すとき
 
 ## ルーティングメモ
 

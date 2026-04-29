@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "home-template" / ".copilot" / "skills" / "copilot-authoring" / "_eval" / "scripts" / "validate_agent.py"
+SCRIPT = ROOT / "plugins" / "happy-ai-life" / "skills" / "copilot-authoring" / "_eval" / "scripts" / "validate_agent.py"
 
 
 def _load_module():
@@ -93,7 +93,7 @@ user-invocable: true
 
 def test_validate_agent_limits_distributed_agents_to_three() -> None:
     """Phase 3: distributed custom agents stay within the reserved 3-slot envelope."""
-    agents_dir = ROOT / "home-template" / ".copilot" / "agents"
+    agents_dir = ROOT / "plugins" / "happy-ai-life" / "agents"
     assert agents_dir.exists()
     agent_names = [path.name for path in sorted(agents_dir.glob("*.agent.md"))]
     assert "tdd-coder.agent.md" in agent_names
@@ -102,7 +102,7 @@ def test_validate_agent_limits_distributed_agents_to_three() -> None:
 
 def test_validate_agent_real_tdd_coder_markdown() -> None:
     module = _load_module()
-    agent_path = ROOT / "home-template" / ".copilot" / "agents" / "tdd-coder.agent.md"
+    agent_path = ROOT / "plugins" / "happy-ai-life" / "agents" / "tdd-coder.agent.md"
 
     report = module.validate(agent_path, "L2")
 
@@ -111,7 +111,7 @@ def test_validate_agent_real_tdd_coder_markdown() -> None:
 
 
 def test_tdd_coder_handoff_contract_mentions_test_and_runtime_fields() -> None:
-    agent_path = ROOT / "home-template" / ".copilot" / "agents" / "tdd-coder.agent.md"
+    agent_path = ROOT / "plugins" / "happy-ai-life" / "agents" / "tdd-coder.agent.md"
     content = agent_path.read_text(encoding="utf-8")
 
     assert "- Test artifact path:" in content
