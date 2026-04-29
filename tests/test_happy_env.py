@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import io
 import subprocess
-from pathlib import Path
 
 import happy_env
 
@@ -31,23 +30,32 @@ def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
     assert "同期計画と適用対象の詳細" in summary
 
 
-def test_build_mcp_config_notes_when_live_file_missing(tmp_path: Path) -> None:
-    sample_path = tmp_path / happy_env.MCP_CONFIG_SAMPLE_FILENAME
-    sample_path.write_text("{}", encoding="utf-8")
+def test_run_home_sync_does_not_emit_mcp_config_notes(monkeypatch) -> None:
+    captured: dict[str, tuple[str, ...]] = {}
 
-    notes = happy_env.build_mcp_config_notes(tmp_path)
+    def fake_run_script(
+        script_name: str,
+        arguments: tuple[str, ...],
+        *,
+        label: str,
+        notes: tuple[str, ...] = (),
+    ) -> happy_env.CommandResult:
+        captured["notes"] = notes
+        return happy_env.CommandResult(
+            label=label,
+            command=(script_name, *arguments),
+            returncode=0,
+            stdout="",
+            stderr="",
+            notes=notes,
+        )
 
-    assert notes[0] == "MCP 設定はまだ初期化されていません。"
-    assert f"'{happy_env.MCP_CONFIG_FILENAME}'" in notes[1]
+    monkeypatch.setattr(happy_env, "run_script", fake_run_script)
 
+    result = happy_env.run_home_sync(dry_run=True)
 
-def test_build_mcp_config_notes_is_empty_when_live_file_exists(tmp_path: Path) -> None:
-    (tmp_path / happy_env.MCP_CONFIG_SAMPLE_FILENAME).write_text("{}", encoding="utf-8")
-    (tmp_path / happy_env.MCP_CONFIG_FILENAME).write_text("{}", encoding="utf-8")
-
-    notes = happy_env.build_mcp_config_notes(tmp_path)
-
-    assert notes == ()
+    assert captured["notes"] == ()
+    assert result.notes == ()
 
 
 def test_build_script_command_respects_execution_policy_by_default(monkeypatch) -> None:
@@ -421,4 +429,3 @@ def test_format_file_details_no_changes_when_all_empty() -> None:
     result = happy_env.format_file_details(files, dry_run=True)
     assert "変更項目なし" in result
     assert "一覧取得に失敗" not in result
-
