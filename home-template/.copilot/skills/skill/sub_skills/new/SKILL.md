@@ -8,7 +8,7 @@ compatibility: "_foundation/TEMPLATE.md, _eval/scripts/validate_skill.py"
 
 # 新しいスキルを作る
 
-アイデアを structured な skill へ変換し、必要なら router / sub-skill 構成までまとめて立ち上げるための sub-skill です。先に意図と制約を固める理由は、topic の羅列ではなく再利用可能な workflow として設計するためです。
+アイデアを structured な skill へ変換し、必要なら router / sub-skill 構成までまとめて立ち上げるための sub-skill です。先にゴール、成功条件、制約を固める理由は、topic の羅列ではなく再利用可能な workflow として設計するためです。
 
 ## こんなときに使う
 
@@ -19,9 +19,9 @@ compatibility: "_foundation/TEMPLATE.md, _eval/scripts/validate_skill.py"
 
 ## ワークフロー: 新しいスキルを作る
 
-### ステップ 1 — 意図を定義する
+### ステップ 1 — ゴールと成功条件を定義する
 
-skill が何をするか、いつ trigger するか、どんな出力を返すか、再利用 script / asset が必要かを先に定義します。ここを曖昧にすると、draft が workflow ではなく topic dump になりやすくなります。
+skill が何をするか、いつ trigger するか、達成後に何が確認できるか、再利用 script / asset が必要かを先に定義します。ここを曖昧にすると、draft が workflow ではなく topic dump になりやすくなります。
 
 ### ステップ 2 — 質問と調査を先に行う
 
@@ -51,7 +51,7 @@ internal routing が必要なら、`uv run python skills/skill/scripts/create_sk
 
 | 段階 | 何を見るか |
 | --- | --- |
-| 意図定義 | trigger、出力、成功条件、必要 asset |
+| 意図定義 | ゴール、trigger、出力、成功条件、確認手段、必要 asset |
 | 調査 | edge case、依存関係、既存 skill との重複 |
 | 草案化 | template 適用、description、workflow 構造 |
 | 初期検証 | L1 validation |

@@ -19,6 +19,16 @@ TRIGGER_PATTERNS = (
 WHEN_TO_USE_HEADINGS = ("When to Use This Skill", "こんなときに使う")
 QUICK_REFERENCE_HEADINGS = ("Quick Reference", "クイックリファレンス", "早見表")
 PITFALL_HEADINGS = ("Pitfalls", "注意点")
+GOAL_DRIVEN_TERMS = (
+    "goal",
+    "success criteria",
+    "verify",
+    "verification",
+    "ゴール",
+    "成功条件",
+    "確認手段",
+    "完了条件",
+)
 
 
 @dataclass
@@ -152,6 +162,12 @@ def has_title_heading(content: str) -> bool:
     return re.search(r"^#\s+\S.+$", content, re.MULTILINE) is not None
 
 
+def has_goal_driven_guidance(content: str) -> bool:
+    """skill がゴール、成功条件、確認手段のいずれかを示すか判定する。"""
+    lowered = content.lower()
+    return any(term in lowered for term in GOAL_DRIVEN_TERMS[:4]) or any(term in content for term in GOAL_DRIVEN_TERMS[4:])
+
+
 def validate(path: Path, level: str) -> ValidationReport:
     """1 本の SKILL.md を検証して report を返す。"""
     content = path.read_text(encoding="utf-8")
@@ -187,6 +203,7 @@ def validate(path: Path, level: str) -> ValidationReport:
         CheckResult("R8", "早見表または判断表がある", quick_reference is not None or "Decision Table" in content or "判断表" in content),
         CheckResult("R9", "コードブロックが空でない", (not has_code_blocks(content)) or all(block.strip() for block in fenced_blocks(content))),
         CheckResult("R10", "H1 タイトルがある", has_title_heading(content)),
+        CheckResult("R13", "ゴール、成功条件、確認手段のいずれかがある", has_goal_driven_guidance(content)),
     ]
 
     critical_passed = all(check.passed for check in critical)

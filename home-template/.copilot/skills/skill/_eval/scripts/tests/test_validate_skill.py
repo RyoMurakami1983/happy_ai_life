@@ -122,7 +122,7 @@ description: >
 ## ワークフロー: Minimal
 
 ### ステップ 1 — 確認する
-次の行動と理由を短く説明する。
+成功条件と確認手段を短く説明する。
 
 ## 注意点
 
@@ -133,6 +133,7 @@ description: >
     report = mod.validate(skill_path, "L2")
     assert report.critical_passed is True
     assert all(check.passed for check in report.recommended if check.id in {"R5", "R6"})
+    assert next(check for check in report.recommended if check.id == "R13").passed is True
 
 
 def test_l1_fails_without_trigger_phrase(tmp_path: Path):
