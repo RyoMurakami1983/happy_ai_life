@@ -70,7 +70,7 @@
 - **変更は必ず feature branch → PR → merge の流れで行う。どんな小さな変更でも `main` に直接 commit・push してはならない。**
 - **テスト目的で作成した一時ファイルは、タスク完了前に必ず削除する。commit 前に `git status` で意図しないファイルが含まれていないことを確認する。**
 - repo-scoped Copilot hooks の正本は `.github/hooks/*.json` と `.github/hooks/scripts/` のみとする。ただし標準配布は safety guard に限定し、session continuity hooks は封印済み legacy opt-in として扱う。
-- `repo-template/.github/hooks/` や `home-template/.copilot/hooks/` に hook 実装を重複配置しない。generic safety behavior は plugin hook へ移す前に path resolution / ordering を spike で検証する。現時点では direct/local plugin hook smoke が未通過のため、repo-scoped `safety-guard.json` を safety fallback として維持する。
+- generic safety behavior は `%USERPROFILE%\.copilot\config.json` の user-level hook を正本とし、home sync が managed entry だけを upsert する。repo 固有の hook は `repo-template/.github/hooks/` を正本にする。plugin hook は path resolution / ordering を spike で検証できるまで primary safety とせず、repo-scoped `safety-guard.json` を fallback として維持する。
 - Git client hooks は `repo-template/.githooks/` を正本にし、target repo では `.githooks/` に同期して `core.hooksPath` で有効化する。GitHub の branch protection / ruleset は別途必須とする。
 - target repo に配布する local ignore の正本は `repo-template/.github/.gitignore`、母艦 repo の generated files は root `.gitignore` でローカル扱いにする。
 - `mcp-config.json` は user-owned live file として扱い、home sync では上書きしない。この母艦 repo は MCP config sample を primary path として配布しない。Context7 が必要な場合は外部 Copilot CLI plugin として案内する。

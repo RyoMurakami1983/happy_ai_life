@@ -360,9 +360,134 @@ function Invoke-FileAction {
         "delete-file" {
             Remove-PathItem -Path $Action.Destination
         }
+        "write-text" {
+            Ensure-ParentDirectory -Path $Action.Destination
+            Set-Content -LiteralPath $Action.Destination -Value $Action.Content -Encoding UTF8
+        }
         default {
             throw "Unsupported file action kind: $($Action.Kind)"
         }
+    }
+}
+
+function Set-JsonProperty {
+    param(
+        [Parameter(Mandatory = $true)]$Object,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)]$Value
+    )
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($property) {
+        $property.Value = $Value
+        return
+    }
+
+    $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
+}
+
+function New-ManagedHomeHookEntry {
+    param([Parameter(Mandatory = $true)][string]$ScriptPath)
+
+    return [pscustomobject][ordered]@{
+        type = "command"
+        powershell = ('powershell -NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $ScriptPath)
+        cwd = "."
+        timeoutSec = 10
+        env = [pscustomobject][ordered]@{
+            HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"
+        }
+    }
+}
+
+function Get-HomeConfigHookPlan {
+    param(
+        [Parameter(Mandatory = $true)][string]$ConfigPath,
+        [Parameter(Mandatory = $true)][string]$ScriptPath
+    )
+
+    $configExists = Test-Path -LiteralPath $ConfigPath -PathType Leaf
+    if ($configExists) {
+        $raw = Get-Content -LiteralPath $ConfigPath -Raw
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            $config = [pscustomobject]@{}
+        }
+        else {
+            $config = $raw | ConvertFrom-Json
+        }
+    }
+    else {
+        $config = [pscustomobject]@{}
+    }
+
+    $hooksProperty = $config.PSObject.Properties["hooks"]
+    $hooks = $null
+    if ($hooksProperty) {
+        $hooks = $hooksProperty.Value
+    }
+    if ($null -eq $hooks) {
+        $hooks = [pscustomobject]@{}
+        Set-JsonProperty -Object $config -Name "hooks" -Value $hooks
+    }
+
+    $hookId = "happy-ai-life-safety-guard"
+    $preToolUseProperty = $hooks.PSObject.Properties["preToolUse"]
+    $existingPreToolUse = @()
+    if ($preToolUseProperty) {
+        $existingPreToolUse = @($preToolUseProperty.Value)
+    }
+    $preservedPreToolUse = @(
+        foreach ($entry in $existingPreToolUse) {
+            $entryHookId = $null
+            try {
+                $entryHookId = [string]$entry.env.HAPPY_AI_LIFE_HOOK_ID
+            }
+            catch {
+                $entryHookId = $null
+            }
+
+            if ($entryHookId -ne $hookId) {
+                $entry
+            }
+        }
+    )
+
+    $managedEntry = New-ManagedHomeHookEntry -ScriptPath $ScriptPath
+    Set-JsonProperty -Object $hooks -Name "preToolUse" -Value @($preservedPreToolUse + $managedEntry)
+
+    $desiredContent = ($config | ConvertTo-Json -Depth 20)
+    if (-not $desiredContent.EndsWith("`n")) {
+        $desiredContent = "$desiredContent`n"
+    }
+
+    $added = @()
+    $updated = @()
+    $actions = @()
+    if (-not $configExists) {
+        $added = @("config.json")
+        $actions = @([pscustomobject]@{
+                Kind = "write-text"
+                Destination = $ConfigPath
+                Content = $desiredContent
+            })
+    }
+    elseif ((Get-Content -LiteralPath $ConfigPath -Raw) -ne $desiredContent) {
+        $updated = @("config.json")
+        $actions = @([pscustomobject]@{
+                Kind = "write-text"
+                Destination = $ConfigPath
+                Content = $desiredContent
+            })
+    }
+
+    return [pscustomobject]@{
+        Label = "config.json (managed safety hook)"
+        Actions = $actions
+        Added = $added
+        Updated = $updated
+        Deleted = @()
+        MirrorMode = $false
+        DestinationRoot = Split-Path -Path $ConfigPath -Parent
     }
 }
 
@@ -442,7 +567,7 @@ $destinationPath = [System.IO.Path]::GetFullPath($DestinationPath)
 $templateRoot = Resolve-HomeTemplateRoot -SourceRootPath $sourceRootPath -TemplatePath $TemplateRelativePath
 $archiveRoot = [System.IO.Path]::GetFullPath($ArchiveRoot)
 Write-Host ""
-Write-Host "準備完了。home sync は Copilot instructions と repo bootstrap 資産だけを同期し、"
+Write-Host "準備完了。home sync は Copilot instructions、repo bootstrap 資産、user-level safety hook を同期し、"
 Write-Host "skills/、agents/、docs/ は plugin install / user-owned surface として触りません。"
 Write-Host "実行中..."
 Write-Host ""
@@ -450,11 +575,7 @@ Write-Host ""
 $unsupportedHooksPath = Join-Path $templateRoot "hooks"
 Warn-IfPathExists `
     -Path $unsupportedHooksPath `
-    -Message "home-template/.copilot/hooks is ignored. Use plugin hooks for generic behavior and repo sync for explicit repo-scoped hooks."
-
-if (-not (Test-Path -LiteralPath $destinationPath)) {
-    New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
-}
+    -Message "home-template/.copilot/hooks is ignored. User-level hooks are managed through config.json by this sync script."
 
 if ($Mirror) {
     Write-HomeMirrorCompatibilityWarning -WhatIfMode:$DryRun
@@ -508,8 +629,16 @@ $trackedFilePlans = @(
     [pscustomobject]@{
         Label = "scripts/repo-secure-check.ps1"
         Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "repo-secure-check.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "repo-secure-check.ps1") -PreviewPath "scripts/repo-secure-check.ps1")
+    },
+    [pscustomobject]@{
+        Label = "hooks/scripts/guard_pre_tool.ps1"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path $sourceRootPath ".github\hooks\scripts\guard_pre_tool.ps1") -Destination (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.ps1") -PreviewPath "hooks/scripts/guard_pre_tool.ps1")
     }
 )
+
+$configHookPlan = Get-HomeConfigHookPlan `
+    -ConfigPath (Join-Path $destinationPath "config.json") `
+    -ScriptPath (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.ps1")
 
 foreach ($entry in $directoryPlans) {
     Write-Host ""
@@ -523,11 +652,13 @@ foreach ($entry in $trackedFilePlans) {
     Add-PreviewItems -PreviewState $previewState -Bucket Added -Items @($entry.Plan.Added)
     Add-PreviewItems -PreviewState $previewState -Bucket Updated -Items @($entry.Plan.Updated)
 }
+Add-PreviewItems -PreviewState $previewState -Bucket Added -Items @($configHookPlan.Added)
+Add-PreviewItems -PreviewState $previewState -Bucket Updated -Items @($configHookPlan.Updated)
 
 if ($VerboseLog) {
     Write-VerbosePlanDetails `
         -DirectoryPlans $directoryPlans `
-        -TrackedFilePlans $trackedFilePlans `
+        -TrackedFilePlans @($trackedFilePlans + [pscustomobject]@{ Label = $configHookPlan.Label; Plan = $configHookPlan }) `
         -DryRunMode:$DryRun
 }
 
@@ -546,6 +677,10 @@ if (-not $DryRun) {
         foreach ($action in @($entry.Plan.Actions)) {
             Invoke-FileAction -Action $action
         }
+    }
+
+    foreach ($action in @($configHookPlan.Actions)) {
+        Invoke-FileAction -Action $action
     }
 
     foreach ($legacyHookFile in $legacyHomeHookFiles) {

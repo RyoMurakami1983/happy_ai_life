@@ -6,9 +6,9 @@ if [[ -z "${raw}" ]]; then
   exit 0
 fi
 
-# toolName を取得（例: "bash"）
+# toolName を取得（例: "bash", "powershell"）
 tool_name="$(jq -r '.toolName // empty' <<<"${raw}")"
-if [[ "${tool_name}" != "bash" ]]; then
+if [[ "${tool_name}" != "bash" && "${tool_name}" != "powershell" ]]; then
   exit 0
 fi
 
@@ -31,6 +31,8 @@ deny_patterns=(
   'reboot'
   'poweroff'
   'init 0'
+  'stop-computer'
+  'restart-computer'
   'git push --force'
   'git reset --hard'
 )

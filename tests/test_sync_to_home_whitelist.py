@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -86,6 +87,7 @@ def _create_minimal_source_root(base: Path) -> Path:
     repo_hooks = base / ".github" / "hooks" / "scripts"
     repo_hooks.mkdir(parents=True)
     (repo_hooks / "sample.js").write_text("console.log('hook');\n", encoding="utf-8")
+    (repo_hooks / "guard_pre_tool.ps1").write_text("Write-Host 'guard'\n", encoding="utf-8")
 
     scripts_dir = base / "scripts"
     scripts_dir.mkdir(parents=True)
@@ -129,10 +131,19 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     assert (destination / "scripts" / "sync-to-repo.ps1").exists()
     assert (destination / "scripts" / "install-git-hooks.ps1").exists()
     assert (destination / "scripts" / "repo-secure-check.ps1").exists()
+    assert (destination / "hooks" / "scripts" / "guard_pre_tool.ps1").exists()
     assert (destination / "copilot-instructions.md").exists()
     assert not (destination / "mcp-config.sample.json").exists()
     assert (destination / "keep.txt").read_text(encoding="utf-8") == "keep"
-    assert (destination / "config.json").read_text(encoding="utf-8") == '{"user":true}'
+    config = json.loads((destination / "config.json").read_text(encoding="utf-8"))
+    assert config["user"] is True
+    managed_hooks = [
+        hook
+        for hook in config["hooks"]["preToolUse"]
+        if hook.get("env", {}).get("HAPPY_AI_LIFE_HOOK_ID") == "happy-ai-life-safety-guard"
+    ]
+    assert len(managed_hooks) == 1
+    assert "hooks\\scripts\\guard_pre_tool.ps1" in managed_hooks[0]["powershell"]
     assert (destination / "mcp-config.json").read_text(encoding="utf-8") == '{"user":true}'
     assert (destination / "session-state").exists()
 
@@ -168,6 +179,78 @@ def test_sync_to_home_dry_run_preserves_legacy_home_hook_transport(tmp_path: Pat
     assert result.returncode == 0, result.stdout + result.stderr
     assert legacy_hooks.exists()
     assert "Legacy home hook transport detected" in result.stdout
+
+
+def test_sync_to_home_dry_run_preserves_config_json(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    destination.mkdir(parents=True)
+    config_path = destination / "config.json"
+    config_path.write_text('{"user":true}', encoding="utf-8")
+
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=True)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert config_path.read_text(encoding="utf-8") == '{"user":true}'
+    assert not (destination / "hooks" / "scripts" / "guard_pre_tool.ps1").exists()
+
+
+def test_sync_to_home_dry_run_does_not_create_missing_destination(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=True)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not destination.exists()
+
+
+def test_sync_to_home_preserves_existing_config_hooks(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    destination.mkdir(parents=True)
+    config_path = destination / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "theme": "dark",
+                "hooks": {
+                    "preToolUse": [
+                        {
+                            "type": "command",
+                            "powershell": "Write-Host user-hook",
+                            "env": {"USER_HOOK": "1"},
+                        },
+                        {
+                            "type": "command",
+                            "powershell": "Write-Host stale-managed-hook",
+                            "env": {"HAPPY_AI_LIFE_HOOK_ID": "happy-ai-life-safety-guard"},
+                        },
+                    ],
+                    "sessionStart": [{"type": "command", "powershell": "Write-Host start"}],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    assert config["theme"] == "dark"
+    assert config["hooks"]["sessionStart"] == [{"type": "command", "powershell": "Write-Host start"}]
+    assert any(hook.get("env", {}).get("USER_HOOK") == "1" for hook in config["hooks"]["preToolUse"])
+    managed_hooks = [
+        hook
+        for hook in config["hooks"]["preToolUse"]
+        if hook.get("env", {}).get("HAPPY_AI_LIFE_HOOK_ID") == "happy-ai-life-safety-guard"
+    ]
+    assert len(managed_hooks) == 1
+    assert "stale-managed-hook" not in managed_hooks[0]["powershell"]
 
 
 def test_sync_to_home_preserves_unknown_files_under_legacy_home_hook_path(tmp_path: Path) -> None:
