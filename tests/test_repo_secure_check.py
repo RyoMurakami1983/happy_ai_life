@@ -67,6 +67,21 @@ def _git(repo: Path, *args: str) -> None:
     assert completed.returncode == 0, completed.stdout + completed.stderr
 
 
+def _write_required_git_hooks(repo: Path, relative: str = ".githooks") -> None:
+    hooks = repo / relative
+    (hooks / "lib").mkdir(parents=True, exist_ok=True)
+    (hooks / "pre-commit").write_text(
+        '#!/usr/bin/env sh\nsh "$(dirname "$0")/lib/commit-safety-guard.sh"\nsh "$(dirname "$0")/lib/secret-guard.sh"\n',
+        encoding="utf-8",
+    )
+    (hooks / "pre-push").write_text(
+        '#!/usr/bin/env sh\nsh "$(dirname "$0")/lib/secret-guard.sh" --range "$remote_sha..$local_sha"\n',
+        encoding="utf-8",
+    )
+    for file_name in ("secret-guard.sh", "commit-safety-guard.sh"):
+        (hooks / "lib" / file_name).write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+
+
 def test_repo_secure_check_reports_missing_local_safety_valves(tmp_path: Path) -> None:
     target_repo = tmp_path / "target"
     target_repo.mkdir()
@@ -94,8 +109,7 @@ def test_repo_secure_check_reports_secure_repo(tmp_path: Path) -> None:
     (target_repo / ".github" / "workflows").mkdir(parents=True)
     (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (target_repo / ".githooks").mkdir(parents=True)
-    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
     _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
 
     report = _run_check(target_repo)
@@ -104,6 +118,56 @@ def test_repo_secure_check_reports_secure_repo(tmp_path: Path) -> None:
     assert report["missing"] == []
     copilot_hooks_check = next(check for check in report["checks"] if check["key"] == "copilotHooks")
     assert "session continuity hooks" in copilot_hooks_check["details"]
+
+
+def test_repo_secure_check_requires_concrete_git_hook_files(tmp_path: Path) -> None:
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    (target_repo / ".github" / "hooks").mkdir(parents=True)
+    (target_repo / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
+    (target_repo / ".github" / "workflows").mkdir(parents=True)
+    (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    (target_repo / ".githooks" / "lib").mkdir(parents=True)
+    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    (target_repo / ".githooks" / "lib" / "secret-guard.sh").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
+
+    report = _run_check(target_repo)
+
+    assert report["isGitRepo"] is True
+    assert report["missing"] == ["gitHooksDirectory"]
+    git_hooks_check = next(check for check in report["checks"] if check["key"] == "gitHooksDirectory")
+    assert "pre-push" in git_hooks_check["details"]
+    assert "commit-safety-guard.sh" in git_hooks_check["details"]
+
+
+def test_repo_secure_check_rejects_stub_git_hooks(tmp_path: Path) -> None:
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    (target_repo / ".github" / "hooks").mkdir(parents=True)
+    (target_repo / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
+    (target_repo / ".github" / "workflows").mkdir(parents=True)
+    (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    (target_repo / ".githooks" / "lib").mkdir(parents=True)
+    for file_name in ("pre-commit", "pre-push"):
+        (target_repo / ".githooks" / file_name).write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    for file_name in ("secret-guard.sh", "commit-safety-guard.sh"):
+        (target_repo / ".githooks" / "lib" / file_name).write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
+
+    report = _run_check(target_repo)
+
+    assert report["isGitRepo"] is True
+    assert report["missing"] == ["gitHooksDirectory"]
+    git_hooks_check = next(check for check in report["checks"] if check["key"] == "gitHooksDirectory")
+    assert "pre-commit does not call commit-safety-guard.sh" in git_hooks_check["details"]
+    assert "pre-push does not call secret-guard.sh --range" in git_hooks_check["details"]
 
 
 def test_repo_secure_check_requires_copilot_hook_json_files(tmp_path: Path) -> None:
@@ -116,8 +180,7 @@ def test_repo_secure_check_requires_copilot_hook_json_files(tmp_path: Path) -> N
     (target_repo / ".github" / "workflows").mkdir(parents=True)
     (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (target_repo / ".githooks").mkdir(parents=True)
-    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
     _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
 
     report = _run_check(target_repo)
@@ -138,8 +201,7 @@ def test_repo_secure_check_rejects_legacy_session_continuity_hook_without_safety
     (target_repo / ".github" / "workflows").mkdir(parents=True)
     (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (target_repo / ".githooks").mkdir(parents=True)
-    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
     _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
 
     report = _run_check(target_repo)
@@ -160,10 +222,8 @@ def test_repo_secure_check_accepts_repo_template_hooks_for_source_repo(tmp_path:
     (target_repo / ".github" / "workflows").mkdir(parents=True)
     (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (target_repo / ".githooks").mkdir(parents=True)
-    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
-    (target_repo / "repo-template" / ".githooks").mkdir(parents=True)
-    (target_repo / "repo-template" / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
+    _write_required_git_hooks(target_repo, "repo-template/.githooks")
     _git(target_repo, "config", "--local", "core.hooksPath", "repo-template/.githooks")
 
     report = _run_check(target_repo, source_root=target_repo)
@@ -180,8 +240,7 @@ def test_repo_secure_check_reports_missing_github_workflows(tmp_path: Path) -> N
     (target_repo / ".github" / "hooks").mkdir(parents=True)
     (target_repo / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (target_repo / ".githooks").mkdir(parents=True)
-    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
     _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
 
     report = _run_check(target_repo)
@@ -202,8 +261,7 @@ def test_repo_secure_check_rejects_non_yaml_files_in_github_workflows(tmp_path: 
     (target_repo / ".github" / "workflows").mkdir(parents=True)
     (target_repo / ".github" / "workflows" / "README.md").write_text("# workflows\n", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (target_repo / ".githooks").mkdir(parents=True)
-    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
     _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
 
     report = _run_check(target_repo)
@@ -222,8 +280,7 @@ def test_repo_secure_check_rejects_dotnet_template_without_dotnet_project(tmp_pa
     (target_repo / ".github" / "workflows").mkdir(parents=True)
     (target_repo / ".github" / "workflows" / "dotnet-quality.yml").write_text("name: .NET Quality Gate\n", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (target_repo / ".githooks").mkdir(parents=True)
-    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
     _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
 
     report = _run_check(target_repo)
@@ -245,8 +302,7 @@ def test_repo_secure_check_accepts_dotnet_template_with_dotnet_project(tmp_path:
     (target_repo / ".github" / "workflows").mkdir(parents=True)
     (target_repo / ".github" / "workflows" / "dotnet-quality.yml").write_text("name: .NET Quality Gate\n", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (target_repo / ".githooks").mkdir(parents=True)
-    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
     _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
 
     report = _run_check(target_repo)
@@ -266,8 +322,7 @@ def test_repo_secure_check_accepts_dotnet_template_with_fsharp_project(tmp_path:
     (target_repo / ".github" / "workflows").mkdir(parents=True)
     (target_repo / ".github" / "workflows" / "dotnet-quality.yml").write_text("name: .NET Quality Gate\n", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (target_repo / ".githooks").mkdir(parents=True)
-    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
     _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
 
     report = _run_check(target_repo)
@@ -286,8 +341,7 @@ def test_repo_secure_check_accepts_yaml_github_workflow(tmp_path: Path) -> None:
     (target_repo / ".github" / "workflows").mkdir(parents=True)
     (target_repo / ".github" / "workflows" / "quality.yaml").write_text("name: quality\n", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (target_repo / ".githooks").mkdir(parents=True)
-    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
     _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
 
     report = _run_check(target_repo)

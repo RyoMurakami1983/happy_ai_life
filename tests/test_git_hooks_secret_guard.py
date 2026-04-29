@@ -51,25 +51,28 @@ def _create_gitleaks_shim(path: Path) -> Path:
         """#!/usr/bin/env sh
 set -eu
 
-snapshot_dir=""
+scan_mode=""
+scan_target=""
 config_path=""
 redact_seen=0
 exit_code_seen=0
+log_opts=""
 
 if [ "$#" -lt 2 ]; then
-  echo "expected: gitleaks dir <snapshot_dir> --config <config_path>" >&2
+  echo "expected: gitleaks dir <snapshot_dir> or gitleaks git <repo_root>" >&2
   exit 2
 fi
 
-if [ "$1" != "dir" ]; then
-  echo "expected first argument to be 'dir', got: $1" >&2
+if [ "$1" != "dir" ] && [ "$1" != "git" ]; then
+  echo "expected first argument to be 'dir' or 'git', got: $1" >&2
   exit 2
 fi
+scan_mode="$1"
 shift
 
-snapshot_dir="$1"
-if [ -z "$snapshot_dir" ]; then
-  echo "missing snapshot directory after 'dir'" >&2
+scan_target="$1"
+if [ -z "$scan_target" ]; then
+  echo "missing scan target after '$scan_mode'" >&2
   exit 2
 fi
 shift
@@ -87,6 +90,14 @@ while [ "$#" -gt 0 ]; do
         exit 2
       fi
       config_path="$1"
+      ;;
+    --log-opts)
+      shift
+      if [ "$#" -eq 0 ]; then
+        echo "missing value for --log-opts" >&2
+        exit 2
+      fi
+      log_opts="$1"
       ;;
     --no-banner)
       ;;
@@ -109,8 +120,8 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-if [ -z "$config_path" ]; then
-  echo "missing required --config argument" >&2
+if [ "$scan_mode" = "git" ] && [ -z "$log_opts" ]; then
+  echo "missing required --log-opts argument for git scan" >&2
   exit 2
 fi
 
@@ -124,16 +135,27 @@ if [ -n "$config_path" ] && [ -f "$config_path" ]; then
   allow_path=$(sed -n 's/^# TEST_ALLOW_PATH=//p' "$config_path")
 fi
 
-if [ -n "$allow_path" ] && [ -f "$snapshot_dir/$allow_path" ]; then
-  if grep -R "SECRET_MARKER" "$snapshot_dir" >/dev/null 2>&1; then
-    disallowed_hits=$(grep -R -l "SECRET_MARKER" "$snapshot_dir" | grep -F -v "$snapshot_dir/$allow_path" || true)
+if [ "$scan_mode" = "git" ]; then
+  commits=$(git -C "$scan_target" rev-list $log_opts 2>/dev/null || true)
+  for commit in $commits; do
+    if git -C "$scan_target" grep -I "SECRET_MARKER" "$commit" -- >/dev/null 2>&1; then
+      printf '%s\\n' 'Finding: redacted-secret'
+      exit 1
+    fi
+  done
+  exit 0
+fi
+
+if [ -n "$allow_path" ] && [ -f "$scan_target/$allow_path" ]; then
+  if grep -R "SECRET_MARKER" "$scan_target" >/dev/null 2>&1; then
+    disallowed_hits=$(grep -R -l "SECRET_MARKER" "$scan_target" | grep -F -v "$scan_target/$allow_path" || true)
     if [ -z "$disallowed_hits" ]; then
       exit 0
     fi
   fi
 fi
 
-if grep -R "SECRET_MARKER" "$snapshot_dir" >/dev/null 2>&1; then
+if grep -R "SECRET_MARKER" "$scan_target" >/dev/null 2>&1; then
   printf '%s\\n' 'Finding: redacted-secret'
   exit 1
 fi
@@ -193,6 +215,21 @@ def test_pre_commit_allows_clean_staged_changes(tmp_path: Path) -> None:
     assert add.returncode == 0, add.stdout + add.stderr
 
     commit = _run_git(repo, "commit", "-m", "safe commit", env=env)
+
+    assert commit.returncode == 0, commit.stdout + commit.stderr
+
+
+def test_pre_commit_handles_repo_path_with_spaces(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo parent with spaces"
+    repo_root.mkdir()
+    repo, env = _prepare_repo(repo_root)
+    tracked_file = repo / "notes.txt"
+    tracked_file.write_text("safe\n", encoding="utf-8", newline="\n")
+
+    add = _run_git(repo, "add", "notes.txt", env=env)
+    assert add.returncode == 0, add.stdout + add.stderr
+
+    commit = _run_git(repo, "commit", "-m", "safe commit in spaced path", env=env)
 
     assert commit.returncode == 0, commit.stdout + commit.stderr
 
@@ -261,21 +298,23 @@ def test_pre_commit_handles_non_ascii_staged_paths(tmp_path: Path) -> None:
     assert commit.returncode == 0, commit.stdout + commit.stderr
 
 
-def test_pre_commit_skips_scan_when_config_is_missing_by_default(tmp_path: Path) -> None:
-    repo, _env = _prepare_repo(tmp_path)
+def test_pre_commit_uses_default_gitleaks_rules_when_config_is_missing(tmp_path: Path) -> None:
+    repo, env = _prepare_repo(tmp_path)
     (repo / ".gitleaks.toml").unlink()
-    tracked_file = repo / "notes.txt"
-    tracked_file.write_text("safe\n", encoding="utf-8", newline="\n")
+    tracked_file = repo / "secrets.env"
+    tracked_file.write_text("API_KEY=SECRET_MARKER\n", encoding="utf-8", newline="\n")
 
-    add = _run_git(repo, "add", "notes.txt")
+    add = _run_git(repo, "add", "secrets.env", env=env)
     assert add.returncode == 0, add.stdout + add.stderr
 
-    commit = _run_git(repo, "commit", "-m", "missing config skips scan")
+    commit = _run_git(repo, "commit", "-m", "missing config still scans", env=env)
 
-    assert commit.returncode == 0, commit.stdout + commit.stderr
+    assert commit.returncode != 0
+    assert "Potential secrets were detected in staged changes." in commit.stderr
+    assert "Finding: redacted-secret" in commit.stderr
 
 
-def test_pre_commit_fails_when_config_is_required_but_missing(tmp_path: Path) -> None:
+def test_pre_commit_fails_when_gitleaks_is_missing_even_without_config(tmp_path: Path) -> None:
     repo, _env = _prepare_repo(tmp_path)
     (repo / ".gitleaks.toml").unlink()
     tracked_file = repo / "notes.txt"
@@ -288,12 +327,12 @@ def test_pre_commit_fails_when_config_is_required_but_missing(tmp_path: Path) ->
         repo,
         "commit",
         "-m",
-        "missing config required",
-        env={"SECRET_GUARD_REQUIRE_CONFIG": "1"},
+        "missing gitleaks without config",
+        env={"GITLEAKS_BIN": "missing-gitleaks"},
     )
 
     assert commit.returncode != 0
-    assert "Missing .gitleaks.toml in the repository root." in commit.stderr
+    assert "gitleaks is required for the Git secret scan" in commit.stderr
 
 
 def test_pre_commit_fails_when_gitleaks_is_missing(tmp_path: Path) -> None:
@@ -308,4 +347,124 @@ def test_pre_commit_fails_when_gitleaks_is_missing(tmp_path: Path) -> None:
     commit = _run_git(repo, "commit", "-m", "missing gitleaks", env=missing_env)
 
     assert commit.returncode != 0
-    assert "gitleaks is required for the pre-commit secret scan" in commit.stderr
+    assert "gitleaks is required for the Git secret scan" in commit.stderr
+
+
+def test_pre_push_blocks_secret_like_commits(tmp_path: Path) -> None:
+    repo, env = _prepare_repo(tmp_path)
+    remote = tmp_path / "remote.git"
+    init_remote = subprocess.run(
+        [_git_executable(), "init", "--bare", str(remote)],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert init_remote.returncode == 0, init_remote.stdout + init_remote.stderr
+    add_remote = _run_git(repo, "remote", "add", "origin", str(remote), env=env)
+    assert add_remote.returncode == 0, add_remote.stdout + add_remote.stderr
+
+    tracked_file = repo / "secrets.env"
+    tracked_file.write_text("API_KEY=SECRET_MARKER\n", encoding="utf-8", newline="\n")
+    add = _run_git(repo, "add", "secrets.env", env=env)
+    assert add.returncode == 0, add.stdout + add.stderr
+    commit = _run_git(repo, "commit", "--no-verify", "-m", "secret commit for push", env=env)
+    assert commit.returncode == 0, commit.stdout + commit.stderr
+
+    push = _run_git(repo, "push", "origin", "HEAD:refs/heads/feature/test-hooks", env=env)
+
+    assert push.returncode != 0
+    assert "Potential secrets were detected in commits being pushed." in push.stderr
+    assert "Finding: redacted-secret" in push.stderr
+
+
+def test_pre_push_allows_clean_commits(tmp_path: Path) -> None:
+    repo, env = _prepare_repo(tmp_path)
+    remote = tmp_path / "remote.git"
+    init_remote = subprocess.run(
+        [_git_executable(), "init", "--bare", str(remote)],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert init_remote.returncode == 0, init_remote.stdout + init_remote.stderr
+    add_remote = _run_git(repo, "remote", "add", "origin", str(remote), env=env)
+    assert add_remote.returncode == 0, add_remote.stdout + add_remote.stderr
+
+    tracked_file = repo / "notes.txt"
+    tracked_file.write_text("safe\n", encoding="utf-8", newline="\n")
+    add = _run_git(repo, "add", "notes.txt", env=env)
+    assert add.returncode == 0, add.stdout + add.stderr
+    commit = _run_git(repo, "commit", "-m", "safe push", env=env)
+    assert commit.returncode == 0, commit.stdout + commit.stderr
+
+    push = _run_git(repo, "push", "origin", "HEAD:refs/heads/feature/test-hooks", env=env)
+
+    assert push.returncode == 0, push.stdout + push.stderr
+
+
+def test_pre_push_skips_branch_deletions_without_scanning(tmp_path: Path) -> None:
+    repo, env = _prepare_repo(tmp_path)
+    remote = tmp_path / "remote.git"
+    init_remote = subprocess.run(
+        [_git_executable(), "init", "--bare", str(remote)],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert init_remote.returncode == 0, init_remote.stdout + init_remote.stderr
+    add_remote = _run_git(repo, "remote", "add", "origin", str(remote), env=env)
+    assert add_remote.returncode == 0, add_remote.stdout + add_remote.stderr
+
+    tracked_file = repo / "notes.txt"
+    tracked_file.write_text("safe\n", encoding="utf-8", newline="\n")
+    add = _run_git(repo, "add", "notes.txt", env=env)
+    assert add.returncode == 0, add.stdout + add.stderr
+    commit = _run_git(repo, "commit", "-m", "safe push before delete", env=env)
+    assert commit.returncode == 0, commit.stdout + commit.stderr
+    push = _run_git(repo, "push", "origin", "HEAD:refs/heads/feature/delete-me", env=env)
+    assert push.returncode == 0, push.stdout + push.stderr
+
+    delete_env = {**env, "GITLEAKS_BIN": "missing-gitleaks"}
+    delete = _run_git(repo, "push", "origin", ":refs/heads/feature/delete-me", env=delete_env)
+
+    assert delete.returncode == 0, delete.stdout + delete.stderr
+
+
+def test_pre_push_skips_new_branch_names_with_no_new_commits(tmp_path: Path) -> None:
+    repo, env = _prepare_repo(tmp_path)
+    remote = tmp_path / "remote.git"
+    init_remote = subprocess.run(
+        [_git_executable(), "init", "--bare", str(remote)],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert init_remote.returncode == 0, init_remote.stdout + init_remote.stderr
+    add_remote = _run_git(repo, "remote", "add", "origin", str(remote), env=env)
+    assert add_remote.returncode == 0, add_remote.stdout + add_remote.stderr
+
+    tracked_file = repo / "notes.txt"
+    tracked_file.write_text("safe\n", encoding="utf-8", newline="\n")
+    add = _run_git(repo, "add", "notes.txt", env=env)
+    assert add.returncode == 0, add.stdout + add.stderr
+    commit = _run_git(repo, "commit", "-m", "safe pushed commit", env=env)
+    assert commit.returncode == 0, commit.stdout + commit.stderr
+    first_push = _run_git(repo, "push", "origin", "HEAD:refs/heads/feature/already-known", env=env)
+    assert first_push.returncode == 0, first_push.stdout + first_push.stderr
+    fetch = _run_git(repo, "fetch", "origin", env=env)
+    assert fetch.returncode == 0, fetch.stdout + fetch.stderr
+
+    missing_gitleaks_env = {**env, "GITLEAKS_BIN": "missing-gitleaks"}
+    second_push = _run_git(
+        repo,
+        "push",
+        "origin",
+        "HEAD:refs/heads/feature/new-name-same-commit",
+        env=missing_gitleaks_env,
+    )
+
+    assert second_push.returncode == 0, second_push.stdout + second_push.stderr

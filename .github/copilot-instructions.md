@@ -57,7 +57,7 @@
   - `uv run ruff check .`
   - `uv run ty check .`
 - 品質ゲートは `.github/workflows/quality.yml` を参照する（gitleaks は常時有効、textlint は必要時に有効化）。
-- downstream / pilot repo を触る前は、`$HOME\.copilot\scripts\repo-secure-check.ps1` で repo instructions・Copilot safety hooks・`.githooks`・`core.hooksPath`・`.github/workflows/*.yml|*.yaml` の不足を確認する。不足がある場合は `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1`、または対象技術の workflow setup skill で補う。`sessionStart` / `sessionEnd` の repo-local continuity hooks は標準運用から封印済みで、必要な legacy repo だけ `sync-to-repo.ps1 -HooksMode All` で明示 opt-in する。
+- downstream / pilot repo を触る前は、`$HOME\.copilot\scripts\repo-secure-check.ps1` で repo instructions・Copilot safety hooks・`.githooks/pre-commit`・`.githooks/pre-push`・`.githooks/lib/*.sh`・`core.hooksPath`・`.github/workflows/*.yml|*.yaml` の不足を確認する。不足がある場合は `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1`、または対象技術の workflow setup skill で補う。secret guard は `gitleaks` 必須で、`.gitleaks.toml` が無い repo でも default rules で fail-closed scan する。`sessionStart` / `sessionEnd` の repo-local continuity hooks は標準運用から封印済みで、必要な legacy repo だけ `sync-to-repo.ps1 -HooksMode All` で明示 opt-in する。
 - plugin 変更後の検証手順: remote の marketplace add / browse / install / list / uninstall / remove は merge 後の default branch 状態を確認する手順として扱う。feature branch を push しただけでは `<owner>/<repo>` 指定の marketplace 経由で PR ブランチの manifest 変更は通常確認できないため、merge 前の smoke test が必要な場合はローカル checkout の repo root を marketplace として add して確認する。direct repository / URL / local path install は deprecated fallback とし、primary path にはしない。sync 変更時は sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
 
 ## DeepReview
@@ -71,7 +71,7 @@
 - **テスト目的で作成した一時ファイルは、タスク完了前に必ず削除する。commit 前に `git status` で意図しないファイルが含まれていないことを確認する。**
 - repo-scoped Copilot hooks の正本は `.github/hooks/*.json` と `.github/hooks/scripts/` のみとする。ただし標準配布は safety guard に限定し、session continuity hooks は封印済み legacy opt-in として扱う。
 - generic safety behavior は `%USERPROFILE%\.copilot\config.json` の user-level hook を正本とし、home sync が managed entry だけを upsert する。repo 固有の hook は `repo-template/.github/hooks/` を正本にする。plugin hook は path resolution / ordering を spike で検証できるまで primary safety とせず、repo-scoped `safety-guard.json` を fallback として維持する。
-- Git client hooks は `repo-template/.githooks/` を正本にし、target repo では `.githooks/` に同期して `core.hooksPath` で有効化する。GitHub の branch protection / ruleset は別途必須とする。
+- Git client hooks は `repo-template/.githooks/` を正本にし、target repo では `.githooks/` に同期して `core.hooksPath` で有効化する。`pre-commit` は staged content、`pre-push` は push range を gitleaks で検査する。GitHub の branch protection / ruleset は別途必須とする。
 - target repo に配布する local ignore の正本は `repo-template/.github/.gitignore`、母艦 repo の generated files は root `.gitignore` でローカル扱いにする。
 - `mcp-config.json` は user-owned live file として扱い、home sync では上書きしない。この母艦 repo は MCP config sample を primary path として配布しない。Context7 が必要な場合は外部 Copilot CLI plugin として案内する。
 - コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
