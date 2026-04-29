@@ -4,12 +4,30 @@ set -eu
 
 protected_branch="${GIT_MAIN_GUARD_BRANCH:-main}"
 protected_ref="refs/heads/$protected_branch"
+hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+zero_sha="0000000000000000000000000000000000000000"
 
 while read -r local_ref local_sha remote_ref remote_sha; do
   if [ "$remote_ref" = "$protected_ref" ]; then
     printf '%s\n%s\n' "Pushing to '$protected_branch' is blocked by the repository hook." "Create a feature branch and open a pull request instead." >&2
     exit 1
   fi
+
+  if [ "$local_sha" = "$zero_sha" ]; then
+    continue
+  fi
+
+  if [ "$remote_sha" = "$zero_sha" ]; then
+    pushed_commits=$(git rev-list "$local_sha" --not --remotes 2>/dev/null || true)
+    if [ -z "$pushed_commits" ]; then
+      continue
+    fi
+    log_opts=$(printf '%s\n' "$pushed_commits" | tr '\n' ' ')
+  else
+    log_opts="$remote_sha..$local_sha"
+  fi
+
+  sh "$hook_dir/lib/secret-guard.sh" --range "$log_opts"
 done
 
 exit 0

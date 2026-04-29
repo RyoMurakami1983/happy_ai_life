@@ -146,8 +146,9 @@ uv sync --dev
 変更時は、同期先への影響（scripts、hooks、workflows、instructions）を確認してください。
 Skill / Agent / repository instructions authoring の公開入口は plugin package の `plugins/happy-ai-life/skills/copilot-authoring` です。設計は `design-workshop`、計画は PLAN mode を使い、custom agent は原則増やさず、必要時だけ `tdd-coder` のような narrow specialist を `/fleet` または明示指名で使います。repo-wide と path-specific instructions は `copilot-authoring` 配下の instructions authoring ルートで扱い、常時読み込む rule と詳細 workflow を分離します。実装中の独立 gate は `implementation-eval-gate` を使い、`/sdd` から bootstrap checkpoint → contract checkpoint → generator → eval の順でつなぎます。
 Git の client hooks は `repo-template/.githooks/` を正本にし、`core.hooksPath` で有効化します。GitHub の branch protection / ruleset は別途必須です。
-downstream repo の local safety valve を確認するときは `$HOME\.copilot\scripts\repo-secure-check.ps1` を使い、repo instructions / Copilot safety hooks / `.githooks` / `core.hooksPath` / `.github/workflows/*.yml|*.yaml` の不足があれば `$HOME\.copilot\scripts\sync-to-repo.ps1`、`$HOME\.copilot\scripts\install-git-hooks.ps1`、または対象技術の workflow setup skill で補います。
-`pre-commit` の secret guard は、repo ルートに `.gitleaks.toml` がある場合に staged diff を `gitleaks` で検査します。`gitleaks` 導入前に opt-in していない repo では scan をスキップし、`SECRET_GUARD_REQUIRE_CONFIG=1` を設定した場合だけ設定欠如を hard fail にできます。
+downstream repo の local safety valve を確認するときは `$HOME\.copilot\scripts\repo-secure-check.ps1` を使い、repo instructions / Copilot safety hooks / `.githooks/pre-commit` / `.githooks/pre-push` / `.githooks/lib/*.sh` / `core.hooksPath` / `.github/workflows/*.yml|*.yaml` の不足があれば `$HOME\.copilot\scripts\sync-to-repo.ps1`、`$HOME\.copilot\scripts\install-git-hooks.ps1`、または対象技術の workflow setup skill で補います。
+secret protection は 5 層で扱います: Copilot `preToolUse` が AI の `git commit` / `git push` / `gh pr create` を早期チェックし、Git `pre-commit` が staged content を commit 前に fail-closed scan し、Git `pre-push` が push range を再検査し、`repo-secure-check.ps1` が導入漏れを見つけ、GitHub Actions / secret scanning / push protection が remote fail-safe になります。
+`pre-commit` / `pre-push` の secret guard は `gitleaks` を必須とします。repo ルートに `.gitleaks.toml` がある場合はそれを使い、無い場合は gitleaks default rules で検査します。allowlist は `.gitleaks.toml` に明示し、secret 値は `--redact=100` で出力を抑制します。
 
 ### Context continuity and daily furikaeri
 
@@ -189,11 +190,11 @@ This repository uses a GitHub Actions quality gate on every PR:
 
 Edit `.gitleaks.toml` to add allowlist entries for documentation example placeholders
 that should not be treated as real secrets.
-The local `pre-commit` hook reuses the same `.gitleaks.toml`, so allowlist tuning is shared between local commits and CI for repositories that opt in to gitleaks scanning by adding the config file.
+The local `pre-commit` and `pre-push` hooks reuse the same `.gitleaks.toml` when it exists; if it does not exist, gitleaks default rules still run. Keep allowlist entries narrow so local hooks and CI share the same exceptions without hiding real credentials.
 
 ### Troubleshooting: gitleaks not found in PATH
 
-If you see the error `gitleaks is required for the pre-commit secret scan, but it was not found`, the hook cannot locate the gitleaks binary. Follow these steps to resolve it:
+If the hook reports that `gitleaks` is required for the Git secret scan but cannot be found, it cannot locate the gitleaks binary. Follow these steps to resolve it:
 
 #### Step 1: Find the gitleaks executable path
 

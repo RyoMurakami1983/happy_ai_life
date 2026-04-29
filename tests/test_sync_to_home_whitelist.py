@@ -435,3 +435,80 @@ def test_guard_pre_tool_blocks_remove_item_force_recurse_in_any_order(tmp_path: 
     assert result.returncode == 0, result.stdout + result.stderr
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "deny"
+
+
+def test_guard_pre_tool_blocks_ai_git_commit_no_verify(tmp_path: Path) -> None:
+    script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
+    result = subprocess.run(
+        [
+            _powershell_executable(),
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            "$payload = @{ toolName = 'powershell'; toolArgs = (@{ command = 'git commit -n -m test' } | ConvertTo-Json -Compress) } | ConvertTo-Json -Compress; $payload | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'" % (_powershell_executable(), script),
+        ],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "bypass Git hooks" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_blocks_ai_git_commit_combined_no_verify_short_flags(tmp_path: Path) -> None:
+    script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
+    result = subprocess.run(
+        [
+            _powershell_executable(),
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            "$payload = @{ toolName = 'powershell'; toolArgs = (@{ command = 'git commit -nam test' } | ConvertTo-Json -Compress) } | ConvertTo-Json -Compress; $payload | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'" % (_powershell_executable(), script),
+        ],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "bypass Git hooks" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_blocks_ai_git_commit_when_gitleaks_is_missing(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+    (repo / "secret.txt").write_text("SECRET_MARKER\n", encoding="utf-8")
+    add = subprocess.run(["git", "add", "secret.txt"], cwd=repo, check=False, capture_output=True, text=True)
+    assert add.returncode == 0, add.stdout + add.stderr
+
+    script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
+    result = subprocess.run(
+        [
+            _powershell_executable(),
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            "$env:GITLEAKS_BIN = 'missing-gitleaks'; $payload = @{ toolName = 'powershell'; toolArgs = (@{ command = 'git commit -m test' } | ConvertTo-Json -Compress) } | ConvertTo-Json -Compress; $payload | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'" % (_powershell_executable(), script),
+        ],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "gitleaks is required" in response["permissionDecisionReason"]

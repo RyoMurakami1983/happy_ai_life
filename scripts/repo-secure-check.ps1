@@ -45,6 +45,45 @@ function Test-DirectoryHasEntries {
     return $null -ne (Get-ChildItem -LiteralPath $Path -Force | Select-Object -First 1)
 }
 
+function Get-RequiredGitHookIssues {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $issues = @()
+    $requiredRelativePaths = @(
+        "pre-commit",
+        "pre-push",
+        "lib\secret-guard.sh",
+        "lib\commit-safety-guard.sh"
+    )
+
+    foreach ($relativePath in $requiredRelativePaths) {
+        if (-not (Test-Path -LiteralPath (Join-Path $Path $relativePath) -PathType Leaf)) {
+            $issues += $relativePath
+        }
+    }
+
+    $preCommitPath = Join-Path $Path "pre-commit"
+    if (Test-Path -LiteralPath $preCommitPath -PathType Leaf) {
+        $preCommit = Get-Content -LiteralPath $preCommitPath -Raw
+        if ($preCommit -notmatch "commit-safety-guard\.sh") {
+            $issues += "pre-commit does not call commit-safety-guard.sh"
+        }
+        if ($preCommit -notmatch "secret-guard\.sh") {
+            $issues += "pre-commit does not call secret-guard.sh"
+        }
+    }
+
+    $prePushPath = Join-Path $Path "pre-push"
+    if (Test-Path -LiteralPath $prePushPath -PathType Leaf) {
+        $prePush = Get-Content -LiteralPath $prePushPath -Raw
+        if ($prePush -notmatch "secret-guard\.sh" -or $prePush -notmatch "--range") {
+            $issues += "pre-push does not call secret-guard.sh --range"
+        }
+    }
+
+    return $issues
+}
+
 function Test-RequiredCopilotSafetyHook {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -170,7 +209,8 @@ elseif ($hasOnlyDotNetTemplateWithoutDotNetProject) {
 else {
     $githubWorkflowsDetails = ".github/workflows に YAML workflow が存在します。repo の技術スタックと runtime に合う内容かは onboarding で確認してください。"
 }
-$gitHooksOk = Test-DirectoryHasEntries -Path $gitHooksPath
+$gitHookIssues = @(Get-RequiredGitHookIssues -Path $gitHooksPath)
+$gitHooksOk = $gitHookIssues.Count -eq 0
 $coreHooksOk = $false
 $coreHooksDetails = ""
 
@@ -206,7 +246,7 @@ $checks = @(
         -Label ".githooks" `
         -Ok $gitHooksOk `
         -Path $gitHooksPath `
-        -Details ($(if ($gitHooksOk) { ".githooks が存在します。" } else { ".githooks がありません。" }))),
+        -Details ($(if ($gitHooksOk) { ".githooks に pre-commit / pre-push / secret-guard / commit-safety-guard が存在し、pre-commit / pre-push から呼び出されています。" } else { ".githooks の必須 hook が不足または未接続です: $($gitHookIssues -join ', ')" }))),
     (New-CheckResult `
         -Key "githubWorkflows" `
         -Label "GitHub Actions workflows" `
