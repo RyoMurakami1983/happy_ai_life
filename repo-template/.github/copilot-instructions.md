@@ -19,8 +19,8 @@
 - `.instructions.md` は言語やファイル種別に閉じた局所ルールを担う。
 
 ## 調査の原則
-- 根拠の優先順位は `repo 内 source of truth` → `GitHub official docs` → `Context7` → `その他の公開資料` とする。
-- GitHub / Copilot / MCP / Actions のように仕様が変わりやすい領域は official docs を優先し、Context7 は補助情報として使う。
+- 根拠の優先順位は `repo 内 source of truth` → `GitHub official docs` → `installed plugins` → `その他の公開資料` とする。
+- GitHub / Copilot / Actions / plugin のように仕様が変わりやすい領域は official docs を優先し、外部 plugin や公開資料は補助情報として使う。
 - 結論は `事実` / `推論` / `未確認事項` に分け、曖昧さを埋めない。
 - 構造判断と実行順序は分け、調査結果をそのまま実装へ流し込まない。
 

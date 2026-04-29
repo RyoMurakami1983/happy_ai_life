@@ -14,9 +14,6 @@ from typing import TextIO
 
 ROOT_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = ROOT_DIR / "scripts"
-HOME_COPILOT_DIR = Path.home() / ".copilot"
-MCP_CONFIG_FILENAME = "mcp-config.json"
-MCP_CONFIG_SAMPLE_FILENAME = "mcp-config.sample.json"
 ALLOW_POLICY_BYPASS_ENV = "HAPPY_ENV_ALLOW_POLICY_BYPASS"
 
 
@@ -72,21 +69,6 @@ def build_home_sync_arguments(
         arguments.append("-VerboseLog")
     return tuple(arguments)
 
-
-
-def build_mcp_config_notes(destination_path: Path = HOME_COPILOT_DIR) -> tuple[str, ...]:
-    sample_path = destination_path / MCP_CONFIG_SAMPLE_FILENAME
-    live_path = destination_path / MCP_CONFIG_FILENAME
-    if live_path.exists() or not sample_path.exists():
-        return ()
-
-    return (
-        "MCP 設定はまだ初期化されていません。",
-        f"'{destination_path}' 配下で '{sample_path.name}' を '{live_path.name}' にコピーしてください。",
-        "API キーなどの secret は user-owned な live file にだけ設定し、ホーム同期ではそのファイルを上書きしません。",
-    )
-
-
 def decode_process_output(data: bytes) -> str:
     if not data:
         return ""
@@ -123,7 +105,6 @@ def run_home_sync(*, mirror: bool = False, dry_run: bool = False, verbose_log: b
         "sync-to-home.ps1",
         tuple(arguments),
         label="ホーム同期",
-        notes=build_mcp_config_notes(),
     )
 
 
@@ -428,7 +409,7 @@ def build_option_summary_improved(*, dry_run: bool, verbose_log: bool) -> str:
     
     lines.append("")
     lines.append("ホーム同期は skills/ と agents/ を filesystem diff で比較し、同名更新時は archive を残して置き換えます。")
-    lines.append("repo-template/ と .github/hooks/ は managed surface として同期し、mcp-config.json や docs/furikaeri など user-owned 領域は保護されます。")
+    lines.append("repo-template/ と .github/hooks/ は managed surface として同期し、docs/furikaeri など user-owned 領域は保護されます。")
     
     if verbose_log:
         lines.append("")

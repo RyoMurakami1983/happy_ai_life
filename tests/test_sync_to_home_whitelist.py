@@ -79,7 +79,6 @@ def _create_minimal_source_root(base: Path) -> Path:
     (copilot_dir / "agents" / "tdd-coder.agent.md").write_text("# agent\n", encoding="utf-8")
     (copilot_dir / "docs" / "furikaeri" / ".gitkeep").write_text("\n", encoding="utf-8")
     (copilot_dir / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (copilot_dir / "mcp-config.sample.json").write_text("{}", encoding="utf-8")
     (copilot_dir / "config.json").write_text('{"runtime":true}', encoding="utf-8")
     (copilot_dir / "session-state").mkdir()
 
@@ -127,6 +126,7 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     archive_root = tmp_path / "archive"
     destination.mkdir(parents=True)
     (destination / "config.json").write_text('{"user":true}', encoding="utf-8")
+    (destination / "mcp-config.json").write_text('{"user":true}', encoding="utf-8")
     (destination / "session-state").mkdir()
     (destination / "keep.txt").write_text("keep", encoding="utf-8")
 
@@ -142,10 +142,11 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     assert (destination / "scripts" / "repo-secure-check.ps1").exists()
     assert (destination / "scripts" / "home_sync_planner.py").exists()
     assert (destination / "copilot-instructions.md").exists()
-    assert (destination / "mcp-config.sample.json").exists()
+    assert not (destination / "mcp-config.sample.json").exists()
     assert (destination / "docs" / "furikaeri" / ".gitkeep").exists()
     assert (destination / "keep.txt").read_text(encoding="utf-8") == "keep"
     assert (destination / "config.json").read_text(encoding="utf-8") == '{"user":true}'
+    assert (destination / "mcp-config.json").read_text(encoding="utf-8") == '{"user":true}'
     assert (destination / "session-state").exists()
 
 

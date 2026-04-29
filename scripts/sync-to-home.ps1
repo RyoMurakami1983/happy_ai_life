@@ -590,10 +590,6 @@ $trackedFilePlans = @(
         Plan = (Get-TrackedFilePlan -Source (Join-Path $templateRoot "copilot-instructions.md") -Destination (Join-Path $destinationPath "copilot-instructions.md") -PreviewPath "copilot-instructions.md")
     },
     [pscustomobject]@{
-        Label = "mcp-config.sample.json"
-        Plan = (Get-TrackedFilePlan -Source (Join-Path $templateRoot "mcp-config.sample.json") -Destination (Join-Path $destinationPath "mcp-config.sample.json") -PreviewPath "mcp-config.sample.json")
-    },
-    [pscustomobject]@{
         Label = "scripts/sync-to-repo.ps1"
         Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "sync-to-repo.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "sync-to-repo.ps1") -PreviewPath "scripts/sync-to-repo.ps1")
     },
@@ -661,9 +657,3 @@ Write-SyncSummary `
     -DryRunMode:$DryRun
 
 Write-SyncMarkers -PreviewState $previewState -WhatIfMode:$DryRun
-
-$mcpSamplePath = Join-Path $destinationPath "mcp-config.sample.json"
-$mcpLivePath = Join-Path $destinationPath "mcp-config.json"
-if (-not (Test-Path -LiteralPath $mcpLivePath) -and (Test-Path -LiteralPath $mcpSamplePath)) {
-    Write-Warning "mcp-config.json is user-owned and was not synced. Copy mcp-config.sample.json to mcp-config.json in $destinationPath and fill your API keys."
-}

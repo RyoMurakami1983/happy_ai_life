@@ -11,7 +11,7 @@
 この方式は、新しい runtime directory や未把握の local file が増えるたびに除外更新が必要で、安全性を blacklist の網羅性に依存していた。
 
 この repository の home sync で本当に配りたいものは限定されている。  
-具体的には、skills、instructions、sample の MCP 設定であり、live の `mcp-config.json` や runtime data を transport 層が判断して触る必要はない。
+具体的には、skills、instructions、furikaeri docs、最小限の narrow agent であり、live の `mcp-config.json` や runtime data を transport 層が判断して触る必要はない。
 
 ## 判断
 
@@ -20,8 +20,9 @@
   - `skills/`
   - `docs/furikaeri/`
   - `copilot-instructions.md`
-  - `mcp-config.sample.json`
-- `mcp-config.json` は user-owned live file として維持し、home sync では作成も上書きもしない
+  - `agents/tdd-coder.agent.md`
+- `mcp-config.json` は user-owned live file として維持し、home sync では作成・上書き・削除しない
+- `mcp-config.sample.json` は配布しない。Context7 が必要な場合は外部 Copilot CLI plugin として導入する
 - `--mirror` / `-Mirror` は CLI 互換のため残すが、home sync では無視する
 - 削除を伴う mirror semantics は repo sync のみに残す
 
@@ -29,7 +30,7 @@
 
 - whitelist copy は「守る対象を列挙する」のではなく「配る対象だけを列挙する」ため、新しい runtime data の追加に強い
 - home sync の責務は transport であり、HOME 側 live data の整理や削除判断まで持つべきではない
-- `mcp-config.sample.json` と `mcp-config.json` を分ける既存方針と整合する
+- MCP config sample の配布をやめることで、外部 tool 接続の live 設定を repo 側の bootstrap と混同しない
 - GUI / CLI の warning を repo sync に寄せると、home sync の挙動説明が実態と一致する
 
 ## トレードオフ
@@ -56,6 +57,12 @@ home sync は既存の `%USERPROFILE%\.copilot\agents\` を削除せず、legacy
 
 2026-04 の Phase 3 では、`/fleet` または明示指名で使う narrow specialist として `agents/tdd-coder.agent.md` だけを tracked file として戻した。  
 ただし home sync が配る custom agent はこの 1 体だけとし、`agents/` 配下の他ファイルは削除せず warning で手動 cleanup を促す。
+
+## 補遺: Phase 4 — MCP config sample 配布撤退
+
+2026-04-29 の Copilot CLI plugin 配布方式移行で、`mcp-config.sample.json` は home sync の tracked 対象から外した。
+
+live `%USERPROFILE%\.copilot\mcp-config.json` は引き続き user-owned file とし、home sync は作成・上書き・削除しない。Context7 はこの repo の MCP sample ではなく、外部 Copilot CLI plugin として案内する。
 
 ## 状態
 
