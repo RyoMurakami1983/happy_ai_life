@@ -38,8 +38,8 @@ if ([string]::IsNullOrWhiteSpace($toolName)) {
     exit 0
 }
 
-# Only guard bash tool calls (same intent as your python version)
-if ($toolName -ne "bash") {
+# Guard shell command tools. Windows Copilot CLI reports PowerShell tool use as "powershell".
+if ($toolName -notin @("bash", "powershell")) {
     exit 0
 }
 
@@ -71,6 +71,9 @@ $denyPatterns = @(
     "\breboot\b",                      # reboot
     "\binit\s+0\b",                    # init 0
     "\bpoweroff\b",                    # poweroff
+    "\bstop-computer\b",               # Stop-Computer
+    "\brestart-computer\b",            # Restart-Computer
+    "(?=.*\bremove-item\b)(?=.*(?:^|\s)-recurse(?:\s|$))(?=.*(?:^|\s)-force(?:\s|$))", # Remove-Item with -Recurse and -Force in any order
     "\bgit\s+push\s+--force\b",        # git push --force
     "\bgit\s+reset\s+--hard\b"         # git reset --hard
 )

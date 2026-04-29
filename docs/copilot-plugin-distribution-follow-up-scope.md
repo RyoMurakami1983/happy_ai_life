@@ -22,7 +22,7 @@ The excluded items are not rejected. They are deferred because each one changes 
 
 - **Marketplace publication** changes discovery, metadata, release, and user install paths.
 - **MCP server / MCP Registry work** changes the repo from prompt/workflow distribution into tool integration.
-- **Plugin hooks** can affect Copilot CLI behavior beyond one target repository.
+- **Plugin hooks / user-level hooks** can affect Copilot CLI behavior beyond one target repository.
 - **Plugin commands / bootstrap automation** can write into target repositories and must be dry-run-first and reviewable.
 - **Generator-based packaging** changes the source-of-truth model between `home-template/.copilot/` and `plugins/happy-ai-life/`.
 
@@ -36,7 +36,7 @@ It may document future paths, but it must not implement them. In particular:
 
 - `plugins/happy-ai-life` remains the curated first distribution surface.
 - `home-template/.copilot/` remains the author/trusted-environment bootstrap source.
-- repo-local instructions and hooks remain delivered through existing repo bootstrap scripts, not plugin install side effects.
+- repo-local instructions and hooks remain delivered through existing repo bootstrap scripts, not plugin install side effects. Generic safety behavior is handled by trusted home sync through `%USERPROFILE%\.copilot\config.json`.
 - live `%USERPROFILE%\.copilot\mcp-config.json` remains user-owned and must not be deleted or rewritten.
 - Context7 is treated as an external Copilot CLI plugin marketplace path, not as this repository's MCP config sample.
 
@@ -104,15 +104,15 @@ copilot plugin install happy-ai-life@happy-ai-life-marketplace
 
 **Purpose**: decide whether any existing hook behavior belongs in the plugin package rather than repo-local `.github/hooks/`.
 
-**Current decision**: session continuity hooks are sealed as a default workflow. Only generic safety behavior remains a plugin-hook candidate, and it must pass a minimal path-resolution / ordering spike before becoming primary.
+**Current decision**: session continuity hooks are sealed as a default workflow. Generic safety behavior uses the official user-level `%USERPROFILE%\.copilot\config.json` hook surface via trusted home sync. Plugin hooks remain a future candidate only if a supported install path passes a minimal path-resolution / ordering spike.
 
 **Acceptance criteria / conditions**:
 
-- Copilot CLI plugin hook event semantics are verified with a minimal test plugin before migrating existing hooks. The current direct/local smoke did not execute plugin hooks reliably, so repo-scoped `safety-guard.json` remains the fallback until the supported install path passes.
+- Copilot CLI user-level hook behavior is verified through `%USERPROFILE%\.copilot\config.json` or `COPILOT_HOME` smoke before becoming primary. Plugin hook event semantics must still be verified with a minimal test plugin before migrating behavior into the plugin package. The current direct/local smoke did not execute plugin hooks reliably, so plugin hooks are not primary.
 - Hook scope is documented: plugin-level behavior must not be confused with repo-scoped `.github/hooks/`.
 - Only non-mutating or low-risk hooks are considered first.
 - Any hook that writes files, blocks tool use, or changes session behavior has an explicit opt-in path and rollback instructions.
-- Existing `.github/hooks/` remains the source of truth for repo-scoped hook implementation unless a new ADR changes that boundary. Default repo sync uses `SafetyOnly`; `session-continuity.json` is legacy opt-in. Plugin hook productionization is blocked until hook loading, script path resolution, and coexistence with repo hooks are proven.
+- Existing `.github/hooks/` remains the source of truth for repo-scoped hook implementation unless a new ADR changes that boundary. Default repo sync uses `SafetyOnly`; `session-continuity.json` is legacy opt-in. User-level generic safety is managed through home sync; plugin hook productionization is blocked until hook loading, script path resolution, and coexistence with repo hooks are proven.
 
 ### 4. Plugin commands / repo bootstrap automation
 

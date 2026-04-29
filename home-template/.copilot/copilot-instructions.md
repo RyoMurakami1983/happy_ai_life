@@ -50,7 +50,7 @@
 
 ## 優先
 - リポジトリ固有の instructions がある場合は常にそちらを優先する。
-- hooks は generic safety を将来的な plugin hook 候補、repo 固有のものを repository-scoped `.github/hooks/` に分ける。plugin hook は path resolution / ordering の smoke が通るまで primary safety とせず、HOME 配下に独自 hook 実装を置かない。
+- generic safety hook は `%USERPROFILE%\.copilot\config.json` の user-level hook を正本にし、home sync が managed entry だけを upsert する。repo 固有の hook は repository-scoped `.github/hooks/` に置く。plugin hook は path resolution / ordering の smoke が通るまで primary safety としない。
 - custom skill / agent / repository instructions の作成・改善・検証は `copilot-authoring` を入口にする。`skill` と `create-agents` はその内部ルートとして扱い、repo-wide と path-specific instructions はそこで整理する。
 - planning / research / review などの built-in 機能が使える環境では、それらを優先して使う。詳細なディスパッチルールはリポジトリの `.github/copilot-instructions.md` を参照。
 - custom agent は例外的に狭い specialist だけを許容し、現在の配布対象は `tdd-coder` のみとする。仕様・設計・計画の入口としては使わない。

@@ -77,7 +77,7 @@ uv run app.py home
    uv run app.py home --dry-run
    ```
 
-   `repo-template/` の managed surface、bootstrap 用 scripts、`copilot-instructions.md` の変更予定が表示されます。`skills/`、`agents/`、`docs/`、公式の home hook surface である `%USERPROFILE%\.copilot\hooks` は plugin install / user-owned surface として home sync では触りません。過去版が誤って運んだ inert な `%USERPROFILE%\.copilot\.github\hooks` 配下の既知ファイルだけは migration cleanup として削除対象にします。
+   `repo-template/` の managed surface、bootstrap 用 scripts、`copilot-instructions.md`、user-level safety hook の変更予定が表示されます。`skills/`、`agents/`、`docs/` は plugin install / user-owned surface として home sync では触りません。過去版が誤って運んだ inert な `%USERPROFILE%\.copilot\.github\hooks` 配下の既知ファイルだけは migration cleanup として削除対象にします。
 
 2. 問題なければ本適用
 
@@ -87,7 +87,7 @@ uv run app.py home
 
 ### Repo-local bootstrap: instructions and hooks
 
-repo instructions、path-specific instructions、Copilot safety hooks、Git client hooks は target repo のローカル資産として配布します。plugin install では target repo を変更しません。
+repo instructions、path-specific instructions、Git client hooks は target repo のローカル資産として配布します。plugin install では target repo を変更しません。Copilot の generic safety hook は `%USERPROFILE%\.copilot\config.json` の user-level hook として home sync が upsert し、repo-scoped `safety-guard.json` は fallback / repo-specific safety として維持します。
 
 ```powershell
 %USERPROFILE%\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo -DryRun
@@ -113,8 +113,9 @@ Copilot hooks は既定で `SafetyOnly` mode です。`sessionStart` / `sessionE
 > - `scripts/install-git-hooks.ps1`
 > - `scripts/repo-secure-check.ps1`
 > - `copilot-instructions.md`
->
-> `repo-template/` は managed surface として template に無い項目を削除します。`skills/`、`agents/`、`docs/`、公式の home hook surface である `%USERPROFILE%\.copilot\hooks`、既存の `%USERPROFILE%\.copilot\` 配下にある runtime data、live `mcp-config.json` のような user-owned file は削除・更新しません。例外として、過去版の home sync が作成した inert な `%USERPROFILE%\.copilot\.github\hooks` 配下の既知ファイルは公式 hook path ではないため削除します。未知ファイルがある場合は user-owned の可能性を優先して残します。
+> - `hooks/scripts/guard_pre_tool.ps1`
+> - `config.json` の managed safety hook entry
+> `repo-template/` は managed surface として template に無い項目を削除します。`skills/`、`agents/`、`docs/`、既存の `%USERPROFILE%\.copilot\` 配下にある runtime data、live `mcp-config.json` のような user-owned file は削除・更新しません。`config.json` は丸ごと上書きせず、`env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"` を持つ managed hook entry だけを置換・追加し、他の設定や user-owned hook entry は保持します。例外として、過去版の home sync が作成した inert な `%USERPROFILE%\.copilot\.github\hooks` 配下の既知ファイルは公式 hook path ではないため削除します。未知ファイルがある場合は user-owned の可能性を優先して残します。
 > home sync の dry-run は robocopy ログではなく、自前の filesystem diff を正本にしています。repo sync の `-Mirror`（`$HOME\.copilot\scripts\sync-to-repo.ps1 -Mirror`）は引き続き同期先にのみ存在するファイルを**完全削除**するため、使用前に必ず `-DryRun` で事前確認してください。
 
 ### First run when `uv` is missing
