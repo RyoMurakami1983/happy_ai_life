@@ -102,6 +102,8 @@ repo instructions、path-specific instructions、Copilot safety hooks、Git clie
 
 Copilot hooks は既定で `SafetyOnly` mode です。`sessionStart` / `sessionEnd` による repo-local session continuity は標準運用から封印済みのため、既定配布では `session-continuity.json` を除外します。legacy repo で明示的に必要な場合だけ `-HooksMode All` を指定してください。
 
+`repo-secure-check.ps1` は `.github/workflows/*.yml|*.yaml` も確認します。workflow は repo の言語・runtime・組織ポリシーに依存するため、不足時は `repo-onboarding` で対象技術に合う template を選び、意図を確認してから導入してください。
+
 > **注意: `home` sync の同期境界について**
 > home sync は次の境界で挙動が分かれます。
 > - `repo-template/`
@@ -143,7 +145,7 @@ uv sync --dev
 変更時は、同期先への影響（scripts、hooks、workflows、instructions）を確認してください。
 Skill / Agent / repository instructions authoring の公開入口は plugin package の `plugins/happy-ai-life/skills/copilot-authoring` です。設計は `design-workshop`、計画は PLAN mode を使い、custom agent は原則増やさず、必要時だけ `tdd-coder` のような narrow specialist を `/fleet` または明示指名で使います。repo-wide と path-specific instructions は `copilot-authoring` 配下の instructions authoring ルートで扱い、常時読み込む rule と詳細 workflow を分離します。実装中の独立 gate は `implementation-eval-gate` を使い、`/sdd` から bootstrap checkpoint → contract checkpoint → generator → eval の順でつなぎます。
 Git の client hooks は `repo-template/.githooks/` を正本にし、`core.hooksPath` で有効化します。GitHub の branch protection / ruleset は別途必須です。
-downstream repo の local safety valve を確認するときは `$HOME\.copilot\scripts\repo-secure-check.ps1` を使い、repo instructions / Copilot safety hooks / `.githooks` / `core.hooksPath` の不足があれば `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1` で補います。
+downstream repo の local safety valve を確認するときは `$HOME\.copilot\scripts\repo-secure-check.ps1` を使い、repo instructions / Copilot safety hooks / `.githooks` / `core.hooksPath` / `.github/workflows/*.yml|*.yaml` の不足があれば `$HOME\.copilot\scripts\sync-to-repo.ps1`、`$HOME\.copilot\scripts\install-git-hooks.ps1`、または対象技術の workflow setup skill で補います。
 `pre-commit` の secret guard は、repo ルートに `.gitleaks.toml` がある場合に staged diff を `gitleaks` で検査します。`gitleaks` 導入前に opt-in していない repo では scan をスキップし、`SECRET_GUARD_REQUIRE_CONFIG=1` を設定した場合だけ設定欠如を hard fail にできます。
 
 ### Context continuity and daily furikaeri

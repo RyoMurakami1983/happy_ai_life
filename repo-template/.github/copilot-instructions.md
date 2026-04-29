@@ -59,6 +59,7 @@
 - Serial / VISA / database / LAN / file I/O / DAQ / hardware / OS 連携の局所ルールは `.github/instructions/infrastructure.instructions.md` に寄せる。
 - repo-scoped Copilot hooks は `.github/hooks/*.json` と `.github/hooks/scripts/` に置く。ただし標準 bootstrap は safety guard を中心にし、session continuity hooks は必要な repo だけ明示 opt-in する。
 - Git client hooks は `.githooks/` に配置し `core.hooksPath` で有効化する。
+- GitHub Actions workflow は `.github/workflows/*.yml|*.yaml` に置く。repo-secure-check で不足した場合は、対象技術に合う template を明示的に選んで導入する。
 - `.github/sessions/` と `.github/instructions/session-context.instructions.md` は legacy session continuity hook 生成物として、配布先の `.github/.gitignore` でローカル扱いにする。
 - コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
 - 仕様、設定、使い方、設計判断が変わる場合は README、関連 docs、ADR も更新する。

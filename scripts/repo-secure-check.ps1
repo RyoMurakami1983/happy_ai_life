@@ -55,6 +55,28 @@ function Test-RequiredCopilotSafetyHook {
     return Test-Path -LiteralPath (Join-Path $Path "safety-guard.json") -PathType Leaf
 }
 
+function Get-GitHubWorkflowFiles {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+        return @()
+    }
+
+    return @(Get-ChildItem -LiteralPath $Path -File -Force | Where-Object {
+        $_.Extension -in @(".yml", ".yaml")
+    })
+}
+
+function Test-DotNetProject {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $dotNetEntry = Get-ChildItem -LiteralPath $Path -Recurse -File -Force | Where-Object {
+        $_.Extension -in @(".csproj", ".vbproj", ".fsproj", ".sln", ".slnx") -and $_.FullName -notmatch "\\.git\\"
+    } | Select-Object -First 1
+
+    return $null -ne $dotNetEntry
+}
+
 function Test-GitRepository {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -69,6 +91,7 @@ if (-not (Test-Path -LiteralPath $targetRepoPath)) {
 
 $instructionsPath = Join-Path $targetRepoPath ".github\copilot-instructions.md"
 $copilotHooksPath = Join-Path $targetRepoPath ".github\hooks"
+$githubWorkflowsPath = Join-Path $targetRepoPath ".github\workflows"
 $gitHooksPath = Join-Path $targetRepoPath ".githooks"
 $sourceRootPath = [System.IO.Path]::GetFullPath($SourceRoot)
 
@@ -99,6 +122,25 @@ if ($isGitRepo) {
 
 $instructionsOk = Test-Path -LiteralPath $instructionsPath -PathType Leaf
 $copilotHooksOk = Test-RequiredCopilotSafetyHook -Path $copilotHooksPath
+$githubWorkflowFiles = @(Get-GitHubWorkflowFiles -Path $githubWorkflowsPath)
+$githubWorkflowNames = @($githubWorkflowFiles | ForEach-Object { $_.Name })
+$hasDotNetProject = Test-DotNetProject -Path $targetRepoPath
+$hasOnlyDotNetTemplateWithoutDotNetProject = (
+    $githubWorkflowNames.Count -eq 1 `
+        -and $githubWorkflowNames[0] -eq "dotnet-quality.yml" `
+        -and -not $hasDotNetProject
+)
+$githubWorkflowsOk = $githubWorkflowFiles.Count -gt 0 -and -not $hasOnlyDotNetTemplateWithoutDotNetProject
+$githubWorkflowsDetails = ""
+if ($githubWorkflowFiles.Count -eq 0) {
+    $githubWorkflowsDetails = ".github/workflows/*.yml または *.yaml がありません。repo-onboarding で repo の技術スタックに合う workflow template を明示的に導入してください。"
+}
+elseif ($hasOnlyDotNetTemplateWithoutDotNetProject) {
+    $githubWorkflowsDetails = ".github/workflows/dotnet-quality.yml は存在しますが、.NET project が検出されません。repo の技術スタックに合う workflow template を明示的に選んでください。"
+}
+else {
+    $githubWorkflowsDetails = ".github/workflows に YAML workflow が存在します。repo の技術スタックと runtime に合う内容かは onboarding で確認してください。"
+}
 $gitHooksOk = Test-DirectoryHasEntries -Path $gitHooksPath
 $coreHooksOk = $false
 $coreHooksDetails = ""
@@ -136,6 +178,12 @@ $checks = @(
         -Ok $gitHooksOk `
         -Path $gitHooksPath `
         -Details ($(if ($gitHooksOk) { ".githooks が存在します。" } else { ".githooks がありません。" }))),
+    (New-CheckResult `
+        -Key "githubWorkflows" `
+        -Label "GitHub Actions workflows" `
+        -Ok $githubWorkflowsOk `
+        -Path $githubWorkflowsPath `
+        -Details $githubWorkflowsDetails),
     (New-CheckResult `
         -Key "coreHooksPath" `
         -Label "core.hooksPath" `

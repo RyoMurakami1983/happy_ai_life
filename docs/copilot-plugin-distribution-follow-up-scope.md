@@ -108,11 +108,11 @@ copilot plugin install happy-ai-life@happy-ai-life-marketplace
 
 **Acceptance criteria / conditions**:
 
-- Copilot CLI plugin hook event semantics are verified with a minimal test plugin before migrating existing hooks.
+- Copilot CLI plugin hook event semantics are verified with a minimal test plugin before migrating existing hooks. The current direct/local smoke did not execute plugin hooks reliably, so repo-scoped `safety-guard.json` remains the fallback until the supported install path passes.
 - Hook scope is documented: plugin-level behavior must not be confused with repo-scoped `.github/hooks/`.
 - Only non-mutating or low-risk hooks are considered first.
 - Any hook that writes files, blocks tool use, or changes session behavior has an explicit opt-in path and rollback instructions.
-- Existing `.github/hooks/` remains the source of truth for repo-scoped hook implementation unless a new ADR changes that boundary. Default repo sync uses `SafetyOnly`; `session-continuity.json` is legacy opt-in.
+- Existing `.github/hooks/` remains the source of truth for repo-scoped hook implementation unless a new ADR changes that boundary. Default repo sync uses `SafetyOnly`; `session-continuity.json` is legacy opt-in. Plugin hook productionization is blocked until hook loading, script path resolution, and coexistence with repo hooks are proven.
 
 ### 4. Plugin commands / repo bootstrap automation
 

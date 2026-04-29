@@ -47,7 +47,7 @@ bootstrap 完了までを onboarding の一部として扱います。
 ### ステップ 3 — bootstrap が必要かを判定する
 
 target repo を今後触る依頼なら、`repo-secure-check` で
-`repo instructions / Copilot hooks / .githooks / core.hooksPath` の不足を確認します。
+`repo instructions / Copilot hooks / .githooks / core.hooksPath / GitHub Actions workflows` の不足を確認します。
 この判定を先に置く理由は、安全弁が欠けたまま onboarding を完了扱いにしないためです。
 
 ### ステップ 4 — 不足があれば bootstrap を実行する
@@ -62,11 +62,14 @@ script の既定値で `%USERPROFILE%\.copilot` を `SourceRoot` として扱い
 - `%USERPROFILE%\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath <repo>`
 
 ここでは **「提案した」で止めず、script 実行結果まで確認する** のが重要です。
-`repo-secure-check` の 4 項目がすべて `OK` になるまでを bootstrap 完了条件として扱います。
+`repo-secure-check` の各項目がすべて `OK` になるまでを bootstrap 完了条件として扱います。
+`.github/workflows/*.yml|*.yaml` が不足している場合は、repo の技術スタックに合う workflow template を明示的に選び、
+必要な skill または `sync-to-repo.ps1` の導線で導入します。CI workflow は組織・言語ごとに差が出るため、
+ユーザーに黙って汎用 workflow を追加せず、意図と対象 runtime を確認してから実行します。
 
 ### ステップ 5 — ディレクトリと入口を要約する
 
-`repoInstructions / Copilot hooks / .githooks / core.hooksPath` がすべて `OK` になったら、
+`repoInstructions / Copilot hooks / .githooks / core.hooksPath / GitHub Actions workflows` がすべて `OK` になったら、
 主要ディレクトリの役割を要約し、エントリーポイント候補を特定します。
 
 ### ステップ 6 — テスト導線を確認する
@@ -96,7 +99,7 @@ script の既定値で `%USERPROFILE%\.copilot` を `SourceRoot` として扱い
 - まず全体像をつかみ、細部に潜りすぎない
 - 見つけたコマンドは、設定ファイルや README に根拠があるものを優先する
 - 学習用の説明では「何が入口か」を明確にする
-- local safety valve が不足している repo は、その事実を先に明示し、必要なら repo bootstrap を提案してから深掘りする
+- local safety valve や GitHub Actions workflow が不足している repo は、その事実を先に明示し、必要なら repo bootstrap を提案してから深掘りする
 - ただし downstream repo を触る flow では、**提案で止めず** `.github/` と `.githooks/` の同期、`core.hooksPath` 設定、再チェック完了までを bootstrap の一部として扱う
-- `.github` がない repo を「onboarding 完了」とは扱わない。最低でも `repo-secure-check` の4項目が `OK` になってから本調査へ進む
+- `.github` がない repo を「onboarding 完了」とは扱わない。最低でも `repo-secure-check` の各項目が `OK` になってから本調査へ進む
 - `%USERPROFILE%\.copilot\scripts\` が存在しない、または script 実行に失敗した場合だけ、その事実を block として明示して止まる
