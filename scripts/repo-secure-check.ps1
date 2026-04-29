@@ -45,14 +45,62 @@ function Test-DirectoryHasEntries {
     return $null -ne (Get-ChildItem -LiteralPath $Path -Force | Select-Object -First 1)
 }
 
-function Test-DirectoryHasJsonFiles {
+function Test-RequiredCopilotSafetyHook {
     param([Parameter(Mandatory = $true)][string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
         return $false
     }
 
-    return $null -ne (Get-ChildItem -LiteralPath $Path -File -Filter "*.json" -Force | Select-Object -First 1)
+    return Test-Path -LiteralPath (Join-Path $Path "safety-guard.json") -PathType Leaf
+}
+
+function Get-GitHubWorkflowFiles {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+        return @()
+    }
+
+    return @(Get-ChildItem -LiteralPath $Path -File -Force | Where-Object {
+        $_.Extension -in @(".yml", ".yaml")
+    })
+}
+
+function Test-DotNetProject {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $excludedDirectoryNames = @(".git", "node_modules", "bin", "obj")
+    $dotNetExtensions = @(".csproj", ".vbproj", ".fsproj", ".sln", ".slnx")
+    $pendingDirectories = [System.Collections.Generic.Stack[string]]::new()
+    $pendingDirectories.Push($Path)
+
+    while ($pendingDirectories.Count -gt 0) {
+        $currentDirectory = $pendingDirectories.Pop()
+        try {
+            $entries = Get-ChildItem -LiteralPath $currentDirectory -Force -ErrorAction Stop
+        }
+        catch {
+            continue
+        }
+
+        foreach ($entry in $entries) {
+            if ($entry.PSIsContainer) {
+                if ($excludedDirectoryNames -contains $entry.Name) {
+                    continue
+                }
+
+                $pendingDirectories.Push($entry.FullName)
+                continue
+            }
+
+            if ($dotNetExtensions -contains $entry.Extension) {
+                return $true
+            }
+        }
+    }
+
+    return $false
 }
 
 function Test-GitRepository {
@@ -69,6 +117,7 @@ if (-not (Test-Path -LiteralPath $targetRepoPath)) {
 
 $instructionsPath = Join-Path $targetRepoPath ".github\copilot-instructions.md"
 $copilotHooksPath = Join-Path $targetRepoPath ".github\hooks"
+$githubWorkflowsPath = Join-Path $targetRepoPath ".github\workflows"
 $gitHooksPath = Join-Path $targetRepoPath ".githooks"
 $sourceRootPath = [System.IO.Path]::GetFullPath($SourceRoot)
 
@@ -98,7 +147,29 @@ if ($isGitRepo) {
 }
 
 $instructionsOk = Test-Path -LiteralPath $instructionsPath -PathType Leaf
-$copilotHooksOk = Test-DirectoryHasJsonFiles -Path $copilotHooksPath
+$copilotHooksOk = Test-RequiredCopilotSafetyHook -Path $copilotHooksPath
+$githubWorkflowFiles = @(Get-GitHubWorkflowFiles -Path $githubWorkflowsPath)
+$githubWorkflowNames = @($githubWorkflowFiles | ForEach-Object { $_.Name })
+$shouldCheckDotNetTemplateCompatibility = $githubWorkflowNames.Count -eq 1 -and $githubWorkflowNames[0] -eq "dotnet-quality.yml"
+$hasDotNetProject = $false
+if ($shouldCheckDotNetTemplateCompatibility) {
+    $hasDotNetProject = Test-DotNetProject -Path $targetRepoPath
+}
+$hasOnlyDotNetTemplateWithoutDotNetProject = (
+    $shouldCheckDotNetTemplateCompatibility `
+        -and -not $hasDotNetProject
+)
+$githubWorkflowsOk = $githubWorkflowFiles.Count -gt 0 -and -not $hasOnlyDotNetTemplateWithoutDotNetProject
+$githubWorkflowsDetails = ""
+if ($githubWorkflowFiles.Count -eq 0) {
+    $githubWorkflowsDetails = ".github/workflows/*.yml または *.yaml がありません。repo-onboarding で repo の技術スタックに合う workflow template を明示的に導入してください。"
+}
+elseif ($hasOnlyDotNetTemplateWithoutDotNetProject) {
+    $githubWorkflowsDetails = ".github/workflows/dotnet-quality.yml は存在しますが、.NET project が検出されません。repo の技術スタックに合う workflow template を明示的に選んでください。"
+}
+else {
+    $githubWorkflowsDetails = ".github/workflows に YAML workflow が存在します。repo の技術スタックと runtime に合う内容かは onboarding で確認してください。"
+}
 $gitHooksOk = Test-DirectoryHasEntries -Path $gitHooksPath
 $coreHooksOk = $false
 $coreHooksDetails = ""
@@ -129,13 +200,19 @@ $checks = @(
         -Label "Copilot hooks" `
         -Ok $copilotHooksOk `
         -Path $copilotHooksPath `
-        -Details ($(if ($copilotHooksOk) { "Copilot hooks の JSON 設定が存在します。" } else { "Copilot hooks の JSON 設定がありません。" }))),
+        -Details ($(if ($copilotHooksOk) { "Copilot safety hook safety-guard.json が存在します。session continuity hooks は標準運用から封印済みで、必要な repo だけ明示 opt-in します。" } else { "Copilot safety hook safety-guard.json がありません。" }))),
     (New-CheckResult `
         -Key "gitHooksDirectory" `
         -Label ".githooks" `
         -Ok $gitHooksOk `
         -Path $gitHooksPath `
         -Details ($(if ($gitHooksOk) { ".githooks が存在します。" } else { ".githooks がありません。" }))),
+    (New-CheckResult `
+        -Key "githubWorkflows" `
+        -Label "GitHub Actions workflows" `
+        -Ok $githubWorkflowsOk `
+        -Path $githubWorkflowsPath `
+        -Details $githubWorkflowsDetails),
     (New-CheckResult `
         -Key "coreHooksPath" `
         -Label "core.hooksPath" `

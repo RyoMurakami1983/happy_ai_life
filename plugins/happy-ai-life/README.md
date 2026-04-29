@@ -27,10 +27,13 @@ copilot plugin marketplace remove happy-ai-life-marketplace
 
 ## Included assets
 
-- `skills/` — source of truth for reusable Copilot CLI skills distributed by this plugin
+- `skills/` — source of truth for reusable Copilot CLI skills distributed by this plugin, including the daily `furikaeri-practice` workflow
 - `agents/` — source of truth for narrow custom agents distributed by this plugin, including `tdd-coder.agent.md`
 
-This first package intentionally does not include MCP server configuration, plugin hooks, plugin commands, or repo-local instructions.
+This package intentionally does not include MCP server configuration, plugin hooks, plugin commands, or repo-local instructions.
+Plugin hooks remain deferred until hook loading, script path resolution, and coexistence with repo-scoped hooks pass smoke validation through the supported marketplace-based install path.
+
+`sessionStart` / `sessionEnd` based repo-local context continuity is sealed as a default workflow. Use `furikaeri-practice` for explicit daily reflection, with `/chronicle standup` when experimental mode is available and `/share file session` only when a raw session export is intentionally needed.
 
 ## Maintainer note
 

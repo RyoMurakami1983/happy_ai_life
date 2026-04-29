@@ -10,6 +10,9 @@ param(
     [string]$DocsFurikaeriRelativePath = "repo-template\docs\furikaeri",
     # 母艦の hooks/ を配布先にも展開する。空文字を渡すとスキップ。
     [string]$HooksRelativePath = ".github\hooks",
+    # Copilot hooks の配布範囲。sessionStart/sessionEnd は既定では封印し、明示時のみ配布する。
+    [ValidateSet("SafetyOnly", "All", "None")]
+    [string]$HooksMode = "SafetyOnly",
     # Git client hooks のテンプレート。target repo の .githooks に同期する。
     [string]$GitHooksRelativePath = "repo-template\.githooks",
     [switch]$Mirror,
@@ -215,6 +218,32 @@ function Merge-AppendOnlyFile {
     [System.IO.File]::AppendAllText($Destination, $appendContent, [System.Text.UTF8Encoding]::new($false))
 }
 
+function Remove-SealedSessionContinuityArtifacts {
+    param(
+        [Parameter(Mandatory = $true)][string]$TargetRepoRoot,
+        [switch]$WhatIfMode
+    )
+
+    $sealedPaths = @(
+        (Join-Path $TargetRepoRoot ".github\hooks\session-continuity.json"),
+        (Join-Path $TargetRepoRoot ".github\instructions\session-context.instructions.md")
+    )
+
+    foreach ($sealedPath in $sealedPaths) {
+        if (-not (Test-Path -LiteralPath $sealedPath -PathType Leaf)) {
+            continue
+        }
+
+        if ($WhatIfMode) {
+            Write-Host "Would remove sealed session continuity artifact: $sealedPath" -ForegroundColor Yellow
+            continue
+        }
+
+        Remove-Item -LiteralPath $sealedPath -Force
+        Write-Host "Removed sealed session continuity artifact: $sealedPath" -ForegroundColor Yellow
+    }
+}
+
 function Invoke-Robocopy {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
@@ -326,6 +355,7 @@ if (-not (Test-Path -LiteralPath $targetRepoPath)) {
 
 # repo-template では .github/hooks を保持しない。
 # repo 用 hooks の正本は母艦 .github/hooks で、Step 2 でのみ配布する。
+# sessionStart/sessionEnd の自動保存は封印済みのため、既定では safety guard のみ配布する。
 $excludeDirs = @(
     ".git",
     ".vs",
@@ -349,6 +379,7 @@ Write-Host "Source      : $sourcePath"
 Write-Host "Destination : $destinationPath"
 Write-Host "Mirror      : $Mirror"
 Write-Host "DryRun      : $DryRun"
+Write-Host "HooksMode   : $HooksMode"
 
 $duplicateHooksPath = Join-Path $sourcePath "hooks"
 Warn-IfPathExists `
@@ -372,23 +403,39 @@ Merge-AppendOnlyFile `
     -Destination $githubGitIgnoreDestinationPath `
     -WhatIfMode:$DryRun
 
-# --- 2. .github/hooks/ → 配布先 .github/hooks/ （$HooksRelativePath が空ならスキップ）---
-if (-not [string]::IsNullOrWhiteSpace($HooksRelativePath)) {
+# --- 2. .github/hooks/ → 配布先 .github/hooks/ （$HooksRelativePath が空、または HooksMode=None ならスキップ）---
+$shouldSyncHooks = (-not [string]::IsNullOrWhiteSpace($HooksRelativePath)) -and $HooksMode -ne "None"
+if ($shouldSyncHooks) {
     Write-Section "Sync hooks to target repository (.github/hooks)"
 
     $hooksSourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $HooksRelativePath))
     $hooksDestinationPath = Join-Path $targetRepoPath ".github\hooks"
+    $hooksExcludeFiles = @($excludeFiles)
+    if ($HooksMode -eq "SafetyOnly") {
+        $hooksExcludeFiles += "session-continuity.json"
+    }
 
     Write-Host "Source      : $hooksSourcePath"
     Write-Host "Destination : $hooksDestinationPath"
+    Write-Host "HooksMode   : $HooksMode"
+    if ($HooksMode -eq "SafetyOnly") {
+        Write-Host "Note        : sessionStart/sessionEnd continuity hooks are sealed and excluded by default." -ForegroundColor Yellow
+    }
 
     Invoke-Robocopy `
         -Source $hooksSourcePath `
         -Destination $hooksDestinationPath `
-        -ExcludeFiles $excludeFiles `
+        -ExcludeFiles $hooksExcludeFiles `
         -MirrorMode:$Mirror `
         -WhatIfMode:$DryRun `
         -ShowVerboseLog:$VerboseLog
+
+}
+
+if ($shouldSyncHooks -and $HooksMode -eq "SafetyOnly") {
+    Remove-SealedSessionContinuityArtifacts `
+        -TargetRepoRoot $targetRepoPath `
+        -WhatIfMode:$DryRun
 }
 
 # --- 3. repo-template/.githooks/ → 配布先 .githooks/ ---

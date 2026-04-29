@@ -450,7 +450,7 @@ Write-Host ""
 $unsupportedHooksPath = Join-Path $templateRoot "hooks"
 Warn-IfPathExists `
     -Path $unsupportedHooksPath `
-    -Message "home-template/.copilot/hooks is ignored. Officially supported hook configuration is repository-scoped under .github/hooks."
+    -Message "home-template/.copilot/hooks is ignored. Use plugin hooks for generic behavior and repo sync for explicit repo-scoped hooks."
 
 if (-not (Test-Path -LiteralPath $destinationPath)) {
     New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
@@ -461,15 +461,34 @@ if ($Mirror) {
 }
 
 $previewState = New-PreviewState
+$legacyHomeHooksPath = Join-Path $destinationPath ".github\hooks"
+$legacyHomeGithubPath = Join-Path $destinationPath ".github"
+$legacyHomeHookRelativeFiles = @(
+    "session-continuity.json",
+    "safety-guard.json",
+    "scripts\guard_pre_tool.ps1",
+    "scripts\guard_pre_tool.sh",
+    "scripts\session-end.js",
+    "scripts\session-start.js",
+    "scripts\lib\decision-validation.js",
+    "scripts\lib\session-utils.js"
+)
+$legacyHomeHookFiles = New-Object System.Collections.Generic.List[string]
+foreach ($relativeFile in $legacyHomeHookRelativeFiles) {
+    $candidate = Join-Path $legacyHomeHooksPath $relativeFile
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+        [void]$legacyHomeHookFiles.Add($candidate)
+    }
+}
+if ($legacyHomeHookFiles.Count -gt 0) {
+    Add-PreviewItems -PreviewState $previewState -Bucket Deleted -Items @(".github/hooks known legacy files")
+    Write-Host "Legacy home hook transport detected: $legacyHomeHooksPath" -ForegroundColor Yellow
+}
 
 $directoryPlans = @(
     [pscustomobject]@{
         Label = "repo-template/ (managed)"
         Plan = (Get-DirectorySyncPlan -Source (Join-Path $sourceRootPath "repo-template") -Destination (Join-Path $destinationPath "repo-template") -PreviewRoot "repo-template" -MirrorMode)
-    },
-    [pscustomobject]@{
-        Label = ".github/hooks/ (managed)"
-        Plan = (Get-DirectorySyncPlan -Source (Join-Path (Join-Path $sourceRootPath ".github") "hooks") -Destination (Join-Path (Join-Path $destinationPath ".github") "hooks") -PreviewRoot ".github/hooks" -MirrorMode)
     }
 )
 
@@ -526,6 +545,16 @@ if (-not $DryRun) {
     foreach ($entry in $trackedFilePlans) {
         foreach ($action in @($entry.Plan.Actions)) {
             Invoke-FileAction -Action $action
+        }
+    }
+
+    foreach ($legacyHookFile in $legacyHomeHookFiles) {
+        Remove-PathItem -Path $legacyHookFile
+    }
+    if ($legacyHomeHookFiles.Count -gt 0) {
+        Remove-EmptyDirectories -Root $legacyHomeGithubPath
+        if ((Test-Path -LiteralPath $legacyHomeGithubPath) -and @(Get-ChildItem -LiteralPath $legacyHomeGithubPath -Force).Count -eq 0) {
+            Remove-Item -LiteralPath $legacyHomeGithubPath -Force
         }
     }
 }

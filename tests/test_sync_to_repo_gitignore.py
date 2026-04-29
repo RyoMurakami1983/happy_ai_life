@@ -34,6 +34,7 @@ def _run_sync(
     target_repo: Path,
     *,
     dry_run: bool,
+    hooks_mode: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     command = [
         _powershell_executable(),
@@ -53,6 +54,8 @@ def _run_sync(
         "-DocsSessionsRelativePath",
         "",
     ]
+    if hooks_mode is not None:
+        command.extend(["-HooksMode", hooks_mode])
     if dry_run:
         command.append("-DryRun")
 
@@ -81,6 +84,55 @@ def _create_minimal_source_root(base: Path) -> Path:
         encoding="utf-8",
     )
     return base
+
+
+def _create_source_root_with_hooks(base: Path) -> Path:
+    source_root = _create_minimal_source_root(base)
+    hooks_root = source_root / ".github" / "hooks"
+    hooks_root.mkdir(parents=True)
+    (hooks_root / "safety-guard.json").write_text("{}", encoding="utf-8")
+    (hooks_root / "session-continuity.json").write_text("{}", encoding="utf-8")
+    return source_root
+
+
+def _run_hooks_sync(
+    source_root: Path,
+    target_repo: Path,
+    *,
+    hooks_mode: str | None = None,
+    dry_run: bool = False,
+    mirror: bool = False,
+) -> subprocess.CompletedProcess[str]:
+    command = [
+        _powershell_executable(),
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(SCRIPT),
+        "-SourceRoot",
+        str(source_root),
+        "-TargetRepoPath",
+        str(target_repo),
+        "-GitHooksRelativePath",
+        "",
+        "-DocsSessionsRelativePath",
+        "",
+    ]
+    if hooks_mode is not None:
+        command.extend(["-HooksMode", hooks_mode])
+    if dry_run:
+        command.append("-DryRun")
+    if mirror:
+        command.append("-Mirror")
+
+    return subprocess.run(
+        command,
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
 
 
 def test_sync_to_repo_preserves_existing_github_gitignore_on_dry_run(tmp_path: Path) -> None:
@@ -133,3 +185,139 @@ def test_sync_to_repo_creates_missing_github_gitignore(tmp_path: Path) -> None:
     assert "sessions/" in content
     assert "instructions/session-context.instructions.md" in content
     assert (target_repo / ".github" / "instructions" / "python.instructions.md").exists()
+
+
+def test_sync_to_repo_safety_only_excludes_session_continuity_hook(tmp_path: Path) -> None:
+    source_root = _create_source_root_with_hooks(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_hooks_sync(source_root, target_repo, hooks_mode="SafetyOnly")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (target_repo / ".github" / "hooks" / "safety-guard.json").exists()
+    assert not (target_repo / ".github" / "hooks" / "session-continuity.json").exists()
+
+
+def test_sync_to_repo_default_hooks_mode_is_safety_only(tmp_path: Path) -> None:
+    source_root = _create_source_root_with_hooks(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_hooks_sync(source_root, target_repo)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (target_repo / ".github" / "hooks" / "safety-guard.json").exists()
+    assert not (target_repo / ".github" / "hooks" / "session-continuity.json").exists()
+
+
+def test_sync_to_repo_safety_only_removes_existing_session_continuity_hook(tmp_path: Path) -> None:
+    source_root = _create_source_root_with_hooks(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    hooks_dir = target_repo / ".github" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    stale_hook = hooks_dir / "session-continuity.json"
+    stale_hook.write_text("{}", encoding="utf-8")
+
+    result = _run_hooks_sync(source_root, target_repo, hooks_mode="SafetyOnly", mirror=True)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (hooks_dir / "safety-guard.json").exists()
+    assert not stale_hook.exists()
+    assert "Removed sealed session continuity artifact" in result.stdout
+
+
+def test_sync_to_repo_safety_only_dry_run_preserves_existing_session_continuity_hook(tmp_path: Path) -> None:
+    source_root = _create_source_root_with_hooks(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    hooks_dir = target_repo / ".github" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    stale_hook = hooks_dir / "session-continuity.json"
+    stale_hook.write_text("{}", encoding="utf-8")
+
+    result = _run_hooks_sync(source_root, target_repo, hooks_mode="SafetyOnly", dry_run=True, mirror=True)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert stale_hook.exists()
+    assert "Would remove sealed session continuity artifact" in result.stdout
+
+
+def test_sync_to_repo_safety_only_removes_existing_session_context_instruction(tmp_path: Path) -> None:
+    source_root = _create_source_root_with_hooks(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    instructions_dir = target_repo / ".github" / "instructions"
+    instructions_dir.mkdir(parents=True)
+    stale_instruction = instructions_dir / "session-context.instructions.md"
+    stale_instruction.write_text("# stale context\n", encoding="utf-8")
+
+    result = _run_hooks_sync(source_root, target_repo, hooks_mode="SafetyOnly")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not stale_instruction.exists()
+    assert "Removed sealed session continuity artifact" in result.stdout
+
+
+def test_sync_to_repo_hooks_mode_all_includes_session_continuity_hook(tmp_path: Path) -> None:
+    source_root = _create_source_root_with_hooks(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_hooks_sync(source_root, target_repo, hooks_mode="All")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (target_repo / ".github" / "hooks" / "safety-guard.json").exists()
+    assert (target_repo / ".github" / "hooks" / "session-continuity.json").exists()
+
+
+def test_sync_to_repo_hooks_mode_none_skips_hooks(tmp_path: Path) -> None:
+    source_root = _create_source_root_with_hooks(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_hooks_sync(source_root, target_repo, hooks_mode="None")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (target_repo / ".github" / "hooks").exists()
+
+
+def test_sync_to_repo_empty_hooks_path_skips_sealed_artifact_cleanup(tmp_path: Path) -> None:
+    source_root = _create_source_root_with_hooks(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    stale_hook = target_repo / ".github" / "hooks" / "session-continuity.json"
+    stale_instruction = target_repo / ".github" / "instructions" / "session-context.instructions.md"
+    stale_hook.parent.mkdir(parents=True)
+    stale_instruction.parent.mkdir(parents=True)
+    stale_hook.write_text("{}", encoding="utf-8")
+    stale_instruction.write_text("# stale context\n", encoding="utf-8")
+
+    command = [
+        _powershell_executable(),
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(SCRIPT),
+        "-SourceRoot",
+        str(source_root),
+        "-TargetRepoPath",
+        str(target_repo),
+        "-HooksRelativePath",
+        "",
+        "-GitHooksRelativePath",
+        "",
+        "-DocsSessionsRelativePath",
+        "",
+        "-HooksMode",
+        "SafetyOnly",
+    ]
+    result = subprocess.run(
+        command,
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert stale_hook.exists()
+    assert stale_instruction.exists()
