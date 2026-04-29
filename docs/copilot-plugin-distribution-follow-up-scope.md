@@ -2,14 +2,21 @@
 
 ## Background
 
-The first plugin-distribution implementation intentionally uses the smallest safe distribution path:
+The first plugin-distribution implementation intentionally used the smallest safe distribution path:
 
 ```powershell
 copilot plugin install RyoMurakami1983/happy_ai_life_coding_Environment:plugins/happy-ai-life
 ```
 
-This is the current Option A: a direct Copilot CLI plugin install from `plugins/happy-ai-life`.
-It moves reusable skills and the narrow `tdd-coder` agent into an isolated plugin package without treating marketplace publication, repo bootstrap automation, plugin hooks, or MCP server work as part of the first change.
+This was the initial Option A: a direct Copilot CLI plugin install from `plugins/happy-ai-life`, now kept only as a deprecated fallback.
+It moved reusable skills and the narrow `tdd-coder` agent into an isolated plugin package without treating marketplace publication, repo bootstrap automation, plugin hooks, or MCP server work as part of the first change.
+
+Phase 2 promotes that same plugin package through this repository's owner-managed marketplace because Copilot CLI warns that direct repository, URL, and local path installs are deprecated:
+
+```powershell
+copilot plugin marketplace add RyoMurakami1983/happy_ai_life_coding_Environment
+copilot plugin install happy-ai-life@happy-ai-life-marketplace
+```
 
 The excluded items are not rejected. They are deferred because each one changes a different boundary:
 
@@ -19,11 +26,11 @@ The excluded items are not rejected. They are deferred because each one changes 
 - **Plugin commands / bootstrap automation** can write into target repositories and must be dry-run-first and reviewable.
 - **Generator-based packaging** changes the source-of-truth model between `home-template/.copilot/` and `plugins/happy-ai-life/`.
 
-Keeping these out of the first implementation protects non-destructive behavior and lets reviewers validate the direct plugin install path before broader distribution surfaces are added.
+Keeping these out protects non-destructive behavior and lets reviewers validate the marketplace install path before broader distribution surfaces are added.
 
-## Relationship to current direct plugin install work
+## Relationship to current repo-owned marketplace work
 
-Current work should only prove that `plugins/happy-ai-life` is installable and useful as a Copilot CLI plugin package.
+Current work should only prove that `plugins/happy-ai-life` is installable and useful through this repository's marketplace manifest.
 
 It may document future paths, but it must not implement them. In particular:
 
@@ -59,17 +66,24 @@ The follow-up work should still exclude:
 
 ## Future items and acceptance criteria
 
-### 1. Marketplace publication
+### 1. Public/default marketplace publication
 
-**Purpose**: make `happy-ai-life` discoverable through a Copilot CLI plugin marketplace instead of requiring a direct repository subdirectory install command.
+**Purpose**: make `happy-ai-life` discoverable through a public/default Copilot CLI plugin marketplace instead of requiring users to add this repository as an owner-managed marketplace.
+
+The repo-owned marketplace path is the preferred intermediate step:
+
+```powershell
+copilot plugin marketplace add RyoMurakami1983/happy_ai_life_coding_Environment
+copilot plugin install happy-ai-life@happy-ai-life-marketplace
+```
 
 **Acceptance criteria / conditions**:
 
-- A marketplace manifest is added only after the direct install path is stable.
+- A repo-owned marketplace manifest exists and is stable before any public/default marketplace submission.
 - The marketplace entry points to the same reviewed plugin root: `plugins/happy-ai-life`.
 - Metadata includes name, description, repository, versioning approach, and any limitations that affect install behavior.
 - Install, list, update if supported, and uninstall are validated from the marketplace path.
-- The direct install path remains documented as a fallback until marketplace install is proven reliable.
+- The direct install path remains documented only as a deprecated fallback while Copilot CLI still supports it.
 - The publication path does not introduce MCP config, plugin hooks, or repo bootstrap automation implicitly.
 
 ### 2. MCP server / MCP Registry work

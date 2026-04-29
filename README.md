@@ -11,19 +11,35 @@
 
 ## Getting Started
 
-### Primary: Copilot CLI plugin install
+### Primary: Copilot CLI marketplace install
 
-公開・共有用途では、まず plugin を直接インストールします。
+公開・共有用途では、この repo を owner-managed marketplace として追加してから plugin をインストールします。
 
 ```powershell
-copilot plugin install RyoMurakami1983/happy_ai_life_coding_Environment:plugins/happy-ai-life
+copilot plugin marketplace add RyoMurakami1983/happy_ai_life_coding_Environment
+copilot plugin install happy-ai-life@happy-ai-life-marketplace
 ```
 
 この plugin は `plugins/happy-ai-life` の curated package で、reusable skills と narrow agent（`tdd-coder`）を配布します。repo-local instructions、hooks、Git client hooks、MCP server 設定は plugin install の副作用として書き込みません。
 
-Copilot CLI の plugin install は marketplace、GitHub repository、Git URL、GitHub repository subdirectory を対象にします。ローカル checkout では package 構造を確認し、branch push 後に GitHub subdirectory install を smoke test してください。
+Copilot CLI は direct repository / URL / local path install を deprecated として警告するため、primary path は `plugin@marketplace` 形式にします。`copilot plugin marketplace add <owner>/<repo>` は通常 default branch の manifest を読むため、ローカル checkout では package 構造を確認し、merge 前の smoke test が必要な場合は repo root を marketplace として add して確認してください。remote の marketplace add / browse / install は default branch 反映後に実施します。
 
-> GitHub subdirectory install は primary public path として記載していますが、この作業では remote branch に plugin package が存在するまで実機検証済みとは扱いません。branch push 後に smoke test してください。
+既に direct install 版を使っている場合は、marketplace 版と共存して重複表示されるため、先に direct install 版を uninstall してから marketplace 版を入れてください。
+
+```powershell
+copilot plugin uninstall happy-ai-life
+copilot plugin marketplace add RyoMurakami1983/happy_ai_life_coding_Environment
+copilot plugin install happy-ai-life@happy-ai-life-marketplace
+```
+
+Direct install は短期的な fallback としては動作しますが、今後の Copilot CLI では unsupported になる可能性があるため primary path にはしません。
+
+marketplace 版の plugin と marketplace 登録を外す場合は、plugin を先に uninstall してから marketplace を remove します。
+
+```powershell
+copilot plugin uninstall happy-ai-life@happy-ai-life-marketplace
+copilot plugin marketplace remove happy-ai-life-marketplace
+```
 
 ### Optional: Context7 external plugin
 
