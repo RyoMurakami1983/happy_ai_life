@@ -2,12 +2,12 @@
 
 ## 保存先
 
-- `docs/furikaeri/YYYYMMDD-HHmmss-タイトル.md`
 - `.copilot/docs/furikaeri/YYYYMMDD-HHmmss-タイトル.md`
+- `docs/furikaeri/YYYYMMDD-HHmmss-タイトル.md`（repo 共有が必要な場合のみ）
 
 ## ルール
 
-- repo 用と home 用は同じ basename にする
+- home 保存を主とする。repo にも共有する場合は home 用と同じ basename にする
 - `()` は使わない
 - 禁止文字は置換する
 - 長すぎるタイトルは短くする

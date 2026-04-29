@@ -1,8 +1,10 @@
 # Session Continuity Hooks — MVP 実装記録
 
 **日付**: 2026-03-27  
-**ステータス**: MVP 実装完了、公式仕様適合済み、テンプレート配備済み  
+**ステータス**: Superseded — `session-continuity-retirement` により標準運用から封印
 **ブランチ**: `feat/session-continuity-hooks`
+
+> **現行補足**: この ADR は MVP 実装記録として保持する。現在は `sessionStart` / `sessionEnd` による repo-local continuity を標準配布せず、必要な legacy repo だけ `sync-to-repo.ps1 -HooksMode All` で opt-in する。
 
 ---
 
@@ -183,4 +185,3 @@ cat .github/instructions/session-context.instructions.md
 
 - [仕様書（素案）](../local_references/session-continuity-spec.md) — 旧 ECC との比較、設計判断の根拠
 - [Hooks Configuration Reference](https://docs.github.com/en/copilot/reference/hooks-configuration) — 公式 hook イベント仕様
-

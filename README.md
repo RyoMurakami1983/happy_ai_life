@@ -77,7 +77,7 @@ uv run app.py home
    uv run app.py home --dry-run
    ```
 
-   `repo-template/` と `.github/hooks/` の managed surface、bootstrap 用 scripts、`copilot-instructions.md` の変更予定が表示されます。`skills/`、`agents/`、`docs/` は plugin install / user-owned surface として home sync では触りません。
+   `repo-template/` の managed surface、bootstrap 用 scripts、`copilot-instructions.md` の変更予定が表示されます。`skills/`、`agents/`、`docs/`、公式の home hook surface である `%USERPROFILE%\.copilot\hooks` は plugin install / user-owned surface として home sync では触りません。過去版が誤って運んだ inert な `%USERPROFILE%\.copilot\.github\hooks` 配下の既知ファイルだけは migration cleanup として削除対象にします。
 
 2. 問題なければ本適用
 
@@ -87,7 +87,7 @@ uv run app.py home
 
 ### Repo-local bootstrap: instructions and hooks
 
-repo instructions、path-specific instructions、Copilot hooks、Git client hooks は target repo のローカル資産として配布します。plugin install では target repo を変更しません。
+repo instructions、path-specific instructions、Copilot safety hooks、Git client hooks は target repo のローカル資産として配布します。plugin install では target repo を変更しません。
 
 ```powershell
 %USERPROFILE%\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath C:\path\to\your-repo -DryRun
@@ -100,10 +100,11 @@ repo instructions、path-specific instructions、Copilot hooks、Git client hook
 
 `sync-to-repo.ps1` は `repo-template/.github/` を target repo に配布するため、`.github/copilot-instructions.md` と `.github/instructions/*.instructions.md` もこの導線で入ります。`/sdd` で pilot / downstream repo を触る前に、target repo 側へこの配布が済んでいるか、`git init` 済みか、fixed build/test/launch command があるか確認してください。
 
+Copilot hooks は既定で `SafetyOnly` mode です。`sessionStart` / `sessionEnd` による repo-local session continuity は標準運用から封印済みのため、既定配布では `session-continuity.json` を除外します。legacy repo で明示的に必要な場合だけ `-HooksMode All` を指定してください。
+
 > **注意: `home` sync の同期境界について**
 > home sync は次の境界で挙動が分かれます。
 > - `repo-template/`
-> - `.github/hooks/`
 >
 > さらに次の tracked 項目を追加・更新します。
 > - `scripts/sync-to-repo.ps1`
@@ -111,7 +112,7 @@ repo instructions、path-specific instructions、Copilot hooks、Git client hook
 > - `scripts/repo-secure-check.ps1`
 > - `copilot-instructions.md`
 >
-> `repo-template/` と `.github/hooks/` は managed surface として template に無い項目を削除します。`skills/`、`agents/`、`docs/`、既存の `%USERPROFILE%\.copilot\` 配下にある runtime data、live `mcp-config.json` のような user-owned file は削除・更新しません。
+> `repo-template/` は managed surface として template に無い項目を削除します。`skills/`、`agents/`、`docs/`、公式の home hook surface である `%USERPROFILE%\.copilot\hooks`、既存の `%USERPROFILE%\.copilot\` 配下にある runtime data、live `mcp-config.json` のような user-owned file は削除・更新しません。例外として、過去版の home sync が作成した inert な `%USERPROFILE%\.copilot\.github\hooks` 配下の既知ファイルは公式 hook path ではないため削除します。未知ファイルがある場合は user-owned の可能性を優先して残します。
 > home sync の dry-run は robocopy ログではなく、自前の filesystem diff を正本にしています。repo sync の `-Mirror`（`$HOME\.copilot\scripts\sync-to-repo.ps1 -Mirror`）は引き続き同期先にのみ存在するファイルを**完全削除**するため、使用前に必ず `-DryRun` で事前確認してください。
 
 ### First run when `uv` is missing
@@ -142,8 +143,14 @@ uv sync --dev
 変更時は、同期先への影響（scripts、hooks、workflows、instructions）を確認してください。
 Skill / Agent / repository instructions authoring の公開入口は plugin package の `plugins/happy-ai-life/skills/copilot-authoring` です。設計は `design-workshop`、計画は PLAN mode を使い、custom agent は原則増やさず、必要時だけ `tdd-coder` のような narrow specialist を `/fleet` または明示指名で使います。repo-wide と path-specific instructions は `copilot-authoring` 配下の instructions authoring ルートで扱い、常時読み込む rule と詳細 workflow を分離します。実装中の独立 gate は `implementation-eval-gate` を使い、`/sdd` から bootstrap checkpoint → contract checkpoint → generator → eval の順でつなぎます。
 Git の client hooks は `repo-template/.githooks/` を正本にし、`core.hooksPath` で有効化します。GitHub の branch protection / ruleset は別途必須です。
-downstream repo の local safety valve を確認するときは `$HOME\.copilot\scripts\repo-secure-check.ps1` を使い、repo instructions / Copilot hooks / `.githooks` / `core.hooksPath` の不足があれば `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1` で補います。
+downstream repo の local safety valve を確認するときは `$HOME\.copilot\scripts\repo-secure-check.ps1` を使い、repo instructions / Copilot safety hooks / `.githooks` / `core.hooksPath` の不足があれば `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1` で補います。
 `pre-commit` の secret guard は、repo ルートに `.gitleaks.toml` がある場合に staged diff を `gitleaks` で検査します。`gitleaks` 導入前に opt-in していない repo では scan をスキップし、`SECRET_GUARD_REQUIRE_CONFIG=1` を設定した場合だけ設定欠如を hard fail にできます。
+
+### Context continuity and daily furikaeri
+
+`sessionStart` / `sessionEnd` hook による repo-local 自動保存は標準運用から封印しました。組織利用では、repo ごとに `.github/sessions/` を増やすのではなく、1 日の終わりに `furikaeri-practice` skill で横断的に整理し、`%USERPROFILE%\.copilot\docs\furikaeri\YYYYMMDD-HHmmss-*.md` に保存する運用を主導線にします。
+
+公式 Copilot CLI の session data、`/chronicle standup`、`/share file session [PATH]` は補助として使います。`/chronicle` は experimental なので必須前提にせず、`/share gist` は明示依頼がある場合だけ使います。
 
 interactive app を **比較用 pilot** として進める場合は、通常の build/test/launch command に加えて、次の comparable harness contract を先に固定します。
 

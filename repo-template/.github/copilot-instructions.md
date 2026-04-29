@@ -57,17 +57,17 @@
 - 言語別の追加ルールは `.github/instructions/*.instructions.md` を参照し、このファイルに重複記載しない。
 - XAML / binding / MVVM の局所ルールは `.github/instructions/xaml.instructions.md` に寄せる。
 - Serial / VISA / database / LAN / file I/O / DAQ / hardware / OS 連携の局所ルールは `.github/instructions/infrastructure.instructions.md` に寄せる。
-- フック運用の正本は `.github/hooks/*.json` と `.github/hooks/scripts/` のみとする。
+- repo-scoped Copilot hooks は `.github/hooks/*.json` と `.github/hooks/scripts/` に置く。ただし標準 bootstrap は safety guard を中心にし、session continuity hooks は必要な repo だけ明示 opt-in する。
 - Git client hooks は `.githooks/` に配置し `core.hooksPath` で有効化する。
-- `.github/sessions/` と `.github/instructions/session-context.instructions.md` は hook 生成物として、配布先の `.github/.gitignore` でローカル扱いにする。
+- `.github/sessions/` と `.github/instructions/session-context.instructions.md` は legacy session continuity hook 生成物として、配布先の `.github/.gitignore` でローカル扱いにする。
 - コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
 - 仕様、設定、使い方、設計判断が変わる場合は README、関連 docs、ADR も更新する。
 <!-- TODO: このプロジェクト固有の慣習があれば追記する -->
 
 ## セッション終了ワークフロー
 - 「ふりかえり」→ `furikaeri-practice` skill を発火。詳細手順は skill 内に定義済み。
-- 共有保存も `furikaeri-practice` の中で進め、`docs/furikaeri/` に残す。
-- `/exit` 直接入力時は sessionEnd hook が機械的 YWT を生成する。
+- 共有保存も `furikaeri-practice` の中で進め、まず home の `.copilot/docs/furikaeri/` に残し、必要なものだけ `docs/furikaeri/` に共有する。
+- `/exit` 直接入力時の sessionEnd 自動 YWT 生成は標準運用から封印済み。日次ふりかえりを明示実行する。
 
 ## 優先順位
 1. 正確さと安全性

@@ -125,7 +125,7 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert (destination / "repo-template" / ".github" / "copilot-instructions.md").exists()
-    assert (destination / ".github" / "hooks" / "scripts" / "sample.js").exists()
+    assert not (destination / ".github" / "hooks" / "scripts" / "sample.js").exists()
     assert (destination / "scripts" / "sync-to-repo.ps1").exists()
     assert (destination / "scripts" / "install-git-hooks.ps1").exists()
     assert (destination / "scripts" / "repo-secure-check.ps1").exists()
@@ -135,6 +135,59 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     assert (destination / "config.json").read_text(encoding="utf-8") == '{"user":true}'
     assert (destination / "mcp-config.json").read_text(encoding="utf-8") == '{"user":true}'
     assert (destination / "session-state").exists()
+
+
+def test_sync_to_home_removes_legacy_home_hook_transport(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    legacy_hooks = destination / ".github" / "hooks"
+    legacy_hooks.mkdir(parents=True)
+    (legacy_hooks / "session-continuity.json").write_text("{}", encoding="utf-8")
+    (legacy_hooks / "scripts").mkdir()
+    (legacy_hooks / "scripts" / "session-start.js").write_text("console.log('stale');\n", encoding="utf-8")
+
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not legacy_hooks.exists()
+    assert not (destination / ".github").exists()
+    assert "Legacy home hook transport detected" in result.stdout
+
+
+def test_sync_to_home_dry_run_preserves_legacy_home_hook_transport(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    legacy_hooks = destination / ".github" / "hooks"
+    legacy_hooks.mkdir(parents=True)
+    (legacy_hooks / "session-continuity.json").write_text("{}", encoding="utf-8")
+
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=True)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert legacy_hooks.exists()
+    assert "Legacy home hook transport detected" in result.stdout
+
+
+def test_sync_to_home_preserves_unknown_files_under_legacy_home_hook_path(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    legacy_hooks = destination / ".github" / "hooks"
+    legacy_hooks.mkdir(parents=True)
+    known_file = legacy_hooks / "session-continuity.json"
+    unknown_file = legacy_hooks / "custom.json"
+    known_file.write_text("{}", encoding="utf-8")
+    unknown_file.write_text('{"user":true}', encoding="utf-8")
+
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not known_file.exists()
+    assert unknown_file.exists()
+    assert legacy_hooks.exists()
+    assert "Legacy home hook transport detected" in result.stdout
 
 
 def test_sync_to_home_leaves_home_skills_agents_and_docs_untouched(tmp_path: Path) -> None:

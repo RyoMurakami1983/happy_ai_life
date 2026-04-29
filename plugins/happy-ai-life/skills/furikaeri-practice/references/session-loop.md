@@ -6,12 +6,12 @@
 
 ## ループ
 
-1. `session-start` が前回の文脈を注入する
+1. 公式 session data、必要に応じて `/chronicle standup`、または session story から作業を思い出す
 2. `furikaeri-practice` でセッションストーリーをほどき、YWT / KPT を選ぶ
-3. `.github/sessions/` は continuity 用の private log として残る
-4. 共有できるふりかえりを `docs/furikaeri/` と `.copilot/docs/furikaeri/` に保存する
+3. 1 日の終わりは複数 repo / 複数 session を 1 つの日次ふりかえりへまとめる
+4. ふりかえりを `.copilot/docs/furikaeri/` に主保存し、必要なものだけ `docs/furikaeri/` に共有する
 5. 改善種を T / TRY / Issue / 条件付き skill 改善提案 に逃がす
-6. 次回の `session-start` が repo の `docs/furikaeri/` を拾う
+6. 次回は session data、日次ふりかえり、明示された repo docs を材料に再開する
 
 ## 共有文書の読みやすい型
 
@@ -31,6 +31,7 @@
 - 解釈は W / Problem に寄せる
 - 未来の行動は T / Try に寄せる
 - 環境改善は Issue か skill 更新に繋ぐ
+- `/share file session` は raw session export が必要なときだけ明示的に使う
 
 ## 良い循環
 

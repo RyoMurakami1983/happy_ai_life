@@ -89,7 +89,7 @@ def test_repo_secure_check_reports_secure_repo(tmp_path: Path) -> None:
     _git(target_repo, "init")
 
     (target_repo / ".github" / "hooks").mkdir(parents=True)
-    (target_repo / ".github" / "hooks" / "sample.json").write_text("{}", encoding="utf-8")
+    (target_repo / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
     (target_repo / ".githooks").mkdir(parents=True)
     (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
@@ -99,6 +99,8 @@ def test_repo_secure_check_reports_secure_repo(tmp_path: Path) -> None:
 
     assert report["isGitRepo"] is True
     assert report["missing"] == []
+    copilot_hooks_check = next(check for check in report["checks"] if check["key"] == "copilotHooks")
+    assert "session continuity hooks" in copilot_hooks_check["details"]
 
 
 def test_repo_secure_check_requires_copilot_hook_json_files(tmp_path: Path) -> None:
@@ -118,7 +120,27 @@ def test_repo_secure_check_requires_copilot_hook_json_files(tmp_path: Path) -> N
     assert report["isGitRepo"] is True
     assert report["missing"] == ["copilotHooks"]
     copilot_hooks_check = next(check for check in report["checks"] if check["key"] == "copilotHooks")
-    assert "JSON" in copilot_hooks_check["details"]
+    assert "safety-guard.json" in copilot_hooks_check["details"]
+
+
+def test_repo_secure_check_rejects_legacy_session_continuity_hook_without_safety_guard(tmp_path: Path) -> None:
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    (target_repo / ".github" / "hooks").mkdir(parents=True)
+    (target_repo / ".github" / "hooks" / "session-continuity.json").write_text("{}", encoding="utf-8")
+    (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    (target_repo / ".githooks").mkdir(parents=True)
+    (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
+
+    report = _run_check(target_repo)
+
+    assert report["isGitRepo"] is True
+    assert report["missing"] == ["copilotHooks"]
+    copilot_hooks_check = next(check for check in report["checks"] if check["key"] == "copilotHooks")
+    assert "safety-guard.json" in copilot_hooks_check["details"]
 
 
 def test_repo_secure_check_accepts_repo_template_hooks_for_source_repo(tmp_path: Path) -> None:
@@ -127,7 +149,7 @@ def test_repo_secure_check_accepts_repo_template_hooks_for_source_repo(tmp_path:
     _git(target_repo, "init")
 
     (target_repo / ".github" / "hooks").mkdir(parents=True)
-    (target_repo / ".github" / "hooks" / "sample.json").write_text("{}", encoding="utf-8")
+    (target_repo / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
     (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
     (target_repo / ".githooks").mkdir(parents=True)
     (target_repo / ".githooks" / "pre-commit").write_text("#!/usr/bin/env sh\n", encoding="utf-8")

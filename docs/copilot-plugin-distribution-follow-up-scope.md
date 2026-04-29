@@ -104,13 +104,15 @@ copilot plugin install happy-ai-life@happy-ai-life-marketplace
 
 **Purpose**: decide whether any existing hook behavior belongs in the plugin package rather than repo-local `.github/hooks/`.
 
+**Current decision**: session continuity hooks are sealed as a default workflow. Only generic safety behavior remains a plugin-hook candidate, and it must pass a minimal path-resolution / ordering spike before becoming primary.
+
 **Acceptance criteria / conditions**:
 
 - Copilot CLI plugin hook event semantics are verified with a minimal test plugin before migrating existing hooks.
 - Hook scope is documented: plugin-level behavior must not be confused with repo-scoped `.github/hooks/`.
 - Only non-mutating or low-risk hooks are considered first.
 - Any hook that writes files, blocks tool use, or changes session behavior has an explicit opt-in path and rollback instructions.
-- Existing `.github/hooks/` remains the source of truth for repo-scoped hook implementation unless a new ADR changes that boundary.
+- Existing `.github/hooks/` remains the source of truth for repo-scoped hook implementation unless a new ADR changes that boundary. Default repo sync uses `SafetyOnly`; `session-continuity.json` is legacy opt-in.
 
 ### 4. Plugin commands / repo bootstrap automation
 
