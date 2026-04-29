@@ -11,11 +11,11 @@
 
 ## Architecture
 - 公開・共有向けの primary distribution は `plugins/happy-ai-life/` の Copilot CLI plugin とする。
-- 個人用設定の雛形は `home-template/.copilot/` に保持し、trusted local author bootstrap としてだけ home sync する。
+- 個人用設定の雛形は `home-template/.copilot/` に保持し、trusted local author bootstrap としてだけ home sync する。`skills/`、`agents/`、`docs/` は持たせず、開発者自身も plugin install を使う。
 - 配布テンプレートは `repo-template/` に置く。各 repo に同期する際の雛形となる。
 - 同期は `scripts/sync-to-home.ps1` と `scripts/sync-to-repo.ps1` を起点に行う。
 - `app.py` は公開 launcher として既存 PowerShell を呼ぶ。内部実装は Python module に置いても、同期ロジックの正本は `scripts/` に残す。
-- 配布方向: `plugins/happy-ai-life/` → Copilot CLI installed plugin、`home-template/` → `$HOME/.copilot/`、`repo-template/` → 対象 repo の `.github/`
+- 配布方向: `plugins/happy-ai-life/` → Copilot CLI installed plugin、`home-template/` → `$HOME/.copilot/` の最小 bootstrap、`repo-template/` → 対象 repo の `.github/`
 - `docs/` は PHILOSOPHY.md、ADR、ローカルリファレンス、セッション記録を管理する。
 - `scripts/` は同期・インストール・検証用スクリプトを管理する。
 

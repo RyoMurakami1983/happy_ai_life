@@ -17,7 +17,7 @@ def test_build_option_summary_for_dry_run() -> None:
 
     assert "現在はドライランです。" in summary
     assert "通常同期です。" in summary
-    assert "skills/ と agents/ は extra 項目を残しつつ差分同期" in summary
+    assert "skills/、agents/、docs/ は plugin install / user-owned surface として触りません" in summary
 
 
 def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
@@ -25,7 +25,7 @@ def test_build_option_summary_for_live_normal_sync_with_verbose_log() -> None:
 
     assert "現在は実行モードです。" in summary
     assert "通常同期です。" in summary
-    assert "skills/ と agents/ は extra 項目を残しつつ差分同期" in summary
+    assert "skills/、agents/、docs/ は plugin install / user-owned surface として触りません" in summary
     assert "詳細ログを表示します。" in summary
     assert "同期計画と適用対象の詳細" in summary
 

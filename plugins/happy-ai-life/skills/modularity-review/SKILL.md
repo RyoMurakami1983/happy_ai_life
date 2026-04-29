@@ -152,8 +152,8 @@ description: >
 
 ## 関連リソース
 
-- `home-template/.copilot/skills/design-workshop/SKILL.md` — 設計の入口
-- `home-template/.copilot/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — 用語集
-- `home-template/.copilot/skills/design-workshop/SKILL.md` — 是正策の構造判断
-- `home-template/.copilot/skills/sdd/SKILL.md` — 是正策を仕様駆動の次段へ接続するとき
+- `plugins/happy-ai-life/skills/design-workshop/SKILL.md` — 設計の入口
+- `plugins/happy-ai-life/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — 用語集
+- `plugins/happy-ai-life/skills/design-workshop/SKILL.md` — 是正策の構造判断
+- `plugins/happy-ai-life/skills/sdd/SKILL.md` — 是正策を仕様駆動の次段へ接続するとき
 - `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド

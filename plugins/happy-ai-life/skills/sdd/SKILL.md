@@ -133,10 +133,10 @@ PLAN mode 完了または既存 plan.md が以下を満たす状態で、`impl-a
 
 ## 共通リソース
 
-- `home-template/.copilot/skills/spec-workshop/SKILL.md` — 仕様作成
-- `home-template/.copilot/skills/design-workshop/SKILL.md` — 技術設計（router: standard / balanced-coupling-design）
-- `home-template/.copilot/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
-- `home-template/.copilot/skills/impl-and-ship/SKILL.md` — 実装・eval・review・PR の後半サイクル
+- `plugins/happy-ai-life/skills/spec-workshop/SKILL.md` — 仕様作成
+- `plugins/happy-ai-life/skills/design-workshop/SKILL.md` — 技術設計（router: standard / balanced-coupling-design）
+- `plugins/happy-ai-life/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
+- `plugins/happy-ai-life/skills/impl-and-ship/SKILL.md` — 実装・eval・review・PR の後半サイクル
 - `references/interactive-app-bootstrap-checklist.md` — interactive app pilot の実装前前提
 - `references/interactive-app-comparable-harness-contract.md` — interactive app pilot の比較前提
 

@@ -146,11 +146,11 @@ PR review が一段落したら `furikaeri-practice` で学びを整理します
 
 ## 共通リソース
 
-- `home-template/.copilot/skills/implementation-eval-gate/SKILL.md` — 実装 slice の批判的 gate
-- `home-template/.copilot/skills/deep-review-preflight/SKILL.md` — PR 前の DeepReview
-- `home-template/.copilot/skills/gh-pr-workflow/SKILL.md` — PR 作成・管理
-- `home-template/.copilot/skills/gh-pr-review-response/SKILL.md` — PR レビュー対応
-- `home-template/.copilot/skills/furikaeri-practice/SKILL.md` — ふりかえり記録
+- `plugins/happy-ai-life/skills/implementation-eval-gate/SKILL.md` — 実装 slice の批判的 gate
+- `plugins/happy-ai-life/skills/deep-review-preflight/SKILL.md` — PR 前の DeepReview
+- `plugins/happy-ai-life/skills/gh-pr-workflow/SKILL.md` — PR 作成・管理
+- `plugins/happy-ai-life/skills/gh-pr-review-response/SKILL.md` — PR レビュー対応
+- `plugins/happy-ai-life/skills/furikaeri-practice/SKILL.md` — ふりかえり記録
 - `references/interactive-app-bootstrap-checklist.md` — interactive app の bootstrap 前提
 - `references/interactive-app-comparable-harness-contract.md` — interactive app の比較前提
 - `checkpoints/contract_verify.py` — 複数リポ環境での contract 検証（fleet orchestrated）

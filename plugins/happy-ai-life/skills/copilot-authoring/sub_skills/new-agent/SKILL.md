@@ -12,7 +12,7 @@ compatibility: "../../../create-agents/references/agent-template.md, ../../_eval
 
 ## こんなときに使う
 
-- 新しい custom agent を `home-template/.copilot/agents/` に追加したいとき
+- 新しい custom agent を `plugins/happy-ai-life/agents/` に追加したいとき
 - 既存 agent 群の責務境界では吸収しづらい専門領域が出てきたとき
 - review / planning / refactor などの専門動作を独立させたいとき
 - model や tool 権限を役割に合わせて最小化したいとき
@@ -33,14 +33,14 @@ compatibility: "../../../create-agents/references/agent-template.md, ../../_eval
 
 ### ステップ 4 — 近接 agent と比較する
 
-`home-template/.copilot/agents/` に近い agent がある場合は見比べ、責務境界、語彙、出力の型をそろえます。ここを比較する理由は、新規 agent 単体では気づきにくい overlap を早く見つけるためです。比較対象がない場合は、template と instructions との整合を優先します。
+`plugins/happy-ai-life/agents/` に近い agent がある場合は見比べ、責務境界、語彙、出力の型をそろえます。ここを比較する理由は、新規 agent 単体では気づきにくい overlap を早く見つけるためです。比較対象がない場合は、template と instructions との整合を優先します。
 
 ### ステップ 5 — validator で骨格を確認する
 
 作成後は同梱 validator で frontmatter と section 構造を確認します。`## 1. 役割` のような番号付き H2 や `## 設計プロセス` / `## レビュープロセス` のような既存 corpus にある見出し、師範 agent の legacy mode 構成も受け入れつつ、template 系 agent では `原則` セクションを必須として `create-agents` と契約を揃えます。
 
 ```powershell
-uv run python home-template/.copilot/skills/copilot-authoring/_eval/scripts/validate_agent.py home-template/.copilot/agents/<agent-name>.agent.md --level L1
+uv run python plugins/happy-ai-life/skills/copilot-authoring/_eval/scripts/validate_agent.py plugins/happy-ai-life/agents/<agent-name>.agent.md --level L1
 ```
 
 ## 早見表

@@ -84,5 +84,5 @@ user-invocable: true
 ## 配置規約
 
 - ファイル名: `<name>.agent.md`（単数形の `.agent.md`）
-- 配置先: `home-template/.copilot/agents/`
+- 配置先: `plugins/happy-ai-life/agents/`
 - `name` フィールドとファイル名の `<name>` 部分を一致させる

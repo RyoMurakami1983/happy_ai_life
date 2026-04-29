@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL_ROOT = ROOT / "home-template" / ".copilot" / "skills" / "pptx"
+SKILL_ROOT = ROOT / "plugins" / "happy-ai-life" / "skills" / "pptx"
 SCRIPTS_ROOT = SKILL_ROOT / "scripts"
 PACK_SCRIPT = SCRIPTS_ROOT / "office" / "pack.py"
 UNPACK_SCRIPT = SCRIPTS_ROOT / "office" / "unpack.py"

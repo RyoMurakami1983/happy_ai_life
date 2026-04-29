@@ -72,12 +72,7 @@ def _run_sync(
 
 def _create_minimal_source_root(base: Path) -> Path:
     copilot_dir = base / "home-template" / ".copilot"
-    (copilot_dir / "skills" / "sample-skill").mkdir(parents=True)
-    (copilot_dir / "agents").mkdir(parents=True)
-    (copilot_dir / "docs" / "furikaeri").mkdir(parents=True)
-    (copilot_dir / "skills" / "sample-skill" / "SKILL.md").write_text("# skill\n", encoding="utf-8")
-    (copilot_dir / "agents" / "tdd-coder.agent.md").write_text("# agent\n", encoding="utf-8")
-    (copilot_dir / "docs" / "furikaeri" / ".gitkeep").write_text("\n", encoding="utf-8")
+    copilot_dir.mkdir(parents=True)
     (copilot_dir / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
     (copilot_dir / "config.json").write_text('{"runtime":true}', encoding="utf-8")
     (copilot_dir / "session-state").mkdir()
@@ -97,10 +92,6 @@ def _create_minimal_source_root(base: Path) -> Path:
     (scripts_dir / "sync-to-repo.ps1").write_text("Write-Host 'sync repo'\n", encoding="utf-8")
     (scripts_dir / "install-git-hooks.ps1").write_text("Write-Host 'install hooks'\n", encoding="utf-8")
     (scripts_dir / "repo-secure-check.ps1").write_text("Write-Host 'secure check'\n", encoding="utf-8")
-    (scripts_dir / "home_sync_planner.py").write_text(
-        (ROOT / "scripts" / "home_sync_planner.py").read_text(encoding="utf-8"),
-        encoding="utf-8",
-    )
     return base
 
 
@@ -133,61 +124,48 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert (destination / "skills" / "sample-skill" / "SKILL.md").exists()
-    assert (destination / "agents" / "tdd-coder.agent.md").exists()
     assert (destination / "repo-template" / ".github" / "copilot-instructions.md").exists()
     assert (destination / ".github" / "hooks" / "scripts" / "sample.js").exists()
     assert (destination / "scripts" / "sync-to-repo.ps1").exists()
     assert (destination / "scripts" / "install-git-hooks.ps1").exists()
     assert (destination / "scripts" / "repo-secure-check.ps1").exists()
-    assert (destination / "scripts" / "home_sync_planner.py").exists()
     assert (destination / "copilot-instructions.md").exists()
     assert not (destination / "mcp-config.sample.json").exists()
-    assert (destination / "docs" / "furikaeri" / ".gitkeep").exists()
     assert (destination / "keep.txt").read_text(encoding="utf-8") == "keep"
     assert (destination / "config.json").read_text(encoding="utf-8") == '{"user":true}'
     assert (destination / "mcp-config.json").read_text(encoding="utf-8") == '{"user":true}'
     assert (destination / "session-state").exists()
 
 
-def test_sync_to_home_preserves_extra_skills_and_agents_and_archives_updates(tmp_path: Path) -> None:
+def test_sync_to_home_leaves_home_skills_agents_and_docs_untouched(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     archive_root = tmp_path / "archive"
-    source_agents = source_root / "home-template" / ".copilot" / "agents"
-    source_skills = source_root / "home-template" / ".copilot" / "skills"
-    (source_agents / "draft.agent.md").write_text("# draft\n", encoding="utf-8")
 
     destination = tmp_path / "home"
-    (destination / "skills" / "sample-skill").mkdir(parents=True)
-    (destination / "skills" / "sample-skill" / "SKILL.md").write_text("# old skill\n", encoding="utf-8")
     (destination / "skills" / "local-extra").mkdir(parents=True)
     (destination / "skills" / "local-extra" / "SKILL.md").write_text("# local extra skill\n", encoding="utf-8")
     _create_extra_files(destination / "skills")
 
     (destination / "agents").mkdir(parents=True, exist_ok=True)
-    (destination / "agents" / "tdd-coder.agent.md").write_text("# old agent\n", encoding="utf-8")
     (destination / "agents" / "custom.agent.md").write_text("# custom agent\n", encoding="utf-8")
     _create_extra_files(destination / "agents")
+    (destination / "docs" / "furikaeri").mkdir(parents=True)
+    (destination / "docs" / "furikaeri" / "local.md").write_text("# local furikaeri\n", encoding="utf-8")
 
     result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
 
     combined_output = result.stdout + result.stderr
     assert result.returncode == 0, combined_output
 
-    assert (destination / "skills" / "sample-skill" / "SKILL.md").read_text(encoding="utf-8") == (
-        source_skills / "sample-skill" / "SKILL.md"
-    ).read_text(encoding="utf-8")
     assert (destination / "skills" / "local-extra" / "SKILL.md").read_text(encoding="utf-8") == "# local extra skill\n"
     assert (destination / "skills" / "a" / "b.md").exists()
     assert (destination / "skills" / "c.py").exists()
     assert (destination / "skills" / "d" / "e.ps1").exists()
-    assert (archive_root / "skills" / "sample-skill" / "SKILL.md").read_text(encoding="utf-8") == "# old skill\n"
 
-    assert (destination / "agents" / "tdd-coder.agent.md").read_text(encoding="utf-8") == "# agent\n"
-    assert (destination / "agents" / "draft.agent.md").exists()
     assert (destination / "agents" / "custom.agent.md").read_text(encoding="utf-8") == "# custom agent\n"
     assert (destination / "agents" / "a" / "b.md").exists()
-    assert (archive_root / "agents" / "tdd-coder.agent.md").read_text(encoding="utf-8") == "# old agent\n"
+    assert (destination / "docs" / "furikaeri" / "local.md").read_text(encoding="utf-8") == "# local furikaeri\n"
+    assert not archive_root.exists()
 
 
 def test_sync_to_home_mirror_flag_is_compatibility_only(tmp_path: Path) -> None:
@@ -220,8 +198,7 @@ def test_sync_to_home_verbose_log_shows_detailed_plan(tmp_path: Path) -> None:
     combined_output = result.stdout + result.stderr
     assert result.returncode == 0, combined_output
     assert "◆ 詳細ログ" in combined_output
-    assert "Planner actions" in combined_output
-    assert "[planner] copy-skill -> sample-skill" in combined_output
+    assert "[repo-template/" in combined_output
 
 
 def test_sync_to_home_does_not_delete_home_only_furikaeri_docs(tmp_path: Path) -> None:
@@ -238,4 +215,3 @@ def test_sync_to_home_does_not_delete_home_only_furikaeri_docs(tmp_path: Path) -
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert user_doc.exists(), "home-only furikaeri doc must not be deleted by sync"
-    assert (furikaeri_dir / ".gitkeep").exists()

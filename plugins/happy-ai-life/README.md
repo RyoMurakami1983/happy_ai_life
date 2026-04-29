@@ -27,13 +27,13 @@ copilot plugin marketplace remove happy-ai-life-marketplace
 
 ## Included assets
 
-- `skills/` — copied from `home-template\.copilot\skills\`
-- `agents/` — copied from `home-template\.copilot\agents\`, including `tdd-coder.agent.md`
+- `skills/` — source of truth for reusable Copilot CLI skills distributed by this plugin
+- `agents/` — source of truth for narrow custom agents distributed by this plugin, including `tdd-coder.agent.md`
 
 This first package intentionally does not include MCP server configuration, plugin hooks, plugin commands, or repo-local instructions.
 
 ## Maintainer note
 
-`home-template\.copilot\skills\` and `home-template\.copilot\agents\` remain the current authoring sources of truth. Until a generator or sync script is added, keep this plugin package aligned manually whenever those source assets change.
+This plugin package is the current authoring source of truth for reusable skills and distributed agents. `home-template\.copilot\` is intentionally limited to trusted local home bootstrap and does not carry `skills\`, `agents\`, or `docs\`.
 
 When plugin metadata changes, update both this package's `plugin.json` and the marketplace entry in `..\..\.github\plugin\marketplace.json`.

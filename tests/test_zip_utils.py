@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "home-template" / ".copilot" / "skills" / "pptx" / "scripts" / "office" / "zip_utils.py"
+SCRIPT = ROOT / "plugins" / "happy-ai-life" / "skills" / "pptx" / "scripts" / "office" / "zip_utils.py"
 
 
 def _load_module():
