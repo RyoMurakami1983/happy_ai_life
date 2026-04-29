@@ -404,7 +404,8 @@ Merge-AppendOnlyFile `
     -WhatIfMode:$DryRun
 
 # --- 2. .github/hooks/ → 配布先 .github/hooks/ （$HooksRelativePath が空、または HooksMode=None ならスキップ）---
-if ((-not [string]::IsNullOrWhiteSpace($HooksRelativePath)) -and $HooksMode -ne "None") {
+$shouldSyncHooks = (-not [string]::IsNullOrWhiteSpace($HooksRelativePath)) -and $HooksMode -ne "None"
+if ($shouldSyncHooks) {
     Write-Section "Sync hooks to target repository (.github/hooks)"
 
     $hooksSourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $HooksRelativePath))
@@ -431,7 +432,7 @@ if ((-not [string]::IsNullOrWhiteSpace($HooksRelativePath)) -and $HooksMode -ne 
 
 }
 
-if ($HooksMode -eq "SafetyOnly") {
+if ($shouldSyncHooks -and $HooksMode -eq "SafetyOnly") {
     Remove-SealedSessionContinuityArtifacts `
         -TargetRepoRoot $targetRepoPath `
         -WhatIfMode:$DryRun

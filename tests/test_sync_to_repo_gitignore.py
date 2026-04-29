@@ -278,3 +278,46 @@ def test_sync_to_repo_hooks_mode_none_skips_hooks(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert not (target_repo / ".github" / "hooks").exists()
+
+
+def test_sync_to_repo_empty_hooks_path_skips_sealed_artifact_cleanup(tmp_path: Path) -> None:
+    source_root = _create_source_root_with_hooks(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    stale_hook = target_repo / ".github" / "hooks" / "session-continuity.json"
+    stale_instruction = target_repo / ".github" / "instructions" / "session-context.instructions.md"
+    stale_hook.parent.mkdir(parents=True)
+    stale_instruction.parent.mkdir(parents=True)
+    stale_hook.write_text("{}", encoding="utf-8")
+    stale_instruction.write_text("# stale context\n", encoding="utf-8")
+
+    command = [
+        _powershell_executable(),
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(SCRIPT),
+        "-SourceRoot",
+        str(source_root),
+        "-TargetRepoPath",
+        str(target_repo),
+        "-HooksRelativePath",
+        "",
+        "-GitHooksRelativePath",
+        "",
+        "-DocsSessionsRelativePath",
+        "",
+        "-HooksMode",
+        "SafetyOnly",
+    ]
+    result = subprocess.run(
+        command,
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert stale_hook.exists()
+    assert stale_instruction.exists()

@@ -70,11 +70,37 @@ function Get-GitHubWorkflowFiles {
 function Test-DotNetProject {
     param([Parameter(Mandatory = $true)][string]$Path)
 
-    $dotNetEntry = Get-ChildItem -LiteralPath $Path -Recurse -File -Force | Where-Object {
-        $_.Extension -in @(".csproj", ".vbproj", ".fsproj", ".sln", ".slnx") -and $_.FullName -notmatch "\\.git\\"
-    } | Select-Object -First 1
+    $excludedDirectoryNames = @(".git", "node_modules", "bin", "obj")
+    $dotNetExtensions = @(".csproj", ".vbproj", ".fsproj", ".sln", ".slnx")
+    $pendingDirectories = [System.Collections.Generic.Stack[string]]::new()
+    $pendingDirectories.Push($Path)
 
-    return $null -ne $dotNetEntry
+    while ($pendingDirectories.Count -gt 0) {
+        $currentDirectory = $pendingDirectories.Pop()
+        try {
+            $entries = Get-ChildItem -LiteralPath $currentDirectory -Force -ErrorAction Stop
+        }
+        catch {
+            continue
+        }
+
+        foreach ($entry in $entries) {
+            if ($entry.PSIsContainer) {
+                if ($excludedDirectoryNames -contains $entry.Name) {
+                    continue
+                }
+
+                $pendingDirectories.Push($entry.FullName)
+                continue
+            }
+
+            if ($dotNetExtensions -contains $entry.Extension) {
+                return $true
+            }
+        }
+    }
+
+    return $false
 }
 
 function Test-GitRepository {
@@ -124,10 +150,13 @@ $instructionsOk = Test-Path -LiteralPath $instructionsPath -PathType Leaf
 $copilotHooksOk = Test-RequiredCopilotSafetyHook -Path $copilotHooksPath
 $githubWorkflowFiles = @(Get-GitHubWorkflowFiles -Path $githubWorkflowsPath)
 $githubWorkflowNames = @($githubWorkflowFiles | ForEach-Object { $_.Name })
-$hasDotNetProject = Test-DotNetProject -Path $targetRepoPath
+$shouldCheckDotNetTemplateCompatibility = $githubWorkflowNames.Count -eq 1 -and $githubWorkflowNames[0] -eq "dotnet-quality.yml"
+$hasDotNetProject = $false
+if ($shouldCheckDotNetTemplateCompatibility) {
+    $hasDotNetProject = Test-DotNetProject -Path $targetRepoPath
+}
 $hasOnlyDotNetTemplateWithoutDotNetProject = (
-    $githubWorkflowNames.Count -eq 1 `
-        -and $githubWorkflowNames[0] -eq "dotnet-quality.yml" `
+    $shouldCheckDotNetTemplateCompatibility `
         -and -not $hasDotNetProject
 )
 $githubWorkflowsOk = $githubWorkflowFiles.Count -gt 0 -and -not $hasOnlyDotNetTemplateWithoutDotNetProject
