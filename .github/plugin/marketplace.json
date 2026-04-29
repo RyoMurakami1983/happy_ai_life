@@ -1,0 +1,25 @@
+{
+  "name": "happy-ai-life-marketplace",
+  "owner": {
+    "name": "RyoMurakami1983"
+  },
+  "metadata": {
+    "description": "Curated Copilot CLI plugins for Happy AI Life coding workflows.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "happy-ai-life",
+      "source": "plugins/happy-ai-life",
+      "description": "Copilot CLI reusable workflows, skills, and narrow agents for a safe AI coding environment.",
+      "version": "0.1.0",
+      "repository": "https://github.com/RyoMurakami1983/happy_ai_life_coding_Environment",
+      "keywords": [
+        "copilot-cli",
+        "skills",
+        "agents",
+        "ai-coding"
+      ]
+    }
+  ]
+}

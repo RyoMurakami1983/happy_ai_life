@@ -44,7 +44,8 @@
 ## Build and Test
 - このリポジトリはアプリ本体ではないが、Copilot CLI plugin package、運用用 launcher、Python の quality command は持つ。
 - 主要運用コマンドは以下。
-  - `copilot plugin install RyoMurakami1983/happy_ai_life_coding_Environment:plugins/happy-ai-life` — public/shared primary install path（branch push 後に GitHub subdirectory install を検証）
+  - `copilot plugin marketplace add RyoMurakami1983/happy_ai_life_coding_Environment` — owner-managed marketplace を登録する
+  - `copilot plugin install happy-ai-life@happy-ai-life-marketplace` — public/shared primary install path（branch push 後に marketplace install を検証）
   - `uv run app.py` — GUI launcher から trusted local home sync を呼ぶ
   - `uv run app.py home [--dry-run]` — home-template を `$HOME/.copilot/` に同期
   - `./scripts/sync-to-home.ps1` — home-template を `$HOME/.copilot/` に同期
@@ -57,7 +58,7 @@
   - `uv run ty check .`
 - 品質ゲートは `.github/workflows/quality.yml` を参照する（gitleaks は常時有効、textlint は必要時に有効化）。
 - downstream / pilot repo を触る前は、`$HOME\.copilot\scripts\repo-secure-check.ps1` で repo instructions・Copilot hooks・`.githooks`・`core.hooksPath` の不足を確認する。不足がある場合は `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1` で補う。
-- plugin 変更後の検証手順: repository subdirectory install / list / uninstall は branch push 後に確認する。local filesystem path install は現在の Copilot CLI では前提にしない。sync 変更時は sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
+- plugin 変更後の検証手順: marketplace add / browse / install / list / uninstall / remove は branch push 後に確認する。direct repository / URL / local path install は deprecated fallback とし、primary path にはしない。sync 変更時は sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
 
 ## DeepReview
 - **PR を作成する前は、規模によらず必ず built-in レビュー機能または自分で段階的にセルフチェックする形で事前レビューを実施する。**
