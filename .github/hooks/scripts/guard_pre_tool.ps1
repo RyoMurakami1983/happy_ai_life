@@ -255,7 +255,7 @@ $isGitCommit = $compact -match "(^|[;&|]\s*)git\s+commit(\s|$)"
 $isGitPush = $compact -match "(^|[;&|]\s*)git\s+push(\s|$)"
 $isGhPrCreate = $compact -match "(^|[;&|]\s*)gh\s+pr\s+create(\s|$)"
 $hasNoVerify = $compact -match "(^|\s)--no-verify(\s|$)"
-$hasCommitNoVerifyShort = $isGitCommit -and ($compact -match "(^|\s)-n(\s|$)")
+$hasCommitNoVerifyShort = $isGitCommit -and ($compact -match "(^|\s)-[a-z]*n[a-z]*(\s|$)")
 
 if (($isGitCommit -and ($hasNoVerify -or $hasCommitNoVerifyShort)) -or ($isGitPush -and $hasNoVerify)) {
     Write-Deny "AI is not allowed to bypass Git hooks with --no-verify or git commit -n."

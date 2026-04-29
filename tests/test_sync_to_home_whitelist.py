@@ -460,7 +460,7 @@ def test_guard_pre_tool_blocks_ai_git_commit_no_verify(tmp_path: Path) -> None:
     assert "bypass Git hooks" in response["permissionDecisionReason"]
 
 
-def test_guard_pre_tool_allows_non_bypass_commit_flags(tmp_path: Path) -> None:
+def test_guard_pre_tool_blocks_ai_git_commit_combined_no_verify_short_flags(tmp_path: Path) -> None:
     script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
     result = subprocess.run(
         [
@@ -478,7 +478,9 @@ def test_guard_pre_tool_allows_non_bypass_commit_flags(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert result.stdout.strip() == ""
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "bypass Git hooks" in response["permissionDecisionReason"]
 
 
 def test_guard_pre_tool_blocks_ai_git_commit_when_gitleaks_is_missing(tmp_path: Path) -> None:

@@ -74,8 +74,8 @@ scan_staged_for_secrets() {
   snapshot="${scratch}/snapshot"
   mkdir -p "${snapshot}"
 
-  git -C "${root}" -c core.quotepath=false diff --cached --name-only --diff-filter=ACMR \
-    | git -C "${root}" checkout-index --prefix="${snapshot}/" --stdin >/dev/null 2>&1 || {
+  git -C "${root}" -c core.quotepath=false diff --cached --name-only -z --diff-filter=ACMR \
+    | git -C "${root}" checkout-index --prefix="${snapshot}/" --stdin -z >/dev/null 2>&1 || {
       deny "Failed to prepare staged content for AI pre-commit secret scan."
       return 1
     }
@@ -153,7 +153,7 @@ grep -E -q '(^|[;&|][[:space:]]*)gh[[:space:]]+pr[[:space:]]+create([[:space:]]|
 has_no_verify=0
 grep -E -q '(^|[[:space:]])--no-verify([[:space:]]|$)' <<<"${normalized}" && has_no_verify=1
 has_commit_n=0
-if [[ "${is_git_commit}" -eq 1 ]] && grep -E -q '(^|[[:space:]])-n([[:space:]]|$)' <<<"${normalized}"; then
+if [[ "${is_git_commit}" -eq 1 ]] && grep -E -q '(^|[[:space:]])-[a-z]*n[a-z]*([[:space:]]|$)' <<<"${normalized}"; then
   has_commit_n=1
 fi
 

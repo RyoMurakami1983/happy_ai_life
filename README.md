@@ -194,7 +194,7 @@ The local `pre-commit` and `pre-push` hooks reuse the same `.gitleaks.toml` when
 
 ### Troubleshooting: gitleaks not found in PATH
 
-If you see the error `gitleaks is required for the secret scan, but it was not found`, the hook cannot locate the gitleaks binary. Follow these steps to resolve it:
+If the hook reports that `gitleaks` is required for the Git secret scan but cannot be found, it cannot locate the gitleaks binary. Follow these steps to resolve it:
 
 #### Step 1: Find the gitleaks executable path
 
