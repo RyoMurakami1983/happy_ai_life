@@ -8,6 +8,8 @@ description: >
 # From Scratch
 
 仕様がまだ存在しない状態から、仕様 → 設計 → 計画 → impl-and-ship handoff を順に進める sub-skill です。各フェーズの成果物が次のフェーズの入力になり、plan が完成したら `impl-and-ship` へ引き継ぎます。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

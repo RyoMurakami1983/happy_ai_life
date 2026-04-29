@@ -8,6 +8,8 @@ description: >
 # スキルを評価する（委譲ポインター）
 
 このルートは `skill-eval` skill に移管されました。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 behavioral eval の全手順（ケース設計、benchmark 比較、artifact 昇格、次アクション判断）は `skill-eval` の `sub_skills/benchmark/` に定義されています。指示の明瞭性確認には `sub_skills/empirical/` を使います。
 

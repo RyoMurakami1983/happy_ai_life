@@ -8,6 +8,8 @@ description: >
 # From Spec
 
 仕様書が手元にある状態から、設計 → 計画 → impl-and-ship handoff を進める sub-skill です。spec-workshop を経由せず、design-workshop から開始します。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

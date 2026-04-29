@@ -11,6 +11,8 @@ description: >
 # SDD — Spec-Driven Development
 
 仕様駆動開発の前半工程（spec → design → plan）を1つの入口から進める router skill です。各フェーズの中身は既存の skill に委譲し、この skill 自身はフローの振り分けと接続だけを担います。plan が完成したら `impl-and-ship` へ引き継ぎます。途中からの再開にも対応し、最も進んだ地点の次から始められます。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

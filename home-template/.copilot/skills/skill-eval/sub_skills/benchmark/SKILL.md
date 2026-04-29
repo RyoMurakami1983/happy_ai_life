@@ -9,6 +9,8 @@ compatibility: "_eval/agents/, _eval/scripts/, _eval/schemas/"
 # スキルをベンチマーク比較する
 
 静的レビューだけでは足りないときに、skill が本当に挙動改善を生むかを比較評価する sub-skill です。比較で見る理由は、単発の好例ではなく、baseline / legacy / current の差分として改善を確かめるためです。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

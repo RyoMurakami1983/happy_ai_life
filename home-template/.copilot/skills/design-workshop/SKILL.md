@@ -9,6 +9,8 @@ description: >
 # Design Workshop
 
 仕様書を技術設計書に落とし込み、次の planning に渡せる handoff を作るための入口です。設計アプローチに応じて適切な sub_skill に案内します。spec-workshop の後段、PLAN mode の前段に位置します。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

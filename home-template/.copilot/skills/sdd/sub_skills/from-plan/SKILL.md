@@ -9,6 +9,8 @@ compatibility: "impl-and-ship"
 # From Plan — Handoff to Implementation
 
 このルートは `impl-and-ship` skill へ直接 handoff するための sub-skill です。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 計画（plan.md / todos / PLAN summary）が手元にある場合は、以下のステップで `impl-and-ship` へ引き継いでください。
 

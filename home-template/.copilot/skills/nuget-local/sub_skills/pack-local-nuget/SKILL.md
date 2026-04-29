@@ -8,6 +8,8 @@ compatibility: "git, dotnet SDK, nuget.exe, MSBuild/VS Build Tools"
 # ローカル NuGet を pack する
 
 remote repository を clone して Release build から nupkg を作るための sub-skill です。なぜ分けるかというと、pack 側の失敗は build 条件、version、pack target、依存 DLL の置き方に集中するからです。trusted repository を前提にし、未確認の repo は sandbox / isolated environment でのみ clone し、restore/build/pack 前に `*.csproj`、`.sln*`、`Directory.Build.*`、`*.props`、`*.targets`、`NuGet.Config`、`packages.config`、`global.json`、`.config/dotnet-tools.json` を確認します。package の更新は command-first で進め、project file の直接編集は例外に限ります。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

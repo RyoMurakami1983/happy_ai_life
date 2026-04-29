@@ -9,6 +9,8 @@ description: >
 # Modularity Review
 
 既存コードのモジュール間結合を構造的に分析し、不均衡を検出するワークフロー skill です。design-workshop（balanced-coupling-design）が「これから作るもの」の設計に使うのに対し、この skill は「すでにあるもの」の構造診断に使います。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

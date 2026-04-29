@@ -9,6 +9,8 @@ compatibility: "../../../skill/_eval/scripts/validate_skill.py, ../../_eval/scri
 # Authoring 資産を検証する
 
 この sub-skill は、skill と agent を同じ入口から検証しつつ、実際の check は対象ごとに分けるためのルートです。入口をそろえる理由は、公開前に「どこまで確認したか」を 1 つの会話で揃えられるようにするためです。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

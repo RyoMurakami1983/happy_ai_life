@@ -13,6 +13,8 @@ metadata:
 # WPF MVVMパターン
 
 CommunityToolkit.Mvvmを使ったクリーンなMVVMアーキテクチャでWPFアプリケーションを構築するワークフロー。すべてのWPFモジュールに必要な基本パターン（Observable Property、コマンド、バリデーション、ViewModel構成）をカバーします。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## When to Use This Skill
 

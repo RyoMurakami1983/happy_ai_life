@@ -9,6 +9,8 @@ description: >
 # 指示明瞭性を実証的に確認する
 
 この sub-skill は、`empirical-prompt-tuning` skill を **skill 評価の文脈** で使う際の入口です。subagent dispatch が必要なため、dispatch 不能環境では適用できません。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 benchmark 比較（`../benchmark/`）とは測る問いが異なります。benchmark は「新版は旧版より良くなったか」、empirical は「この指示は別の実行者にも明瞭か」を問います。両者を同じ iteration で混在させないでください。
 

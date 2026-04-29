@@ -8,6 +8,8 @@ compatibility: "Visual Studio / Package Manager Console, NuGet.Config, packages.
 # ローカル NuGet を使う
 
 local feed を利用側 repository に接続し、参照追加から restore/build まで通すための sub-skill です。pack 側と分ける理由は、こちらの失敗点が NuGet.Config、HintPath、packages.config、PackageReference の整合に集中するからです。trusted repository を前提にし、未確認の repo は sandbox / isolated environment でのみ扱い、restore/build 前に `*.csproj`、`.sln*`、`Directory.Build.*`、`*.props`、`*.targets`、`NuGet.Config`、`packages.config` を確認します。package の追加・更新は command-first で進め、手編集は command で表現できない例外に限ります。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 
@@ -44,8 +46,3 @@ local feed を利用側 repository に接続し、参照追加から restore/bui
 ## 関連ルート
 
 - `../pack-local-nuget/` — 使う package を作る側の流れに戻る
-
-## 関連スキル
-
-- `pack-local-nuget` — package を作る流れに戻る
-

@@ -16,6 +16,8 @@ metadata:
 # .NET Concurrency: Choosing the Right Tool
 
 .NET における並行処理の正しい抽象選択ガイド。I/O 向けの async/await から、プロデューサー/コンシューマー向けの Channels、状態管理向けの Akka.NET Actors まで。ロックや手動同期は最後の手段。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 **略語**: I/O (Input/Output)、CPU (Central Processing Unit)、Rx (Reactive Extensions)、DI (Dependency Injection)、UI (User Interface)。
 

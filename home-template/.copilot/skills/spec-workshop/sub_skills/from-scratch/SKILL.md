@@ -9,6 +9,8 @@ compatibility: "_foundation/"
 # From Scratch
 
 ゼロから仕様を立ち上げる sub-skill です。何を作るかがまだ曖昧な段階で、対話で論点を掘り、必要に応じて targeted research を追加します。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

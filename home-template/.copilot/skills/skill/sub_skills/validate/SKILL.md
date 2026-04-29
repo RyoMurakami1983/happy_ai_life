@@ -9,6 +9,8 @@ compatibility: "_foundation/QUALITY.md, _eval/scripts/validate_skill.py"
 # スキルを検証する
 
 最小の構造検証から始めて、必要に応じて enterprise review や behavioral eval まで段階的に進める sub-skill です。段階を分ける理由は、個人実験の軽さを保ちつつ、共有利用では必要な厳しさを上げられるようにするためです。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

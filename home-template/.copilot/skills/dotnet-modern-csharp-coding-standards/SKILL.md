@@ -9,6 +9,8 @@ description: >
 # モダン C# コーディング標準
 
 モダン C#（12+）で慣用的なコードを書くための簡潔なガードレール。record によるデータモデリング、パターンマッチング、合成優先の設計、Railway 指向のエラーハンドリングをカバーします。.NET 8+ と C# 12+ を前提にし、外部依存は使いません。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 **略語**: DTO (Data Transfer Object), API (Application Programming Interface), DI (Dependency Injection), BCL (Base Class Library), GC (Garbage Collector).
 

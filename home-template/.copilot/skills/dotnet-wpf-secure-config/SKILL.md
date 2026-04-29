@@ -15,6 +15,8 @@ metadata:
 # WPFアプリケーションへのセキュア設定管理の追加
 
 .NET WPFアプリケーションにWindows DPAPI暗号化設定管理を追加するワークフロー：資格情報の暗号化保存、`%LOCALAPPDATA%`へのJSON永続化、拡張可能な`AppConfigModel`、DI登録。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## When to Use This Skill
 

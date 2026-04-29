@@ -8,7 +8,7 @@ compatibility: "../../../skill/_foundation/CONVENTIONS.md, ../../../skill/script
 
 # Skill を新規作成する
 
-この sub-skill は、新しい workflow を再利用可能な skill package に落とし込むための入口です。先に trigger と成功条件を固める理由は、topic の説明ではなく実行可能な workflow として設計するためです。
+この sub-skill は、新しい workflow を再利用可能な skill package に落とし込むための入口です。先にゴール、trigger、成功条件を固める理由は、topic の説明ではなく実行可能な workflow として設計するためです。
 
 ## こんなときに使う
 
@@ -19,9 +19,9 @@ compatibility: "../../../skill/_foundation/CONVENTIONS.md, ../../../skill/script
 
 ## ワークフロー: skill を作る
 
-### ステップ 1 — scope と trigger を定義する
+### ステップ 1 — goal / scope / trigger を定義する
 
-skill が何をし、どの入力で起動され、どこまで面倒を見るかを 1 段落で定義します。ここが曖昧だと、`description` が弱くなり discovery 精度が落ちます。
+skill が何を達成し、どの入力で起動され、どこまで面倒を見るかを 1 段落で定義します。成功条件と確認手段も短く置くと、`description` と workflow が自律実行しやすくなります。
 
 ### ステップ 2 — flat / router / suite を選ぶ
 
@@ -52,7 +52,7 @@ uv run python home-template/.copilot/skills/skill/_eval/scripts/validate_skill.p
 
 | 段階 | 決めること |
 | --- | --- |
-| 意図定義 | scope、trigger、成功条件、配布先 |
+| 意図定義 | goal、scope、trigger、成功条件、確認手段、配布先 |
 | 構造選択 | flat / router / suite |
 | 草案化 | template or script で skeleton を起こす |
 | 収束 | hot path と references の境界を整える |

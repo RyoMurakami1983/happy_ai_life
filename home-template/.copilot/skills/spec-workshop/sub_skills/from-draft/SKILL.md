@@ -9,6 +9,8 @@ compatibility: "_foundation/"
 # From Draft
 
 既存の草案を仕様へ整える sub-skill です。ドラフトの足りない論点を対話で埋め、必要な事実だけ targeted research で補強します。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 
