@@ -9,6 +9,8 @@ compatibility: "_foundation/CONVENTIONS.md, _eval/scripts/validate_skill.py"
 # スキルを改善する
 
 既存 skill の弱い説明や過剰な文言を整理し、一般化された guidance に磨き直すための sub-skill です。改善で重視する理由は、ルールを足すことではなく、なぜ効く guidance かを残して再利用性を上げるためです。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

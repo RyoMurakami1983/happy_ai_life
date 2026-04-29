@@ -6,6 +6,8 @@ description: >
 # GitHub PR Workflow
 
 状態検知からPR作成・Issue連携・レビュー待機・人間へのマージ引き継ぎまでを扱うワークフロー。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 標準ルート: implementation -> `gh-pr-workflow` -> 実際のレビューシグナル待ち -> `gh-pr-review-response` -> 人間のマージ判断/引き継ぎ。
 

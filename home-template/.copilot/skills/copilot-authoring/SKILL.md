@@ -10,6 +10,8 @@ compatibility: "skill, create-agents, _eval/scripts/validate_agent.py"
 # Copilot authoring を進める
 
 Skill と Agent はどちらも「Copilot に何をどう任せるか」を定義する資産ですが、設計の単位と検証観点は同じではありません。この skill は入口だけを 1 本化し、対象に応じて適切な authoring ルートへ分けるための router です。入口を 1 つにする理由は、会話の途中で「新規作成 → 改善 → 検証」へ自然に遷移しても、同じ文脈のまま扱えるようにするためです。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## 共通の改善型: 抽象 -> review -> 発展
 

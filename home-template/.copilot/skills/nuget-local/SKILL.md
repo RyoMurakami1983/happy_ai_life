@@ -7,6 +7,8 @@ description: >
 # ローカル NuGet ワークフロー
 
 remote repository から自作 NuGet を作り、local feed に置き、利用側 repository で参照追加と build 確認まで通す流れを 1 つの入口にまとめる router です。pack 側と consume 側を分ける理由は、失敗点と前提が違うためです。trusted repository を前提にし、未確認の repo は clone 後も sandbox / isolated environment でのみ扱い、restore/build/pack 前に `*.csproj`、`.sln*`、`Directory.Build.*`、`*.props`、`*.targets`、`NuGet.Config`、`packages.config`、`global.json`、`.config/dotnet-tools.json` を確認します。package 管理は command-first で進め、手編集は command で表現できない例外に限ります。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

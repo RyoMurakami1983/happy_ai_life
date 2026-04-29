@@ -9,6 +9,8 @@ compatibility: "../../../skill/sub_skills/improve/SKILL.md, ../../../create-agen
 # 既存の authoring 資産を改善する
 
 この sub-skill は、すでに存在する skill / agent を実使用の違和感や review 結果に基づいて磨き直すための入口です。改善で重視するのはルールの追加ではなく、なぜその guidance が効くかを保ったまま余分な摩擦を減らすことです。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 ## こんなときに使う
 

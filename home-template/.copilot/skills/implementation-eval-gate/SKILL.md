@@ -8,6 +8,8 @@ description: >
 # Implementation Eval Gate
 
 実装中の 1 slice を、generator とは別の視点で批判的に評価する workflow skill です。`tdd-coder` のような narrow generator が小さく前進したあとに、「次の slice へ進めるか」「直して戻すか」「計画や設計へ戻るか」を evidence ベースで判定しやすくします。
+ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
+
 
 `deep-review-preflight` が PR 前の広い review を扱うのに対し、この skill は **実装中 gate** を扱います。目的は称賛ではなく、甘い自己評価を避けて次の行動を明確にすることです。
 

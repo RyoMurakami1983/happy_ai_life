@@ -4,6 +4,8 @@ description: >
   複数リポ環境で、design-workshop のアーキテクチャ文書から
   repo ごと に独立した plan.md を生成。
   DAG validation + cycle detection + contract matching を含む。
+  Use when:
+  unified architecture を repo ごとの実装 plan に分割したいとき。
 compatibility: "plan-generation"
 ---
 
@@ -51,6 +53,14 @@ unified_architecture:
 
 - `repo.provides`: このリポが提供するアーティファクト（artifact, path, version）
 - `repo.requires`: このリポが必要とするアーティファクト（source_repo, artifact, version）
+
+## ワークフロー: Multi-repo plan split
+
+### ステップ 1 — 入力と成功条件を固定する
+統一アーキテクチャ、対象リポ、依存関係、生成すべき plan artifact の完了条件を確認します。
+
+### ステップ 2 — contract と DAG を検証する
+repo 間の provides / requires、循環依存、blocking dependency を確認してから repo ごとの plan を生成します。
 
 ## 出力スキーマ
 
