@@ -253,6 +253,68 @@ def test_sync_to_home_preserves_existing_config_hooks(tmp_path: Path) -> None:
     assert "stale-managed-hook" not in managed_hooks[0]["powershell"]
 
 
+def test_sync_to_home_skips_invalid_user_config_json(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    destination.mkdir(parents=True)
+    config_path = destination / "config.json"
+    config_path.write_text("{ invalid json", encoding="utf-8")
+
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
+
+    combined_output = result.stdout + result.stderr
+    assert result.returncode == 0, combined_output
+    assert config_path.read_text(encoding="utf-8") == "{ invalid json"
+    assert (destination / "hooks" / "scripts" / "guard_pre_tool.ps1").exists()
+    assert "Skipping managed config.json hook update because the existing file contains invalid JSON" in combined_output
+
+
+def test_sync_to_home_does_not_rewrite_formatting_only_differences(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    destination.mkdir(parents=True)
+    config_path = destination / "config.json"
+    config_text = """{
+  "hooks": {
+    "preToolUse": [
+      {
+        "timeoutSec": 10,
+        "cwd": ".",
+        "powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File \\"%s\\"",
+        "type": "command",
+        "env": {
+          "HAPPY_AI_LIFE_HOOK_ID": "happy-ai-life-safety-guard"
+        }
+      }
+    ]
+  },
+  "theme": "dark"
+}
+""" % ((destination / "hooks" / "scripts" / "guard_pre_tool.ps1").as_posix().replace("/", "\\"))
+    config_path.write_text(config_text, encoding="utf-8")
+
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
+
+    combined_output = result.stdout + result.stderr
+    assert result.returncode == 0, combined_output
+    assert config_path.read_text(encoding="utf-8") == config_text
+
+
+def test_sync_to_home_writes_config_json_without_bom(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    destination.mkdir(parents=True)
+
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    raw = (destination / "config.json").read_bytes()
+    assert not raw.startswith(b"\xef\xbb\xbf")
+
+
 def test_sync_to_home_preserves_unknown_files_under_legacy_home_hook_path(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     destination = tmp_path / "home"
@@ -351,3 +413,25 @@ def test_sync_to_home_does_not_delete_home_only_furikaeri_docs(tmp_path: Path) -
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert user_doc.exists(), "home-only furikaeri doc must not be deleted by sync"
+
+
+def test_guard_pre_tool_blocks_remove_item_force_recurse_in_any_order(tmp_path: Path) -> None:
+    script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
+    result = subprocess.run(
+        [
+            _powershell_executable(),
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            "$payload = @{ toolName = 'powershell'; toolArgs = (@{ command = 'Remove-Item -Force -Recurse tmp-review' } | ConvertTo-Json -Compress) } | ConvertTo-Json -Compress; $payload | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'" % (_powershell_executable(), script),
+        ],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"

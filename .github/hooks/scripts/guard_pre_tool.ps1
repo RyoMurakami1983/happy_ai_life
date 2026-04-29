@@ -73,7 +73,7 @@ $denyPatterns = @(
     "\bpoweroff\b",                    # poweroff
     "\bstop-computer\b",               # Stop-Computer
     "\brestart-computer\b",            # Restart-Computer
-    "\bremove-item\b.*\b-recurse\b.*\b-force\b", # Remove-Item -Recurse -Force
+    "(?=.*\bremove-item\b)(?=.*(?:^|\s)-recurse(?:\s|$))(?=.*(?:^|\s)-force(?:\s|$))", # Remove-Item with -Recurse and -Force in any order
     "\bgit\s+push\s+--force\b",        # git push --force
     "\bgit\s+reset\s+--hard\b"         # git reset --hard
 )

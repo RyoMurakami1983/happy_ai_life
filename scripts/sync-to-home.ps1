@@ -362,12 +362,59 @@ function Invoke-FileAction {
         }
         "write-text" {
             Ensure-ParentDirectory -Path $Action.Destination
-            Set-Content -LiteralPath $Action.Destination -Value $Action.Content -Encoding UTF8
+            $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+            [System.IO.File]::WriteAllText($Action.Destination, $Action.Content, $utf8NoBom)
         }
         default {
             throw "Unsupported file action kind: $($Action.Kind)"
         }
     }
+}
+
+function ConvertTo-NormalizedJsonValue {
+    param([Parameter(Mandatory = $true)]$Value)
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    if ($Value -is [string] -or $Value -is [char] -or $Value -is [bool] -or $Value -is [byte] -or $Value -is [int] -or $Value -is [long] -or $Value -is [double] -or $Value -is [decimal] -or $Value -is [datetime]) {
+        return $Value
+    }
+
+    if ($Value -is [System.Collections.IDictionary]) {
+        $normalized = [ordered]@{}
+        foreach ($key in ($Value.Keys | ForEach-Object { [string]$_ } | Sort-Object)) {
+            $normalized[$key] = ConvertTo-NormalizedJsonValue -Value $Value[$key]
+        }
+        return [pscustomobject]$normalized
+    }
+
+    if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [string])) {
+        $normalizedItems = New-Object System.Collections.Generic.List[object]
+        foreach ($item in $Value) {
+            [void]$normalizedItems.Add((ConvertTo-NormalizedJsonValue -Value $item))
+        }
+        return @($normalizedItems.ToArray())
+    }
+
+    $properties = @($Value.PSObject.Properties | Where-Object { $_.MemberType -eq "NoteProperty" -or $_.MemberType -eq "Property" })
+    if ($properties.Count -gt 0) {
+        $normalized = [ordered]@{}
+        foreach ($property in ($properties | Sort-Object Name)) {
+            $normalized[$property.Name] = ConvertTo-NormalizedJsonValue -Value $property.Value
+        }
+        return [pscustomobject]$normalized
+    }
+
+    return $Value
+}
+
+function Get-StableJson {
+    param([Parameter(Mandatory = $true)]$Value)
+
+    $normalized = ConvertTo-NormalizedJsonValue -Value $Value
+    return ($normalized | ConvertTo-Json -Depth 30 -Compress)
 }
 
 function Set-JsonProperty {
@@ -407,14 +454,30 @@ function Get-HomeConfigHookPlan {
     )
 
     $configExists = Test-Path -LiteralPath $ConfigPath -PathType Leaf
+    $originalStableJson = $null
     if ($configExists) {
         $raw = Get-Content -LiteralPath $ConfigPath -Raw
         if ([string]::IsNullOrWhiteSpace($raw)) {
             $config = [pscustomobject]@{}
         }
         else {
-            $config = $raw | ConvertFrom-Json
+            try {
+                $config = $raw | ConvertFrom-Json
+            }
+            catch {
+                Write-Warning ("Skipping managed config.json hook update because the existing file contains invalid JSON: {0}. Error: {1}" -f $ConfigPath, $_.Exception.Message)
+                return [pscustomobject]@{
+                    Label = "config.json (managed safety hook)"
+                    Actions = @()
+                    Added = @()
+                    Updated = @()
+                    Deleted = @()
+                    MirrorMode = $false
+                    DestinationRoot = Split-Path -Path $ConfigPath -Parent
+                }
+            }
         }
+        $originalStableJson = Get-StableJson -Value $config
     }
     else {
         $config = [pscustomobject]@{}
@@ -459,6 +522,7 @@ function Get-HomeConfigHookPlan {
     if (-not $desiredContent.EndsWith("`n")) {
         $desiredContent = "$desiredContent`n"
     }
+    $desiredStableJson = Get-StableJson -Value $config
 
     $added = @()
     $updated = @()
@@ -471,7 +535,7 @@ function Get-HomeConfigHookPlan {
                 Content = $desiredContent
             })
     }
-    elseif ((Get-Content -LiteralPath $ConfigPath -Raw) -ne $desiredContent) {
+    elseif ($originalStableJson -ne $desiredStableJson) {
         $updated = @("config.json")
         $actions = @([pscustomobject]@{
                 Kind = "write-text"
