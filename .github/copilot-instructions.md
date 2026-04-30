@@ -1,7 +1,7 @@
 # Repository instructions for GitHub Copilot
 
 ## このリポジトリの使命
-- このリポジトリは、楽しく AI とコーディングライフを続けるための環境を構築する母艦である。
+- このリポジトリは、楽しく AI と続ける仕事・学習・コーディングの型を育てる母艦である。
 - reusable skills / agents は Copilot CLI plugin を primary distribution とし、home sync は trusted local author bootstrap として残す。
 - 思想と背景は `docs/PHILOSOPHY.md` を参照し、このファイルでは運用ルールに絞って定義する。
 
@@ -10,12 +10,12 @@
 - 一般的な品質・テスト・セキュリティ・Git の横断原則は home instructions に定義済み。このファイルでは repo 固有の事実に集中する。
 
 ## Architecture
-- 公開・共有向けの primary distribution は `plugins/happy-ai-life/` の Copilot CLI plugin とする。
+- 公開・共有向けの primary distribution は `plugins/happy-core/` と `plugins/happy-coding/` の Copilot CLI plugin とする。
 - 個人用設定の雛形は `home-template/.copilot/` に保持し、trusted local author bootstrap としてだけ home sync する。`skills/`、`agents/`、`docs/` は持たせず、開発者自身も plugin install を使う。
 - 配布テンプレートは `repo-template/` に置く。各 repo に同期する際の雛形となる。
 - 同期は `scripts/sync-to-home.ps1` と `scripts/sync-to-repo.ps1` を起点に行う。
 - `app.py` は公開 launcher として既存 PowerShell を呼ぶ。内部実装は Python module に置いても、同期ロジックの正本は `scripts/` に残す。
-- 配布方向: `plugins/happy-ai-life/` → Copilot CLI installed plugin、`home-template/` → `$HOME/.copilot/` の最小 bootstrap、`repo-template/` → 対象 repo の `.github/`
+- 配布方向: `plugins/happy-core/` / `plugins/happy-coding/` → Copilot CLI installed plugin、`home-template/` → `$HOME/.copilot/` の最小 bootstrap、`repo-template/` → 対象 repo の `.github/`
 - `docs/` は PHILOSOPHY.md、ADR、ローカルリファレンス、セッション記録を管理する。
 - `scripts/` は同期・インストール・検証用スクリプトを管理する。
 
@@ -44,8 +44,9 @@
 ## Build and Test
 - このリポジトリはアプリ本体ではないが、Copilot CLI plugin package、運用用 launcher、Python の quality command は持つ。
 - 主要運用コマンドは以下。
-  - `copilot plugin marketplace add RyoMurakami1983/happy_ai_life_coding_Environment` — owner-managed marketplace を登録する
-  - `copilot plugin install happy-ai-life@happy-ai-life-marketplace` — public/shared primary install path（branch push 後に marketplace install を検証）
+  - `copilot plugin marketplace add RyoMurakami1983/happy_ai_life` — owner-managed marketplace を登録する
+  - `copilot plugin install happy-core@happy-ai-life-marketplace` — public/shared primary install path（core workflow / authoring）
+  - `copilot plugin install happy-coding@happy-ai-life-marketplace` — public/shared primary install path（spec / design / impl / review）
   - `uv run app.py` — GUI launcher から trusted local home sync を呼ぶ
   - `uv run app.py home [--dry-run]` — home-template を `$HOME/.copilot/` に同期
   - `./scripts/sync-to-home.ps1` — home-template を `$HOME/.copilot/` に同期
@@ -57,7 +58,8 @@
   - `uv run ruff check .`
   - `uv run ty check .`
 - 品質ゲートは `.github/workflows/quality.yml` を参照する（gitleaks は常時有効、textlint は必要時に有効化）。
-- downstream / pilot repo を触る前は、`$HOME\.copilot\scripts\repo-secure-check.ps1` で repo instructions・Copilot safety hooks・`.githooks/pre-commit`・`.githooks/pre-push`・`.githooks/lib/*.sh`・`core.hooksPath`・`.github/workflows/*.yml|*.yaml` の不足を確認する。不足がある場合は `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1`、または対象技術の workflow setup skill で補う。secret guard は `gitleaks` 必須で、`.gitleaks.toml` が無い repo でも default rules で fail-closed scan する。`sessionStart` / `sessionEnd` の repo-local continuity hooks は標準運用から封印済みで、必要な legacy repo だけ `sync-to-repo.ps1 -HooksMode All` で明示 opt-in する。
+- **目的: downstream / pilot repo を local safety valve や workflow なしで触り始めないこと。**
+- downstream / pilot repo を触る前は、`$HOME\.copilot\scripts\repo-secure-check.ps1` で repo instructions・Copilot safety hooks・`.githooks/pre-commit`・`.githooks/pre-push`・`.githooks/lib/*.sh`・`core.hooksPath`・`.github/workflows/*.yml|*.yaml` の不足を確認する。`repo-secure-check.ps1` は脆弱性スキャナではなく、repo bootstrap の安全弁と導入漏れを点検するスクリプトである。不足がある場合は `$HOME\.copilot\scripts\sync-to-repo.ps1` と `$HOME\.copilot\scripts\install-git-hooks.ps1`、または対象技術の workflow setup skill で補う。secret guard は `gitleaks` 必須で、`.gitleaks.toml` が無い repo でも default rules で fail-closed scan する。`sessionStart` / `sessionEnd` の repo-local continuity hooks は標準運用から封印済みで、必要な legacy repo だけ `sync-to-repo.ps1 -HooksMode All` で明示 opt-in する。
 - plugin 変更後の検証手順: remote の marketplace add / browse / install / list / uninstall / remove は merge 後の default branch 状態を確認する手順として扱う。feature branch を push しただけでは `<owner>/<repo>` 指定の marketplace 経由で PR ブランチの manifest 変更は通常確認できないため、merge 前の smoke test が必要な場合はローカル checkout の repo root を marketplace として add して確認する。direct repository / URL / local path install は deprecated fallback とし、primary path にはしない。sync 変更時は sync スクリプトを実行し、同期先で意図した変更が反映されていることを確認する。
 
 ## DeepReview
@@ -78,9 +80,9 @@
 - 仕様、設定、使い方、設計判断が変わる場合は README、関連 docs、ADR も更新する。
 
 ## セッション終了ワークフロー
-- 「ふりかえり」→ `furikaeri-practice` skill を発火。詳細手順は skill 内に定義済み。
-- 共有保存も `furikaeri-practice` の中で進め、`docs/furikaeri/` と home 側 archive に残す。
-- `/exit` 直接入力時の sessionEnd 自動 YWT 生成は標準運用から封印済み。文脈継承は公式 session data と `furikaeri-practice` による日次保存を主導線にする。
+- 「ふりかえり」→ `furikaeri` skill を発火。詳細手順は skill 内に定義済み。
+- 共有保存も `furikaeri` の中で進め、`docs/furikaeri/` と home 側 archive に残す。
+- `/exit` 直接入力時の sessionEnd 自動 YWT 生成は標準運用から封印済み。文脈継承は公式 session data と `furikaeri` による日次保存を主導線にする。
 
 ## 優先順位
 1. 正確さと安全性

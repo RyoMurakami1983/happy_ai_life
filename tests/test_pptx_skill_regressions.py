@@ -9,7 +9,7 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL_ROOT = ROOT / "plugins" / "happy-ai-life" / "skills" / "pptx"
+SKILL_ROOT = ROOT / "plugins" / "happy-core" / "skills" / "pptx"
 SCRIPTS_ROOT = SKILL_ROOT / "scripts"
 THUMBNAIL_SCRIPT = SCRIPTS_ROOT / "thumbnail.py"
 BASE_VALIDATOR_SCRIPT = SCRIPTS_ROOT / "office" / "validators" / "base.py"

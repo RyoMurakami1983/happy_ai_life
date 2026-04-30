@@ -1,5 +1,5 @@
 [project]
-name = "happy-ai-life-coding-environment"
+name = "happy-ai-life"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -21,10 +21,10 @@ dev = [
 
 [tool.ty.environment]
 extra-paths = [
-    "./plugins/happy-ai-life/skills/pptx/scripts",
-    "./plugins/happy-ai-life/skills/impl-and-ship/orchestrator",
-    "./plugins/happy-ai-life/skills/impl-and-ship/checkpoints",
-    "./plugins/happy-ai-life/skills/sdd/sub_skills/split_multi_repo_plan",
+    "./plugins/happy-core/skills/pptx/scripts",
+    "./plugins/happy-coding/skills/impl-and-ship/orchestrator",
+    "./plugins/happy-coding/skills/impl-and-ship/checkpoints",
+    "./plugins/happy-coding/skills/sdd/sub_skills/split_multi_repo_plan",
 ]
 
 [tool.ty.src]

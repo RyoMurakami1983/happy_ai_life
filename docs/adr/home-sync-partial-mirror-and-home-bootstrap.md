@@ -68,4 +68,4 @@
 
 この ADR の `skills/` / `agents/` diff sync と `scripts/home_sync_planner.py` 配布は、Copilot CLI plugin marketplace 方式を primary path にした後は採用しない。
 
-現在の home sync は、`repo-template/`、repo bootstrap scripts、`copilot-instructions.md` の最小 bootstrap に限定する。reusable skills / agents の正本は `plugins/happy-ai-life/` に移り、開発者自身も plugin install で利用する。`$HOME/.copilot/.github/hooks` への inert hook 搬送は終了した。
+現在の home sync は、`repo-template/`、repo bootstrap scripts、`copilot-instructions.md` の最小 bootstrap に限定する。reusable skills / agents の正本は `plugins/happy-core/` と `plugins/happy-coding/` に移り、開発者自身も plugin install で利用する。`$HOME/.copilot/.github/hooks` への inert hook 搬送は終了した。

@@ -14,7 +14,7 @@
 - `sync-to-repo.ps1` の既定 hook 配布は `SafetyOnly` とし、`session-continuity.json` は除外する。
 - legacy repo が必要とする場合だけ `sync-to-repo.ps1 -HooksMode All` で明示 opt-in する。
 - `sync-to-home.ps1` は `$HOME/.copilot/.github/hooks` へ hooks を搬送しない。
-- 組織利用の文脈継承は、`furikaeri-practice` による 1 日 1 回の横断ふりかえりを主導線にする。
+- 組織利用の文脈継承は、`furikaeri` による 1 日 1 回の横断ふりかえりを主導線にする。
 
 ## 根拠
 
@@ -36,6 +36,6 @@
 
 - 通常の repo bootstrap は `sync-to-repo.ps1` 既定の `SafetyOnly` を使う。
 - session continuity hooks が必要な legacy repo は `-HooksMode All` を明示する。
-- 1 日の終わりに `furikaeri-practice` を実行し、`~/.copilot/docs/furikaeri/` に日次記録を保存する。
+- 1 日の終わりに `furikaeri` を実行し、`~/.copilot/docs/furikaeri/` に日次記録を保存する。
 - raw session を残す必要があるときだけ `/share file session [PATH]` を使う。
 - `/share gist` や OpenTelemetry content capture は、明示的に必要な trusted environment でのみ使う。

@@ -25,7 +25,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 CHECKPOINT_DIR = (
     ROOT_DIR
     / "plugins"
-    / "happy-ai-life"
+    / "happy-coding"
     / "skills"
     / "impl-and-ship"
     / "checkpoints"

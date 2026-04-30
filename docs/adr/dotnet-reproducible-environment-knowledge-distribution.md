@@ -29,8 +29,8 @@
 
 含めるもの:
 
-- `plugins/happy-ai-life/skills/dotnet-setup-dev-environment/SKILL.md`
-- `plugins/happy-ai-life/skills/dotnet/SKILL.md` の router 更新
+- `plugins/happy-coding/skills/dotnet-setup-dev-environment/SKILL.md`
+- `plugins/happy-coding/skills/dotnet/SKILL.md` の router 更新
 - `.github/instructions/csharp.instructions.md`
 - `repo-template/.github/instructions/csharp.instructions.md`
 - この ADR
@@ -48,7 +48,7 @@
 
 ### 3. 共通知識は home-template の skill に置く
 
-repo をまたいで再利用したい .NET setup の手順は、現在は plugin package の `plugins/happy-ai-life/skills/` に置く。
+repo をまたいで再利用したい .NET setup の手順は、現在は plugin package の `plugins/happy-coding/skills/` に置く。
 ここでは「何をどの順序で整えるか」と「なぜそうするか」を説明し、CLI-first の型を配布する。
 
 ### 4. 短い guardrail は path-specific instructions に置く
@@ -68,7 +68,7 @@ repo をまたいで再利用したい .NET setup の手順は、現在は plugi
 
 ## 根拠
 
-- `plugins/happy-ai-life/skills/dotnet/SKILL.md` は、基盤系 skill の追加余地を既に示している
+- `plugins/happy-coding/skills/dotnet/SKILL.md` は、基盤系 skill の追加余地を既に示している
 - `python-setup-dev-environment` skill は、環境構築手順を skill として配布する既存パターンになっている
 - `csharp.instructions.md` は style と safety を扱っているが、CLI-first の行動規範は未記載だった
 - `global.json`、nullable reference types、.NET analyzers、`dotnet format --verify-no-changes` は、いずれも再現性を pass/fail gate に変える一次要素である

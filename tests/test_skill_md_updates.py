@@ -22,15 +22,15 @@ import pytest
 # Paths to SKILL.md files
 ROOT_DIR = Path(__file__).resolve().parents[1]
 SDD_SKILL_PATH = (
-    ROOT_DIR / "plugins" / "happy-ai-life" / "skills" / "sdd" / "SKILL.md"
+    ROOT_DIR / "plugins" / "happy-coding" / "skills" / "sdd" / "SKILL.md"
 )
 IMPL_AND_SHIP_SKILL_PATH = (
-    ROOT_DIR / "plugins" / "happy-ai-life" / "skills" / "impl-and-ship" / "SKILL.md"
+    ROOT_DIR / "plugins" / "happy-coding" / "skills" / "impl-and-ship" / "SKILL.md"
 )
 BALANCED_COUPLING_SKILL_PATH = (
     ROOT_DIR
     / "plugins"
-    / "happy-ai-life"
+    / "happy-coding"
     / "skills"
     / "design-workshop"
     / "sub_skills"
