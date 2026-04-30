@@ -16,7 +16,7 @@ import pytest
 
 # Add plugin package to path for skill imports
 ROOT_DIR = Path(__file__).resolve().parents[1]
-SKILL_DIR = ROOT_DIR / "plugins" / "happy-ai-life" / "skills" / "sdd" / "sub_skills" / "split_multi_repo_plan"
+SKILL_DIR = ROOT_DIR / "plugins" / "happy-coding" / "skills" / "sdd" / "sub_skills" / "split_multi_repo_plan"
 if str(SKILL_DIR) not in sys.path:
     sys.path.insert(0, str(SKILL_DIR))
 

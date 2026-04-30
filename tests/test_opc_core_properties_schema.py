@@ -6,7 +6,7 @@ import lxml.etree
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCHEMA = ROOT / "plugins" / "happy-ai-life" / "skills" / "pptx" / "scripts" / "office" / "schemas" / "ecma" / "fouth-edition" / "opc-coreProperties.xsd"
+SCHEMA = ROOT / "plugins" / "happy-core" / "skills" / "pptx" / "scripts" / "office" / "schemas" / "ecma" / "fouth-edition" / "opc-coreProperties.xsd"
 
 
 def test_opc_core_properties_schema_loads_without_network() -> None:

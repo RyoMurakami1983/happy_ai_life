@@ -8,7 +8,7 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "plugins" / "happy-ai-life" / "skills" / "pptx" / "scripts" / "office" / "pack.py"
+SCRIPT = ROOT / "plugins" / "happy-core" / "skills" / "pptx" / "scripts" / "office" / "pack.py"
 SCRIPTS_ROOT = SCRIPT.parents[1]
 
 

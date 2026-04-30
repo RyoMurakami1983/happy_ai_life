@@ -1,7 +1,7 @@
 # Repository instructions for GitHub Copilot
 
 ## このリポジトリの使命
-- このリポジトリは、楽しく AI とコーディングライフを続けるための環境を構築する母艦である。
+- このリポジトリは、楽しく AI と続ける仕事・学習・コーディングの型を育てる母艦である。
 - reusable skills / agents は Copilot CLI plugin を primary distribution とし、home sync は trusted local author bootstrap として残す。
 - 思想と背景は `docs/PHILOSOPHY.md` を参照し、このファイルでは運用ルールに絞って定義する。
 
@@ -10,12 +10,12 @@
 - 一般的な品質・テスト・セキュリティ・Git の横断原則は home instructions に定義済み。このファイルでは repo 固有の事実に集中する。
 
 ## Architecture
-- 公開・共有向けの primary distribution は `plugins/happy-ai-life/` の Copilot CLI plugin とする。
+- 公開・共有向けの primary distribution は `plugins/happy-core/` と `plugins/happy-coding/` の Copilot CLI plugin とする。
 - 個人用設定の雛形は `home-template/.copilot/` に保持し、trusted local author bootstrap としてだけ home sync する。`skills/`、`agents/`、`docs/` は持たせず、開発者自身も plugin install を使う。
 - 配布テンプレートは `repo-template/` に置く。各 repo に同期する際の雛形となる。
 - 同期は `scripts/sync-to-home.ps1` と `scripts/sync-to-repo.ps1` を起点に行う。
 - `app.py` は公開 launcher として既存 PowerShell を呼ぶ。内部実装は Python module に置いても、同期ロジックの正本は `scripts/` に残す。
-- 配布方向: `plugins/happy-ai-life/` → Copilot CLI installed plugin、`home-template/` → `$HOME/.copilot/` の最小 bootstrap、`repo-template/` → 対象 repo の `.github/`
+- 配布方向: `plugins/happy-core/` / `plugins/happy-coding/` → Copilot CLI installed plugin、`home-template/` → `$HOME/.copilot/` の最小 bootstrap、`repo-template/` → 対象 repo の `.github/`
 - `docs/` は PHILOSOPHY.md、ADR、ローカルリファレンス、セッション記録を管理する。
 - `scripts/` は同期・インストール・検証用スクリプトを管理する。
 
@@ -45,7 +45,8 @@
 - このリポジトリはアプリ本体ではないが、Copilot CLI plugin package、運用用 launcher、Python の quality command は持つ。
 - 主要運用コマンドは以下。
   - `copilot plugin marketplace add RyoMurakami1983/happy_ai_life_coding_Environment` — owner-managed marketplace を登録する
-  - `copilot plugin install happy-ai-life@happy-ai-life-marketplace` — public/shared primary install path（branch push 後に marketplace install を検証）
+  - `copilot plugin install happy-core@happy-ai-life-marketplace` — public/shared primary install path（core workflow / authoring）
+  - `copilot plugin install happy-coding@happy-ai-life-marketplace` — public/shared primary install path（spec / design / impl / review）
   - `uv run app.py` — GUI launcher から trusted local home sync を呼ぶ
   - `uv run app.py home [--dry-run]` — home-template を `$HOME/.copilot/` に同期
   - `./scripts/sync-to-home.ps1` — home-template を `$HOME/.copilot/` に同期
@@ -78,9 +79,9 @@
 - 仕様、設定、使い方、設計判断が変わる場合は README、関連 docs、ADR も更新する。
 
 ## セッション終了ワークフロー
-- 「ふりかえり」→ `furikaeri-practice` skill を発火。詳細手順は skill 内に定義済み。
-- 共有保存も `furikaeri-practice` の中で進め、`docs/furikaeri/` と home 側 archive に残す。
-- `/exit` 直接入力時の sessionEnd 自動 YWT 生成は標準運用から封印済み。文脈継承は公式 session data と `furikaeri-practice` による日次保存を主導線にする。
+- 「ふりかえり」→ `furikaeri` skill を発火。詳細手順は skill 内に定義済み。
+- 共有保存も `furikaeri` の中で進め、`docs/furikaeri/` と home 側 archive に残す。
+- `/exit` 直接入力時の sessionEnd 自動 YWT 生成は標準運用から封印済み。文脈継承は公式 session data と `furikaeri` による日次保存を主導線にする。
 
 ## 優先順位
 1. 正確さと安全性

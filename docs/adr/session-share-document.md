@@ -1,11 +1,11 @@
-# 対話型ふりかえりを `furikaeri-practice` に統合する
+# 対話型ふりかえりを `furikaeri` に統合する
 
-> **注記**: この ADR は既存リンクや履歴との互換性のため、ファイル名は旧名称の `session-share-document.md` のまま保持している。現在の判断主題は `session-share-document` の独立運用ではなく、`furikaeri-practice` への統合である。
+> **注記**: この ADR は既存リンクや履歴との互換性のため、ファイル名は旧名称の `session-share-document.md` のまま保持している。現在の判断主題は `session-share-document` の独立運用ではなく、`furikaeri` への統合である。
 
 **日付**: 2026-04-02  
 **ステータス**: 承認
 
-> **現行補足**: 2026-04 の `session-continuity-retirement` により、`sessionStart` / `sessionEnd` hook を前提にした自動文脈注入は標準運用から封印した。`furikaeri-practice` は home の `.copilot/docs/furikaeri/` を主保存先とする日次・横断ふりかえり workflow として継続する。
+> **現行補足**: 2026-04 の `session-continuity-retirement` により、`sessionStart` / `sessionEnd` hook を前提にした自動文脈注入は標準運用から封印した。`furikaeri` は home の `.copilot/docs/furikaeri/` を主保存先とする日次・横断ふりかえり workflow として継続する。
 
 ---
 
@@ -14,16 +14,16 @@
 既存のセッション継続は `.github/sessions/` と `sessionStart/sessionEnd` hook で成立している。  
 これは作業用の私的な継続には向くが、対話しながら学びを整理し、共有に耐えるふりかえりを残す体験としては不十分だった。
 
-従来は `furikaeri-practice` と `session-share-document` を分けていたが、保存が別入口になることでユーザーが置き去りになりやすかった。  
+従来は `furikaeri` と `session-share-document` を分けていたが、保存が別入口になることでユーザーが置き去りになりやすかった。  
 今回ほしいのは、セッションストーリーの確認から YWT / KPT の選択、SMART、必要時だけの skill 改善提案、保存までを 1 本の対話で完了できる workflow である。
 
 ## 判断
 
 - `.github/sessions/` は hook 管理の作業領域として維持する
-- `furikaeri-practice` を単一入口とし、`session-share-document` は廃止する
+- `furikaeri` を単一入口とし、`session-share-document` は廃止する
 - repo では `docs/furikaeri/`、home では `.copilot/docs/furikaeri/` を共有ふりかえりの保存先にする
 - `sessionStart` / `sessionEnd` による自動 continuity は標準運用から封印し、legacy repo の明示 opt-in に限定する
-- `sessionEnd` の機械的 YWT ではなく、`furikaeri-practice` による日次・横断ふりかえりを主導線にする
+- `sessionEnd` の機械的 YWT ではなく、`furikaeri` による日次・横断ふりかえりを主導線にする
 
 ## 根拠
 
@@ -38,11 +38,11 @@
 | --- | --- | --- |
 | hook で直接共有文書を作る | 自動化しやすい | タイトル確認と公開配慮を飛ばしやすい |
 | skill を 2 本維持する | 責務を分けやすい | 保存時にユーザーが置き去りになりやすい |
-| **`furikaeri-practice` に統合する** | 対話が切れず、保存まで迷いにくい | skill 本文と判断表の設計がやや重くなる |
+| **`furikaeri` に統合する** | 対話が切れず、保存まで迷いにくい | skill 本文と判断表の設計がやや重くなる |
 
 ## 運用
 
-- `furikaeri-practice` の中で、セッションストーリー確認 → YWT / KPT 分岐 → SMART → 保存まで進める
+- `furikaeri` の中で、セッションストーリー確認 → YWT / KPT 分岐 → SMART → 保存まで進める
 - 複雑な skill 利用や出戻りがある場合は YWT を出さず KPT に寄せる
 - skill 改善提案は KPT 実施時にのみ候補化し、強化・カイゼンが望ましい場合だけ残す
 - 公式 session data、必要に応じた `/chronicle standup`、明示的な `/share file session` を材料にする

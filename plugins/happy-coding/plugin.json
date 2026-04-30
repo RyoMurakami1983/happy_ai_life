@@ -1,0 +1,15 @@
+{
+  "name": "happy-coding",
+  "description": "Copilot CLI reusable coding workflows, developer setup skills, and narrow agents for Happy AI Life.",
+  "version": "0.1.0",
+  "repository": "https://github.com/RyoMurakami1983/happy_ai_life_coding_Environment",
+  "keywords": [
+    "copilot-cli",
+    "skills",
+    "agents",
+    "ai-coding",
+    "debug"
+  ],
+  "agents": "agents/",
+  "skills": "skills/"
+}
