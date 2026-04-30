@@ -66,8 +66,8 @@
 <!-- TODO: このプロジェクト固有の慣習があれば追記する -->
 
 ## セッション終了ワークフロー
-- 「ふりかえり」→ `furikaeri-practice` skill を発火。詳細手順は skill 内に定義済み。
-- 共有保存も `furikaeri-practice` の中で進め、まず home の `.copilot/docs/furikaeri/` に残し、必要なものだけ `docs/furikaeri/` に共有する。
+- 「ふりかえり」→ `furikaeri` skill を発火。詳細手順は skill 内に定義済み。
+- 共有保存も `furikaeri` の中で進め、まず home の `.copilot/docs/furikaeri/` に残し、必要なものだけ `docs/furikaeri/` に共有する。
 - `/exit` 直接入力時の sessionEnd 自動 YWT 生成は標準運用から封印済み。日次ふりかえりを明示実行する。
 
 ## 優先順位
