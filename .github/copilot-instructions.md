@@ -44,7 +44,7 @@
 ## Build and Test
 - このリポジトリはアプリ本体ではないが、Copilot CLI plugin package、運用用 launcher、Python の quality command は持つ。
 - 主要運用コマンドは以下。
-  - `copilot plugin marketplace add RyoMurakami1983/happy_ai_life_coding_Environment` — owner-managed marketplace を登録する
+  - `copilot plugin marketplace add RyoMurakami1983/happy_ai_life` — owner-managed marketplace を登録する
   - `copilot plugin install happy-core@happy-ai-life-marketplace` — public/shared primary install path（core workflow / authoring）
   - `copilot plugin install happy-coding@happy-ai-life-marketplace` — public/shared primary install path（spec / design / impl / review）
   - `uv run app.py` — GUI launcher から trusted local home sync を呼ぶ

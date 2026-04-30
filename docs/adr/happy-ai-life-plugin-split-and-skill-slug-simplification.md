@@ -5,7 +5,7 @@
 
 ## 背景
 
-現状の母艦 repo は `happy_ai_life_coding_Environment` という名前を持つが、実体は「AI と coding に閉じた環境」より広い。
+この母艦 repo は、変更前は `happy_ai_life_coding_Environment` という名前だったが、実体は当初から「AI と coding に閉じた環境」より広かった。
 この repo はすでに、reusable skills / agents、trusted local bootstrap、repo bootstrap、safety guard、distribution metadata を扱う運用母艦になっている。
 
 一方で、公開・共有向け distribution は `plugins/happy-ai-life/` の単一 plugin に集約されており、次の 2 つの問題があった。
@@ -20,7 +20,7 @@
 ### 1. repo の主旨を `happy-ai-life` に広げる
 
 - この母艦 repo は「AI との楽しい coding 環境」に限定せず、**AI と続ける仕事・学習・創作の再利用可能な型を育てる母艦**として扱う。
-- ただし、GitHub 上の実 repo slug / URL の rename はこの ADR の範囲外とする。repo 内ドキュメントと package naming を先に整え、外部 rename は別途実施する。
+- GitHub 上の実 repo slug / URL rename は、この ADR の判断後に `happy_ai_life` へ反映済みとする。
 
 ### 2. 公開・共有向け plugin は `happy-core` と `happy-coding` に分割する
 

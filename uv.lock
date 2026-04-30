@@ -43,7 +43,7 @@ wheels = [
 ]
 
 [[package]]
-name = "happy-ai-life-coding-environment"
+name = "happy-ai-life"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

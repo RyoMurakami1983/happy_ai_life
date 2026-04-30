@@ -5,7 +5,7 @@ This directory is the curated marketplace-install package for Happy AI Life codi
 Install through this repository's owner-managed marketplace:
 
 ```powershell
-copilot plugin marketplace add RyoMurakami1983/happy_ai_life_coding_Environment
+copilot plugin marketplace add RyoMurakami1983/happy_ai_life
 copilot plugin install happy-coding@happy-ai-life-marketplace
 ```
 
