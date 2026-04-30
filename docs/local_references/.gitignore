@@ -1,8 +1,0 @@
-# Keep this directory tracked, but ignore all temporary local reference skills.
-*
-!.gitkeep
-!.gitignore
-!README.md
-!balanced-coupling/
-balanced-coupling/*
-!balanced-coupling/README.md
