@@ -3,7 +3,7 @@ name: new-agent
 description: >
   新しい custom agent を既存 agent 群と同じ型で立ち上げる。Use when:
   agent の新規追加、役割分離のための専門 agent 作成、既存群の隙間を埋めたいとき。
-compatibility: "../../../create-agents/references/agent-template.md, ../../_eval/scripts/validate_agent.py"
+compatibility: "../../_agent/references/agent-template.md, ../../_eval/scripts/validate_agent.py"
 ---
 
 # Agent を新規作成する
@@ -29,7 +29,7 @@ compatibility: "../../../create-agents/references/agent-template.md, ../../_eval
 
 ### ステップ 3 — template から agent.md を起こす
 
-既存 template を基準に frontmatter と本文構成を埋めます。`description` の `Use when:`、`役割`、`非責務`、`<領域名>の原則`、`プロセス`、`出力の型`、`注意点`、`完了条件` は `create-agents` の正本契約として最低限そろえます。
+既存雛形を基準に frontmatter と本文構成を埋めます。`description` の `Use when:`、`役割`、`非責務`、`<領域名>の原則`、`プロセス`、`出力の型`、`注意点`、`完了条件` は `_agent` の正本契約として最低限そろえます。
 
 ### ステップ 4 — 近接 agent と比較する
 
@@ -37,7 +37,7 @@ compatibility: "../../../create-agents/references/agent-template.md, ../../_eval
 
 ### ステップ 5 — validator で骨格を確認する
 
-作成後は同梱 validator で frontmatter と section 構造を確認します。`## 1. 役割` のような番号付き H2 や `## 設計プロセス` / `## レビュープロセス` のような既存 corpus にある見出し、師範 agent の legacy mode 構成も受け入れつつ、template 系 agent では `原則` セクションを必須として `create-agents` と契約を揃えます。
+作成後は同梱の検証スクリプトで frontmatter と section 構造を確認します。`## 1. 役割` のような番号付き H2 や `## 設計プロセス` / `## レビュープロセス` のような既存 corpus にある見出し、師範 agent の legacy mode 構成も受け入れつつ、雛形由来の agent では `原則` セクションを必須として `_agent` と契約を揃えます。
 
 ```powershell
 uv run python plugins/happy-core/skills/copilot-authoring/_eval/scripts/validate_agent.py plugins/happy-coding/agents/<agent-name>.agent.md --level L1
@@ -55,8 +55,8 @@ uv run python plugins/happy-core/skills/copilot-authoring/_eval/scripts/validate
 
 ## 共通リソース
 
-- `../../../create-agents/` — 既存の agent authoring workflow
-- `../../../create-agents/references/agent-template.md` — agent.md の雛形
+- `../../_agent/` — agent authoring の内部資産
+- `../../_agent/references/agent-template.md` — agent.md の雛形
 - `../../_eval/scripts/validate_agent.py` — agent validator
 - `../validate-authoring/` — 変更後の検証ルート
 

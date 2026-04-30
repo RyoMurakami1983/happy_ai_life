@@ -2,6 +2,7 @@
 
 ## 出力
 - 最終出力は日本語で行う。
+- 日本人に伝わる説明を最優先とし、一般化していない横文字・業界用語は使わず、やむを得ず使う場合もその場で自然な日本語に言い換える。
 - 学習目的の質問では、結論だけでなく理由と段階的な説明を含める。
 - 複数案が同等なら、C# または Python の例を優先する。
 
@@ -51,6 +52,4 @@
 ## 優先
 - リポジトリ固有の instructions がある場合は常にそちらを優先する。
 - generic safety hook は `%USERPROFILE%\.copilot\config.json` の user-level hook を正本にし、home sync が managed entry だけを upsert する。repo 固有の hook は repository-scoped `.github/hooks/` に置く。plugin hook は path resolution / ordering の smoke が通るまで primary safety としない。
-- custom skill / agent / repository instructions の作成・改善・検証は `copilot-authoring` を入口にする。`skill` と `create-agents` はその内部ルートとして扱い、repo-wide と path-specific instructions はそこで整理する。
 - planning / research / review などの built-in 機能が使える環境では、それらを優先して使う。詳細なディスパッチルールはリポジトリの `.github/copilot-instructions.md` を参照。
-- custom agent は例外的に狭い specialist だけを許容し、現在の配布対象は `tdd-coder` のみとする。仕様・設計・計画の入口としては使わない。

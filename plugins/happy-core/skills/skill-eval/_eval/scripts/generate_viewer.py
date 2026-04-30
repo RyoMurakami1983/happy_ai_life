@@ -1,7 +1,7 @@
 """`benchmark_summary.json` から自己完結型の HTML viewer を生成する。
 
 使い方:
-    uv run python skills/skill/_eval/scripts/generate_viewer.py \\
+    uv run python skills/skill-eval/_eval/scripts/generate_viewer.py \\
         --skill-id skill \\
         [--evals-dir evals] \\
         [--out viewer/index.html]

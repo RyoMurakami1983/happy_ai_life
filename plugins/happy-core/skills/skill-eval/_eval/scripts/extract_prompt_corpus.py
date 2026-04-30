@@ -1,7 +1,7 @@
 r"""Copilot session の events.jsonl から user prompt を抽出・要約する。
 
 使い方:
-    uv run python skills/skill/_eval/scripts/extract_prompt_corpus.py ^
+    uv run python skills/skill-eval/_eval/scripts/extract_prompt_corpus.py ^
         --root "%USERPROFILE%\.copilot\session-state" ^
         --pattern "(PR|プルリク|レビュー|Issue|issue|コミット|commit|main|pull|git初期化|GitHub)" ^
         --limit 50 ^

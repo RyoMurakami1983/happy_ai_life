@@ -66,7 +66,6 @@
 #### `happy-core`
 
 - `copilot-authoring`
-- `create-agents`
 - `empirical-prompt-tuning`
 - `furikaeri`
 - `gh-issue-create`
@@ -75,7 +74,6 @@
 - `git-commit`
 - `knowledge-capture`
 - `pptx`
-- `skill`
 - `skill-eval`
 
 #### `happy-coding`
@@ -98,6 +96,12 @@
 - narrow agent `tdd-coder`
 
 `happy-office` や `happy-play` は将来の拡張候補であり、この ADR では追加しない。
+
+### 5. 追補: authoring 入口の統合
+
+後続整理で、公開 skill としての `skill` と `create-agents` は廃止し、必要な資産を `copilot-authoring` 配下の内部資産へ統合した。
+現在の公開入口は `copilot-authoring` であり、skill authoring の資産は `plugins/happy-core/skills/copilot-authoring/_skill/`、agent authoring の資産は `plugins/happy-core/skills/copilot-authoring/_agent/` に置く。
+一方、評価用の `skill-eval` と `empirical-prompt-tuning` は、authoring 入口とは別の評価 skill として維持する。
 
 ## 移行方針
 

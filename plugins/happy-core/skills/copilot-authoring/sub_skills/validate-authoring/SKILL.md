@@ -3,7 +3,7 @@ name: validate-authoring
 description: >
   skill と agent の authoring 資産を出荷前に検証する。Use when:
   draft の骨格確認、改善後の回帰確認、共有前の最低品質確認をしたいとき。
-compatibility: "../../../skill/_eval/scripts/validate_skill.py, ../../_eval/scripts/validate_agent.py"
+compatibility: "../../_skill/_eval/scripts/validate_skill.py, ../../_eval/scripts/validate_agent.py"
 ---
 
 # Authoring 資産を検証する
@@ -30,8 +30,8 @@ compatibility: "../../../skill/_eval/scripts/validate_skill.py, ../../_eval/scri
 skill では既存の `validate_skill.py` を使い、まず L1、必要なら L2 まで進めます。最小構造が崩れている skill は、その先の review に進めません。
 
 ```powershell
-uv run python plugins/happy-core/skills/skill/_eval/scripts/validate_skill.py plugins/happy-core/skills/<skill-name>/SKILL.md --level L1
-uv run python plugins/happy-core/skills/skill/_eval/scripts/validate_skill.py plugins/happy-core/skills/<skill-name>/SKILL.md --level L2
+uv run python plugins\happy-core\skills\copilot-authoring\_skill\_eval\scripts\validate_skill.py plugins\happy-core\skills\<skill-name>\SKILL.md --level L1
+uv run python plugins\happy-core\skills\copilot-authoring\_skill\_eval\scripts\validate_skill.py plugins\happy-core\skills\<skill-name>\SKILL.md --level L2
 ```
 
 ### ステップ 3 — agent は同梱 validator を通す
@@ -57,7 +57,7 @@ uv run python plugins/happy-core/skills/copilot-authoring/_eval/scripts/validate
 
 ## 共通リソース
 
-- `../../../skill/_eval/scripts/validate_skill.py` — skill validator
+- `../../_skill/_eval/scripts/validate_skill.py` — skill validator
 - `../../_eval/scripts/validate_agent.py` — agent validator
 - `../improve-existing/` — 指摘を反映する改善ルート
 
