@@ -44,7 +44,7 @@ function makeTempDir(prefix = 'session-hooks-dir-') {
 function sampleMetadata() {
   return {
     project: 'happy_ai_life',
-    branch: 'feature/furikaeri-practice',
+    branch: 'feature/furikaeri',
     worktree: 'C:\\tools\\happy_ai_life',
     reason: 'manual-test',
   };

@@ -54,12 +54,13 @@
 - PR 前の重要変更や「事前レビュー」依頼は、built-in レビュー機能または自分で段階的にチェックする。
 
 ## Conventions
+- **目的: この repo を触る前提条件と、あとから詰まりやすい bootstrap 要件を短く共有する。**
 - 言語別の追加ルールは `.github/instructions/*.instructions.md` を参照し、このファイルに重複記載しない。
 - XAML / binding / MVVM の局所ルールは `.github/instructions/xaml.instructions.md` に寄せる。
 - Serial / VISA / database / LAN / file I/O / DAQ / hardware / OS 連携の局所ルールは `.github/instructions/infrastructure.instructions.md` に寄せる。
 - repo-scoped Copilot hooks は `.github/hooks/*.json` と `.github/hooks/scripts/` に置く。ただし標準 bootstrap は safety guard を中心にし、session continuity hooks は必要な repo だけ明示 opt-in する。
 - Git client hooks は `.githooks/` に配置し `core.hooksPath` で有効化する。
-- GitHub Actions workflow は `.github/workflows/*.yml|*.yaml` に置く。repo-secure-check で不足した場合は、対象技術に合う template を明示的に選んで導入する。
+- GitHub Actions workflow は `.github/workflows/*.yml|*.yaml` に置く。`repo-secure-check.ps1` は脆弱性スキャナではなく、repo instructions・safety hooks・Git hooks・`core.hooksPath`・workflow の導入漏れを確認する bootstrap 点検スクリプトである。不足した場合は、対象技術に合う template を明示的に選んで導入する。
 - `.github/sessions/` と `.github/instructions/session-context.instructions.md` は legacy session continuity hook 生成物として、配布先の `.github/.gitignore` でローカル扱いにする。
 - コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
 - 仕様、設定、使い方、設計判断が変わる場合は README、関連 docs、ADR も更新する。

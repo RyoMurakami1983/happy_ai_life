@@ -90,6 +90,8 @@ uv run app.py home
 
 ### Repo-local bootstrap: instructions and hooks
 
+**目的: target repo を「安全弁なしの未 bootstrap 状態」で触り始めないための導線です。**
+
 repo instructions、path-specific instructions、Git client hooks は target repo のローカル資産として配布します。plugin install では target repo を変更しません。Copilot の generic safety hook は `%USERPROFILE%\.copilot\config.json` の user-level hook として home sync が upsert し、repo-scoped `safety-guard.json` は fallback / repo-specific safety として維持します。
 
 ```powershell
@@ -105,7 +107,7 @@ repo instructions、path-specific instructions、Git client hooks は target rep
 
 Copilot hooks は既定で `SafetyOnly` mode です。`sessionStart` / `sessionEnd` による repo-local session continuity は標準運用から封印済みのため、既定配布では `session-continuity.json` を除外します。legacy repo で明示的に必要な場合だけ `-HooksMode All` を指定してください。
 
-`repo-secure-check.ps1` は `.github/workflows/*.yml|*.yaml` も確認します。workflow は repo の言語・runtime・組織ポリシーに依存するため、不足時は `repo-onboarding` で対象技術に合う template を選び、意図を確認してから導入してください。
+`repo-secure-check.ps1` は **脆弱性スキャナではなく、repo bootstrap の安全弁がそろっているかを見る導入漏れチェック** です。repo instructions、Copilot safety hooks、Git client hooks、`core.hooksPath`、`.github/workflows/*.yml|*.yaml` の不足を確認します。workflow は repo の言語・runtime・組織ポリシーに依存するため、不足時は `repo-onboarding` で対象技術に合う template を選び、意図を確認してから導入してください。
 
 > **注意: `home` sync の同期境界について**
 > home sync は次の境界で挙動が分かれます。

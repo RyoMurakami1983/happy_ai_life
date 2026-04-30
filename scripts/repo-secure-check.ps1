@@ -1,4 +1,14 @@
 [CmdletBinding()]
+<#
+.SYNOPSIS
+Checks whether a target repository has the expected local safety valves and bootstrap assets.
+
+.DESCRIPTION
+repo-secure-check.ps1 is not a vulnerability scanner or a secret scanner.
+It verifies that repo instructions, Copilot safety hooks, Git client hooks, core.hooksPath,
+and workflow files are present so work does not start on a repository that is missing the
+local safety valves expected by this operating model.
+#>
 param(
     [Parameter(Mandatory = $true)]
     [string]$TargetRepoPath,

@@ -5,7 +5,7 @@
 **日付**: 2026-04-02  
 **ステータス**: 承認
 
-> **現行補足**: 2026-04 の `session-continuity-retirement` により、`sessionStart` / `sessionEnd` hook を前提にした自動文脈注入は標準運用から封印した。`furikaeri` は home の `.copilot/docs/furikaeri/` を主保存先とする日次・横断ふりかえり workflow として継続する。
+> **現行補足**: 2026-04 の `session-continuity-retirement` により、`sessionStart` / `sessionEnd` hook を前提にした自動文脈注入は標準運用から封印した。`furikaeri` は home の `.copilot/docs/furikaeri/` を主保存先とする日次・横断ふりかえり workflow として継続し、repo 側の共有は必要な記録だけを明示的に残す。
 
 ---
 
@@ -19,9 +19,9 @@
 
 ## 判断
 
-- `.github/sessions/` は hook 管理の作業領域として維持する
 - `furikaeri` を単一入口とし、`session-share-document` は廃止する
-- repo では `docs/furikaeri/`、home では `.copilot/docs/furikaeri/` を共有ふりかえりの保存先にする
+- home の `.copilot/docs/furikaeri/` を共有ふりかえりの主保存先とし、repo 共有が必要な記録だけ `docs/furikaeri/` に残す
+- `.github/sessions/` と `docs/sessions/` は repo 管理の標準保存先としては扱わない（既存履歴は保持してよい）
 - `sessionStart` / `sessionEnd` による自動 continuity は標準運用から封印し、legacy repo の明示 opt-in に限定する
 - `sessionEnd` の機械的 YWT ではなく、`furikaeri` による日次・横断ふりかえりを主導線にする
 
@@ -46,7 +46,7 @@
 - 複雑な skill 利用や出戻りがある場合は YWT を出さず KPT に寄せる
 - skill 改善提案は KPT 実施時にのみ候補化し、強化・カイゼンが望ましい場合だけ残す
 - 公式 session data、必要に応じた `/chronicle standup`、明示的な `/share file session` を材料にする
-- 共有文書は append-only とし、`YYYYMMDD-HHmmss-タイトル.md` で新規保存する
+- 保存時はまず home の `.copilot/docs/furikaeri/` に `YYYYMMDD-HHmmss-タイトル.md` で残し、repo 共有が必要な場合だけ `docs/furikaeri/` へ明示的に追加する
 
 ## 状態
 

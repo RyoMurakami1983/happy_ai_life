@@ -298,6 +298,26 @@ def test_pre_commit_handles_non_ascii_staged_paths(tmp_path: Path) -> None:
     assert commit.returncode == 0, commit.stdout + commit.stderr
 
 
+def test_pre_commit_allows_modifying_existing_docs_sessions_history(tmp_path: Path) -> None:
+    repo, env = _prepare_repo(tmp_path)
+    shared_doc = repo / "docs" / "sessions" / "history.md"
+    shared_doc.parent.mkdir(parents=True)
+    shared_doc.write_text("# history\n\ninitial\n", encoding="utf-8", newline="\n")
+
+    add_initial = _run_git(repo, "add", "docs/sessions/history.md", env=env)
+    assert add_initial.returncode == 0, add_initial.stdout + add_initial.stderr
+    initial_commit = _run_git(repo, "commit", "-m", "add shared history", env=env)
+    assert initial_commit.returncode == 0, initial_commit.stdout + initial_commit.stderr
+
+    shared_doc.write_text("# history\n\nupdated\n", encoding="utf-8", newline="\n")
+
+    add_update = _run_git(repo, "add", "docs/sessions/history.md", env=env)
+    assert add_update.returncode == 0, add_update.stdout + add_update.stderr
+    update_commit = _run_git(repo, "commit", "-m", "update shared history", env=env)
+
+    assert update_commit.returncode == 0, update_commit.stdout + update_commit.stderr
+
+
 def test_pre_commit_uses_default_gitleaks_rules_when_config_is_missing(tmp_path: Path) -> None:
     repo, env = _prepare_repo(tmp_path)
     (repo / ".gitleaks.toml").unlink()
