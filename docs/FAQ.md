@@ -1,184 +1,184 @@
-# Frequently Asked Questions (FAQ)
+# FAQ
 
-## Installation and Setup
+## インストールとセットアップ
 
-### Q: Do I need to install Copilot CLI first?
+### Q: 先に Copilot CLI が必要ですか？
 
-**A:** Yes. Copilot CLI is the runtime that executes all skills and agents. Install it from https://github.com/github/copilot-cli or use your package manager:
+**A:** はい。skills と agents を動かす本体が Copilot CLI です。  
+https://github.com/github/copilot-cli
 
 **macOS (Homebrew):**
+
 ```bash
 brew install github/gh-copilot/gh-copilot
 ```
 
 **Windows (Winget):**
+
 ```powershell
 winget install GitHub.Copilot
 ```
 
-### Q: Which installation path should I choose?
+### Q: どの導入方法を選べばよいですか？
 
-**A:** Choose based on your use case:
+**A:** 用途で選んでください。
 
-| Path | Best for | Complexity |
-|------|----------|-----------|
-| **Marketplace Plugin** | Using skills in your own projects | Easiest |
-| **Local Development** | Contributing to this repo or customizing skills | Intermediate |
-| **Repo Bootstrap** | Adding structure to your team's repository | Intermediate |
+| 導入方法 | 向いている場面 | 手軽さ |
+|----------|----------------|--------|
+| Marketplace Plugin | skills を使いたいだけ | いちばん簡単 |
+| ローカル開発 | この repo を改善したい | 中くらい |
+| repo 初期導入 | チーム repo に入れたい | 中くらい |
 
-See [Getting Started](GETTING_STARTED.md) for detailed comparison.
+詳しくは [はじめに](GETTING_STARTED.md) を参照してください。
 
-### Q: Can I use multiple installation paths?
+### Q: 複数の導入方法を併用できますか？
 
-**A:** Yes! You can:
-- Install via marketplace for public/shared use
-- Install locally in home for personal customization
-- Bootstrap into your project repo for team-wide standards
+**A:** できます。公開利用は marketplace、個人調整は home sync、チーム共有は repo bootstrap という併用ができます。
 
-All three can work together.
+## 配布方法
 
-## Distribution
+### Q: marketplace install と direct install の違いは何ですか？
 
-### Q: What is the difference between marketplace install and direct install?
+**A:**  
 
-**A:** 
+- **marketplace install**: 現在の主導線です。`copilot plugin install` で更新します。
+- **direct install**: 古い導線です。新しい Copilot CLI では非推奨です。
 
-- **Marketplace Install** (recommended): Plugin installed from Copilot CLI marketplace. Updates through `copilot plugin install`. Default path for public/shared use.
-- **Direct Install** (deprecated): Plugin installed directly from repository URL. No marketplace intermediary. Deprecated in newer Copilot CLI versions.
+新規導入では marketplace を使ってください。
 
-Use marketplace install for new setups.
+### Q: direct install と marketplace install を同時に使えますか？
 
-### Q: Can I use both marketplace and direct install?
-
-**A:** Not recommended. If you do, you'll see duplicate plugins. Uninstall the old version first:
+**A:** 非推奨です。重複表示されやすいため、先に旧版を外してください。
 
 ```powershell
 copilot plugin uninstall happy-ai-life
 copilot plugin install happy-core@happy-ai-life-marketplace
 ```
 
-## Home Sync vs Repo Bootstrap
+## Home Sync と Repo Bootstrap の違い
 
-### Q: What is home sync?
+### Q: home sync とは何ですか？
 
-**A:** Home sync synchronizes your `$HOME/.copilot/` directory with the repository's `home-template/`. It's designed for trusted local author bootstrap—not for team sharing.
+**A:** `home-template/` の内容を `$HOME/.copilot/` に同期する仕組みです。信頼済みの個人環境を再現するときに使います。
 
-**Use it when:**
-- You want to reproduce the author's personal setup
-- You're contributing to the repository
-- You want to customize skills for your personal use
+使う場面:
 
-See [Home Sync](HOME_SYNC.md) for details.
+- 作者環境を再現したい
+- この repo に貢献したい
+- 個人用に skill を調整したい
 
-### Q: What is repo bootstrap?
+詳しくは [Home Sync（個人環境同期）](HOME_SYNC.md) を参照してください。
 
-**A:** Repo bootstrap adds Copilot guidance, Git hooks, and quality checks to a target repository. All changes are committed so the entire team uses the same setup.
+### Q: repo bootstrap とは何ですか？
 
-**Use it when:**
-- You want to enable Copilot guidance across your team
-- You want to enforce quality checks (gitleaks, etc.)
-- You want all developers to use consistent Git hooks
+**A:** 対象 repo に instructions、hooks、品質ゲートを入れる仕組みです。変更は repo に残るため、チーム全体に効きます。
 
-See [Repo Bootstrap](REPO_BOOTSTRAP.md) for details.
+使う場面:
 
-### Q: When should I use home sync vs repo bootstrap?
+- チーム repo に Copilot guidance を入れたい
+- secret 検出などの安全弁を揃えたい
+- Git hooks を共通化したい
 
-**A:**
+詳しくは [Repo Bootstrap（repo 初期導入）](REPO_BOOTSTRAP.md) を参照してください。
 
-| Scenario | Use |
-|----------|-----|
-| Personal environment setup | Home Sync |
-| Contributing to happy_ai_life | Home Sync |
-| Adding Copilot to your team project | Repo Bootstrap |
-| Customizing skills for personal use | Home Sync |
-| Enforcing team standards | Repo Bootstrap |
+### Q: どう使い分けますか？
+
+| 場面 | 使うもの |
+|------|----------|
+| 個人環境を整える | Home Sync |
+| この repo に貢献する | Home Sync |
+| チーム repo に導入する | Repo Bootstrap |
+| 個人で skill を調整する | Home Sync |
+| チームの標準運用を揃える | Repo Bootstrap |
 
 ## Context7
 
-### Q: Is Context7 included in happy_ai_life?
+### Q: Context7 は同梱されていますか？
 
-**A:** No. Context7 is an external plugin from Upstash. This repository does not include or distribute Context7.
+**A:** いいえ。Upstash の外部 plugin です。この repo には含めていません。
 
-### Q: How do I install Context7?
+### Q: Context7 を入れるには？
 
-**A:** If you need Context7 for documentation lookups, install it as a separate Copilot CLI plugin:
+**A:** 必要なら別 plugin として入れます。
 
 ```powershell
 copilot plugin marketplace add upstash/context7
 copilot plugin install context7-plugin@context7-marketplace
 ```
 
-Get your API key from https://context7.com.
+API key は https://context7.com で取得してください。
 
-## Customization
+## カスタマイズ
 
-### Q: Can I create custom skills?
+### Q: custom skill は作れますか？
 
-**A:** Yes! See [Authoring Guide](AUTHORING.md) for step-by-step instructions on creating custom skills, agents, and instructions.
+**A:** 作れます。[作成ガイド](AUTHORING.md) を参照してください。
 
-### Q: How do I customize instructions for my project?
+### Q: Doc 作成専用の skill は必要ですか？
 
-**A:** Edit `.github/copilot-instructions.md` in your repository after bootstrap. Add your team's specific conventions, patterns, and guidance.
+**A:** いまは必須ではありません。README や `docs/*.md` の小さな更新は通常の編集で十分です。
 
-You can also add language-specific instructions in `.github/instructions/<language>.instructions.md`.
+custom skill / agent / repository instructions 自体を新規作成・改善・検証したいときは `copilot-authoring` を使ってください。  
+文書構成そのものを大きく見直すときだけ、専用 skill を追加する価値があります。
 
-### Q: Can I share custom skills with others?
+### Q: project 固有の instructions はどう入れますか？
 
-**A:** Yes. Follow the skill structure and package your skill as a Copilot CLI plugin. See [Authoring Guide](AUTHORING.md) for packaging details.
+**A:** bootstrap 後に `.github/copilot-instructions.md` を編集します。必要なら `.github/instructions/<language>.instructions.md` も追加します。
 
-## Troubleshooting
+### Q: custom skill を他の人と共有できますか？
 
-### Q: My skills are not showing up in `/skill list`
+**A:** できます。plugin として配布できる形にしてください。詳しくは [作成ガイド](AUTHORING.md) を参照してください。
 
-**A:** Check:
-1. Plugins are installed: `copilot plugin list`
-2. Skills are available in the plugin: `copilot skill list <plugin-name>`
-3. For local home sync, verify sync was applied: `uv run app.py home --dry-run`
+## トラブル対応
 
-See [Troubleshooting](TROUBLESHOOTING.md) for more solutions.
+### Q: `/skill list` に skill が出ません
 
-### Q: Git hooks are blocking my commits. How do I bypass them?
+**A:** 次を確認してください。
 
-**A:** Don't bypass hooks—they're protecting your repository from secret leaks. Instead:
+1. `copilot plugin list`
+2. `copilot skill list <plugin-name>`
+3. home sync を使っているなら `uv run app.py home --dry-run`
 
-1. Find the secret flagged by gitleaks
-2. Remove or obscure it
-3. Retry the commit
+### Q: Git hooks が commit を止めます。回避してよいですか？
 
-If you absolutely must commit, you can temporarily disable hooks:
+**A:** 基本は回避しないでください。secret 流出防止のためです。まず検出された内容を直してください。
+
+どうしても一時回避が必要なら:
 
 ```powershell
-git commit --no-verify  # NOT RECOMMENDED
+git commit --no-verify
 ```
 
-But then run a manual scan:
+ただし、その後で手動確認してください。
 
 ```powershell
 gitleaks detect --source . --verbose
 ```
 
-## Support
+## サポート
 
-### Q: Where can I report issues?
+### Q: issue はどこに出せますか？
 
-**A:** Report issues on GitHub: https://github.com/RyoMurakami1983/happy_ai_life/issues
+**A:** 次に起票してください。  
+https://github.com/RyoMurakami1983/happy_ai_life/issues
 
-Include:
-- Steps to reproduce
-- Expected behavior
-- Actual behavior
-- Operating system and versions
+あるとよい情報:
 
-### Q: How can I contribute?
+- 再現手順
+- 期待した動作
+- 実際の動作
+- OS とバージョン
 
-**A:** See [Development](DEVELOPMENT.md) for contribution guidelines.
+### Q: どう貢献できますか？
 
-### Q: How do I stay updated?
+**A:** [開発ガイド](DEVELOPMENT.md) を参照してください。
 
-**A:** Watch the repository for releases and updates. New skills and features are published to the marketplace regularly.
+### Q: 更新を追うには？
 
-## See also
+**A:** repo を watch してください。新しい skill や改善が反映されます。
 
-- [Getting Started](GETTING_STARTED.md)
-- [Troubleshooting](TROUBLESHOOTING.md)
-- [Development](DEVELOPMENT.md)
+## 関連
+
+- [はじめに](GETTING_STARTED.md)
+- [トラブルシューティング](TROUBLESHOOTING.md)
+- [開発ガイド](DEVELOPMENT.md)

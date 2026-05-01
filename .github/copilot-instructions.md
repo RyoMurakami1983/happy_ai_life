@@ -77,6 +77,7 @@
 - target repo に配布する local ignore の正本は `repo-template/.github/.gitignore`、母艦 repo の generated files は root `.gitignore` でローカル扱いにする。
 - `mcp-config.json` は user-owned live file として扱い、home sync では上書きしない。この母艦 repo は MCP config sample を primary path として配布しない。Context7 が必要な場合は外部 Copilot CLI plugin として案内する。
 - コミット提案は Conventional Commits を優先し、メッセージは日本語で具体的に書く。
+- README と `docs/*.md` は、本文だけでなく見出し・表ラベル・注記も日本語を基本にする。固有名詞、CLI コマンド、コード識別子、path、外部サービス名だけは必要に応じて英語のまま残してよい。
 - 仕様、設定、使い方、設計判断が変わる場合は README、関連 docs、ADR も更新する。
 
 ## セッション終了ワークフロー

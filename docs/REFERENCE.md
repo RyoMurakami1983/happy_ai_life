@@ -1,126 +1,123 @@
-# Reference: Commands, Skills, and Decisions
+# リファレンス
 
-## CLI Commands
+## CLI コマンド
 
-### Home Sync
+### Home Sync（個人環境同期）
 
 ```powershell
-# Preview changes
+# 差分確認
 uv run app.py home --dry-run
 
-# Apply sync
+# 反映
 uv run app.py home
 ```
 
-See [Home Sync](HOME_SYNC.md) for detailed guide.
+詳しくは [Home Sync（個人環境同期）](HOME_SYNC.md) を参照してください。
 
-### Repo Bootstrap
+### Repo Bootstrap（repo 初期導入）
 
 ```powershell
-# Preview repo bootstrap changes
+# 差分確認
 & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath <path> -DryRun
 
-# Apply repo bootstrap
+# 反映
 & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath <path>
 
-# Install Git hooks
+# Git hooks の有効化
 & $HOME/.copilot/scripts/install-git-hooks.ps1 -RepoPath <path>
 
-# Check repo security setup
+# 安全弁の確認
 & $HOME/.copilot/scripts/repo-secure-check.ps1 -RepoPath <path>
 ```
 
-See [Repo Bootstrap](REPO_BOOTSTRAP.md) for detailed guide.
+詳しくは [Repo Bootstrap（repo 初期導入）](REPO_BOOTSTRAP.md) を参照してください。
 
-### Plugin Management
+### Plugin 管理
 
 ```powershell
-# List installed plugins
+# 一覧
 copilot plugin list
 
-# Add marketplace
+# marketplace 追加
 copilot plugin marketplace add RyoMurakami1983/happy_ai_life
 
-# Install plugin
+# install
 copilot plugin install happy-core@happy-ai-life-marketplace
 
-# Uninstall plugin
+# uninstall
 copilot plugin uninstall happy-core@happy-ai-life-marketplace
 ```
 
-## Skills Directory
+## skills 一覧の見方
 
 ### happy-core
 
-Workflow automation and core operations:
+workflow と運用寄りの skill 群です。
 
-| Skill | Purpose | Invocation |
-|-------|---------|-----------|
-| (See plugins/happy-core/README.md) | | `/skill run <skill-name>` |
+| 確認方法 | 内容 |
+|----------|------|
+| `copilot skill list happy-core` | 利用可能な skill 一覧を見る |
+| `plugins/happy-core/README.md` | plugin 全体の構成を見る |
 
 ### happy-coding
 
-Development lifecycle support:
+仕様、設計、実装、review 寄りの skill 群です。
 
-| Skill | Purpose | Invocation |
-|-------|---------|-----------|
-| (See plugins/happy-coding/README.md) | | `/skill run <skill-name>` |
+| 確認方法 | 内容 |
+|----------|------|
+| `copilot skill list happy-coding` | 利用可能な skill 一覧を見る |
+| `plugins/happy-coding/README.md` | plugin 全体の構成を見る |
 
-For full skills list:
-```powershell
-copilot skill list happy-core
-copilot skill list happy-coding
-```
+## ADR
 
-## Architecture Decision Records
+ADR 全体は [docs/adr/](../docs/adr/) を参照してください。
 
-See [docs/adr/](../docs/adr/) for full archive.
+### 主な分類
 
-### By Category
+- **Distribution Strategy** — plugin の配布方針
+- **Home Sync Governance** — 管理対象とユーザー所有の境界
+- **Security Layers** — secret 保護の多層構成
+- **Documentation Structure** — docs / ADR / reference の分担
 
-- **Distribution Strategy**: How plugins are packaged and distributed
-- **Home Sync Governance**: Boundaries between managed and user-owned files
-- **Security Layers**: Multi-layer secret protection
-- **Documentation Structure**: Organization of docs, ADRs, and reference materials
+### 並び順
 
-### By Date
+時系列の一覧は [docs/adr/README.md](../docs/adr/README.md) を参照してください。
 
-ADRs are dated and indexed. Check [docs/adr/README.md](../docs/adr/README.md) for chronological list.
+## 環境変数
 
-## Environment Variables
+| 変数 | 用途 | 既定値 |
+|------|------|--------|
+| `GITLEAKS_BIN` | gitleaks の実行パス | `gitleaks` |
+| `COPILOT_CLI_PATH` | Copilot CLI の実行パス | system PATH |
 
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `GITLEAKS_BIN` | Path to gitleaks binary | `gitleaks` (auto-detect) |
-| `COPILOT_CLI_PATH` | Path to Copilot CLI | (system PATH) |
+困ったときは [トラブルシューティング](TROUBLESHOOTING.md) を参照してください。
 
-See [Troubleshooting](TROUBLESHOOTING.md) for solutions to common environment issues.
+## hooks と設定
 
-## Hooks and Configuration
+### Git hooks
 
-### Git Hooks
+`.githooks/` にあります。
 
-Located in `.githooks/`:
+- `pre-commit` — staged files を gitleaks で検査
+- `pre-push` — push 対象 commit を gitleaks で検査
 
-- `pre-commit` — Scans staged files with gitleaks
-- `pre-push` — Scans commits to be pushed with gitleaks
+有効化:
 
-Enable with:
 ```powershell
 git config core.hooksPath .githooks
 ```
 
-### Copilot Hooks
+### Copilot hooks
 
-Located in `.github/hooks/`:
+`.github/hooks/` にあります。
 
-- `pre-commit.json` — Copilot CLI hook configurations
-- `scripts/` — Hook implementation scripts
+- `*.json` — hook 定義
+- `scripts/` — hook script
 
-See [Quality Gates](QUALITY_GATES.md) for details.
+詳しくは [品質ゲート](QUALITY_GATES.md) を参照してください。
 
-## See also
+## 関連
 
-- [Development](DEVELOPMENT.md)
-- [Authoring Guide](AUTHORING.md)
-- [docs/adr/](../docs/adr/) — Full ADR archive
+- [開発ガイド](DEVELOPMENT.md)
+- [作成ガイド](AUTHORING.md)
+- [docs/adr/](../docs/adr/)

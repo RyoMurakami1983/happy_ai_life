@@ -1,42 +1,40 @@
-# Getting Started with happy_ai_life
+# はじめに
 
-Choose your installation path based on your use case.
+用途に合わせて導入方法を選んでください。
 
-## Path 1: Marketplace Plugin (Recommended for End Users)
+## パス 1: Marketplace Plugin（通常はこちら）
 
-**Best for:** Using happy-core and happy-coding skills for your own projects without local development.
+**向いている人:** この repo を編集せずに、happy-core と happy-coding を自分の作業で使いたい人。
 
-### Installation
+### インストール
 
-First, add the repository as a Copilot CLI marketplace source:
+まず marketplace を追加します。
 
 ```powershell
 copilot plugin marketplace add RyoMurakami1983/happy_ai_life
 ```
 
-Then install the plugins:
+次に plugin を入れます。
 
 ```powershell
 copilot plugin install happy-core@happy-ai-life-marketplace
 copilot plugin install happy-coding@happy-ai-life-marketplace
 ```
 
-### Verify
+### 確認
 
 ```powershell
 copilot plugin list
 ```
 
-You should see `happy-core` and `happy-coding` listed with version information.
+`happy-core` と `happy-coding` が表示されれば完了です。
 
-### What you get
+### 入るもの
 
-- **happy-core**: Workflow automation, authoring tools, GitHub operations, knowledge capture
-- **happy-coding**: Specification, design, implementation, review, and developer setup skills
+- **happy-core**: workflow、authoring、GitHub 運用、知識化まわり
+- **happy-coding**: 仕様、設計、実装、review、開発環境まわり
 
-### Using the skills
-
-In Copilot CLI:
+### skill の使い方
 
 ```text
 /skill list happy-core
@@ -44,9 +42,9 @@ In Copilot CLI:
 /skill run <skill-name>
 ```
 
-### Managing plugins
+### 旧 direct install 版を使っている場合
 
-If you already have the older "direct install" version installed, uninstall it first:
+重複表示を避けるため、先に旧版を外します。
 
 ```powershell
 copilot plugin uninstall happy-ai-life
@@ -55,7 +53,7 @@ copilot plugin install happy-core@happy-ai-life-marketplace
 copilot plugin install happy-coding@happy-ai-life-marketplace
 ```
 
-To remove marketplace plugins later:
+あとで外す場合は次を実行します。
 
 ```powershell
 copilot plugin uninstall happy-core@happy-ai-life-marketplace
@@ -63,18 +61,19 @@ copilot plugin uninstall happy-coding@happy-ai-life-marketplace
 copilot plugin marketplace remove happy-ai-life-marketplace
 ```
 
-## Path 2: Local Development (For Contributors)
+## パス 2: ローカル開発（この repo に手を入れる人向け）
 
-**Best for:** Contributing to happy-core or happy-coding, or customizing skills for your personal use.
+**向いている人:** `happy-core` / `happy-coding` を改善したい人、個人用に調整したい人。
 
-### Prerequisites
+### 前提
 
-- Git installed
-- Copilot CLI installed
-- Python 3.14+ and uv package manager
-- Write access to `$HOME/.copilot/`
+- Git
+- Copilot CLI
+- Python 3.14 以上
+- `uv`
+- `$HOME/.copilot/` に書き込めること
 
-### Installation
+### 準備
 
 ```powershell
 git clone https://github.com/RyoMurakami1983/happy_ai_life.git
@@ -82,87 +81,81 @@ cd happy_ai_life
 uv sync --dev
 ```
 
-### Setup your personal environment
+### 個人環境へ反映
 
 ```powershell
-# Preview what will be synced
+# 何が変わるか確認
 uv run app.py home --dry-run
 
-# Apply the sync
+# 反映
 uv run app.py home
 ```
 
-This synchronizes your `$HOME/.copilot/` with the repository's `home-template/`.
+これで `home-template/` の内容を `$HOME/.copilot/` に同期できます。
 
-### Verify
+### 確認
 
 ```powershell
 copilot status
-copilot skill list | head -20
+copilot skill list
 ```
 
-You should see skills from both happy-core and happy-coding.
+### 開発の流れ
 
-### Development workflow
+- `/design-workshop` と PLAN mode で整理する
+- `uv run pytest -q`、`uv run ruff check .`、`uv run ty check .` を流す
+- PR を作って review を受ける
 
-- Design and plan changes using `/design-workshop` and PLAN mode
-- Run quality checks: `uv run pytest -q`, `uv run ruff check .`, `uv run ty check .`
-- Submit PRs for review
+詳しくは [開発ガイド](DEVELOPMENT.md) を参照してください。
 
-See [Development](DEVELOPMENT.md) for full details.
+## パス 3: 既存 repo に Copilot を入れる
 
-## Path 3: Add Copilot to Your Existing Project (Repo Bootstrap)
+**向いている人:** チームの repo に instructions、hooks、品質ゲートを入れたい人。
 
-**Best for:** Adding Copilot guidance, Git hooks, and quality checks to a new or existing project repository.
+### 入るもの
 
-### What gets added
+- `copilot-instructions.md`
+- GitHub Actions workflow
+- Git client hooks
+- repo bootstrap 用テンプレート
 
-- Copilot instructions (`copilot-instructions.md`)
-- GitHub Actions workflows (quality gates, gitleaks scanning)
-- Git client hooks (secret detection, code validation)
-- Repository templates and configuration
+### 手順
 
-### Steps
-
-1. **Check your repository** first for any existing Copilot setup
+1. まず現在の状態を確認します。
 
    ```powershell
    & $HOME/.copilot/scripts/repo-secure-check.ps1 -RepoPath <your-repo-path>
    ```
 
-   This confirms whether your repo has the necessary safety guardrails.
-
-2. **Bootstrap** Copilot guidance to your repository
+2. repo に bootstrap を入れます。
 
    ```powershell
    & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath <your-repo-path>
    ```
 
-3. **Install Git hooks**
+3. Git hooks を有効化します。
 
    ```powershell
    & $HOME/.copilot/scripts/install-git-hooks.ps1 -RepoPath <your-repo-path>
    ```
 
-4. **Verify** the setup
+4. 反映を確認します。
 
    ```powershell
    cd <your-repo-path>
    git status
    ```
 
-   You should see new files in `.github/` and `.githooks/`
+   `.github/` と `.githooks/` の追加が見えれば正常です。
 
-### Important
+### 注意
 
-- These changes are committed to your repository (they're not local-only)
-- All developers in your project will use the same Copilot instructions
-- The Git hooks run `gitleaks` on every commit to prevent secrets from being committed
+- これらの変更は repo にコミットされます
+- チーム全員が同じ instructions を使う前提です
+- `gitleaks` により commit 時に secret を検査します
 
-See [Repo Bootstrap](REPO_BOOTSTRAP.md) for detailed configuration options.
+詳しくは [Repo Bootstrap（repo 初期導入）](REPO_BOOTSTRAP.md) を参照してください。
 
-## Troubleshooting
+## 困ったとき
 
-<!-- TODO: Common issues and solutions -->
-
-See [Troubleshooting](TROUBLESHOOTING.md) for more help.
+[トラブルシューティング](TROUBLESHOOTING.md) を参照してください。

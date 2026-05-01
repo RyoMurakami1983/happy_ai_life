@@ -1,97 +1,100 @@
-# Home Sync: Local Development Setup
+# Home Sync（個人環境同期）
 
-Home sync synchronizes your `$HOME/.copilot/` directory with this repository's `home-template/`.
+Home sync は、この repo の `home-template/` を `$HOME/.copilot/` に同期するための仕組みです。
 
-**Note:** Home sync is for trusted local author bootstrap and personal environment reproduction. It is not the recommended path for sharing or distribution.
+**位置づけ:** 信頼済みのローカル環境を再現するための導線です。共有配布の主導線ではありません。
 
-## What is home sync?
+## home sync とは
 
-Home sync clones and synchronizes curated skills, agents, configuration, and repo bootstrap templates from `home-template/.copilot/` into your local `$HOME/.copilot/` directory. This allows you to reproduce the author's personal development environment.
+`home-template/.copilot/` にある curated skills、agents、設定、repo bootstrap 用テンプレートをローカルの `$HOME/.copilot/` に反映します。作者用または信頼済み環境の再現に向いています。
 
-**Key boundary:** Home sync only updates managed files from the repo. User-owned files (custom skills, local configuration, credentials) are preserved.
+**重要な境界:** repo が管理するファイルだけを更新し、ユーザー所有のファイルは残します。
 
-## What gets synced?
+## 同期されるもの
 
-### Managed (updated from repo)
+### 管理対象
 
-- Curated skills in `skills/` (authoring templates, validation tools)
-- Curated agents in `agents/` (custom task executors)
-- Repository instructions (`copilot-instructions.md`)
-- Repo bootstrap templates (`repo-template/`)
-- Git hooks and scripts (`scripts/`, `.githooks/`)
-- Configuration samples (`mcp-config.sample.json`)
+- `skills/` 配下の curated skills
+- `agents/` 配下の curated agents
+- `copilot-instructions.md`
+- `repo-template/`
+- `scripts/` や `.githooks/` などの補助資産
+- `mcp-config.sample.json` などの sample
 
-### NOT synced (user-owned, preserved)
+### 同期しないもの
 
-- `mcp-config.json` — Live MCP server configuration (never overwritten)
-- `config.json` — User safety hooks and personal settings
-- Custom skills or agents you've authored locally
-- Session data and history
-- Personal credentials and secrets
+- `mcp-config.json`
+- `config.json`
+- ローカルで自作した skills / agents
+- session data や履歴
+- 個人の認証情報や secret
 
-## How to use
+## 使い方
 
-### Prerequisites
+### 前提
 
-- Copilot CLI installed
-- uv (Python package manager) available
-- Read-write access to `$HOME/.copilot/`
+- Copilot CLI が入っている
+- `uv` が使える
+- `$HOME/.copilot/` に書き込める
 
-### Step 1: Clone this repository
+### 1. repo を取得
 
 ```powershell
 git clone https://github.com/RyoMurakami1983/happy_ai_life.git
 cd happy_ai_life
 ```
 
-### Step 2: Preview changes
+### 2. 変更予定を確認
 
 ```powershell
 uv sync --dev
 uv run app.py home --dry-run
 ```
 
-This shows you exactly what will be updated, added, or removed without making any changes.
+何が追加・更新・削除されるかを、反映前に確認できます。
 
-### Step 3: Apply sync
+### 3. 反映
 
 ```powershell
 uv run app.py home
 ```
 
-The sync will:
-1. Copy managed files from `home-template/.copilot/` to `$HOME/.copilot/`
-2. Clean up known legacy files that are no longer needed
-3. Preserve all user-owned files (custom skills, config, credentials)
-4. Archive any files it replaces (old version saved to `$HOME/copilot_archive/`)
+実行すると次を行います。
 
-### Step 4: Verify success
+1. 管理対象ファイルを `$HOME/.copilot/` にコピー
+2. 既知の legacy ファイルを整理
+3. ユーザー所有ファイルは保持
+4. 置き換え前のファイルは `$HOME/copilot_archive/` に退避
+
+### 4. 確認
 
 ```powershell
 cat $HOME/.copilot/copilot-instructions.md
 copilot status
 ```
 
-## Rollback
+## 戻したいとき
 
-If you need to restore the previous state after sync, archived files are saved in `$HOME/copilot_archive/`. Check this directory and restore what you need.
+置き換え前のファイルは `$HOME/copilot_archive/` に保存されます。必要なものだけ戻してください。
 
-If you need to roll back the entire sync:
+全体を戻すときの例:
 
 ```powershell
-# Restore from the archive
 Get-ChildItem $HOME/copilot_archive -Recurse | Copy-Item -Destination $HOME/.copilot -Force
 ```
 
-## Important Warnings
+## 注意
 
-⚠️ **Data loss risk:** Do not run `uv run app.py home` without first reviewing the `--dry-run` output. The sync replaces files, so verify the changes are intentional.
+⚠️ **必ず dry-run を先に見る**  
+`uv run app.py home` はファイルを置き換えるので、意図した差分か確認してから実行してください。
 
-⚠️ **Not for shared teams:** Home sync is designed for personal or trusted author environments only. For sharing Copilot guidance across a team, use the marketplace plugin installation path instead (see [Getting Started](GETTING_STARTED.md)).
+⚠️ **チーム共有には向かない**  
+team repo に配る場合は marketplace install または repo bootstrap を使ってください。
 
-⚠️ **User-owned files are preserved:** Your custom skills, agents, and configuration will not be deleted by home sync, but if a filename matches a managed file, the managed version will overwrite it.
+⚠️ **同名ファイルは上書きされる**  
+ユーザー所有ファイルは基本残りますが、管理対象と同名なら管理側が優先されます。
 
-## See also
+## 関連
 
-- [Getting Started](GETTING_STARTED.md)
-- [Repo Bootstrap](REPO_BOOTSTRAP.md)
+- [はじめに](GETTING_STARTED.md)
+- [Repo Bootstrap（repo 初期導入）](REPO_BOOTSTRAP.md)

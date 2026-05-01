@@ -1,158 +1,157 @@
-# Authoring Guide: Creating Skills, Agents, and Instructions
+# 作成ガイド
 
-This guide helps you create custom skills, agents, and instructions for Copilot CLI.
+この文書は Copilot CLI 向けの skill、agent、instructions を作るときの入口です。
 
-## Concepts
+## まず用語を整理
 
-### Skills
+### skill
 
-Skills are reusable, self-contained tools that Copilot CLI can invoke:
+skill は再利用できる単機能の入口です。
 
-- **Scope**: Single responsibility (perform one task well)
-- **Distribution**: Packaged in plugins
-- **Invocation**: `/skill run <skill-name>`
-- **Example**: `initial-setup-happy-env`, `gh-pr-create`, `sdd`
+- **責務**: 1 つの作業をうまく進める
+- **配布**: plugin にまとめる
+- **呼び出し**: `/skill run <skill-name>`
+- **例**: `gh-pr-create`、`sdd`、`furikaeri`
 
-**When to create:** You have a repeatable workflow that other developers need.
+**向いている場面:** 繰り返し使う手順を他の人にも再利用してほしいとき。
 
-### Agents
+### agent
 
-Agents are autonomous systems that use multiple skills and maintain context:
+agent は複数手順をまたいで動く実行者です。
 
-- **Scope**: Multi-step problem solving
-- **Invocation**: Launched as background or sync processes
-- **State**: Can access conversation history
-- **Example**: `explore` (code investigation), `code-review` (PR analysis), `tdd-coder` (Red-Green-Refactor)
+- **責務**: 複数段の判断や実行を進める
+- **呼び出し**: background / sync の task
+- **特徴**: 文脈を持ちながら進められる
+- **例**: `explore`、`code-review`、`tdd-coder`
 
-**When to create:** You need a specialized task runner that reasons about complex problems.
+**向いている場面:** 1 回の skill では収まらない作業を任せたいとき。
 
-### Instructions
+### instructions
 
-Instructions provide persistent guidance to Copilot:
+instructions は Copilot へ常時渡す guidance です。
 
-- **Repo-scoped**: `.github/copilot-instructions.md` (entire repo)
-- **Path-scoped**: `.github/instructions/<language>.instructions.md` (specific files)
-- **User-scoped**: `$HOME/.copilot/config.json` (personal environment)
+- **repo 単位**: `.github/copilot-instructions.md`
+- **path 単位**: `.github/instructions/<language>.instructions.md`
+- **個人環境**: `$HOME/.copilot/config.json`
 
-**When to create:** You have coding standards, patterns, or conventions to enforce.
+**向いている場面:** 命名、境界、文体、運用などの常時ルールを固定したいとき。
 
-## Authoring Workflow
+## 作成の流れ
 
-### 1. Design Phase
+### 1. 設計
 
-Use `/design-workshop` to explore your solution:
+まず `/design-workshop` で整理します。
 
 ```powershell
 copilot /design-workshop
 ```
 
-This helps you:
-- Define the problem clearly
-- Explore multiple approaches
-- Identify coupling and dependencies
+確認したいこと:
 
-### 2. Plan Phase
+- 何を解決したいか
+- skill にするか agent にするか
+- 既存資産を再利用できるか
 
-Use PLAN mode to break down implementation:
+### 2. 計画
+
+PLAN mode で作業を分解します。
 
 ```powershell
 copilot /plan
 ```
 
-Create a structured plan with:
-- Problem statement
-- Approach overview
-- Task breakdown
-- Success criteria
+最低限、次を固定します。
 
-### 3. Implement Phase
+- 問題
+- アプローチ
+- 成功条件
+- 確認手段
 
-For complex tasks, use specialized agents:
+### 3. 実装
+
+複雑な処理なら specialist を使います。
 
 ```powershell
-copilot /skill run tdd-coder  # For test-driven implementation
-copilot /task agent-type tdd-coder  # For multi-turn implementation
+copilot /skill run tdd-coder
 ```
 
-### 4. Validate Phase
+### 4. 検証
 
-Use the `copilot-authoring` skill to validate your creation:
+`copilot-authoring` を使って整合を見ます。
 
 ```powershell
 copilot /skill run copilot-authoring
 ```
 
-This checks:
-- SKILL.md structure and completeness
-- Configuration consistency
-- Documentation clarity
+主に次を確認します。
 
-### 5. Submit Phase
+- `SKILL.md` の構造
+- 設定の整合
+- README や関連 docs との導線
 
-Create a PR with your new skill/agent/instructions:
+### 5. 提出
 
 ```powershell
 git add .
-git commit -m "feat: add new <skill|agent|instructions>"
+git commit -m "feat: 新しい skill を追加"
 gh pr create
 ```
 
-## Best Practices
+## 作るときの基本
 
-### Skills
+### skill
 
-- **Clear scope**: One responsibility per skill
-- **SKILL.md**: Document the "When to use" section clearly (this helps Copilot decide when to invoke it)
-- **Testing**: Include test cases in `_eval/tests/` directory
-- **Naming**: Use kebab-case and keep names short (e.g., `gh-pr-create`, not `github_pull_request_create`)
-- **Versioning**: Follow semantic versioning in manifest
+- 1 skill 1 役割に寄せる
+- `こんなときに使う` を明確に書く
+- `_eval/tests/` に確認材料を置く
+- 名前は短い kebab-case にする
 
-### Agents
+### agent
 
-- **Specialization**: Build narrow specialists, not general-purpose agents
-- **Context limit**: Consider token budget and conversation history limits
-- **Error handling**: Implement graceful fallbacks for API failures
-- **Logging**: Log key decisions for debugging
+- 広すぎる万能 agent を作らない
+- 文脈量を意識する
+- 失敗時の扱いを決める
+- 判断の痕跡を残す
 
-### Instructions
+### instructions
 
-- **Target audience**: Be explicit ("For this repository" vs "For Python developers" vs "For all users")
-- **Specificity**: Provide concrete examples and commands
-- **Maintenance**: Keep instructions up-to-date with code changes
-- **Clarity**: Use clear language and avoid jargon
+- 誰向けの rule か明示する
+- 抽象論より具体例を優先する
+- 境界変更時は README や周辺 docs も揃える
+- 長い手順は instructions に詰め込まず skill や docs に逃がす
 
-## Structure Template
+## ひな形
 
-### Skill structure
+### skill の例
 
-```
+```text
 skills/your-skill/
-├── SKILL.md               # Documentation & metadata
-├── manifest.json          # Configuration
+├── SKILL.md
+├── manifest.json
 ├── scripts/
-│   └── main.py            # Skill logic
+│   └── main.py
 ├── _eval/
 │   ├── scripts/
-│   │   └── validator.py   # Validation logic
+│   │   └── validator.py
 │   └── tests/
-│       └── test_*.py      # Test cases
+│       └── test_*.py
 ```
 
-### Agent structure
+### agent の例
 
-```
+```text
 agents/your-agent/
-├── AGENT.md               # Documentation
-├── manifest.json          # Configuration
+├── AGENT.md
+├── manifest.json
 ├── scripts/
-│   └── main.py            # Agent logic
-├── requirements.txt       # Python dependencies
+│   └── main.py
+├── requirements.txt
 └── tests/
-    └── test_*.py          # Test cases
+    └── test_*.py
 ```
 
-## See also
+## 関連
 
-- [Development](DEVELOPMENT.md)
-- [Reference](REFERENCE.md)
-- [Quality Gates](QUALITY_GATES.md)
+- [開発ガイド](DEVELOPMENT.md)
+- [リファレンス](REFERENCE.md)
+- [品質ゲート](QUALITY_GATES.md)

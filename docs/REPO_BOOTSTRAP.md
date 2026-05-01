@@ -1,134 +1,112 @@
-# Repo Bootstrap: Adding Copilot to Your Project
+# Repo Bootstrap（repo 初期導入）
 
-Repo bootstrap adds Copilot guidance, Git hooks, and quality checks to a target repository.
+Repo bootstrap は、対象 repo に Copilot の guidance、Git hooks、品質ゲートを追加する手順です。
 
-**Best for:** Enabling structured development practices across a team repository.
+**向いている人:** チーム開発の repo に、共通の運用ルールと安全弁を入れたい人。
 
-## Overview
+## 概要
 
-When you bootstrap Copilot to a repository, the following are added:
+bootstrap を実行すると、主に次が入ります。
 
-- **.github/copilot-instructions.md** — Guidance and conventions for developers
-- **.github/hooks/** — Copilot CLI hook configurations
-- **.github/workflows/*.yml** — GitHub Actions for quality gates (gitleaks, etc.)
-- **.githooks/pre-commit** — Client-side secret scanning hook
-- **.githooks/pre-push** — Client-side secret scanning hook before push
-- **repo-template/** files — Bootstrap configuration templates
+- `.github/copilot-instructions.md`
+- `.github/hooks/`
+- `.github/workflows/*.yml`
+- `.githooks/pre-commit`
+- `.githooks/pre-push`
+- `repo-template/` 由来の設定
 
-All changes are committed to the repository so all developers use the same setup.
+これらは repo にコミットされるため、チーム全員が同じ土台を使えます。
 
-## Steps
+## 手順
 
-### Step 1: Check current setup
-
-Before bootstrapping, verify your repository's existing Copilot setup:
+### Step 1: 現在の状態を確認
 
 ```powershell
 & $HOME/.copilot/scripts/repo-secure-check.ps1 -RepoPath C:\your-repo
 ```
 
-This checks for:
-- ✅ `.github/copilot-instructions.md` (Copilot guidance)
-- ✅ `.github/hooks/` (Copilot hooks)
-- ✅ `.github/workflows/quality.yml` (Quality gates)
-- ✅ `.githooks/pre-commit` (Git hook)
-- ✅ `.githooks/pre-push` (Git hook)
-- ✅ `core.hooksPath` configured
+次のような項目の不足を確認します。
 
-If any are missing, proceed to Step 2.
+- `.github/copilot-instructions.md`
+- `.github/hooks/`
+- `.github/workflows/quality.yml`
+- `.githooks/pre-commit`
+- `.githooks/pre-push`
+- `core.hooksPath`
 
-### Step 2: Bootstrap the repository
+不足があれば次へ進みます。
+
+### Step 2: bootstrap を反映
 
 ```powershell
-# Preview what will be added (DRY RUN)
+# まず dry run
 & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath C:\your-repo -DryRun
 
-# Apply bootstrap
+# 反映
 & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath C:\your-repo
 ```
 
-This syncs from `$HOME/.copilot/repo-template/` to your target repository.
+`$HOME/.copilot/repo-template/` の内容を対象 repo に同期します。
 
-### Step 3: Install Git hooks
+### Step 3: Git hooks を有効化
 
 ```powershell
 & $HOME/.copilot/scripts/install-git-hooks.ps1 -RepoPath C:\your-repo
 ```
 
-This enables the `.githooks/pre-commit` and `.githooks/pre-push` hooks.
+`.githooks/pre-commit` と `.githooks/pre-push` を使える状態にします。
 
-### Step 4: Verify the setup
+### Step 4: 反映を確認
 
 ```powershell
 cd C:\your-repo
-
-# Check that files were added
 git status
-
-# Verify hooks are active
 git config core.hooksPath
-# Should output: .githooks
-
-# Run the verification script again
 & $HOME/.copilot/scripts/repo-secure-check.ps1 -RepoPath .
 ```
 
-## What gets checked?
+`core.hooksPath` が `.githooks` になっていれば正常です。
 
-| Item | What it does | Failure = |
-|------|------------|-----------|
-| gitleaks (pre-commit) | Scans staged files for secrets before commit | Commit rejected |
-| gitleaks (pre-push) | Scans commits about to push | Push rejected |
-| gitleaks (GitHub Action) | Scans PR for any secrets | PR check fails |
-| Copilot instructions | Provides guidance to Copilot for your repo | (informational) |
+## 何を確認するか
 
-## Important warnings
+| 項目 | 役割 | 問題があると |
+|------|------|--------------|
+| gitleaks（pre-commit） | commit 前に secret を検査 | commit が止まる |
+| gitleaks（pre-push） | push 前に secret を検査 | push が止まる |
+| gitleaks（GitHub Action） | PR 上で最終確認 | PR check が落ちる |
+| Copilot instructions | repo 共通の guidance を渡す | guidance 不足になる |
 
-⚠️ **These changes are committed to your repository**
+## 注意
 
-All bootstrap files are committed (not local-only). This ensures:
-- All developers use the same instructions
-- All developers use the same Git hooks
-- CI/CD uses the same quality gates
+⚠️ **変更は repo に残る**  
+ローカルだけの設定ではありません。チーム全員に効く前提で入ります。
 
-To exclude specific files from being committed, add them to `.gitignore` BEFORE running bootstrap.
+⚠️ **gitleaks が必要**  
+hooks を使う全員に `gitleaks` が必要です。未導入だと commit や push が止まります。
 
-⚠️ **gitleaks blocks commits with secrets**
+⚠️ **既存ファイルは事前確認**  
+同名ファイルがある場合は dry run の結果を見て、必要なら先に退避してください。
 
-If a developer commits a secret accidentally, the pre-commit hook will reject the commit. If the secret reaches history:
-1. Alert the service provider immediately and rotate the secret
-2. Use `git filter-branch` or `BFG Repo-Cleaner` to remove it from history
-3. Force-push the corrected branch
+## 調整したいとき
 
-⚠️ **All developers need gitleaks installed**
+### instructions を調整
 
-After bootstrap, every developer must have `gitleaks` installed for Git hooks to work. See [Troubleshooting - gitleaks not found](TROUBLESHOOTING.md#issue-gitleaks-not-found).
+`.github/copilot-instructions.md` をチーム向けに編集します。
 
-## Customization
+### gitleaks ルールを調整
 
-### Modify Copilot instructions
+`.gitleaks.toml` を編集して、検出対象や allowlist を調整します。
 
-Edit `.github/copilot-instructions.md` after bootstrap to customize guidance for your team.
+### Git hooks を調整
 
-### Customize gitleaks rules
+`.githooks/pre-commit` と `.githooks/pre-push` に独自チェックを追加できます。
 
-Edit `.gitleaks.toml` to:
-- Add patterns to detect project-specific secrets
-- Add allowlist entries to suppress false positives
+## 困ったとき
 
-### Customize Git hooks
+[トラブルシューティング](TROUBLESHOOTING.md) を参照してください。
 
-Edit `.githooks/pre-commit` and `.githooks/pre-push` to add additional checks.
+## 関連
 
-## Troubleshooting
-
-See [Troubleshooting](TROUBLESHOOTING.md) for common issues:
-- [gitleaks not found](TROUBLESHOOTING.md#issue-gitleaks-not-found)
-- [Git hooks fail after bootstrap](TROUBLESHOOTING.md#issue-git-hooks-fail-immediately-after-bootstrap)
-- [File already exists errors](TROUBLESHOOTING.md#issue-githubcopilot-instructionsmd-already-exists)
-
-## See also
-
-- [Home Sync](HOME_SYNC.md)
-- [Getting Started](GETTING_STARTED.md)
-- [Quality Gates](QUALITY_GATES.md)
+- [Home Sync（個人環境同期）](HOME_SYNC.md)
+- [はじめに](GETTING_STARTED.md)
+- [品質ゲート](QUALITY_GATES.md)
