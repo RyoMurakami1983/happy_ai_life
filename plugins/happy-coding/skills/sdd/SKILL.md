@@ -1,7 +1,7 @@
 ---
 name: sdd
 description: >
-  仕様駆動開発の前半工程（spec → design → plan handoff）を1つの入口で進める。
+  仕様駆動開発の前半工程（spec → 必要ならモック → design → plan handoff）を1つの入口で進める。
   途中の spec / design / planning フェーズからも再開できる。
   複数リポが関連する場合は split_multi_repo_plan で unified architecture を分割し、
   各リポの plan.md を生成します。
@@ -10,7 +10,7 @@ description: >
 
 # SDD — Spec-Driven Development
 
-仕様駆動開発の前半工程（spec → design → plan）を1つの入口から進める router skill です。各フェーズの中身は既存の skill に委譲し、この skill 自身はフローの振り分けと接続だけを担います。plan が完成したら `impl-and-ship` へ引き継ぎます。途中からの再開にも対応し、最も進んだ地点の次から始められます。
+仕様駆動開発の前半工程（spec → 必要ならモック → design → plan）を1つの入口から進める router skill です。各フェーズの中身は既存の skill に委譲し、この skill 自身はフローの振り分けと接続だけを担います。plan が完成したら `impl-and-ship` へ引き継ぎます。途中からの再開にも対応し、最も進んだ地点の次から始められます。
 ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
 
 
@@ -26,8 +26,8 @@ description: >
 
 | やりたいこと | ルート | 次にやること |
 | --- | --- | --- |
-| ゼロから仕様駆動で開発したい | `sub_skills/from-scratch/` | spec-workshop → design-workshop → PLAN mode → impl-and-ship へ handoff |
-| 仕様があり設計から始めたい | `sub_skills/from-spec/` | design-workshop → PLAN mode → impl-and-ship へ handoff |
+| ゼロから仕様駆動で開発したい | `sub_skills/from-scratch/` | spec-workshop → 必要ならモック → design-workshop → PLAN mode → impl-and-ship へ handoff |
+| 仕様があり設計から始めたい | `sub_skills/from-spec/` | 必要ならモック → design-workshop → PLAN mode → impl-and-ship へ handoff |
 | 設計があり計画から始めたい | `sub_skills/from-design/` | PLAN mode → impl-and-ship へ handoff |
 | 計画があり実装から始めたい | `impl-and-ship` を直接使う | bootstrap 確認 → contract checkpoint → 実装 slice → eval gate → review → PR |
 | 中断した開発を再開したい | `sub_skills/resume/` | 成果物の状態から中断地点を判定し、該当フェーズから再開 |
@@ -37,9 +37,11 @@ description: >
 ```
 仕様フェーズ        → spec-workshop（対話 + 調査）
   ↓
+必要ならモック     → 早く形にするための仮選定
+  ↓
 設計フェーズ        → design-workshop（router: standard / balanced-coupling-design）
-  ↓                    standard: 構造判断 + 自己レビュー
-  ↓                    balanced-coupling-design: サブドメイン分類 + 3次元結合評価
+  ↓                    standard: 構造判断 + MVP 技術選定 + 自己レビュー
+  ↓                    balanced-coupling-design: サブドメイン分類 + 3次元結合評価 + モジュール別技術方式の選定
   ↓                    DDD 戦略パターン（Bounded Context, Context Map）は
   ↓                    design-workshop が構造判断として扱う
   ↓
@@ -145,6 +147,7 @@ PLAN mode 完了または既存 plan.md が以下を満たす状態で、`impl-a
 - ユーザーの現在地点に最も合う sub-skill へ直接案内する。
 - 実行ロジックは router ではなく sub-skill と既存 skill に置く。
 - 各フェーズの中身を sdd 内に再実装しない。委譲先の skill や PLAN mode が正本。
+- モックは速く学ぶための仮選定であり、MVP の本選定は design-workshop が担う。standard は専用チェックポイントで、balanced-coupling-design はステップ 3 のモジュール設計で行う。
 - 計画の正本は PLAN mode の出力または明示的な plan artifact に置く。
 - sdd 自体はモデル選定を持たず、入口と接続だけを担う。
 - plan handoff が完成したら、実装の入口は `impl-and-ship` に委譲する。

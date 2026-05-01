@@ -15,6 +15,7 @@ description: >
 ## こんなときに使う
 
 - 仕様が固まり、コンポーネント構造やデータフローを設計したいとき
+- MVP で採用する言語・フレームワークを、比較軸つきで選びたいとき
 - 実装計画に渡す前に、構造判断を確認したいとき
 - 設計判断を実装しやすい形に整えたいとき
 - 設計レビューを構造の観点で実施したいとき
@@ -24,7 +25,7 @@ description: >
 
 | やりたいこと | ルート | 次にやること |
 |---|---|---|
-| 標準的な設計ワークフローで進めたい（単一リポまたはモノリシック） | `sub_skills/standard/` | 構造判断と設計レビューを行い、planning handoff を作る |
+| 標準的な設計ワークフローで進めたい（単一リポまたはモノリシック） | `sub_skills/standard/` | 構造判断、MVP 技術選定、設計レビューを行い、planning handoff を作る |
 | 複数リポが関連する、または結合の3次元（統合強度・距離・変動性）を意識した設計がしたい | `sub_skills/balanced-coupling-design/` | マルチリポ環境での context map 作成、サブドメイン分類とバランスルールを使い、モジュラーアーキテクチャを設計する |
 
 **multirepository 判定ガイド**: 以下のいずれかに当てはまる場合は、「複数リポが関連する」と判定し、balanced-coupling-design ルートを検討してください:
@@ -38,6 +39,7 @@ description: >
 - `_foundation/README.md` — 共通リソースの説明
 - `_foundation/DDD_GLOSSARY.md` — DDD と Balanced Coupling モデルの用語集
 - `_foundation/IMPLEMENTATION_HEURISTICS.md` — サブドメイン分類から実装パターンを導く判断ツリー
+- `_foundation/TECH_SELECTION_HARNESS.md` — モックの仮選定と MVP の本選定を分ける技術選定ハーネス
 - `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド（repo 内ローカル参照。`~/.copilot` 同期環境では開けない）
 
 ## ルーティングメモ

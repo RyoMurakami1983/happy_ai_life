@@ -55,7 +55,7 @@ description: >
 
 ### ステップ 2 — 設計を検証する（design-workshop）
 
-仕様書を `design-workshop` に渡します。design-workshop の判断表に従い、standard（構造判断 → 実装適合レビュー → セキュリティ設計確認）または balanced-coupling-design（サブドメイン分類 → 3次元結合評価）を選びます。DDD 戦略パターンはこのステップで扱います。
+必要ならここでモックを作成し、仮選定した技術で要求や操作感を早く確認します。その後、仕様書を `design-workshop` に渡します。design-workshop の判断表に従い、standard（構造判断 → MVP 技術選定 → 実装適合レビュー → セキュリティ設計確認）または balanced-coupling-design（サブドメイン分類 → 3次元結合評価 → モジュール別技術方式の選定）を選びます。DDD 戦略パターンはこのステップで扱います。
 
 成果物: 技術設計書 + planning handoff サマリ
 

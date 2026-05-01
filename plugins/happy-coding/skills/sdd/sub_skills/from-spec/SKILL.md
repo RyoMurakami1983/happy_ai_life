@@ -51,9 +51,13 @@ description: >
 
 ---
 
+### ステップ 1.5 — 必要ならモックを挟む
+
+要求の理解や画面・操作感の確認を優先したい場合は、ここでモックを作成します。モックの技術は仮選定として扱い、そのまま MVP の本選定に直結させません。
+
 ### ステップ 2 — 設計を検証する（design-workshop）
 
-仕様書を `design-workshop` に渡し、判断表に従い standard または balanced-coupling-design ルートで設計を進めます。
+仕様書を `design-workshop` に渡し、判断表に従い standard または balanced-coupling-design ルートで設計を進めます。standard ルートでは、構造判断の後に MVP 技術選定チェックポイントを通して本採用する言語・フレームワークを比較・決定します。balanced-coupling-design ルートでは、ステップ 3 のモジュール設計で技術方式を選定します。
 
 ### ステップ 3 — 実装計画と impl-and-ship handoff
 
