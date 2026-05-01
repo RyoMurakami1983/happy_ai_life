@@ -37,7 +37,7 @@
 - 設計・構造検証 → `design-workshop` を使う。仕様書を受け取り、標準設計と Balanced Coupling レンズ設計を振り分け、planning handoff を作る。
 - 実装計画・フェーズ分割・段取り整理 → PLAN mode を使う。目的、制約、段階、Why、検証、リスク、今決めなくてよいことを残す。
 - TDD 実装を小さく進める specialist が必要で、前提成果物がそろっている → `tdd-coder` を `/fleet` または明示指名で使う。仕様・設計・計画の入口としては使わない。
-- custom skill / agent / repository instructions の作成・改善・検証 → `copilot-authoring` を使う。内部で `skill` と `create-agents`、instructions authoring に分岐するため、直接そちらを起点にしない。
+- custom skill / agent / repository instructions の作成・改善・検証 → 公開入口は `copilot-authoring` とする。skill / agent authoring の内部資産は同 skill 配下で管理する。
 - 既存コードの結合構造分析・モジュール境界の見直し → `modularity-review` を使う。3 次元（統合強度・距離・変動性）で不均衡を検出する。
 - 仕様駆動開発（ゼロから / 途中再開）→ `sdd` を使う。内部で spec-workshop / design-workshop / PLAN mode 等につなぐ。
 

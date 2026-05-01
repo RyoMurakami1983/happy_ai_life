@@ -3,7 +3,7 @@ name: improve-existing
 description: >
   既存の skill または agent を evidence ベースで改善する。Use when:
   wording、責務境界、関連資料、検証導線の弱さを直したいとき。
-compatibility: "../../../skill/sub_skills/improve/SKILL.md, ../../../create-agents/SKILL.md"
+compatibility: "../../_skill/_foundation/CONVENTIONS.md, ../../_agent/references/agent-template.md"
 ---
 
 # 既存の authoring 資産を改善する
@@ -59,8 +59,8 @@ skill なら `description`、workflow、references、router を見直し、agent
 
 ## 共通リソース
 
-- `../../../skill/sub_skills/improve/` — skill 改善の既存導線
-- `../../../create-agents/` — agent 側の元 workflow
+- `../../_skill/_foundation/CONVENTIONS.md` — skill 改善時に守る規約
+- `../../_agent/references/agent-template.md` — agent 改善時に比較する雛形
 - `../validate-authoring/` — 改善後の再検証
 
 ## hooks の最小例

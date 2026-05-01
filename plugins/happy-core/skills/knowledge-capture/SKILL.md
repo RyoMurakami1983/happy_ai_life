@@ -20,7 +20,7 @@ description: >
 ## Related Skills
 
 - **`furikaeri`** — ふりかえりワークフロー（本スキルの匿名化ゲートを参照）
-- **`skill`** — スキル作成・改善ワークフロー（本スキルの匿名化チェックリストを参照）
+- **`copilot-authoring`** — スキル作成・改善ワークフロー（本スキルの匿名化チェックリストを参照）
 - **`gh-issue-create`** — 改善項目をIssueとして捕捉
 
 ---
@@ -94,7 +94,7 @@ OrderProcessorの出力で注文ORD-394072を処理した際、
 | 保存先 | アクション |
 |--------|----------|
 | `docs/furikaeri/` | コミット、PR、改善issueにリンク |
-| スキルの実例 | 作成または改善のため `skill` に連携 |
+| スキルの実例 | 作成または改善のため `copilot-authoring` に連携 |
 | ADR | `docs/adr/` にコミット、ADRインデックスを更新 |
 | GitHub Issue | 書く前に AC-1〜AC-4 を適用；`gh-issue-create` で作成 |
 
@@ -256,6 +256,6 @@ OrderProcessorの出力で注文ORD-394072を処理した際、
 
 - [PHILOSOPHY.md](../../../../docs/PHILOSOPHY.md) — 開発憲法とValues
 - [furikaeri](../furikaeri/SKILL.md) — ふりかえりワークフロー
-- [skill](../skill/SKILL.md) — スキル作成ワークフロー
+- [copilot-authoring](../copilot-authoring/SKILL.md) — スキル作成ワークフロー
 
 ---
