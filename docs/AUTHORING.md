@@ -1,74 +1,158 @@
 # Authoring Guide: Creating Skills, Agents, and Instructions
 
-<!-- TODO: 詳細な Authoring ガイドを記述
-構成：
-- Concepts（Skills / Agents / Instructions の違い）
-- ワークフロー（design-workshop → PLAN → implement → submit）
-- ベストプラクティス
-- 例とテンプレート
-
-参考: Rubber Duck agent からの提案、現在の README Development セクション
--->
+This guide helps you create custom skills, agents, and instructions for Copilot CLI.
 
 ## Concepts
 
 ### Skills
 
-Reusable, self-contained tools that Copilot can invoke.
+Skills are reusable, self-contained tools that Copilot CLI can invoke:
 
-<!-- TODO: 詳細 -->
+- **Scope**: Single responsibility (perform one task well)
+- **Distribution**: Packaged in plugins
+- **Invocation**: `/skill run <skill-name>`
+- **Example**: `initial-setup-happy-env`, `gh-pr-create`, `sdd`
+
+**When to create:** You have a repeatable workflow that other developers need.
 
 ### Agents
 
-Autonomous systems that use multiple skills and maintain state.
+Agents are autonomous systems that use multiple skills and maintain context:
 
-<!-- TODO: 詳細 -->
+- **Scope**: Multi-step problem solving
+- **Invocation**: Launched as background or sync processes
+- **State**: Can access conversation history
+- **Example**: `explore` (code investigation), `code-review` (PR analysis), `tdd-coder` (Red-Green-Refactor)
+
+**When to create:** You need a specialized task runner that reasons about complex problems.
 
 ### Instructions
 
-Persistent guidance for Copilot (repo-wide or path-specific).
+Instructions provide persistent guidance to Copilot:
 
-<!-- TODO: 詳細 -->
+- **Repo-scoped**: `.github/copilot-instructions.md` (entire repo)
+- **Path-scoped**: `.github/instructions/<language>.instructions.md` (specific files)
+- **User-scoped**: `$HOME/.copilot/config.json` (personal environment)
+
+**When to create:** You have coding standards, patterns, or conventions to enforce.
 
 ## Authoring Workflow
 
-### 1. Design
+### 1. Design Phase
 
-Use `/design-workshop` to explore architectural options.
+Use `/design-workshop` to explore your solution:
 
-### 2. Plan
+```powershell
+copilot /design-workshop
+```
 
-Use PLAN mode to break down implementation.
+This helps you:
+- Define the problem clearly
+- Explore multiple approaches
+- Identify coupling and dependencies
 
-### 3. Implement
+### 2. Plan Phase
 
-Use narrow specialists like `tdd-coder` for complex tasks.
+Use PLAN mode to break down implementation:
 
-### 4. Submit
+```powershell
+copilot /plan
+```
 
-Use `copilot-authoring` skill to validate and package.
+Create a structured plan with:
+- Problem statement
+- Approach overview
+- Task breakdown
+- Success criteria
 
-<!-- TODO: 詳細ステップ -->
+### 3. Implement Phase
+
+For complex tasks, use specialized agents:
+
+```powershell
+copilot /skill run tdd-coder  # For test-driven implementation
+copilot /task agent-type tdd-coder  # For multi-turn implementation
+```
+
+### 4. Validate Phase
+
+Use the `copilot-authoring` skill to validate your creation:
+
+```powershell
+copilot /skill run copilot-authoring
+```
+
+This checks:
+- SKILL.md structure and completeness
+- Configuration consistency
+- Documentation clarity
+
+### 5. Submit Phase
+
+Create a PR with your new skill/agent/instructions:
+
+```powershell
+git add .
+git commit -m "feat: add new <skill|agent|instructions>"
+gh pr create
+```
 
 ## Best Practices
 
 ### Skills
 
-<!-- TODO: Skills のベストプラクティス -->
+- **Clear scope**: One responsibility per skill
+- **SKILL.md**: Document the "When to use" section clearly (this helps Copilot decide when to invoke it)
+- **Testing**: Include test cases in `_eval/tests/` directory
+- **Naming**: Use kebab-case and keep names short (e.g., `gh-pr-create`, not `github_pull_request_create`)
+- **Versioning**: Follow semantic versioning in manifest
 
 ### Agents
 
-<!-- TODO: Agents のベストプラクティス -->
+- **Specialization**: Build narrow specialists, not general-purpose agents
+- **Context limit**: Consider token budget and conversation history limits
+- **Error handling**: Implement graceful fallbacks for API failures
+- **Logging**: Log key decisions for debugging
 
 ### Instructions
 
-<!-- TODO: Instructions のベストプラクティス -->
+- **Target audience**: Be explicit ("For this repository" vs "For Python developers" vs "For all users")
+- **Specificity**: Provide concrete examples and commands
+- **Maintenance**: Keep instructions up-to-date with code changes
+- **Clarity**: Use clear language and avoid jargon
 
-## Examples
+## Structure Template
 
-<!-- TODO: 実装例 -->
+### Skill structure
+
+```
+skills/your-skill/
+├── SKILL.md               # Documentation & metadata
+├── manifest.json          # Configuration
+├── scripts/
+│   └── main.py            # Skill logic
+├── _eval/
+│   ├── scripts/
+│   │   └── validator.py   # Validation logic
+│   └── tests/
+│       └── test_*.py      # Test cases
+```
+
+### Agent structure
+
+```
+agents/your-agent/
+├── AGENT.md               # Documentation
+├── manifest.json          # Configuration
+├── scripts/
+│   └── main.py            # Agent logic
+├── requirements.txt       # Python dependencies
+└── tests/
+    └── test_*.py          # Test cases
+```
 
 ## See also
 
 - [Development](DEVELOPMENT.md)
 - [Reference](REFERENCE.md)
+- [Quality Gates](QUALITY_GATES.md)
