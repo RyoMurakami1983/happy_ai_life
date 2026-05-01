@@ -19,7 +19,7 @@ happy_ai_life/
 │   ├── happy-coding/         # coding workflow 向け
 │   └── plugin.json           # plugin 定義
 ├── home-template/            # trusted local bootstrap
-│   └── .copilot/             # skills, agents, config
+│   └── .copilot/             # 最小 bootstrap 用 instructions
 ├── repo-template/            # 対象 repo 用 template
 │   ├── .github/              # Actions, hooks, instructions
 │   └── .githooks/            # Git client hooks
@@ -63,7 +63,7 @@ copilot /design-workshop
 PLAN mode で作業を分解します。
 
 ```powershell
-copilot /plan-mode
+copilot /plan
 ```
 
 ### 4. 実装

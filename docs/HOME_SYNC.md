@@ -1,12 +1,12 @@
 # Home Sync（個人環境同期）
 
-Home sync は、この repo の `home-template/` を `$HOME/.copilot/` に同期するための仕組みです。
+Home sync は、この repo の最小 bootstrap 資産を `$HOME/.copilot/` に同期するための仕組みです。
 
 **位置づけ:** 信頼済みのローカル環境を再現するための導線です。共有配布の主導線ではありません。
 
 ## home sync とは
 
-`home-template/.copilot/` にある curated skills、agents、設定、repo bootstrap 用テンプレートをローカルの `$HOME/.copilot/` に反映します。作者用または信頼済み環境の再現に向いています。
+`home-template/.copilot/copilot-instructions.md` と、repo bootstrap に必要な一部 script / managed hook entry をローカルの `$HOME/.copilot/` に反映します。作者用または信頼済み環境の再現に向いています。
 
 **重要な境界:** repo が管理するファイルだけを更新し、ユーザー所有のファイルは残します。
 
@@ -14,18 +14,19 @@ Home sync は、この repo の `home-template/` を `$HOME/.copilot/` に同期
 
 ### 管理対象
 
-- `skills/` 配下の curated skills
-- `agents/` 配下の curated agents
 - `copilot-instructions.md`
 - `repo-template/`
-- `scripts/` や `.githooks/` などの補助資産
-- `mcp-config.sample.json` などの sample
+- `scripts/sync-to-repo.ps1`
+- `scripts/install-git-hooks.ps1`
+- `scripts/repo-secure-check.ps1`
+- `hooks/scripts/guard_pre_tool.ps1`
+- `config.json` の managed safety hook entry
 
 ### 同期しないもの
 
 - `mcp-config.json`
-- `config.json`
-- ローカルで自作した skills / agents
+- `config.json` の user-owned な他設定
+- `skills/`、`agents/`、`docs/`
 - session data や履歴
 - 個人の認証情報や secret
 
@@ -61,10 +62,11 @@ uv run app.py home
 
 実行すると次を行います。
 
-1. 管理対象ファイルを `$HOME/.copilot/` にコピー
+1. `copilot-instructions.md`、repo bootstrap 用 script、hook script を `$HOME/.copilot/` にコピー
 2. 既知の legacy ファイルを整理
-3. ユーザー所有ファイルは保持
-4. 置き換え前のファイルは `$HOME/copilot_archive/` に退避
+3. `config.json` は managed safety hook entry だけを更新
+4. user-owned surface は保持
+5. 置き換え前のファイルは `$HOME/copilot_archives/` に退避
 
 ### 4. 確認
 
@@ -75,12 +77,12 @@ copilot status
 
 ## 戻したいとき
 
-置き換え前のファイルは `$HOME/copilot_archive/` に保存されます。必要なものだけ戻してください。
+置き換え前のファイルは `$HOME/copilot_archives/` に保存されます。必要なものだけ戻してください。
 
 全体を戻すときの例:
 
 ```powershell
-Get-ChildItem $HOME/copilot_archive -Recurse | Copy-Item -Destination $HOME/.copilot -Force
+Get-ChildItem $HOME/copilot_archives -Recurse | Copy-Item -Destination $HOME/.copilot -Force
 ```
 
 ## 注意
@@ -91,8 +93,11 @@ Get-ChildItem $HOME/copilot_archive -Recurse | Copy-Item -Destination $HOME/.cop
 ⚠️ **チーム共有には向かない**  
 team repo に配る場合は marketplace install または repo bootstrap を使ってください。
 
-⚠️ **同名ファイルは上書きされる**  
-ユーザー所有ファイルは基本残りますが、管理対象と同名なら管理側が優先されます。
+⚠️ **`config.json` は一部だけ更新される**  
+`config.json` 全体を上書きするのではなく、managed safety hook entry だけを更新し、それ以外の設定は保持します。
+
+⚠️ **`skills/` `agents/` `docs/` は触らない**  
+これらは plugin install / user-owned surface として扱うため、home sync では作成・更新・削除しません。
 
 ## 関連
 

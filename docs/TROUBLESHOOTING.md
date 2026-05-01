@@ -112,14 +112,14 @@ Error: Access denied when writing to $HOME/.copilot/
 
 **症状**
 
-- 古い skill ファイルが残る
+- 古い user-owned ファイルが残る
 - archive だけ増える
 
 **対処**
 
-- `$HOME/copilot_archive/` を確認
-- 競合する古いファイルを手動で整理
-- `uv run app.py home` を再実行
+- `skills/`、`agents/`、`docs/` は home sync の管理対象ではないため、残っていても現行仕様です
+- 置き換え前の managed file は `$HOME/copilot_archives/` を確認
+- 不要な user-owned ファイルだけを手動で整理
 
 ## Repo Bootstrap の問題
 

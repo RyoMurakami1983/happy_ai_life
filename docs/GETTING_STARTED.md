@@ -63,7 +63,7 @@ copilot plugin marketplace remove happy-ai-life-marketplace
 
 ## パス 2: ローカル開発（この repo に手を入れる人向け）
 
-**向いている人:** `happy-core` / `happy-coding` を改善したい人、個人用に調整したい人。
+**向いている人:** この repo 自体を改善したい人、repo bootstrap script や instructions をローカルで確認したい人。
 
 ### 前提
 
@@ -91,13 +91,13 @@ uv run app.py home --dry-run
 uv run app.py home
 ```
 
-これで `home-template/` の内容を `$HOME/.copilot/` に同期できます。
+これで `copilot-instructions.md`、repo bootstrap 用 script、managed safety hook entry を `$HOME/.copilot/` に同期できます。
 
 ### 確認
 
 ```powershell
 copilot status
-copilot skill list
+cat $HOME/.copilot/copilot-instructions.md
 ```
 
 ### 開発の流れ

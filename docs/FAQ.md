@@ -33,7 +33,7 @@ winget install GitHub.Copilot
 
 ### Q: 複数の導入方法を併用できますか？
 
-**A:** できます。公開利用は marketplace、個人調整は home sync、チーム共有は repo bootstrap という併用ができます。
+**A:** できます。公開利用は marketplace、個人の bootstrap は home sync、チーム共有は repo bootstrap という併用ができます。
 
 ## 配布方法
 
@@ -59,13 +59,13 @@ copilot plugin install happy-core@happy-ai-life-marketplace
 
 ### Q: home sync とは何ですか？
 
-**A:** `home-template/` の内容を `$HOME/.copilot/` に同期する仕組みです。信頼済みの個人環境を再現するときに使います。
+**A:** 最小 bootstrap 資産を `$HOME/.copilot/` に同期する仕組みです。信頼済みの個人環境を再現するときに使います。
 
 使う場面:
 
 - 作者環境を再現したい
 - この repo に貢献したい
-- 個人用に skill を調整したい
+- 個人環境の instructions や repo bootstrap script をそろえたい
 
 詳しくは [Home Sync（個人環境同期）](HOME_SYNC.md) を参照してください。
 
@@ -88,7 +88,7 @@ copilot plugin install happy-core@happy-ai-life-marketplace
 | 個人環境を整える | Home Sync |
 | この repo に貢献する | Home Sync |
 | チーム repo に導入する | Repo Bootstrap |
-| 個人で skill を調整する | Home Sync |
+| 個人環境の bootstrap をそろえる | Home Sync |
 | チームの標準運用を揃える | Repo Bootstrap |
 
 ## Context7
@@ -137,7 +137,8 @@ custom skill / agent / repository instructions 自体を新規作成・改善・
 
 1. `copilot plugin list`
 2. `copilot skill list <plugin-name>`
-3. home sync を使っているなら `uv run app.py home --dry-run`
+3. `copilot plugin install happy-core@happy-ai-life-marketplace`
+4. `copilot plugin install happy-coding@happy-ai-life-marketplace`
 
 ### Q: Git hooks が commit を止めます。回避してよいですか？
 
