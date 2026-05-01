@@ -1,182 +1,198 @@
-# Troubleshooting
+# トラブルシューティング
 
-## Installation Issues
+## インストール時の問題
 
-### Issue: gitleaks not found
+### 問題: gitleaks が見つからない
 
-If a Git hook or `repo-secure-check.ps1` reports that `gitleaks` is required but was not found:
+Git hook や `repo-secure-check.ps1` で次のように言われる場合です。
 
-#### Symptom
+#### 症状
 
-```
+```text
 Error: gitleaks is required for the pre-commit secret scan, but it was not found in PATH
 ```
 
-#### Root Cause
+#### 原因
 
-The `gitleaks` binary is not available in your PATH environment variable. This tool is required to scan for accidentally committed secrets.
+`gitleaks` の実行ファイルが PATH に入っていません。
 
-#### Solution
+#### 対処
 
-**Step 1: Find the gitleaks executable**
+**Step 1: gitleaks の場所を確認**
 
 Windows PowerShell:
+
 ```powershell
 where gitleaks
 ```
 
 macOS / Linux:
+
 ```bash
 which gitleaks
 ```
 
-If this returns nothing, you need to install gitleaks. See https://github.com/gitleaks/gitleaks for installation instructions for your OS.
+何も返らなければ、まず `gitleaks` をインストールしてください。  
+https://github.com/gitleaks/gitleaks
 
-**Step 2: Once gitleaks is installed, run the hook again**
+**Step 2: 再実行**
 
-PowerShell:
 ```powershell
 cd <your-repo>
 git commit -m "test message"
 ```
 
-**Step 3: Make the fix permanent (Optional)**
+**Step 3: 必要なら固定**
 
-If you installed gitleaks to a non-standard location, you can set the `GITLEAKS_BIN` environment variable:
+標準パス以外に入れた場合は `GITLEAKS_BIN` を設定します。
 
-Windows PowerShell (temporary):
+Windows PowerShell（一時）:
+
 ```powershell
 $env:GITLEAKS_BIN = "C:\path\to\gitleaks.exe"
 git commit -m "test message"
 ```
 
-Windows PowerShell (permanent in $PROFILE):
+Windows PowerShell（恒久）:
+
 ```powershell
-# Edit your PowerShell profile
 notepad $PROFILE
+```
 
-# Add this line:
+次を追記します。
+
+```powershell
 $env:GITLEAKS_BIN = "C:\path\to\gitleaks.exe"
+```
 
-# Then reload:
+読み直し:
+
+```powershell
 . $PROFILE
 ```
 
-macOS / Linux (temporary in shell):
+macOS / Linux（一時）:
+
 ```bash
 export GITLEAKS_BIN=/usr/local/bin/gitleaks
 git commit -m "test message"
 ```
 
-macOS / Linux (permanent in ~/.bashrc or ~/.zshrc):
+macOS / Linux（恒久）:
+
 ```bash
 export GITLEAKS_BIN=/usr/local/bin/gitleaks
 ```
 
-Then reload:
+その後:
+
 ```bash
 source ~/.bashrc
-# or for zsh:
+# zsh の場合
 source ~/.zshrc
 ```
 
-## Home Sync Issues
+## Home Sync の問題
 
-### Issue: Sync fails with permission error
+### 問題: 権限エラーで sync できない
 
-**Symptom:**
-```
+**症状**
+
+```text
 Error: Access denied when writing to $HOME/.copilot/
 ```
 
-**Solution:**
-- Ensure you have write permissions to `$HOME/.copilot/`
-- Close any open text editors or terminals accessing files in this directory
-- Run `uv run app.py home --dry-run` first to preview changes
+**対処**
 
-### Issue: Old files not removed after sync
+- `$HOME/.copilot/` に書き込み権限があるか確認
+- その配下を開いている editor や terminal を閉じる
+- 先に `uv run app.py home --dry-run` で差分確認する
 
-**Symptom:**
-- Old skill files still exist after running home sync
-- Archived files created but not cleaned up
+### 問題: 古いファイルが残る
 
-**Solution:**
-- Check `$HOME/copilot_archive/` for backed-up files
-- Manually remove old files if they conflict with new ones
-- Re-run: `uv run app.py home` to retry the sync
+**症状**
 
-## Repo Bootstrap Issues
+- 古い user-owned ファイルが残る
+- archive だけ増える
 
-### Issue: `.github/copilot-instructions.md` already exists
+**対処**
 
-**Symptom:**
-```
+- `skills/`、`agents/`、`docs/` は home sync の管理対象ではないため、残っていても現行仕様です
+- 置き換え前の managed file は `$HOME/copilot_archives/` を確認
+- 不要な user-owned ファイルだけを手動で整理
+
+## Repo Bootstrap の問題
+
+### 問題: `.github/copilot-instructions.md` が既にある
+
+**症状**
+
+```text
 Error: File already exists: .github/copilot-instructions.md
 ```
 
-**Solution:**
-- If you want to keep your existing file, back it up first:
-  ```powershell
-  mv .github/copilot-instructions.md .github/copilot-instructions.md.bak
-  ```
-- Then re-run the bootstrap:
-  ```powershell
-  & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath .
-  ```
+**対処**
 
-### Issue: Git hooks fail immediately after bootstrap
+必要なら先に退避します。
 
-**Symptom:**
-- First commit fails with hook error even though `sync-to-repo.ps1` succeeded
-
-**Solution:**
-- Ensure `install-git-hooks.ps1` was run after `sync-to-repo.ps1`:
-  ```powershell
-  & $HOME/.copilot/scripts/install-git-hooks.ps1 -RepoPath .
-  ```
-- Verify hooks are installed:
-  ```powershell
-  git config core.hooksPath
-  ```
-  Should output: `.githooks`
-
-## Plugin Issues
-
-### Issue: Plugin marketplace not found
-
-**Symptom:**
+```powershell
+mv .github/copilot-instructions.md .github/copilot-instructions.md.bak
 ```
+
+その後、再実行します。
+
+```powershell
+& $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath .
+```
+
+### 問題: bootstrap 後すぐに Git hooks が失敗する
+
+**症状**
+
+- `sync-to-repo.ps1` は通ったのに最初の commit が失敗する
+
+**対処**
+
+```powershell
+& $HOME/.copilot/scripts/install-git-hooks.ps1 -RepoPath .
+git config core.hooksPath
+```
+
+`.githooks` と表示されるか確認してください。
+
+## Plugin の問題
+
+### 問題: marketplace が見つからない
+
+**症状**
+
+```text
 Error: marketplace "happy-ai-life-marketplace" not found
 ```
 
-**Solution:**
-- Add the marketplace first:
-  ```powershell
-  copilot plugin marketplace add RyoMurakami1983/happy_ai_life
-  ```
-- Then install the plugins:
-  ```powershell
-  copilot plugin install happy-core@happy-ai-life-marketplace
-  copilot plugin install happy-coding@happy-ai-life-marketplace
-  ```
+**対処**
 
-### Issue: Duplicate plugins after updating
+```powershell
+copilot plugin marketplace add RyoMurakami1983/happy_ai_life
+copilot plugin install happy-core@happy-ai-life-marketplace
+copilot plugin install happy-coding@happy-ai-life-marketplace
+```
 
-**Symptom:**
-- Old "direct install" plugins and new marketplace plugins both showing
+### 問題: plugin が重複表示される
 
-**Solution:**
-- Uninstall the old version:
-  ```powershell
-  copilot plugin uninstall happy-ai-life
-  ```
-- Verify only marketplace versions remain:
-  ```powershell
-  copilot plugin list
-  ```
+**症状**
 
-## Getting Help
+- 旧 direct install 版と marketplace 版が両方見える
 
-- Check [FAQ](FAQ.md) for common questions
-- See [Reference](REFERENCE.md) for command reference
-- Open an issue on GitHub
+**対処**
+
+```powershell
+copilot plugin uninstall happy-ai-life
+copilot plugin list
+```
+
+## 困ったときの参照先
+
+- [FAQ](FAQ.md)
+- [リファレンス](REFERENCE.md)
+- GitHub の Issue

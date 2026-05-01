@@ -1,126 +1,115 @@
-# Quality Gates Configuration
+# 品質ゲート
 
-This repository uses GitHub Actions to enforce quality standards on all pull requests. These gates prevent common issues before code is merged.
+この repo では、PR ごとに自動チェックを流して品質を守ります。
 
-## What are quality gates?
+## 品質ゲートとは
 
-Quality gates are automated checks that run on every PR:
+主に次を確認します。
 
-1. **Secret detection (gitleaks)** — Scans for accidentally committed secrets, API keys, credentials
-2. **Markdown lint (textlint, optional)** — Enforces documentation standards
+1. **gitleaks** — secret の混入を検出
+2. **textlint** — Markdown の文書品質を確認（必要時のみ）
 
-All checks must pass before a PR can be merged.
+merge 前にすべて通す前提です。
 
-## Secret Detection with gitleaks
+## gitleaks
 
-### What gets checked
+### 何を検査するか
 
-- All staged files in the PR
-- Commit history in the PR branch
-- Common secret patterns: API keys, tokens, AWS keys, database passwords, etc.
+- PR に含まれる staged files
+- branch 上の commit 履歴
+- API key、token、AWS key、password などの典型的な secret
 
-### How gitleaks works
+### どう動くか
 
-1. **Pre-commit hook** (client-side)
-   - Runs when you type `git commit`
-   - Scans staged files only
-   - Stops the commit if secrets are detected
+1. **pre-commit hook**  
+   `git commit` 時に staged files を検査します。
 
-2. **Pre-push hook** (client-side)
-   - Runs when you type `git push`
-   - Scans commits you're about to push
-   - Extra safety check before remote push
+2. **pre-push hook**  
+   `git push` 時に push 対象 commit を検査します。
 
-3. **GitHub Action** (server-side)
-   - Runs on every PR
-   - Full repository scan
-   - Public verification that PR is secret-free
+3. **GitHub Action**  
+   PR 上で最終確認します。
 
-### Configuration
+### 設定
 
-The default gitleaks rules are active. To customize detection patterns:
+既定では gitleaks の標準ルールを使います。調整したい場合は `.gitleaks.toml` を編集してください。
 
-1. Create or edit `.gitleaks.toml` in your repository root (see [.gitleaks.toml](../.gitleaks.toml) in this repo for example)
-2. Add entries to `allowlist` to suppress false positives for documentation or non-secret content
-3. Restart gitleaks for changes to take effect
+1. repo ルートの `.gitleaks.toml` を編集
+2. `allowlist` などを必要最小限で追加
 
-### If a secret is detected
+### secret が見つかったら
 
-1. **In pre-commit hook:** The commit will be rejected. Review the flagged content and remove or obscure the secret.
-2. **In pre-push hook:** The push will be rejected. Use the same approach.
-3. **In GitHub Action:** The PR check will fail. You must fix it before merging:
-   - Remove the secret from the file
-   - If it was already committed to history, use `git filter-branch` or `BFG Repo-Cleaner` to remove it from history
-   - Force-push the corrected branch
+1. **pre-commit hook** で落ちた  
+   該当内容を修正して再 commit します。
 
-### Best practices
+2. **pre-push hook** で落ちた  
+   該当 commit を修正して再 push します。
 
-- Never commit secrets intentionally
-- Use environment variables or `.env` files (which are `.gitignore`'d) for local secrets
-- Use GitHub Secrets for CI/CD credentials
-- If you commit a secret accidentally, rotate the secret immediately on the service
+3. **GitHub Action** で落ちた  
+   PR の内容または履歴から secret を除去し、必要なら history も整理します。
 
-## Markdown Linting (textlint, Optional)
+### 基本方針
 
-### Enabling textlint
+- secret を commit しない
+- ローカル用 secret は environment variable や `.env` を使う
+- CI/CD の secret は GitHub Secrets を使う
+- 誤って漏らしたら即座に rotate する
 
-Markdown linting is optional. To enable it:
+## textlint
 
-1. Uncomment the `textlint` job in `.github/workflows/quality.yml`
-2. Copy `.textlintrc.json` and `package.json` from this repository
-3. Run `npm install` locally
-4. Add `textlint` as a required status check in GitHub Branch Protection settings
+### 有効化
 
-### Configuration
+必要なときだけ有効にします。
 
-Textlint rules are defined in `.textlintrc.json`. Customize rules to match your documentation style.
+1. `.github/workflows/quality.yml` の `textlint` job を有効化
+2. `.textlintrc.json` と `package.json` を用意
+3. `npm install`
+4. GitHub の required status check に追加
 
-## Local Pre-commit Hooks
+### 設定
 
-### gitleaks on commit
+ルールは `.textlintrc.json` で調整します。
 
-The `pre-commit` hook (`.githooks/pre-commit`) runs gitleaks on staged content before each commit:
+## ローカル hooks
+
+### pre-commit
+
+`.githooks/pre-commit` で staged files を検査します。
 
 ```powershell
-git commit -m "Update documentation"
-# Hook runs: scans staged files for secrets
-# If secrets found: commit rejected
-# If no secrets: commit proceeds
+git commit -m "docs: 手順更新"
 ```
 
-### gitleaks on push
+### pre-push
 
-The `pre-push` hook (`.githooks/pre-push`) runs gitleaks on the range of commits you're about to push:
+`.githooks/pre-push` で push 対象 commit を検査します。
 
 ```powershell
 git push origin main
-# Hook runs: scans all commits not yet on remote
-# If secrets found: push rejected
-# If no secrets: push proceeds
 ```
 
-### Installing hooks
-
-If hooks are not yet installed in your repository:
+### hooks を有効化
 
 ```powershell
-cd <repository>
 git config core.hooksPath .githooks
 ```
 
-Verify:
+確認:
+
 ```powershell
 git config core.hooksPath
-# Should output: .githooks
 ```
 
-## Troubleshooting
+`.githooks` と出れば有効です。
 
-See [Troubleshooting](TROUBLESHOOTING.md) for common issues, especially:
-- [gitleaks not found in PATH](TROUBLESHOOTING.md#issue-gitleaks-not-found)
-- [Pre-commit hooks failing](TROUBLESHOOTING.md#issue-git-hooks-fail-immediately-after-bootstrap)
+## 困ったとき
 
-## See also
+主に次を参照してください。
+
+- [gitleaks が見つからない](TROUBLESHOOTING.md#問題-gitleaks-が見つからない)
+- [bootstrap 後に Git hooks が失敗する](TROUBLESHOOTING.md#問題-bootstrap-後すぐに-git-hooks-が失敗する)
+
+## 関連
 
 - [README](../README.md)
-- [Development](DEVELOPMENT.md)
+- [開発ガイド](DEVELOPMENT.md)
