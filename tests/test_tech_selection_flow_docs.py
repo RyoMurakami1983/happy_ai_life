@@ -79,9 +79,8 @@ def test_standard_workflow_has_tech_selection_checkpoint() -> None:
 
 
 def test_tech_selection_harness_exists_with_core_axes() -> None:
+    assert TECH_SELECTION_HARNESS_PATH.exists(), f"TECH_SELECTION_HARNESS.md not found at {TECH_SELECTION_HARNESS_PATH}"
     content = read_text(TECH_SELECTION_HARNESS_PATH)
-
-    assert TECH_SELECTION_HARNESS_PATH.exists()
     for phrase in (
         "要件適合度",
         "保守性",
