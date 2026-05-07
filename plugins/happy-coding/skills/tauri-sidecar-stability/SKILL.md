@@ -5,10 +5,6 @@ description: >
   clean Windows validation まで含めて安定化する。Use when:
   `externalBin`、shell capability、`@yao-pkg/pkg` Standard/SEA、enterprise proxy、
   MSI install 後だけ壊れる挙動をまとめて扱いたいとき。
-metadata:
-  author: Copilot
-  tags: [tauri, node, sidecar, packaging, msi, sea, proxy, windows]
-  invocable: false
 ---
 
 # Tauri + Node sidecar の配布安定性を固める
