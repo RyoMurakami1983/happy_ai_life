@@ -53,7 +53,7 @@ Copilot CLI hooks では `bash` / `powershell` だけでなく、`create` / `edi
 3. protected path の変更は global guard で制御する。
 4. Git hooks は便利だが bypass 可能なので、GitHub Rulesets / Branch Protection / Required checks を必須化する。
 5. session-continuity hooks は prompt injection risk があるため標準では opt-in にする。
-6. repo-local skills / MCP / instructions は medium trust の参照情報として扱う。
+6. repo-local skills / MCP / instructions は L7 / 中の参照情報として扱う。
 7. security policy を弱める変更は atomic issue と human review の対象にする。
 
 ## 改善対象の分類

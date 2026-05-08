@@ -58,7 +58,7 @@ Copilot CLI と共同作業するときは、次の順で判断する。
 - project context に応じた軽量 guard
 - global guard では検出できない repository 固有 rule の補助
 
-trust level は **L3 / medium trust** とし、次を前提に運用する。
+信頼レベルは **L3 / 中** とし、次を前提に運用する。
 
 - user-level / enterprise-level guard より下位に置く
 - GitHub Rulesets / Branch Protection / Required checks を代替しない
