@@ -136,7 +136,7 @@ cat $HOME/.copilot/copilot-instructions.md
 3. Git hooks を有効化します。
 
    ```powershell
-   & $HOME/.copilot/scripts/install-git-hooks.ps1 -RepoPath <your-repo-path>
+   & $HOME/.copilot/scripts/install-git-hooks.ps1 -TargetRepoPath <your-repo-path>
    ```
 
 4. 反映を確認します。

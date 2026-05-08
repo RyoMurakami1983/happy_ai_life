@@ -51,7 +51,7 @@ bootstrap を実行すると、主に次が入ります。
 ### Step 3: Git hooks を有効化
 
 ```powershell
-& $HOME/.copilot/scripts/install-git-hooks.ps1 -RepoPath C:\your-repo
+& $HOME/.copilot/scripts/install-git-hooks.ps1 -TargetRepoPath C:\your-repo
 ```
 
 `.githooks/pre-commit` と `.githooks/pre-push` を使える状態にします。

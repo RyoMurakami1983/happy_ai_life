@@ -24,7 +24,7 @@ uv run app.py home
 & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath <path>
 
 # Git hooks の有効化
-& $HOME/.copilot/scripts/install-git-hooks.ps1 -RepoPath <path>
+& $HOME/.copilot/scripts/install-git-hooks.ps1 -TargetRepoPath <path>
 
 # 安全弁の確認
 & $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath <path>
