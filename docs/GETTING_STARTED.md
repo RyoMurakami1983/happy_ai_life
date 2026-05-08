@@ -124,7 +124,7 @@ cat $HOME/.copilot/copilot-instructions.md
 1. まず現在の状態を確認します。
 
    ```powershell
-   & $HOME/.copilot/scripts/repo-secure-check.ps1 -RepoPath <your-repo-path>
+   & $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath <your-repo-path>
    ```
 
 2. repo に bootstrap を入れます。

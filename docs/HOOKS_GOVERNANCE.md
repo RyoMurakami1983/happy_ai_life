@@ -170,8 +170,8 @@ wget ... | sh
 .github/skills/** の変更
 MCP 設定変更
 SECURITY.md の変更
-TRUST_BOUNDARY.md の変更
-HOOKS_GOVERNANCE.md の変更
+docs/TRUST_BOUNDARY.md の変更
+docs/HOOKS_GOVERNANCE.md の変更
 ```
 
 ### Allow
