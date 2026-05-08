@@ -22,7 +22,7 @@ bootstrap を実行すると、主に次が入ります。
 ### Step 1: 現在の状態を確認
 
 ```powershell
-& $HOME/.copilot/scripts/repo-secure-check.ps1 -RepoPath C:\your-repo
+& $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath C:\your-repo
 ```
 
 次のような項目の不足を確認します。
@@ -51,7 +51,7 @@ bootstrap を実行すると、主に次が入ります。
 ### Step 3: Git hooks を有効化
 
 ```powershell
-& $HOME/.copilot/scripts/install-git-hooks.ps1 -RepoPath C:\your-repo
+& $HOME/.copilot/scripts/install-git-hooks.ps1 -TargetRepoPath C:\your-repo
 ```
 
 `.githooks/pre-commit` と `.githooks/pre-push` を使える状態にします。
@@ -62,7 +62,7 @@ bootstrap を実行すると、主に次が入ります。
 cd C:\your-repo
 git status
 git config core.hooksPath
-& $HOME/.copilot/scripts/repo-secure-check.ps1 -RepoPath .
+& $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath .
 ```
 
 `core.hooksPath` が `.githooks` になっていれば正常です。

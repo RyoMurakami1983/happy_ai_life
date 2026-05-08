@@ -154,7 +154,7 @@ mv .github/copilot-instructions.md .github/copilot-instructions.md.bak
 **対処**
 
 ```powershell
-& $HOME/.copilot/scripts/install-git-hooks.ps1 -RepoPath .
+& $HOME/.copilot/scripts/install-git-hooks.ps1 -TargetRepoPath .
 git config core.hooksPath
 ```
 
