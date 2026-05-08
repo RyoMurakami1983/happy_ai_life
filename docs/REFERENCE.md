@@ -114,6 +114,12 @@ git config core.hooksPath .githooks
 - `*.json` — hook 定義
 - `scripts/` — hook script
 
+位置づけ:
+
+- repo-scoped Copilot hooks は repository 固有の補助 guard です。
+- 信頼の根は `$HOME/.copilot/` の user-level / enterprise-level guard と GitHub Rulesets / Branch Protection / Required checks に置きます。
+- 詳しくは [Trust Boundary](TRUST_BOUNDARY.md) と [Hooks Governance](HOOKS_GOVERNANCE.md) を参照してください。
+
 詳しくは [品質ゲート](QUALITY_GATES.md) を参照してください。
 
 ## 関連

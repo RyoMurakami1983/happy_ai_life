@@ -48,9 +48,15 @@ $HOME/.copilot/hooks/scripts/**
 
 制約:
 
-- 信頼の根にしない。
-- user-level guard を下回る安全基準にしない。
-- session-continuity hooks は標準では無効にする。
+  - trust level は L3 / 中 とする
+  - 信頼の根にしない。
+  - user-level / enterprise-level guard より優先しない。
+  - GitHub Rulesets / Branch Protection / Required checks の代替にしない。
+  - user-level guard を下回る安全基準にしない。
+  - session-continuity hooks は標準では無効にする。
+
+運用上は、repo-scoped Copilot hooks 単体で security baseline を成立させるのではなく、
+user-level / enterprise-level guard と GitHub Rulesets / Branch Protection / Required checks の補助として使う。
 
 ### Git client hooks
 

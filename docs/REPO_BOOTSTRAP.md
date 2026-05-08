@@ -17,6 +17,9 @@ bootstrap を実行すると、主に次が入ります。
 
 これらは repo にコミットされるため、チーム全員が同じ土台を使えます。
 
+ただし、`.github/hooks/` と `.githooks/` は **repo-scoped / local の補助ガード** です。
+信頼の根は user-level / enterprise-level guard と GitHub Rulesets / Branch Protection / Required checks に置きます。
+
 ## 手順
 
 ### Step 1: 現在の状態を確認
@@ -80,6 +83,10 @@ git config core.hooksPath
 
 ⚠️ **変更は repo に残る**  
 ローカルだけの設定ではありません。チーム全員に効く前提で入ります。
+
+⚠️ **repo bootstrap だけで安全性は完結しない**  
+`.github/hooks/` は repository 内で変更でき、`.githooks/` は `--no-verify` で bypass できます。
+そのため、`$HOME/.copilot/` の user-level guard と GitHub 側の required checks を併用してください。
 
 ⚠️ **gitleaks が必要**  
 hooks を使う全員に `gitleaks` が必要です。未導入だと commit や push が止まります。

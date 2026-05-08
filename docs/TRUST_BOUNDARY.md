@@ -20,7 +20,7 @@
 | L0 | enterprise managed policy / device policy | 最高 | 組織の最終方針 |
 | L1 | `$HOME/.copilot/` managed guard | 高 | 全 repository 共通の user-level safety guard |
 | L2 | GitHub Rulesets / Branch Protection / Required checks | 高 | merge 前の最終防衛線 |
-| L3 | `.github/hooks/` | 中 | repository 固有の補助 guard |
+| L3 | `.github/hooks/` | 中 | repository 固有の補助 guard（信頼の根ではない） |
 | L4 | `.githooks/` | 中 | local Git 操作の補助 guard |
 | L5 | `.github/copilot-instructions.md` | 中 | repository 固有の作業方針 |
 | L6 | `.github/instructions/*.instructions.md` | 中 | path / 言語 / file 種別ごとの局所ルール |
@@ -57,6 +57,12 @@ Copilot CLI と共同作業するときは、次の順で判断する。
 - repository 固有の補助 safety check
 - project context に応じた軽量 guard
 - global guard では検出できない repository 固有 rule の補助
+
+信頼レベルは **L3 / 中** とし、次を前提に運用する。
+
+- user-level / enterprise-level guard より下位に置く
+- GitHub Rulesets / Branch Protection / Required checks を代替しない
+- repository 内で変更できるため、baseline security の唯一の根拠にしない
 
 ## user-level / enterprise-level guard の扱い
 
