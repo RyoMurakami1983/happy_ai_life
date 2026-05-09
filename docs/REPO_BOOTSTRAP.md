@@ -70,6 +70,12 @@ git config core.hooksPath
 
 `core.hooksPath` が `.githooks` になっていれば正常です。
 
+CI / automation で導入漏れを失敗扱いにしたい場合は、`-Strict` を付けます。
+
+```powershell
+& $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath . -Strict
+```
+
 ## 何を確認するか
 
 | 項目 | 役割 | 問題があると |

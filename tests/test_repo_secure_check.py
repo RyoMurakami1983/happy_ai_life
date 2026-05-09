@@ -29,9 +29,19 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _run_check(target_repo: Path, *, source_root: Path | None = None) -> dict[str, Any]:
+def _run_check(
+    target_repo: Path,
+    *,
+    source_root: Path | None = None,
+    strict: bool = False,
+) -> dict[str, Any]:
     effective_env = _build_tool_env(target_repo)
-    return _run_check_with_env(target_repo, source_root=source_root, env=effective_env)
+    return _run_check_with_env(
+        target_repo,
+        source_root=source_root,
+        env=effective_env,
+        strict=strict,
+    )
 
 
 def _run_check_with_env(
@@ -39,32 +49,52 @@ def _run_check_with_env(
     *,
     source_root: Path | None = None,
     env: dict[str, str],
+    strict: bool = False,
 ) -> dict[str, Any]:
     effective_source_root = source_root or ROOT
-    completed = subprocess.run(
-        [
-            _powershell_executable(),
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            str(SCRIPT),
-            "-TargetRepoPath",
-            str(target_repo),
-            "-SourceRoot",
-            str(effective_source_root),
-            "-AsJson",
-        ],
+    completed = _run_check_process(
+        target_repo,
+        source_root=effective_source_root,
+        env=env,
+        strict=strict,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    report = json.loads(completed.stdout)
+    assert isinstance(report, dict), f"repo-secure-check output must be a JSON object, got: {type(report)}"
+    return report
+
+
+def _run_check_process(
+    target_repo: Path,
+    *,
+    source_root: Path | None = None,
+    env: dict[str, str] | None = None,
+    strict: bool = False,
+) -> subprocess.CompletedProcess[str]:
+    effective_source_root = source_root or ROOT
+    command = [
+        _powershell_executable(),
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(SCRIPT),
+        "-TargetRepoPath",
+        str(target_repo),
+        "-SourceRoot",
+        str(effective_source_root),
+    ]
+    if strict:
+        command.append("-Strict")
+    command.append("-AsJson")
+    return subprocess.run(
+        command,
         cwd=ROOT,
         check=False,
         capture_output=True,
         text=True,
         env=env,
     )
-    assert completed.returncode == 0, completed.stdout + completed.stderr
-    report = json.loads(completed.stdout)
-    assert isinstance(report, dict), f"repo-secure-check output must be a JSON object, got: {type(report)}"
-    return report
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -187,6 +217,28 @@ def test_repo_secure_check_reports_missing_local_safety_valves(tmp_path: Path) -
     }
 
 
+def test_repo_secure_check_strict_returns_non_zero_when_missing(tmp_path: Path) -> None:
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    completed = _run_check_process(
+        target_repo,
+        env=_build_tool_env(target_repo),
+        strict=True,
+    )
+
+    assert completed.returncode == 1, completed.stdout + completed.stderr
+    report = json.loads(completed.stdout)
+    assert set(report["missing"]) == {
+        "repoInstructions",
+        "copilotHooks",
+        "gitHooksDirectory",
+        "githubWorkflows",
+        "coreHooksPath",
+    }
+
+
 def test_repo_secure_check_reports_secure_repo(tmp_path: Path) -> None:
     target_repo = tmp_path / "target"
     target_repo.mkdir()
@@ -207,6 +259,30 @@ def test_repo_secure_check_reports_secure_repo(tmp_path: Path) -> None:
     copilot_hooks_check = next(check for check in report["checks"] if check["key"] == "copilotHooks")
     assert "session continuity hooks" in copilot_hooks_check["details"]
     assert report["toolDependencies"]["required"] == ["git", "gitleaks", "pwsh or powershell"]
+
+
+def test_repo_secure_check_strict_succeeds_for_secure_repo(tmp_path: Path) -> None:
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    (target_repo / ".github" / "hooks").mkdir(parents=True)
+    (target_repo / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
+    (target_repo / ".github" / "workflows").mkdir(parents=True)
+    (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
+    _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
+
+    completed = _run_check_process(
+        target_repo,
+        env=_build_tool_env(target_repo),
+        strict=True,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["missing"] == []
 
 
 def test_repo_secure_check_requires_concrete_git_hook_files(tmp_path: Path) -> None:
