@@ -54,6 +54,7 @@ def test_hooks_governance_docs_define_managed_entry_boundary() -> None:
             "`env.HAPPY_AI_LIFE_HOOK_EVENT`",
             "user-owned な他の `config.json` 設定や hook entry は保持する",
             "create / edit による protected path 変更",
+            "`path` / `filePath` / `file_path` / `targetPath` / `target_path`",
             "protected path に一致した場合は `ask` を返す",
             "permissionRequest` では `ask` を返せない",
             "fallback behavior",

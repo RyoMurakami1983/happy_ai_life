@@ -697,6 +697,27 @@ def test_guard_pre_tool_asks_for_protected_edit_path() -> None:
     assert "explicit human review" in response["permissionDecisionReason"]
 
 
+def test_guard_pre_tool_asks_for_protected_edit_path_from_stringified_json() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": json.dumps(
+                {
+                    "filePath": "docs/HOOKS_GOVERNANCE.md",
+                    "oldString": "old",
+                    "newString": "new",
+                }
+            ),
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "docs/HOOKS_GOVERNANCE.md" in response["permissionDecisionReason"]
+
+
 def test_guard_permission_request_falls_back_for_protected_edit_path() -> None:
     result = _invoke_guard_pre_tool(
         {
@@ -705,6 +726,28 @@ def test_guard_permission_request_falls_back_for_protected_edit_path() -> None:
                 "path": "docs/HOOKS_GOVERNANCE.md",
                 "oldString": "old",
                 "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        hook_event="permissionRequest",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_guard_permission_request_falls_back_for_nested_protected_edit_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "operations": [
+                    {
+                        "targetPath": "$HOME/.copilot/config.json",
+                        "oldString": "{}",
+                        "newString": '{"hooks":{}}',
+                    }
+                ]
             },
         },
         cwd=ROOT,
@@ -734,6 +777,46 @@ def test_guard_pre_tool_asks_for_protected_create_path_with_traversal() -> None:
     assert ".github/workflows/**" in response["permissionDecisionReason"]
 
 
+def test_guard_pre_tool_asks_for_nested_protected_create_path_with_alt_key() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "create",
+            "toolArgs": {
+                "operations": [
+                    {
+                        "target_path": ".github\\hooks\\custom.json",
+                        "content": "{}",
+                    }
+                ]
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert ".github/hooks/**" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_asks_for_protected_path_in_top_level_operation_array() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "create",
+            "toolArgs": [
+                {"path": "docs/notes/non-protected.md", "content": "# notes"},
+                {"file_path": ".github\\hooks\\custom.json", "content": "{}"},
+            ],
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert ".github/hooks/**" in response["permissionDecisionReason"]
+
+
 def test_guard_pre_tool_allows_non_protected_create_path() -> None:
     result = _invoke_guard_pre_tool(
         {
@@ -741,6 +824,42 @@ def test_guard_pre_tool_allows_non_protected_create_path() -> None:
             "toolArgs": {
                 "path": "docs/notes/non-protected.md",
                 "content": "# notes",
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_guard_pre_tool_does_not_treat_nested_non_path_string_as_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "create",
+            "toolArgs": {
+                "path": {"nested": "not-a-path"},
+                "content": "# notes",
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_guard_pre_tool_allows_nested_non_protected_create_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "create",
+            "toolArgs": {
+                "operations": [
+                    {
+                        "targetPath": "docs/notes/non-protected.md",
+                        "content": "# notes",
+                    }
+                ]
             },
         },
         cwd=ROOT,
