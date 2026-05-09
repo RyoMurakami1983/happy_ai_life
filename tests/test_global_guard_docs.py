@@ -48,6 +48,8 @@ def test_hooks_governance_docs_define_managed_entry_boundary() -> None:
             "正式な enterprise/global guard",
             'env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"',
             "user-owned な他の `config.json` 設定や hook entry は保持する",
+            "create / edit による protected path 変更",
+            "protected path に一致した場合は `ask` を返す",
         ),
     )
 
@@ -64,6 +66,9 @@ def test_related_docs_use_global_guard_naming() -> None:
         (
             "managed enterprise/global guard",
             'env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"',
+            "repo-relative path:",
+            "home-managed path:",
+            "create` / `edit` 判定では",
         ),
     )
     assert_contains_all(

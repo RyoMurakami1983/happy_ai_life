@@ -113,6 +113,31 @@ def _create_extra_files(base: Path) -> None:
     (base / "d" / "e.ps1").write_text("Write-Host 'extra'\n", encoding="utf-8")
 
 
+def _invoke_guard_pre_tool(payload: dict[str, object], cwd: Path) -> subprocess.CompletedProcess[str]:
+    script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
+    payload_json = json.dumps(payload)
+    command = (
+        "@'\n"
+        f"{payload_json}\n"
+        "'@ | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'"
+        % (_powershell_executable(), script)
+    )
+    return subprocess.run(
+        [
+            _powershell_executable(),
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            command,
+        ],
+        cwd=cwd,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
 def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     destination = tmp_path / "home"
@@ -513,3 +538,77 @@ def test_guard_pre_tool_blocks_ai_git_commit_when_gitleaks_is_missing(tmp_path: 
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "deny"
     assert "gitleaks is required" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_asks_for_protected_edit_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "docs/HOOKS_GOVERNANCE.md" in response["permissionDecisionReason"]
+    assert "explicit human review" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_asks_for_protected_create_path_with_traversal() -> None:
+    nested_cwd = ROOT / "tests"
+    result = _invoke_guard_pre_tool(
+        {
+            "tool_name": "create",
+            "tool_input": {
+                "path": "..\\.github\\workflows\\quality.yml",
+                "content": "name: test",
+            },
+        },
+        cwd=nested_cwd,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert ".github/workflows/**" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_allows_non_protected_create_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "create",
+            "toolArgs": {
+                "path": "docs/notes/non-protected.md",
+                "content": "# notes",
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_guard_pre_tool_asks_for_home_managed_path_with_home_prefix() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "$HOME/.copilot/config.json",
+                "oldString": "{}",
+                "newString": '{"hooks":{}}',
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "$HOME/.copilot/**" in response["permissionDecisionReason"]
