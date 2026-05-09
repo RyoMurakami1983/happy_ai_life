@@ -608,11 +608,22 @@ $compact = ($normalized -replace "\s+", " ")
 $isGitCommit = $compact -match "(^|[;&|]\s*)git\s+commit(\s|$)"
 $isGitPush = $compact -match "(^|[;&|]\s*)git\s+push(\s|$)"
 $isGhPrCreate = $compact -match "(^|[;&|]\s*)gh\s+pr\s+create(\s|$)"
+$isGitConfigHooksPathWrite = ($compact -match "(^|[;&|]\s*)git\s+config(\s|$)") -and ($compact -match "(^|\s)core\.hookspath(?:\s*=\s*|\s+)[^;&|]+")
+$isGitConfigHooksPathUnset = $compact -match "(^|[;&|]\s*)git\s+config(?:\s+[^;&|]+)*\s+--unset(?:-all)?(?:\s+[^;&|]+)*\s+core\.hookspath(?=\s*($|[;&|]))"
+$isGitConfigRemoveCoreSection = $compact -match "(^|[;&|]\s*)git\s+config(?:\s+[^;&|]+)*\s+--remove-section(?:\s+[^;&|]+)*\s+core(?=\s*($|[;&|]))"
+$hasInlineGitHooksPathConfig = $compact -match "(^|[;&|]\s*)git\s+(?:.*\s)?-c\s+core\.hookspath(?:\s*=\s*|\s+)[^;&|]+"
+$isGitUpdateIndexSkipWorktree = ($compact -match "(^|[;&|]\s*)git\s+update-index(\s|$)") -and ($compact -match "(^|\s)--skip-worktree(\s|$)")
+$isGitUpdateIndexAssumeUnchanged = ($compact -match "(^|[;&|]\s*)git\s+update-index(\s|$)") -and ($compact -match "(^|\s)--assume-unchanged(\s|$)")
 $hasNoVerify = $compact -match "(^|\s)--no-verify(\s|$)"
 $hasCommitNoVerifyShort = $isGitCommit -and ($compact -match "(^|\s)-[a-z]*n[a-z]*(\s|$)")
 
 if (($isGitCommit -and ($hasNoVerify -or $hasCommitNoVerifyShort)) -or ($isGitPush -and $hasNoVerify)) {
     Write-Deny "AI is not allowed to bypass Git hooks with --no-verify or git commit -n."
+    exit 0
+}
+
+if ($isGitConfigHooksPathWrite -or $isGitConfigHooksPathUnset -or $isGitConfigRemoveCoreSection -or $hasInlineGitHooksPathConfig -or $isGitUpdateIndexSkipWorktree -or $isGitUpdateIndexAssumeUnchanged) {
+    Write-Deny "AI is not allowed to disable or bypass Git hooks via core.hooksPath changes, git -c core.hooksPath, or git update-index skip-worktree/assume-unchanged."
     exit 0
 }
 
