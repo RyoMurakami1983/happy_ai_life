@@ -15,6 +15,15 @@ function Write-Deny([string]$reason) {
     [Console]::Out.Write($json)
 }
 
+function Write-Ask([string]$reason) {
+    $obj = @{
+        permissionDecision = "ask"
+        permissionDecisionReason = $reason
+    }
+    $json = $obj | ConvertTo-Json -Compress
+    [Console]::Out.Write($json)
+}
+
 function Resolve-GitleaksPath {
     $requested = [Environment]::GetEnvironmentVariable("GITLEAKS_BIN")
     if (-not [string]::IsNullOrWhiteSpace($requested)) {
@@ -31,6 +40,157 @@ function Resolve-GitleaksPath {
     $resolved = Get-Command "gitleaks" -ErrorAction SilentlyContinue
     if ($resolved) {
         return $resolved.Source
+    }
+
+    return $null
+}
+
+function Get-PayloadPropertyValue {
+    param(
+        [Parameter(Mandatory = $true)]$Object,
+        [Parameter(Mandatory = $true)][string[]]$Names
+    )
+
+    foreach ($name in $Names) {
+        $property = $Object.PSObject.Properties[$name]
+        if ($property) {
+            return $property.Value
+        }
+    }
+
+    return $null
+}
+
+function ConvertTo-HookObject {
+    param($Value)
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    if ($Value -is [string]) {
+        if ([string]::IsNullOrWhiteSpace($Value)) {
+            return $null
+        }
+
+        try {
+            return $Value | ConvertFrom-Json
+        }
+        catch {
+            return $Value
+        }
+    }
+
+    return $Value
+}
+
+function Resolve-FullPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$PathValue,
+        [Parameter(Mandatory = $true)][string]$BasePath
+    )
+
+    $expanded = [Environment]::ExpandEnvironmentVariables($PathValue.Trim())
+    if ($expanded.StartsWith("~/") -or $expanded.StartsWith("~\")) {
+        $expanded = Join-Path $HOME $expanded.Substring(2)
+    }
+
+    if ([System.IO.Path]::IsPathRooted($expanded)) {
+        return [System.IO.Path]::GetFullPath($expanded)
+    }
+
+    return [System.IO.Path]::GetFullPath((Join-Path $BasePath $expanded))
+}
+
+function Test-PathWithinRoot {
+    param(
+        [Parameter(Mandatory = $true)][string]$CandidatePath,
+        [Parameter(Mandatory = $true)][string]$RootPath
+    )
+
+    $candidateFull = [System.IO.Path]::GetFullPath($CandidatePath).TrimEnd('\', '/')
+    $rootFull = [System.IO.Path]::GetFullPath($RootPath).TrimEnd('\', '/')
+
+    if ($candidateFull.Equals($rootFull, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+
+    return $candidateFull.StartsWith($rootFull + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Get-ProtectedPathRules {
+    param([string]$RepoRoot)
+
+    $rules = @()
+
+    if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+        foreach ($relativePath in @(
+                ".github\hooks",
+                ".githooks",
+                ".github\workflows",
+                ".github\instructions",
+                ".github\skills",
+                ".agents\skills",
+                ".claude\skills"
+            )) {
+            $rules += [pscustomobject]@{
+                    Scope = "directory"
+                    Display = ($relativePath -replace "\\", "/") + "/**"
+                    FullPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $relativePath))
+                }
+        }
+
+        foreach ($relativePath in @(
+                ".github\copilot-instructions.md",
+                ".github\mcp.json",
+                ".mcp.json",
+                ".gitleaks.toml",
+                "SECURITY.md",
+                "docs\TRUST_BOUNDARY.md",
+                "docs\HOOKS_GOVERNANCE.md",
+                "docs\ENTERPRISE_SECURITY_REVIEW.md"
+            )) {
+            $rules += [pscustomobject]@{
+                    Scope = "file"
+                    Display = ($relativePath -replace "\\", "/")
+                    FullPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $relativePath))
+                }
+        }
+    }
+
+    $homeCopilotRoot = [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot"))
+    $rules += [pscustomobject]@{
+            Scope = "directory"
+            Display = '$HOME/.copilot/**'
+            FullPath = $homeCopilotRoot
+        }
+
+    return $rules
+}
+
+function Find-ProtectedPathMatch {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$CandidatePaths,
+        [Parameter(Mandatory = $true)][object[]]$ProtectedRules
+    )
+
+    foreach ($candidate in $CandidatePaths) {
+        foreach ($rule in $ProtectedRules) {
+            if ($rule.Scope -eq "directory") {
+                if (Test-PathWithinRoot -CandidatePath $candidate -RootPath $rule.FullPath) {
+                    return [pscustomobject]@{
+                        Candidate = $candidate
+                        Rule = $rule
+                    }
+                }
+            }
+            elseif ($candidate.Equals($rule.FullPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                return [pscustomobject]@{
+                    Candidate = $candidate
+                    Rule = $rule
+                }
+            }
+        }
     }
 
     return $null
@@ -212,20 +372,62 @@ if ([string]::IsNullOrWhiteSpace($raw)) {
 
 try {
     $payload = $raw | ConvertFrom-Json
-} catch {
+}
+catch {
     # If we can't parse, do not block.
     exit 0
 }
 
-# Your earlier python version used these fields:
-$toolName = ""
-$toolArgsRaw = ""
-
-try { $toolName = [string]$payload.toolName } catch {}
-try { $toolArgsRaw = [string]$payload.toolArgs } catch {}
+$toolName = [string](Get-PayloadPropertyValue -Object $payload -Names @("toolName", "tool_name"))
+$toolArgsValue = Get-PayloadPropertyValue -Object $payload -Names @("toolArgs", "tool_input")
+$hookCwd = [string](Get-PayloadPropertyValue -Object $payload -Names @("cwd"))
+$toolArgs = ConvertTo-HookObject -Value $toolArgsValue
 
 if ([string]::IsNullOrWhiteSpace($toolName)) {
     exit 0
+}
+
+$repoRoot = Get-RepoRoot
+$resolutionBase = if (-not [string]::IsNullOrWhiteSpace($hookCwd)) {
+    [System.IO.Path]::GetFullPath($hookCwd)
+}
+else {
+    [System.IO.Path]::GetFullPath((Get-Location).Path)
+}
+
+if ($toolName -in @("create", "edit")) {
+    $serializedToolArgs = if ($toolArgs -is [string]) {
+        $toolArgs
+    }
+    elseif ($null -ne $toolArgs) {
+        $toolArgs | ConvertTo-Json -Compress -Depth 20
+    }
+    else {
+        ""
+    }
+
+    $pathValues = @(
+        foreach ($match in [regex]::Matches($serializedToolArgs, '"(?:path|filePath|file_path|targetPath|target_path)"\s*:\s*"([^"]+)"')) {
+            $capturedPath = $match.Groups[1].Value -replace "\\\\", "\"
+            if (-not [string]::IsNullOrWhiteSpace($capturedPath)) {
+                $capturedPath
+            }
+        }
+    )
+
+    if (@($pathValues).Count -gt 0) {
+        $candidatePaths = @(
+            foreach ($pathValue in @($pathValues | Select-Object -Unique)) {
+                Resolve-FullPath -PathValue $pathValue -BasePath $resolutionBase
+            }
+        )
+        $protectedMatch = Find-ProtectedPathMatch -CandidatePaths $candidatePaths -ProtectedRules (Get-ProtectedPathRules -RepoRoot $repoRoot)
+        if ($null -ne $protectedMatch) {
+            $reason = "Protected path change detected for {0} via {1}. This path requires an atomic issue/PR and explicit human review." -f $protectedMatch.Rule.Display, $toolName
+            Write-Ask $reason
+            exit 0
+        }
+    }
 }
 
 # Guard shell command tools. Windows Copilot CLI reports PowerShell tool use as "powershell".
@@ -234,14 +436,11 @@ if ($toolName -notin @("bash", "powershell")) {
 }
 
 $command = ""
-if (-not [string]::IsNullOrWhiteSpace($toolArgsRaw)) {
-    try {
-        $toolArgs = $toolArgsRaw | ConvertFrom-Json
-        try { $command = [string]$toolArgs.command } catch {}
-    } catch {
-        # toolArgs might not be JSON; ignore
-        $command = ""
-    }
+if ($toolArgs -is [string]) {
+    $command = $toolArgs
+}
+elseif ($null -ne $toolArgs) {
+    try { $command = [string]$toolArgs.command } catch {}
 }
 
 if ([string]::IsNullOrWhiteSpace($command)) {

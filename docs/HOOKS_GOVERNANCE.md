@@ -176,6 +176,7 @@ wget ... | sh
 明示確認を求める操作:
 
 ```text
+create / edit による protected path 変更
 .github/hooks/** の変更
 .githooks/** の変更
 .github/workflows/** の変更
@@ -187,6 +188,8 @@ SECURITY.md の変更
 docs/TRUST_BOUNDARY.md の変更
 docs/HOOKS_GOVERNANCE.md の変更
 ```
+
+global guard では `create` / `edit` の target path を見て、protected path に一致した場合は `ask` を返す。これにより、通常の source code 変更は止めずに、security boundary に触れる変更だけを明示確認へ送る。
 
 ### Allow
 
