@@ -68,6 +68,23 @@ uv run app.py home
 4. user-owned surface は保持
 5. 置き換え前のファイルは `$HOME/copilot_archives/` に退避
 
+### 3.1 ExecutionPolicy migration note
+
+既存の managed entry に `-ExecutionPolicy Bypass` が入っている場合は、次のどちらかで更新します。
+
+```powershell
+uv run app.py home
+```
+
+一時的に Bypass が必要な端末だけ、環境変数を付けて再同期します。
+
+```powershell
+$env:HAPPY_ENV_ALLOW_POLICY_BYPASS = "1"
+uv run app.py home
+```
+
+環境変数を付けずに再同期すると、managed entry は既定の `powershell -NoProfile -File ...` に戻ります。
+
 ### 4. 確認
 
 ```powershell
@@ -98,6 +115,9 @@ team repo に配る場合は marketplace install または repo bootstrap を使
 
 ⚠️ **既存 hook id との互換性を維持する**
 home sync は `env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"` を持つ既存 entry を同じ managed entry として更新します。user-owned な他の hook entry や `config.json` の他設定は保持します。
+
+⚠️ **ExecutionPolicy Bypass は既定では入らない**  
+企業管理端末の実行ポリシーを尊重するため、managed entry は既定で `-ExecutionPolicy Bypass` を付けません。既存ユーザーは home sync を再実行して migration してください。どうしても必要な場合だけ `HAPPY_ENV_ALLOW_POLICY_BYPASS=1` を付けて再同期します。
 
 ⚠️ **`skills/` `agents/` `docs/` は触らない**  
 これらは plugin install / user-owned surface として扱うため、home sync では作成・更新・削除しません。

@@ -38,6 +38,7 @@ def _run_sync(
     dry_run: bool,
     verbose_log: bool = False,
     mirror: bool = False,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     command = [
         _powershell_executable(),
@@ -62,12 +63,17 @@ def _run_sync(
     if mirror:
         command.append("-Mirror")
 
+    effective_env = os.environ.copy()
+    if env:
+        effective_env.update(env)
+
     return subprocess.run(
         command,
         cwd=ROOT,
         check=False,
         capture_output=True,
         text=True,
+        env=effective_env,
     )
 
 
@@ -169,6 +175,7 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     ]
     assert len(managed_hooks) == 1
     assert "hooks\\scripts\\guard_pre_tool.ps1" in managed_hooks[0]["powershell"]
+    assert "-ExecutionPolicy Bypass" not in managed_hooks[0]["powershell"]
     assert (destination / "mcp-config.json").read_text(encoding="utf-8") == '{"user":true}'
     assert (destination / "session-state").exists()
 
@@ -276,6 +283,44 @@ def test_sync_to_home_preserves_existing_config_hooks(tmp_path: Path) -> None:
     ]
     assert len(managed_hooks) == 1
     assert "stale-managed-hook" not in managed_hooks[0]["powershell"]
+    assert "-ExecutionPolicy Bypass" not in managed_hooks[0]["powershell"]
+
+
+def test_sync_to_home_migrates_managed_hook_from_execution_policy_bypass(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    destination.mkdir(parents=True)
+    config_path = destination / "config.json"
+    managed_script_path = destination / "hooks" / "scripts" / "guard_pre_tool.ps1"
+    config_path.write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "preToolUse": [
+                        {
+                            "type": "command",
+                            "powershell": (
+                                'powershell -NoProfile -ExecutionPolicy Bypass -File "%s"'
+                                % managed_script_path.as_posix().replace("/", "\\")
+                            ),
+                            "env": {"HAPPY_AI_LIFE_HOOK_ID": "happy-ai-life-safety-guard"},
+                        }
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    managed_hook = config["hooks"]["preToolUse"][0]
+    assert managed_hook["powershell"] == (
+        'powershell -NoProfile -File "%s"' % managed_script_path.as_posix().replace("/", "\\")
+    )
 
 
 def test_sync_to_home_skips_invalid_user_config_json(tmp_path: Path) -> None:
@@ -307,7 +352,7 @@ def test_sync_to_home_does_not_rewrite_formatting_only_differences(tmp_path: Pat
       {
         "timeoutSec": 10,
         "cwd": ".",
-        "powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File \\"%s\\"",
+        "powershell": "powershell -NoProfile -File \\"%s\\"",
         "type": "command",
         "env": {
           "HAPPY_AI_LIFE_HOOK_ID": "happy-ai-life-safety-guard"
@@ -325,6 +370,65 @@ def test_sync_to_home_does_not_rewrite_formatting_only_differences(tmp_path: Pat
     combined_output = result.stdout + result.stderr
     assert result.returncode == 0, combined_output
     assert config_path.read_text(encoding="utf-8") == config_text
+
+
+def test_sync_to_home_allows_explicit_execution_policy_bypass_opt_in(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    destination.mkdir(parents=True)
+
+    result = _run_sync(
+        source_root,
+        destination,
+        archive_root=archive_root,
+        dry_run=False,
+        env={"HAPPY_ENV_ALLOW_POLICY_BYPASS": "1"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    config = json.loads((destination / "config.json").read_text(encoding="utf-8"))
+    managed_hooks = [
+        hook
+        for hook in config["hooks"]["preToolUse"]
+        if hook.get("env", {}).get("HAPPY_AI_LIFE_HOOK_ID") == "happy-ai-life-safety-guard"
+    ]
+    assert len(managed_hooks) == 1
+    assert "-ExecutionPolicy Bypass" in managed_hooks[0]["powershell"]
+
+
+@pytest.mark.parametrize("env_value", ["0", "true", "", "1 "])
+def test_sync_to_home_ignores_non_opt_in_execution_policy_values(tmp_path: Path, env_value: str) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    destination = tmp_path / "home"
+    archive_root = tmp_path / "archive"
+    destination.mkdir(parents=True)
+
+    result = _run_sync(
+        source_root,
+        destination,
+        archive_root=archive_root,
+        dry_run=False,
+        env={"HAPPY_ENV_ALLOW_POLICY_BYPASS": env_value},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    config = json.loads((destination / "config.json").read_text(encoding="utf-8"))
+    managed_hooks = [
+        hook
+        for hook in config["hooks"]["preToolUse"]
+        if hook.get("env", {}).get("HAPPY_AI_LIFE_HOOK_ID") == "happy-ai-life-safety-guard"
+    ]
+    assert len(managed_hooks) == 1
+    assert "-ExecutionPolicy Bypass" not in managed_hooks[0]["powershell"]
+
+
+def test_repo_safety_guard_defaults_to_no_execution_policy_bypass() -> None:
+    config = json.loads((ROOT / ".github" / "hooks" / "safety-guard.json").read_text(encoding="utf-8"))
+
+    powershell_command = config["hooks"]["preToolUse"][0]["powershell"]
+    assert "guard_pre_tool.ps1" in powershell_command
+    assert "-ExecutionPolicy Bypass" not in powershell_command
 
 
 def test_sync_to_home_writes_config_json_without_bom(tmp_path: Path) -> None:

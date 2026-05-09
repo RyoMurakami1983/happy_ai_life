@@ -34,6 +34,8 @@ def test_home_sync_docs_formalize_managed_global_guard() -> None:
             'env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"',
             "user-owned な他の hook entry",
             "`config.json` の他設定は保持します",
+            "既存の managed entry に `-ExecutionPolicy Bypass` が入っている場合",
+            "HAPPY_ENV_ALLOW_POLICY_BYPASS",
         ),
     )
 
@@ -50,6 +52,8 @@ def test_hooks_governance_docs_define_managed_entry_boundary() -> None:
             "user-owned な他の `config.json` 設定や hook entry は保持する",
             "create / edit による protected path 変更",
             "protected path に一致した場合は `ask` を返す",
+            "既存の managed home hook entry に `-ExecutionPolicy Bypass` が残っている場合",
+            "repo-scoped `safety-guard.json` も既定では `-ExecutionPolicy Bypass` を付けない",
         ),
     )
 
