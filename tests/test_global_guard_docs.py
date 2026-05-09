@@ -8,9 +8,12 @@ HOME_SYNC_PATH = ROOT_DIR / "docs" / "HOME_SYNC.md"
 HOOKS_GOVERNANCE_PATH = ROOT_DIR / "docs" / "HOOKS_GOVERNANCE.md"
 TRUST_BOUNDARY_PATH = ROOT_DIR / "docs" / "TRUST_BOUNDARY.md"
 GETTING_STARTED_PATH = ROOT_DIR / "docs" / "GETTING_STARTED.md"
+ENTERPRISE_SECURITY_PATH = ROOT_DIR / "docs" / "ENTERPRISE_SECURITY.md"
 ENTERPRISE_SECURITY_REVIEW_PATH = ROOT_DIR / "docs" / "ENTERPRISE_SECURITY_REVIEW.md"
 ROADMAP_PATH = ROOT_DIR / "docs" / "ISSUE_ROADMAP_ENTERPRISE_SECURITY.md"
 ADR_PATH = ROOT_DIR / "docs" / "adr" / "2026-05-08-enterprise-global-guard-policy.md"
+README_PATH = ROOT_DIR / "README.md"
+REFERENCE_PATH = ROOT_DIR / "docs" / "REFERENCE.md"
 
 
 def read_text(path: Path) -> str:
@@ -105,3 +108,30 @@ def test_related_docs_use_global_guard_naming() -> None:
             "managed entry を正式な global guard にする",
         ),
     )
+
+
+def test_enterprise_security_doc_defines_server_side_requirements() -> None:
+    content = read_text(ENTERPRISE_SECURITY_PATH)
+
+    assert_contains_all(
+        content,
+        (
+            "Rulesets を優先",
+            "Direct push を禁止",
+            "Pull request 必須",
+            "Required status checks",
+            "`gitleaks`",
+            "CODEOWNERS review",
+            "force push 禁止",
+            "branch deletion 禁止",
+            "GitHub UI での目視確認を source of truth",
+        ),
+    )
+
+
+def test_readme_and_reference_link_enterprise_security_doc() -> None:
+    readme = read_text(README_PATH)
+    reference = read_text(REFERENCE_PATH)
+
+    assert "[Enterprise Security（企業向け保護設定）](docs/ENTERPRISE_SECURITY.md)" in readme
+    assert "[Enterprise Security（企業向け保護設定）](ENTERPRISE_SECURITY.md)" in reference
