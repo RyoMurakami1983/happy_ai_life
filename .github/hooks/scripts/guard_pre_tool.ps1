@@ -98,7 +98,10 @@ function Get-PayloadPropertyValue {
 }
 
 function ConvertTo-HookObject {
-    param($Value)
+    param(
+        $Value,
+        [switch]$ParseJsonStrings
+    )
 
     if ($null -eq $Value) {
         return $null
@@ -107,6 +110,10 @@ function ConvertTo-HookObject {
     if ($Value -is [string]) {
         if ([string]::IsNullOrWhiteSpace($Value)) {
             return $null
+        }
+
+        if (-not $ParseJsonStrings) {
+            return $Value
         }
 
         $trimmed = $Value.Trim()
@@ -135,7 +142,7 @@ function Get-ProtectedPathValues {
         return @()
     }
 
-    $normalizedValue = ConvertTo-HookObject -Value $Value
+    $normalizedValue = ConvertTo-HookObject -Value $Value -ParseJsonStrings:($Depth -eq 0)
 
     if ($null -eq $normalizedValue) {
         return @()
@@ -539,7 +546,7 @@ catch {
 $toolName = [string](Get-PayloadPropertyValue -Object $payload -Names @("toolName", "tool_name"))
 $toolArgsValue = Get-PayloadPropertyValue -Object $payload -Names @("toolArgs", "tool_input")
 $hookCwd = [string](Get-PayloadPropertyValue -Object $payload -Names @("cwd"))
-$toolArgs = ConvertTo-HookObject -Value $toolArgsValue
+$toolArgs = ConvertTo-HookObject -Value $toolArgsValue -ParseJsonStrings
 
 if ([string]::IsNullOrWhiteSpace($toolName)) {
     exit 0

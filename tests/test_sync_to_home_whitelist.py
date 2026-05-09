@@ -833,6 +833,22 @@ def test_guard_pre_tool_allows_non_protected_create_path() -> None:
     assert result.stdout == ""
 
 
+def test_guard_pre_tool_ignores_json_like_content_when_path_is_non_protected() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "create",
+            "toolArgs": {
+                "path": "docs/notes/non-protected.md",
+                "content": '{"path":".github/hooks/custom.json","note":"content only"}',
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
 def test_guard_pre_tool_does_not_treat_nested_non_path_string_as_path() -> None:
     result = _invoke_guard_pre_tool(
         {
