@@ -15,6 +15,8 @@ param(
 
     [string]$SourceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
 
+    [switch]$Strict,
+
     [switch]$AsJson
 )
 
@@ -526,9 +528,11 @@ $report = [ordered]@{
     checks = $checks
 }
 
+$exitCode = if ($Strict -and $missing.Count -gt 0) { 1 } else { 0 }
+
 if ($AsJson) {
     $report | ConvertTo-Json -Depth 5
-    exit 0
+    exit $exitCode
 }
 
 Write-Section "Repo secure check"
@@ -554,4 +558,4 @@ foreach ($warning in $warnings) {
     Write-Warning $warning
 }
 
-exit 0
+exit $exitCode

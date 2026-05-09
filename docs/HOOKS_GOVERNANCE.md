@@ -293,6 +293,11 @@ $ & $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath .
 
 [Windows: PowerShell]
 ```powershell
+$ & $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath . -Strict
+```
+
+[Windows: PowerShell]
+```powershell
 $ git config --local --get core.hooksPath
 ```
 
