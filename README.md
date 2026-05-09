@@ -24,6 +24,7 @@ copilot plugin install happy-coding@happy-ai-life-marketplace
 | 導入手順をまとめて見る | [はじめに](docs/GETTING_STARTED.md) |
 | 個人用のローカル環境を整える | [Home Sync（個人環境同期）](docs/HOME_SYNC.md) |
 | 既存の repo に Copilot を入れる | [Repo Bootstrap（repo 初期導入）](docs/REPO_BOOTSTRAP.md) |
+| GitHub 側の保護設定をそろえる | [Enterprise Security（企業向け保護設定）](docs/ENTERPRISE_SECURITY.md) |
 | この repo の開発手順を見る | [開発ガイド](docs/DEVELOPMENT.md) |
 | skill / agent / instructions を作る | [作成ガイド](docs/AUTHORING.md) |
 | コマンド・skills・ADR 一覧を見る | [リファレンス](docs/REFERENCE.md) |
