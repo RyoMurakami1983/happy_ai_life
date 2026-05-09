@@ -4,6 +4,7 @@ param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "SilentlyContinue"
+$ProtectedPathPropertyNames = @("path", "filePath", "file_path", "targetPath", "target_path")
 
 function Write-HookResponse($obj) {
     $json = $obj | ConvertTo-Json -Compress
@@ -97,7 +98,10 @@ function Get-PayloadPropertyValue {
 }
 
 function ConvertTo-HookObject {
-    param($Value)
+    param(
+        $Value,
+        [switch]$ParseJsonStrings
+    )
 
     if ($null -eq $Value) {
         return $null
@@ -106,6 +110,15 @@ function ConvertTo-HookObject {
     if ($Value -is [string]) {
         if ([string]::IsNullOrWhiteSpace($Value)) {
             return $null
+        }
+
+        if (-not $ParseJsonStrings) {
+            return $Value
+        }
+
+        $trimmed = $Value.Trim()
+        if (-not ($trimmed.StartsWith("{") -or $trimmed.StartsWith("["))) {
+            return $Value
         }
 
         try {
@@ -117,6 +130,103 @@ function ConvertTo-HookObject {
     }
 
     return $Value
+}
+
+function Get-ProtectedPathValues {
+    param(
+        $Value,
+        [int]$Depth = 0
+    )
+
+    if ($Depth -gt 64 -or $null -eq $Value) {
+        return @()
+    }
+
+    $normalizedValue = ConvertTo-HookObject -Value $Value -ParseJsonStrings:($Depth -eq 0)
+
+    if ($null -eq $normalizedValue) {
+        return @()
+    }
+
+    if ($normalizedValue -is [string]) {
+        return @()
+    }
+
+    if ($normalizedValue -is [System.Collections.IDictionary]) {
+        foreach ($key in $normalizedValue.Keys) {
+            $keyName = [string]$key
+            $propertyValue = $normalizedValue[$key]
+            if ($keyName -in $ProtectedPathPropertyNames) {
+                Get-ProtectedPathValuesFromKnownProperty -Value $propertyValue -Depth ($Depth + 1)
+                continue
+            }
+
+            Get-ProtectedPathValues -Value $propertyValue -Depth ($Depth + 1)
+        }
+        return
+    }
+
+    if ($normalizedValue -is [System.Collections.IEnumerable]) {
+        return @(
+            foreach ($item in $normalizedValue) {
+                Get-ProtectedPathValues -Value $item -Depth ($Depth + 1)
+            }
+        )
+    }
+
+    $properties = @($normalizedValue.PSObject.Properties)
+    if ($properties.Count -gt 0) {
+        foreach ($property in $properties) {
+            $propertyValue = $property.Value
+            if ($property.Name -in $ProtectedPathPropertyNames) {
+                Get-ProtectedPathValuesFromKnownProperty -Value $propertyValue -Depth ($Depth + 1)
+                continue
+            }
+
+            Get-ProtectedPathValues -Value $propertyValue -Depth ($Depth + 1)
+        }
+        return
+    }
+}
+
+function Get-ProtectedPathValuesFromKnownProperty {
+    param(
+        $Value,
+        [int]$Depth = 0
+    )
+
+    if ($Depth -gt 64 -or $null -eq $Value) {
+        return @()
+    }
+
+    $normalizedValue = ConvertTo-HookObject -Value $Value
+    if ($null -eq $normalizedValue) {
+        return @()
+    }
+
+    if ($normalizedValue -is [string]) {
+        if (-not [string]::IsNullOrWhiteSpace($normalizedValue)) {
+            return ,$normalizedValue
+        }
+        return @()
+    }
+
+    if ($normalizedValue -is [System.Collections.IEnumerable]) {
+        foreach ($item in $normalizedValue) {
+            $normalizedItem = ConvertTo-HookObject -Value $item
+            if ($normalizedItem -is [string]) {
+                if (-not [string]::IsNullOrWhiteSpace($normalizedItem)) {
+                    $normalizedItem
+                }
+                continue
+            }
+
+            Get-ProtectedPathValues -Value $normalizedItem -Depth ($Depth + 1)
+        }
+        return
+    }
+
+    Get-ProtectedPathValues -Value $normalizedValue -Depth ($Depth + 1)
 }
 
 function Resolve-FullPath {
@@ -436,7 +546,7 @@ catch {
 $toolName = [string](Get-PayloadPropertyValue -Object $payload -Names @("toolName", "tool_name"))
 $toolArgsValue = Get-PayloadPropertyValue -Object $payload -Names @("toolArgs", "tool_input")
 $hookCwd = [string](Get-PayloadPropertyValue -Object $payload -Names @("cwd"))
-$toolArgs = ConvertTo-HookObject -Value $toolArgsValue
+$toolArgs = ConvertTo-HookObject -Value $toolArgsValue -ParseJsonStrings
 
 if ([string]::IsNullOrWhiteSpace($toolName)) {
     exit 0
@@ -451,34 +561,17 @@ else {
 }
 
 if ($toolName -in @("create", "edit")) {
-    $serializedToolArgs = if ($toolArgs -is [string]) {
-        $toolArgs
-    }
-    elseif ($null -ne $toolArgs) {
-        $toolArgs | ConvertTo-Json -Compress -Depth 20
-    }
-    else {
-        ""
-    }
+    $pathValues = @(Get-ProtectedPathValues -Value $toolArgs)
 
-    $pathValues = @(
-        foreach ($match in [regex]::Matches($serializedToolArgs, '"(?:path|filePath|file_path|targetPath|target_path)"\s*:\s*"([^"]+)"')) {
-            $capturedPath = $match.Groups[1].Value -replace "\\\\", "\"
-            if (-not [string]::IsNullOrWhiteSpace($capturedPath)) {
-                $capturedPath
-            }
-        }
-    )
-
-        if (@($pathValues).Count -gt 0) {
-            $candidatePaths = @(
-                foreach ($pathValue in @($pathValues | Select-Object -Unique)) {
-                    if (-not [string]::IsNullOrWhiteSpace($repoRoot) -and -not [System.IO.Path]::IsPathRooted([Environment]::ExpandEnvironmentVariables($pathValue)) -and -not $pathValue.StartsWith("~/") -and -not $pathValue.StartsWith("~\") -and -not $pathValue.StartsWith('$HOME') -and -not $pathValue.StartsWith('${HOME}') -and -not $pathValue.StartsWith('$env:HOME')) {
-                        Resolve-FullPath -PathValue $pathValue -BasePath $repoRoot
-                    }
-                    Resolve-FullPath -PathValue $pathValue -BasePath $resolutionBase
+    if (@($pathValues).Count -gt 0) {
+        $candidatePaths = @(
+            foreach ($pathValue in @($pathValues | Select-Object -Unique)) {
+                if (-not [string]::IsNullOrWhiteSpace($repoRoot) -and -not [System.IO.Path]::IsPathRooted([Environment]::ExpandEnvironmentVariables($pathValue)) -and -not $pathValue.StartsWith("~/") -and -not $pathValue.StartsWith("~\") -and -not $pathValue.StartsWith('$HOME') -and -not $pathValue.StartsWith('${HOME}') -and -not $pathValue.StartsWith('$env:HOME')) {
+                    Resolve-FullPath -PathValue $pathValue -BasePath $repoRoot
                 }
-            )
+                Resolve-FullPath -PathValue $pathValue -BasePath $resolutionBase
+            }
+        )
         $protectedMatch = Find-ProtectedPathMatch -CandidatePaths $candidatePaths -ProtectedRules (Get-ProtectedPathRules -RepoRoot $repoRoot)
         if ($null -ne $protectedMatch) {
             if ($script:HookEvent -eq "permissionRequest") {
