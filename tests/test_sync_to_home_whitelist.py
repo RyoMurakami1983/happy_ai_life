@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -119,7 +120,21 @@ def _create_extra_files(base: Path) -> None:
     (base / "d" / "e.ps1").write_text("Write-Host 'extra'\n", encoding="utf-8")
 
 
-def _invoke_guard_pre_tool(payload: dict[str, object], cwd: Path) -> subprocess.CompletedProcess[str]:
+def _managed_hooks(config: dict[str, Any], event_name: str) -> list[dict[str, Any]]:
+    hooks = cast(dict[str, list[dict[str, Any]]], config["hooks"])
+    return [
+        hook
+        for hook in hooks[event_name]
+        if hook.get("env", {}).get("HAPPY_AI_LIFE_HOOK_ID") == "happy-ai-life-safety-guard"
+    ]
+
+
+def _invoke_guard_pre_tool(
+    payload: dict[str, object],
+    cwd: Path,
+    *,
+    hook_event: str = "preToolUse",
+) -> subprocess.CompletedProcess[str]:
     script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
     payload_json = json.dumps(payload)
     command = (
@@ -128,6 +143,8 @@ def _invoke_guard_pre_tool(payload: dict[str, object], cwd: Path) -> subprocess.
         "'@ | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'"
         % (_powershell_executable(), script)
     )
+    env = os.environ.copy()
+    env["HAPPY_AI_LIFE_HOOK_EVENT"] = hook_event
     return subprocess.run(
         [
             _powershell_executable(),
@@ -141,6 +158,7 @@ def _invoke_guard_pre_tool(payload: dict[str, object], cwd: Path) -> subprocess.
         check=False,
         capture_output=True,
         text=True,
+        env=env,
     )
 
 
@@ -168,14 +186,12 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     assert (destination / "keep.txt").read_text(encoding="utf-8") == "keep"
     config = json.loads((destination / "config.json").read_text(encoding="utf-8"))
     assert config["user"] is True
-    managed_hooks = [
-        hook
-        for hook in config["hooks"]["preToolUse"]
-        if hook.get("env", {}).get("HAPPY_AI_LIFE_HOOK_ID") == "happy-ai-life-safety-guard"
-    ]
-    assert len(managed_hooks) == 1
-    assert "hooks\\scripts\\guard_pre_tool.ps1" in managed_hooks[0]["powershell"]
-    assert "-ExecutionPolicy Bypass" not in managed_hooks[0]["powershell"]
+    for event_name in ("preToolUse", "permissionRequest"):
+        managed_hooks = _managed_hooks(config, event_name)
+        assert len(managed_hooks) == 1
+        assert "hooks\\scripts\\guard_pre_tool.ps1" in managed_hooks[0]["powershell"]
+        assert "-ExecutionPolicy Bypass" not in managed_hooks[0]["powershell"]
+        assert managed_hooks[0]["env"]["HAPPY_AI_LIFE_HOOK_EVENT"] == event_name
     assert (destination / "mcp-config.json").read_text(encoding="utf-8") == '{"user":true}'
     assert (destination / "session-state").exists()
 
@@ -262,6 +278,18 @@ def test_sync_to_home_preserves_existing_config_hooks(tmp_path: Path) -> None:
                             "env": {"HAPPY_AI_LIFE_HOOK_ID": "happy-ai-life-safety-guard"},
                         },
                     ],
+                    "permissionRequest": [
+                        {
+                            "type": "command",
+                            "powershell": "Write-Host user-permission-hook",
+                            "env": {"USER_PERMISSION_HOOK": "1"},
+                        },
+                        {
+                            "type": "command",
+                            "powershell": "Write-Host stale-managed-permission-hook",
+                            "env": {"HAPPY_AI_LIFE_HOOK_ID": "happy-ai-life-safety-guard"},
+                        },
+                    ],
                     "sessionStart": [{"type": "command", "powershell": "Write-Host start"}],
                 },
             }
@@ -276,14 +304,16 @@ def test_sync_to_home_preserves_existing_config_hooks(tmp_path: Path) -> None:
     assert config["theme"] == "dark"
     assert config["hooks"]["sessionStart"] == [{"type": "command", "powershell": "Write-Host start"}]
     assert any(hook.get("env", {}).get("USER_HOOK") == "1" for hook in config["hooks"]["preToolUse"])
-    managed_hooks = [
-        hook
-        for hook in config["hooks"]["preToolUse"]
-        if hook.get("env", {}).get("HAPPY_AI_LIFE_HOOK_ID") == "happy-ai-life-safety-guard"
-    ]
-    assert len(managed_hooks) == 1
-    assert "stale-managed-hook" not in managed_hooks[0]["powershell"]
-    assert "-ExecutionPolicy Bypass" not in managed_hooks[0]["powershell"]
+    assert any(hook.get("env", {}).get("USER_PERMISSION_HOOK") == "1" for hook in config["hooks"]["permissionRequest"])
+    for event_name, stale_text in (
+        ("preToolUse", "stale-managed-hook"),
+        ("permissionRequest", "stale-managed-permission-hook"),
+    ):
+        managed_hooks = _managed_hooks(config, event_name)
+        assert len(managed_hooks) == 1
+        assert stale_text not in managed_hooks[0]["powershell"]
+        assert "-ExecutionPolicy Bypass" not in managed_hooks[0]["powershell"]
+        assert managed_hooks[0]["env"]["HAPPY_AI_LIFE_HOOK_EVENT"] == event_name
 
 
 def test_sync_to_home_migrates_managed_hook_from_execution_policy_bypass(tmp_path: Path) -> None:
@@ -317,10 +347,11 @@ def test_sync_to_home_migrates_managed_hook_from_execution_policy_bypass(tmp_pat
 
     assert result.returncode == 0, result.stdout + result.stderr
     config = json.loads(config_path.read_text(encoding="utf-8"))
-    managed_hook = config["hooks"]["preToolUse"][0]
-    assert managed_hook["powershell"] == (
-        'powershell -NoProfile -File "%s"' % managed_script_path.as_posix().replace("/", "\\")
-    )
+    expected_command = 'powershell -NoProfile -File "%s"' % managed_script_path.as_posix().replace("/", "\\")
+    for event_name in ("preToolUse", "permissionRequest"):
+        managed_hook = _managed_hooks(config, event_name)[0]
+        assert managed_hook["powershell"] == expected_command
+        assert managed_hook["env"]["HAPPY_AI_LIFE_HOOK_EVENT"] == event_name
 
 
 def test_sync_to_home_skips_invalid_user_config_json(tmp_path: Path) -> None:
@@ -346,6 +377,7 @@ def test_sync_to_home_does_not_rewrite_formatting_only_differences(tmp_path: Pat
     archive_root = tmp_path / "archive"
     destination.mkdir(parents=True)
     config_path = destination / "config.json"
+    managed_script = (destination / "hooks" / "scripts" / "guard_pre_tool.ps1").as_posix().replace("/", "\\")
     config_text = """{
   "hooks": {
     "preToolUse": [
@@ -355,14 +387,27 @@ def test_sync_to_home_does_not_rewrite_formatting_only_differences(tmp_path: Pat
         "powershell": "powershell -NoProfile -File \\"%s\\"",
         "type": "command",
         "env": {
-          "HAPPY_AI_LIFE_HOOK_ID": "happy-ai-life-safety-guard"
+          "HAPPY_AI_LIFE_HOOK_ID": "happy-ai-life-safety-guard",
+          "HAPPY_AI_LIFE_HOOK_EVENT": "preToolUse"
+        }
+      }
+    ],
+    "permissionRequest": [
+      {
+        "timeoutSec": 10,
+        "cwd": ".",
+        "powershell": "powershell -NoProfile -File \\"%s\\"",
+        "type": "command",
+        "env": {
+          "HAPPY_AI_LIFE_HOOK_ID": "happy-ai-life-safety-guard",
+          "HAPPY_AI_LIFE_HOOK_EVENT": "permissionRequest"
         }
       }
     ]
   },
   "theme": "dark"
 }
-""" % ((destination / "hooks" / "scripts" / "guard_pre_tool.ps1").as_posix().replace("/", "\\"))
+""" % (managed_script, managed_script)
     config_path.write_text(config_text, encoding="utf-8")
 
     result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
@@ -388,13 +433,11 @@ def test_sync_to_home_allows_explicit_execution_policy_bypass_opt_in(tmp_path: P
 
     assert result.returncode == 0, result.stdout + result.stderr
     config = json.loads((destination / "config.json").read_text(encoding="utf-8"))
-    managed_hooks = [
-        hook
-        for hook in config["hooks"]["preToolUse"]
-        if hook.get("env", {}).get("HAPPY_AI_LIFE_HOOK_ID") == "happy-ai-life-safety-guard"
-    ]
-    assert len(managed_hooks) == 1
-    assert "-ExecutionPolicy Bypass" in managed_hooks[0]["powershell"]
+    for event_name in ("preToolUse", "permissionRequest"):
+        managed_hooks = _managed_hooks(config, event_name)
+        assert len(managed_hooks) == 1
+        assert "-ExecutionPolicy Bypass" in managed_hooks[0]["powershell"]
+        assert managed_hooks[0]["env"]["HAPPY_AI_LIFE_HOOK_EVENT"] == event_name
 
 
 @pytest.mark.parametrize("env_value", ["0", "true", "", "1 "])
@@ -414,13 +457,11 @@ def test_sync_to_home_ignores_non_opt_in_execution_policy_values(tmp_path: Path,
 
     assert result.returncode == 0, result.stdout + result.stderr
     config = json.loads((destination / "config.json").read_text(encoding="utf-8"))
-    managed_hooks = [
-        hook
-        for hook in config["hooks"]["preToolUse"]
-        if hook.get("env", {}).get("HAPPY_AI_LIFE_HOOK_ID") == "happy-ai-life-safety-guard"
-    ]
-    assert len(managed_hooks) == 1
-    assert "-ExecutionPolicy Bypass" not in managed_hooks[0]["powershell"]
+    for event_name in ("preToolUse", "permissionRequest"):
+        managed_hooks = _managed_hooks(config, event_name)
+        assert len(managed_hooks) == 1
+        assert "-ExecutionPolicy Bypass" not in managed_hooks[0]["powershell"]
+        assert managed_hooks[0]["env"]["HAPPY_AI_LIFE_HOOK_EVENT"] == event_name
 
 
 def test_repo_safety_guard_defaults_to_no_execution_policy_bypass() -> None:
@@ -568,20 +609,9 @@ def test_guard_pre_tool_blocks_remove_item_force_recurse_in_any_order(tmp_path: 
 
 
 def test_guard_pre_tool_blocks_ai_git_commit_no_verify(tmp_path: Path) -> None:
-    script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
-    result = subprocess.run(
-        [
-            _powershell_executable(),
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            "$payload = @{ toolName = 'powershell'; toolArgs = (@{ command = 'git commit -n -m test' } | ConvertTo-Json -Compress) } | ConvertTo-Json -Compress; $payload | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'" % (_powershell_executable(), script),
-        ],
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git commit -n -m test"}},
         cwd=ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -591,20 +621,9 @@ def test_guard_pre_tool_blocks_ai_git_commit_no_verify(tmp_path: Path) -> None:
 
 
 def test_guard_pre_tool_blocks_ai_git_commit_combined_no_verify_short_flags(tmp_path: Path) -> None:
-    script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
-    result = subprocess.run(
-        [
-            _powershell_executable(),
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            "$payload = @{ toolName = 'powershell'; toolArgs = (@{ command = 'git commit -nam test' } | ConvertTo-Json -Compress) } | ConvertTo-Json -Compress; $payload | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'" % (_powershell_executable(), script),
-        ],
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git commit -nam test"}},
         cwd=ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -644,6 +663,20 @@ def test_guard_pre_tool_blocks_ai_git_commit_when_gitleaks_is_missing(tmp_path: 
     assert "gitleaks is required" in response["permissionDecisionReason"]
 
 
+def test_guard_permission_request_denies_hook_bypass_with_agent_message() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git commit -n -m test"}},
+        cwd=ROOT,
+        hook_event="permissionRequest",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["behavior"] == "deny"
+    assert response["interrupt"] is True
+    assert "bypass Git hooks" in response["message"]
+
+
 def test_guard_pre_tool_asks_for_protected_edit_path() -> None:
     result = _invoke_guard_pre_tool(
         {
@@ -662,6 +695,24 @@ def test_guard_pre_tool_asks_for_protected_edit_path() -> None:
     assert response["permissionDecision"] == "ask"
     assert "docs/HOOKS_GOVERNANCE.md" in response["permissionDecisionReason"]
     assert "explicit human review" in response["permissionDecisionReason"]
+
+
+def test_guard_permission_request_falls_back_for_protected_edit_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        hook_event="permissionRequest",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
 
 
 def test_guard_pre_tool_asks_for_protected_create_path_with_traversal() -> None:

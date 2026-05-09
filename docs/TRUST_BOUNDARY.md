@@ -75,6 +75,8 @@ Copilot CLI と共同作業するときは、次の順で判断する。
 主な役割:
 
 - protected path の変更検出
+- `permissionRequest` による deny 系の早期ブロック
+- `preToolUse` による protected path の `ask`
 - secret scan の実行確認
 - hook / CI / MCP / skill の無効化防止
 - 破壊的 shell command の拒否

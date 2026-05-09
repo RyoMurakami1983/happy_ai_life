@@ -17,6 +17,7 @@ $ErrorActionPreference = "Stop"
 $ManagedHomeHookId = "happy-ai-life-safety-guard"
 $ManagedHomeHookLabel = "config.json (managed enterprise/global guard)"
 $AllowPolicyBypassEnv = "HAPPY_ENV_ALLOW_POLICY_BYPASS"
+$ManagedHomeHookEvents = @("preToolUse", "permissionRequest")
 
 function Write-Section {
     param([string]$Message)
@@ -449,8 +450,22 @@ function Get-ManagedPowerShellHookCommand {
     return ('{0} -File "{1}"' -f $baseCommand, $ScriptPath)
 }
 
+function Get-ManagedHookEntryId {
+    param($Entry)
+
+    try {
+        return [string]$Entry.env.HAPPY_AI_LIFE_HOOK_ID
+    }
+    catch {
+        return $null
+    }
+}
+
 function New-ManagedHomeHookEntry {
-    param([Parameter(Mandatory = $true)][string]$ScriptPath)
+    param(
+        [Parameter(Mandatory = $true)][string]$ScriptPath,
+        [Parameter(Mandatory = $true)][string]$HookEventName
+    )
 
     return [pscustomobject][ordered]@{
         type = "command"
@@ -459,8 +474,34 @@ function New-ManagedHomeHookEntry {
         timeoutSec = 10
         env = [pscustomobject][ordered]@{
             HAPPY_AI_LIFE_HOOK_ID = $ManagedHomeHookId
+            HAPPY_AI_LIFE_HOOK_EVENT = $HookEventName
         }
     }
+}
+
+function Update-ManagedHookArray {
+    param(
+        [Parameter(Mandatory = $true)]$Hooks,
+        [Parameter(Mandatory = $true)][string]$EventName,
+        [Parameter(Mandatory = $true)][string]$ScriptPath
+    )
+
+    $eventProperty = $Hooks.PSObject.Properties[$EventName]
+    $existingEntries = @()
+    if ($eventProperty) {
+        $existingEntries = @($eventProperty.Value)
+    }
+
+    $preservedEntries = @(
+        foreach ($entry in $existingEntries) {
+            if ((Get-ManagedHookEntryId -Entry $entry) -ne $ManagedHomeHookId) {
+                $entry
+            }
+        }
+    )
+
+    $managedEntry = New-ManagedHomeHookEntry -ScriptPath $ScriptPath -HookEventName $EventName
+    Set-JsonProperty -Object $Hooks -Name $EventName -Value @($preservedEntries + $managedEntry)
 }
 
 function Get-HomeConfigHookPlan {
@@ -509,29 +550,9 @@ function Get-HomeConfigHookPlan {
         Set-JsonProperty -Object $config -Name "hooks" -Value $hooks
     }
 
-    $preToolUseProperty = $hooks.PSObject.Properties["preToolUse"]
-    $existingPreToolUse = @()
-    if ($preToolUseProperty) {
-        $existingPreToolUse = @($preToolUseProperty.Value)
+    foreach ($eventName in $ManagedHomeHookEvents) {
+        Update-ManagedHookArray -Hooks $hooks -EventName $eventName -ScriptPath $ScriptPath
     }
-    $preservedPreToolUse = @(
-        foreach ($entry in $existingPreToolUse) {
-            $entryHookId = $null
-            try {
-                $entryHookId = [string]$entry.env.HAPPY_AI_LIFE_HOOK_ID
-            }
-            catch {
-                $entryHookId = $null
-            }
-
-            if ($entryHookId -ne $ManagedHomeHookId) {
-                $entry
-            }
-        }
-    )
-
-    $managedEntry = New-ManagedHomeHookEntry -ScriptPath $ScriptPath
-    Set-JsonProperty -Object $hooks -Name "preToolUse" -Value @($preservedPreToolUse + $managedEntry)
 
     $desiredContent = ($config | ConvertTo-Json -Depth 20)
     if (-not $desiredContent.EndsWith("`n")) {
