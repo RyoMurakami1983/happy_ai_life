@@ -191,11 +191,18 @@ def _invoke_guard_pre_tool(
 def _invoke_bash_guard_pre_tool(
     payload: dict[str, object],
     cwd: Path,
+    *,
+    stringify_tool_args: bool = True,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     bash_payload: dict[str, object] = dict(payload)
     tool_args = bash_payload.get("toolArgs")
-    if tool_args is not None and not isinstance(tool_args, str):
+    if stringify_tool_args and tool_args is not None and not isinstance(tool_args, str):
         bash_payload["toolArgs"] = json.dumps(tool_args)
+
+    effective_env = os.environ.copy()
+    if env:
+        effective_env.update(env)
 
     return subprocess.run(
         [_bash_executable(), "-lc", "bash .github/hooks/scripts/guard_pre_tool.sh"],
@@ -206,6 +213,7 @@ def _invoke_bash_guard_pre_tool(
         encoding="utf-8",
         errors="replace",
         input=json.dumps(bash_payload),
+        env=effective_env,
     )
 
 
@@ -975,6 +983,44 @@ def test_bash_guard_pre_tool_allows_non_destructive_enterprise_command_neighbors
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stdout == ""
+
+
+def test_bash_guard_pre_tool_blocks_enterprise_dangerous_commands_from_object_tool_args() -> None:
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git push origin main -f"}},
+        cwd=ROOT,
+        stringify_tool_args=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+def test_bash_guard_pre_tool_blocks_enterprise_dangerous_commands_from_snake_case_payload() -> None:
+    result = _invoke_bash_guard_pre_tool(
+        {"tool_name": "powershell", "tool_input": {"command": "git push origin main -f"}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+def test_bash_guard_pre_tool_short_circuits_force_push_before_secret_scan() -> None:
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git push origin main -f"}},
+        cwd=ROOT,
+        env={"GITLEAKS_BIN": "missing-gitleaks"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
 
 
 def test_guard_pre_tool_asks_for_protected_edit_path() -> None:

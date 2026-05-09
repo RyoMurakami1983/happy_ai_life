@@ -129,13 +129,25 @@ scan_unpushed_for_secrets() {
 }
 
 # toolName を取得（例: "bash", "powershell"）
-tool_name="$(jq -r '.toolName // empty' <<<"${raw}")"
+tool_name="$(jq -r '(.toolName // .tool_name // empty) | strings' <<<"${raw}")"
 if [[ "${tool_name}" != "bash" && "${tool_name}" != "powershell" ]]; then
   exit 0
 fi
 
-# toolArgs は JSON 文字列として渡ってくる想定なので fromjson で展開
-command="$(jq -r '.toolArgs // empty | fromjson? | .command // empty' <<<"${raw}")"
+# toolArgs / tool_input は JSON 文字列または object の両方を受ける
+command="$(jq -r '
+  def selected_args:
+    if .toolArgs? != null then .toolArgs
+    elif .tool_input? != null then .tool_input
+    else empty end;
+  def parsed_args:
+    selected_args | if type == "string" then (fromjson? // .) else . end;
+  parsed_args as $args
+  | if ($args | type) == "object" then ($args.command // empty)
+    elif ($args | type) == "string" then $args
+    else empty
+    end
+' <<<"${raw}")"
 if [[ -z "${command}" ]]; then
   exit 0
 fi
@@ -163,6 +175,11 @@ if { [[ "${is_git_commit}" -eq 1 ]] && { [[ "${has_no_verify}" -eq 1 ]] || [[ "$
   exit 0
 fi
 
+if grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+push([[:space:]]+[^;&|]+)*[[:space:]]+(-f|--force|--force-with-lease(=[^;&|]+)?)([[:space:]]|$|[;&|])' <<<"${normalized}"; then
+  deny "Blocked potentially destructive command: ${command}"
+  exit 0
+fi
+
 if [[ "${is_git_commit}" -eq 1 ]]; then
   scan_staged_for_secrets || exit 0
 fi
@@ -173,11 +190,6 @@ fi
 
 if [[ "${is_gh_pr_create}" -eq 1 ]]; then
   scan_unpushed_for_secrets "gh pr create" || exit 0
-fi
-
-if grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+push([[:space:]]+[^;&|]+)*[[:space:]]+(-f|--force|--force-with-lease(=[^;&|]+)?)([[:space:]]|$|[;&|])' <<<"${normalized}"; then
-  deny "Blocked potentially destructive command: ${command}"
-  exit 0
 fi
 
 if grep -E -q '(^|[;&|][[:space:]]*)(powershell|pwsh)(\.exe)?([[:space:]]+[^;&|]+)*[[:space:]]+-(encodedcommand|enc|ec)([[:space:]]|$|[;&|])' <<<"${normalized}" ||
