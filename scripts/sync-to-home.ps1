@@ -16,6 +16,7 @@ $ErrorActionPreference = "Stop"
 # Keep the existing hook id so sync updates the same managed entry in user-owned config.json.
 $ManagedHomeHookId = "happy-ai-life-safety-guard"
 $ManagedHomeHookLabel = "config.json (managed enterprise/global guard)"
+$AllowPolicyBypassEnv = "HAPPY_ENV_ALLOW_POLICY_BYPASS"
 
 function Write-Section {
     param([string]$Message)
@@ -437,12 +438,23 @@ function Set-JsonProperty {
     $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
 }
 
+function Get-ManagedPowerShellHookCommand {
+    param([Parameter(Mandatory = $true)][string]$ScriptPath)
+
+    $baseCommand = 'powershell -NoProfile'
+    if ([Environment]::GetEnvironmentVariable($AllowPolicyBypassEnv) -eq "1") {
+        return ('{0} -ExecutionPolicy Bypass -File "{1}"' -f $baseCommand, $ScriptPath)
+    }
+
+    return ('{0} -File "{1}"' -f $baseCommand, $ScriptPath)
+}
+
 function New-ManagedHomeHookEntry {
     param([Parameter(Mandatory = $true)][string]$ScriptPath)
 
     return [pscustomobject][ordered]@{
         type = "command"
-        powershell = ('powershell -NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $ScriptPath)
+        powershell = (Get-ManagedPowerShellHookCommand -ScriptPath $ScriptPath)
         cwd = "."
         timeoutSec = 10
         env = [pscustomobject][ordered]@{

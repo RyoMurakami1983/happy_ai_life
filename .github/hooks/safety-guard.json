@@ -5,7 +5,7 @@
       {
         "type": "command",
         "bash": "bash .github/hooks/scripts/guard_pre_tool.sh",
-        "powershell": "powershell -NoProfile -ExecutionPolicy Bypass -File .github/hooks/scripts/guard_pre_tool.ps1",
+        "powershell": "powershell -NoProfile -File .github/hooks/scripts/guard_pre_tool.ps1",
         "cwd": ".",
         "timeoutSec": 10,
         "env": {
