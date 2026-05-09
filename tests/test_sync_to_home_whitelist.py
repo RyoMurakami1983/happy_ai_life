@@ -666,6 +666,16 @@ def test_guard_pre_tool_blocks_git_inline_core_hooks_path_config() -> None:
     assert "disable or bypass Git hooks" in response["permissionDecisionReason"]
 
 
+def test_guard_pre_tool_does_not_match_unrelated_chained_command_as_inline_hooks_path_config() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git status; echo -c core.hooksPath=/dev/null"}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
 def test_guard_pre_tool_blocks_git_config_unset_core_hooks_path() -> None:
     result = _invoke_guard_pre_tool(
         {"toolName": "powershell", "toolArgs": {"command": "git config --unset core.hooksPath"}},
