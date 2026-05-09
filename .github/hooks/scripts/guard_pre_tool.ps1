@@ -5,23 +5,45 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "SilentlyContinue"
 
-function Write-Deny([string]$reason) {
-    # Copilot CLI hook expects JSON output when denying
-    $obj = @{
-        permissionDecision = "deny"
-        permissionDecisionReason = $reason
-    }
+function Write-HookResponse($obj) {
     $json = $obj | ConvertTo-Json -Compress
     [Console]::Out.Write($json)
 }
 
+function Resolve-HookEventName {
+    $hookEvent = [Environment]::GetEnvironmentVariable("HAPPY_AI_LIFE_HOOK_EVENT")
+    if ($hookEvent -in @("preToolUse", "permissionRequest")) {
+        return $hookEvent
+    }
+
+    return "preToolUse"
+}
+
+function Write-Deny([string]$reason) {
+    if ($script:HookEvent -eq "permissionRequest") {
+        Write-HookResponse @{
+            behavior = "deny"
+            message = $reason
+            interrupt = $true
+        }
+        return
+    }
+
+    Write-HookResponse @{
+        permissionDecision = "deny"
+        permissionDecisionReason = $reason
+    }
+}
+
 function Write-Ask([string]$reason) {
-    $obj = @{
+    if ($script:HookEvent -eq "permissionRequest") {
+        exit 0
+    }
+
+    Write-HookResponse @{
         permissionDecision = "ask"
         permissionDecisionReason = $reason
     }
-    $json = $obj | ConvertTo-Json -Compress
-    [Console]::Out.Write($json)
 }
 
 function Resolve-GitleaksPath {
@@ -396,6 +418,8 @@ function Invoke-UnpushedSecretScan {
     return $null
 }
 
+$script:HookEvent = Resolve-HookEventName
+
 $raw = [Console]::In.ReadToEnd()
 if ([string]::IsNullOrWhiteSpace($raw)) {
     exit 0
@@ -457,6 +481,10 @@ if ($toolName -in @("create", "edit")) {
             )
         $protectedMatch = Find-ProtectedPathMatch -CandidatePaths $candidatePaths -ProtectedRules (Get-ProtectedPathRules -RepoRoot $repoRoot)
         if ($null -ne $protectedMatch) {
+            if ($script:HookEvent -eq "permissionRequest") {
+                # permissionRequest cannot ask, so fall through to the normal permission flow.
+                exit 0
+            }
             $reason = "Protected path change detected for {0} via {1}. This path requires an atomic issue/PR and explicit human review." -f $protectedMatch.Rule.Display, $toolName
             Write-Ask $reason
             exit 0

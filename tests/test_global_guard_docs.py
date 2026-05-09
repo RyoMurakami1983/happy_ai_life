@@ -32,10 +32,12 @@ def test_home_sync_docs_formalize_managed_global_guard() -> None:
             "enterprise/global guard",
             "enterprise managed policy / device policy を上書きするものではなく",
             'env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"',
+            'env.HAPPY_AI_LIFE_HOOK_EVENT',
             "user-owned な他の hook entry",
             "`config.json` の他設定は保持します",
             "既存の managed entry に `-ExecutionPolicy Bypass` が入っている場合",
             "HAPPY_ENV_ALLOW_POLICY_BYPASS",
+            "`preToolUse` と `permissionRequest`",
         ),
     )
 
@@ -49,9 +51,13 @@ def test_hooks_governance_docs_define_managed_entry_boundary() -> None:
             "managed enterprise/global guard",
             "正式な enterprise/global guard",
             'env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"',
+            "`env.HAPPY_AI_LIFE_HOOK_EVENT`",
             "user-owned な他の `config.json` 設定や hook entry は保持する",
             "create / edit による protected path 変更",
             "protected path に一致した場合は `ask` を返す",
+            "permissionRequest` では `ask` を返せない",
+            "fallback behavior",
+            "agent へ deny message を返し",
             "既存の managed home hook entry に `-ExecutionPolicy Bypass` が残っている場合",
             "repo-scoped `safety-guard.json` も既定では `-ExecutionPolicy Bypass` を付けない",
         ),
@@ -73,6 +79,7 @@ def test_related_docs_use_global_guard_naming() -> None:
             "repo-relative path:",
             "home-managed path:",
             "create` / `edit` 判定では",
+            "`permissionRequest` による deny 系の早期ブロック",
         ),
     )
     assert_contains_all(

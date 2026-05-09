@@ -23,7 +23,7 @@ $HOME/.copilot/config.json
 $HOME/.copilot/hooks/scripts/**
 ```
 
-home sync は `config.json` の managed entry と `hooks/scripts/guard_pre_tool.ps1` を配布し、この managed entry を正式な enterprise/global guard として扱う。
+home sync は `config.json` の managed entry と `hooks/scripts/guard_pre_tool.ps1` を配布し、この managed entry を正式な enterprise/global guard として扱う。managed entry は `preToolUse` と `permissionRequest` の両方に入り、同じ script を event env 付きで呼び分ける。
 
 役割:
 
@@ -36,6 +36,7 @@ home sync は `config.json` の managed entry と `hooks/scripts/guard_pre_tool.
 互換性と更新境界:
 
 - `env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"` を managed entry の識別子として継続利用する。
+- `env.HAPPY_AI_LIFE_HOOK_EVENT` で `preToolUse` / `permissionRequest` の event を script に渡す。
 - sync-to-home はこの識別子に一致する entry だけを更新する。
 - user-owned な他の `config.json` 設定や hook entry は保持する。
 
@@ -190,6 +191,14 @@ docs/HOOKS_GOVERNANCE.md の変更
 ```
 
 global guard では `create` / `edit` の target path を見て、protected path に一致した場合は `ask` を返す。これにより、通常の source code 変更は止めずに、security boundary に触れる変更だけを明示確認へ送る。
+
+`permissionRequest` では `ask` を返せないため、protected path の `create` / `edit` は空出力で通常の permission flow へ流し、`preToolUse` で `ask` を返す。つまり `permissionRequest` は deny 系の早期ブロック、`preToolUse` は protected path の明示確認を担当する。
+
+fallback behavior:
+
+- payload が空、JSON parse に失敗、tool 情報が欠ける場合は block せず通常 flow へ流す。
+- `permissionRequest` で deny 条件に当たらない場合は空出力にし、permission service / `preToolUse` 側へ処理を渡す。
+- deny 条件に当たった場合は agent へ deny message を返し、再試行ループを避けるため `interrupt: true` を付ける。
 
 ### Allow
 
