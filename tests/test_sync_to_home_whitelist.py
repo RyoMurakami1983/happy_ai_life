@@ -632,6 +632,98 @@ def test_guard_pre_tool_blocks_ai_git_commit_combined_no_verify_short_flags(tmp_
     assert "bypass Git hooks" in response["permissionDecisionReason"]
 
 
+def test_guard_pre_tool_blocks_git_config_core_hooks_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git config core.hooksPath .git/hooks"}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "disable or bypass Git hooks" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_allows_git_config_get_core_hooks_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git config --get core.hooksPath"}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_guard_pre_tool_blocks_git_inline_core_hooks_path_config() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git -c core.hooksPath=/dev/null commit -m test"}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "disable or bypass Git hooks" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_does_not_match_unrelated_chained_command_as_inline_hooks_path_config() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git status; echo -c core.hooksPath=/dev/null"}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_guard_pre_tool_blocks_git_config_unset_core_hooks_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git config --unset core.hooksPath"}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "disable or bypass Git hooks" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_blocks_git_config_remove_core_section() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git config --remove-section core"}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "disable or bypass Git hooks" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_blocks_git_update_index_skip_worktree() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git update-index --skip-worktree .githooks/pre-commit"}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "disable or bypass Git hooks" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_blocks_git_update_index_assume_unchanged() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git update-index --assume-unchanged .githooks/pre-push"}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "disable or bypass Git hooks" in response["permissionDecisionReason"]
+
+
 def test_guard_pre_tool_blocks_ai_git_commit_when_gitleaks_is_missing(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -675,6 +767,44 @@ def test_guard_permission_request_denies_hook_bypass_with_agent_message() -> Non
     assert response["behavior"] == "deny"
     assert response["interrupt"] is True
     assert "bypass Git hooks" in response["message"]
+
+
+def test_guard_permission_request_denies_git_config_core_hooks_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git config core.hooksPath .git/hooks"}},
+        cwd=ROOT,
+        hook_event="permissionRequest",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["behavior"] == "deny"
+    assert response["interrupt"] is True
+    assert "disable or bypass Git hooks" in response["message"]
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git -c core.hooksPath=/dev/null commit -m test",
+        "git config --unset core.hooksPath",
+        "git config --remove-section core",
+        "git update-index --skip-worktree .githooks/pre-commit",
+        "git update-index --assume-unchanged .githooks/pre-push",
+    ],
+)
+def test_guard_permission_request_denies_git_hook_disabling_commands(command: str) -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": command}},
+        cwd=ROOT,
+        hook_event="permissionRequest",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["behavior"] == "deny"
+    assert response["interrupt"] is True
+    assert "disable or bypass Git hooks" in response["message"]
 
 
 def test_guard_pre_tool_asks_for_protected_edit_path() -> None:

@@ -152,6 +152,9 @@ git push -f
 git push --force-with-lease
 git reset --hard
 git config core.hooksPath ...
+git config --unset core.hooksPath
+git config --remove-section core
+git -c core.hooksPath=...
 git update-index --skip-worktree ...
 git update-index --assume-unchanged ...
 rm -rf /
@@ -171,6 +174,8 @@ iex
 curl ... | sh
 wget ... | sh
 ```
+
+上記には、`git config core.hooksPath <value>`、`git config --unset core.hooksPath`、`git config --remove-section core`、`git -c core.hooksPath=...`、`git update-index --skip-worktree` / `--assume-unchanged` のような Git hook 無効化・回避コマンドも含む。global guard ではこれらを `--no-verify` と同じ bypass 系操作として deny する。一方で `git config --get core.hooksPath` のような read-only 確認は block 対象にしない。
 
 ### Ask
 
