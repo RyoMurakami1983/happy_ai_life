@@ -204,8 +204,9 @@ def _invoke_bash_guard_pre_tool(
     if env:
         effective_env.update(env)
 
+    bash_path = _bash_executable()
     return subprocess.run(
-        [_bash_executable(), "-lc", "bash .github/hooks/scripts/guard_pre_tool.sh"],
+        [bash_path, "-lc", 'exec "$0" .github/hooks/scripts/guard_pre_tool.sh', bash_path],
         cwd=cwd,
         check=False,
         capture_output=True,
@@ -1015,6 +1016,23 @@ def test_bash_guard_pre_tool_allows_non_destructive_enterprise_command_neighbors
     result = _invoke_bash_guard_pre_tool(
         {"toolName": "powershell", "toolArgs": {"command": command}},
         cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_bash_guard_pre_tool_falls_open_for_invalid_json_payload() -> None:
+    bash_path = _bash_executable()
+    result = subprocess.run(
+        [bash_path, "-lc", 'exec "$0" .github/hooks/scripts/guard_pre_tool.sh', bash_path],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        input="{not-json",
     )
 
     assert result.returncode == 0, result.stdout + result.stderr

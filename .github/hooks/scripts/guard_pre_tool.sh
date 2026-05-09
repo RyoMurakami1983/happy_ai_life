@@ -129,13 +129,15 @@ scan_unpushed_for_secrets() {
 }
 
 # toolName を取得（例: "bash", "powershell"）
-tool_name="$(jq -r '(.toolName // .tool_name // empty) | strings' <<<"${raw}")"
+if ! tool_name="$(jq -r '(.toolName // .tool_name // empty) | strings' <<<"${raw}" 2>/dev/null)"; then
+  exit 0
+fi
 if [[ "${tool_name}" != "bash" && "${tool_name}" != "powershell" ]]; then
   exit 0
 fi
 
 # toolArgs / tool_input は JSON 文字列または object の両方を受ける
-command="$(jq -r '
+if ! command="$(jq -r '
   def selected_args:
     if .toolArgs? != null then .toolArgs
     elif .tool_input? != null then .tool_input
@@ -147,7 +149,9 @@ command="$(jq -r '
     elif ($args | type) == "string" then $args
     else empty
     end
-' <<<"${raw}")"
+' <<<"${raw}" 2>/dev/null)"; then
+  exit 0
+fi
 if [[ -z "${command}" ]]; then
   exit 0
 fi
