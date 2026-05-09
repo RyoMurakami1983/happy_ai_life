@@ -175,6 +175,20 @@ if [[ "${is_gh_pr_create}" -eq 1 ]]; then
   scan_unpushed_for_secrets "gh pr create" || exit 0
 fi
 
+if grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+push([[:space:]]+[^;&|]+)*[[:space:]]+(-f|--force|--force-with-lease(=[^;&|]+)?)([[:space:]]|$|[;&|])' <<<"${normalized}"; then
+  deny "Blocked potentially destructive command: ${command}"
+  exit 0
+fi
+
+if grep -E -q '(^|[;&|][[:space:]]*)(powershell|pwsh)(\.exe)?([[:space:]]+[^;&|]+)*[[:space:]]+-(encodedcommand|enc|ec)([[:space:]]|$|[;&|])' <<<"${normalized}" ||
+   grep -E -q '(^|[;&|][[:space:]]*)((([[:alnum:]_.\\]+\\)?invoke-expression)|iex)([[:space:]]|$|[;&|])' <<<"${normalized}" ||
+   grep -E -q '(^|[;&|][[:space:]]*)(powershell|pwsh)(\.exe)?([[:space:]]+[^;&|]+)*[[:space:]]+-(command|c)[[:space:]]+"?(&[[:space:]]*\{[[:space:]]*)?((([[:alnum:]_.\\]+\\)?invoke-expression)|iex)([[:space:]]|$|"|[;&|])' <<<"${normalized}" ||
+   grep -E -q '(^|[;&|][[:space:]]*)curl(\.exe)?[^;&|]*\|[[:space:]]*sh([[:space:]]|$)' <<<"${normalized}" ||
+   grep -E -q '(^|[;&|][[:space:]]*)wget(\.exe)?[^;&|]*\|[[:space:]]*sh([[:space:]]|$)' <<<"${normalized}"; then
+  deny "Blocked potentially destructive command: ${command}"
+  exit 0
+fi
+
 # まずは破壊系だけを最小ブロック
 # 必要になってから増やす（誤ブロックで作業が止まるのを避ける）
 deny_patterns=(

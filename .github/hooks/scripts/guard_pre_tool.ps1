@@ -665,8 +665,13 @@ $denyPatterns = @(
     "\bstop-computer\b",               # Stop-Computer
     "\brestart-computer\b",            # Restart-Computer
     "(?=.*\bremove-item\b)(?=.*(?:^|\s)-recurse(?:\s|$))(?=.*(?:^|\s)-force(?:\s|$))", # Remove-Item with -Recurse and -Force in any order
-    "\bgit\s+push\s+--force\b",        # git push --force
-    "\bgit\s+reset\s+--hard\b"         # git reset --hard
+    '(^|[;&|]\s*)git\s+push(?:\s+[^;&|]+)*\s+(?:-f|--force(?:-with-lease(?:=[^;&|]+)?)?)(?=\s|$|[;&|])', # git push -f/--force/--force-with-lease in same command chunk
+    "\bgit\s+reset\s+--hard\b",        # git reset --hard
+    '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:encodedcommand|enc|ec)(?=\s|$|[;&|])', # powershell/pwsh -EncodedCommand and common aliases
+    '(^|[;&|]\s*)(?:(?:[\w.\\]+\\)?invoke-expression|iex)(?=\s|$|[;&|])', # direct Invoke-Expression / iex
+    '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:command|c)\s+(?:"|'')?(?:&\s*\{\s*)?(?:(?:[\w.\\]+\\)?invoke-expression|iex)\b', # powershell -Command iex / "& { iex ... }"
+    '\bcurl(?:\.exe)?\b[^;&|]*\|\s*sh\b', # curl ... | sh
+    '\bwget(?:\.exe)?\b[^;&|]*\|\s*sh\b'  # wget ... | sh
 )
 
 foreach ($pattern in $denyPatterns) {
