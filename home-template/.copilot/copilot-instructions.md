@@ -38,6 +38,7 @@
 - 推測で埋めず、テスト・ログ・計測・一次情報で確認する。
 
 ## 優先
-- リポジトリ固有の instructions がある場合は常にそちらを優先する。
-- hooks は repository-scoped の `.github/hooks/` を正とし、HOME 配下に独自 hook 実装を置かない。
+- リポジトリ固有の instructions がある場合は、repository 事実に限ってそちらを優先する。
+- 安全弁は `$HOME/.copilot/config.json` の managed safety hook entry を含む user-level guard を正とする。
+- repo-scoped hooks は repository 固有の補助 guard として扱い、信頼の根にしない。
 - planning / research / review などの built-in 機能が使える環境では、それらを優先して使う。詳細なディスパッチルールはリポジトリの `.github/copilot-instructions.md` を参照。
