@@ -30,6 +30,16 @@ pytestmark = pytest.mark.skipif(
 
 
 def _run_check(target_repo: Path, *, source_root: Path | None = None) -> dict[str, Any]:
+    effective_env = _build_tool_env(target_repo)
+    return _run_check_with_env(target_repo, source_root=source_root, env=effective_env)
+
+
+def _run_check_with_env(
+    target_repo: Path,
+    *,
+    source_root: Path | None = None,
+    env: dict[str, str],
+) -> dict[str, Any]:
     effective_source_root = source_root or ROOT
     completed = subprocess.run(
         [
@@ -49,6 +59,7 @@ def _run_check(target_repo: Path, *, source_root: Path | None = None) -> dict[st
         check=False,
         capture_output=True,
         text=True,
+        env=env,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
     report = json.loads(completed.stdout)
@@ -65,6 +76,83 @@ def _git(repo: Path, *args: str) -> None:
         text=True,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
+def _write_cmd_shim(bin_dir: Path, name: str, body: str = "") -> None:
+    script = bin_dir / f"{name}.cmd"
+    script.write_text(f"@echo off\n{body}exit /b 0\n", encoding="utf-8")
+
+
+def _git_hooks_path(repo: Path) -> str | None:
+    completed = subprocess.run(
+        ["git", "-C", str(repo), "config", "--local", "--get", "core.hooksPath"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        return None
+    hooks_path = completed.stdout.strip()
+    return hooks_path or None
+
+
+def _build_tool_env(
+    repo: Path,
+    *,
+    include_git: bool = True,
+    include_gitleaks: bool = True,
+    include_shell: bool = True,
+    include_jq: bool = True,
+    include_node: bool = True,
+    include_gh: bool = True,
+) -> dict[str, str]:
+    bin_dir = repo / ".test-bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+
+    if include_git:
+        hooks_path = _git_hooks_path(repo)
+        config_body = (
+            "if /I \"%~1\"==\"config\" if /I \"%~2\"==\"--local\" if /I \"%~3\"==\"--get\" if /I \"%~4\"==\"core.hooksPath\" (\n"
+            f"  echo {hooks_path}\n"
+            "  exit /b 0\n"
+            ")\n"
+        ) if hooks_path else (
+            "if /I \"%~1\"==\"config\" if /I \"%~2\"==\"--local\" if /I \"%~3\"==\"--get\" if /I \"%~4\"==\"core.hooksPath\" exit /b 1\n"
+        )
+        git_body = (
+            "if /I \"%~1\"==\"-C\" (\n"
+            "  shift\n"
+            "  shift\n"
+            ")\n"
+            "if /I \"%~1\"==\"rev-parse\" if /I \"%~2\"==\"--is-inside-work-tree\" (\n"
+            "  echo true\n"
+            "  exit /b 0\n"
+            ")\n"
+            f"{config_body}"
+            "exit /b 1\n"
+        )
+        _write_cmd_shim(bin_dir, "git", git_body)
+
+    if include_gitleaks:
+        _write_cmd_shim(bin_dir, "gitleaks")
+
+    if include_shell:
+        _write_cmd_shim(bin_dir, "powershell")
+
+    if include_jq:
+        _write_cmd_shim(bin_dir, "jq")
+
+    if include_node:
+        _write_cmd_shim(bin_dir, "node")
+
+    if include_gh:
+        _write_cmd_shim(bin_dir, "gh")
+
+    env = os.environ.copy()
+    env["PATH"] = str(bin_dir)
+    env.setdefault("PATHEXT", ".COM;.EXE;.BAT;.CMD")
+    return env
 
 
 def _write_required_git_hooks(repo: Path, relative: str = ".githooks") -> None:
@@ -118,6 +206,7 @@ def test_repo_secure_check_reports_secure_repo(tmp_path: Path) -> None:
     assert report["missing"] == []
     copilot_hooks_check = next(check for check in report["checks"] if check["key"] == "copilotHooks")
     assert "session continuity hooks" in copilot_hooks_check["details"]
+    assert report["toolDependencies"]["required"] == ["git", "gitleaks", "pwsh or powershell"]
 
 
 def test_repo_secure_check_requires_concrete_git_hook_files(tmp_path: Path) -> None:
@@ -210,6 +299,114 @@ def test_repo_secure_check_rejects_legacy_session_continuity_hook_without_safety
     assert report["missing"] == ["copilotHooks"]
     copilot_hooks_check = next(check for check in report["checks"] if check["key"] == "copilotHooks")
     assert "safety-guard.json" in copilot_hooks_check["details"]
+
+
+def test_repo_secure_check_requires_node_and_gh_for_session_continuity(tmp_path: Path) -> None:
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    (target_repo / ".github" / "hooks").mkdir(parents=True)
+    (target_repo / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
+    (target_repo / ".github" / "hooks" / "session-continuity.json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "hooks": {
+                    "sessionStart": [
+                        {"type": "command", "powershell": "node .github/hooks/scripts/session-start.js"}
+                    ],
+                    "sessionEnd": [
+                        {"type": "command", "powershell": "node .github/hooks/scripts/session-end.js"}
+                    ],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (target_repo / ".github" / "workflows").mkdir(parents=True)
+    (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
+    _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
+
+    report = _run_check_with_env(
+        target_repo,
+        env=_build_tool_env(target_repo, include_node=False, include_gh=False),
+    )
+
+    assert report["isGitRepo"] is True
+    assert "toolDependencies" in report["missing"]
+    assert report["toolDependencies"]["required"] == [
+        "git",
+        "gitleaks",
+        "pwsh or powershell",
+        "node",
+        "gh",
+    ]
+    assert report["toolDependencies"]["missing"] == ["node", "gh"]
+
+
+def test_repo_secure_check_does_not_require_jq_for_windows_powershell_variant(tmp_path: Path) -> None:
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    (target_repo / ".github" / "hooks").mkdir(parents=True)
+    (target_repo / ".github" / "hooks" / "safety-guard.json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "hooks": {
+                    "preToolUse": [
+                        {
+                            "type": "command",
+                            "bash": "bash .github/hooks/scripts/guard_pre_tool.sh",
+                            "powershell": "powershell -File .github/hooks/scripts/guard_pre_tool.ps1",
+                        }
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (target_repo / ".github" / "workflows").mkdir(parents=True)
+    (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
+    _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
+
+    report = _run_check_with_env(
+        target_repo,
+        env=_build_tool_env(target_repo, include_jq=False),
+    )
+
+    assert report["isGitRepo"] is True
+    assert "toolDependencies" not in report["missing"]
+    assert report["toolDependencies"]["required"] == ["git", "gitleaks", "pwsh or powershell"]
+
+
+def test_repo_secure_check_reports_missing_git_dependency(tmp_path: Path) -> None:
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    (target_repo / ".github" / "hooks").mkdir(parents=True)
+    (target_repo / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
+    (target_repo / ".github" / "workflows").mkdir(parents=True)
+    (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
+    _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
+
+    report = _run_check_with_env(
+        target_repo,
+        env=_build_tool_env(target_repo, include_git=False),
+    )
+
+    assert report["isGitRepo"] is False
+    assert "toolDependencies" in report["missing"]
+    assert "git" in report["toolDependencies"]["missing"]
 
 
 def test_repo_secure_check_accepts_repo_template_hooks_for_source_repo(tmp_path: Path) -> None:
