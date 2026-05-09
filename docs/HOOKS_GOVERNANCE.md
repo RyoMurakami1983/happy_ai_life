@@ -14,7 +14,7 @@
 
 ## Hook 種別
 
-### User-level guard
+### User-level guard（managed enterprise/global guard）
 
 置き場所:
 
@@ -23,6 +23,8 @@ $HOME/.copilot/config.json
 $HOME/.copilot/hooks/scripts/**
 ```
 
+home sync は `config.json` の managed entry と `hooks/scripts/guard_pre_tool.ps1` を配布し、この managed entry を正式な enterprise/global guard として扱う。
+
 役割:
 
 - 全 repository 共通の guard
@@ -30,6 +32,12 @@ $HOME/.copilot/hooks/scripts/**
 - secret scan bypass 防止
 - destructive command 防止
 - permissionRequest / preToolUse による tool 実行制御
+
+互換性と更新境界:
+
+- `env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"` を managed entry の識別子として継続利用する。
+- sync-to-home はこの識別子に一致する entry だけを更新する。
+- user-owned な他の `config.json` 設定や hook entry は保持する。
 
 ### Repo-scoped Copilot hooks
 

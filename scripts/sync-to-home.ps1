@@ -13,6 +13,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# Keep the existing hook id so sync updates the same managed entry in user-owned config.json.
+$ManagedHomeHookId = "happy-ai-life-safety-guard"
+$ManagedHomeHookLabel = "config.json (managed enterprise/global guard)"
+
 function Write-Section {
     param([string]$Message)
     Write-Host ""
@@ -442,7 +446,7 @@ function New-ManagedHomeHookEntry {
         cwd = "."
         timeoutSec = 10
         env = [pscustomobject][ordered]@{
-            HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"
+            HAPPY_AI_LIFE_HOOK_ID = $ManagedHomeHookId
         }
     }
 }
@@ -465,9 +469,9 @@ function Get-HomeConfigHookPlan {
                 $config = $raw | ConvertFrom-Json
             }
             catch {
-                Write-Warning ("Skipping managed config.json hook update because the existing file contains invalid JSON: {0}. Error: {1}" -f $ConfigPath, $_.Exception.Message)
+                Write-Warning ("Skipping managed enterprise/global guard update in config.json because the existing file contains invalid JSON: {0}. Error: {1}" -f $ConfigPath, $_.Exception.Message)
                 return [pscustomobject]@{
-                    Label = "config.json (managed safety hook)"
+                    Label = $ManagedHomeHookLabel
                     Actions = @()
                     Added = @()
                     Updated = @()
@@ -493,7 +497,6 @@ function Get-HomeConfigHookPlan {
         Set-JsonProperty -Object $config -Name "hooks" -Value $hooks
     }
 
-    $hookId = "happy-ai-life-safety-guard"
     $preToolUseProperty = $hooks.PSObject.Properties["preToolUse"]
     $existingPreToolUse = @()
     if ($preToolUseProperty) {
@@ -509,7 +512,7 @@ function Get-HomeConfigHookPlan {
                 $entryHookId = $null
             }
 
-            if ($entryHookId -ne $hookId) {
+            if ($entryHookId -ne $ManagedHomeHookId) {
                 $entry
             }
         }
@@ -545,7 +548,7 @@ function Get-HomeConfigHookPlan {
     }
 
     return [pscustomobject]@{
-        Label = "config.json (managed safety hook)"
+        Label = $ManagedHomeHookLabel
         Actions = $actions
         Added = $added
         Updated = $updated
@@ -631,7 +634,7 @@ $destinationPath = [System.IO.Path]::GetFullPath($DestinationPath)
 $templateRoot = Resolve-HomeTemplateRoot -SourceRootPath $sourceRootPath -TemplatePath $TemplateRelativePath
 $archiveRoot = [System.IO.Path]::GetFullPath($ArchiveRoot)
 Write-Host ""
-Write-Host "準備完了。home sync は Copilot instructions、repo bootstrap 資産、user-level safety hook を同期し、"
+Write-Host "準備完了。home sync は Copilot instructions、repo bootstrap 資産、managed enterprise/global guard を同期し、"
 Write-Host "skills/、agents/、docs/ は plugin install / user-owned surface として触りません。"
 Write-Host "実行中..."
 Write-Host ""

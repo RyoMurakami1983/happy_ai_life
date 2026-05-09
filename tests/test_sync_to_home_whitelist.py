@@ -267,7 +267,7 @@ def test_sync_to_home_skips_invalid_user_config_json(tmp_path: Path) -> None:
     assert result.returncode == 0, combined_output
     assert config_path.read_text(encoding="utf-8") == "{ invalid json"
     assert (destination / "hooks" / "scripts" / "guard_pre_tool.ps1").exists()
-    assert "Skipping managed config.json hook update because the existing file contains invalid JSON" in combined_output
+    assert "Skipping managed enterprise/global guard update in config.json because the existing file contains invalid JSON" in combined_output
 
 
 def test_sync_to_home_does_not_rewrite_formatting_only_differences(tmp_path: Path) -> None:
@@ -397,6 +397,7 @@ def test_sync_to_home_verbose_log_shows_detailed_plan(tmp_path: Path) -> None:
     assert result.returncode == 0, combined_output
     assert "◆ 詳細ログ" in combined_output
     assert "[repo-template/" in combined_output
+    assert "[config.json (managed enterprise/global guard)]" in combined_output
 
 
 def test_sync_to_home_does_not_delete_home_only_furikaeri_docs(tmp_path: Path) -> None:

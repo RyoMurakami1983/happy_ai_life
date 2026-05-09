@@ -16,7 +16,7 @@
 - `repo-template/` により既存 repository へ guidance / hooks / workflow を導入できる。
 - pre-commit / pre-push / GitHub Actions による gitleaks 多層防御がある。
 - `sync-to-repo.ps1` は `HooksMode = SafetyOnly` を既定にし、session-continuity hooks を標準配布しない。
-- `sync-to-home.ps1` は `$HOME/.copilot/config.json` に managed safety hook entry を追加する方向性を持っている。
+- `sync-to-home.ps1` は `$HOME/.copilot/config.json` に managed な enterprise/global guard entry を追加する方向性を持っている。
 
 一方、企業利用では次の点を明確化する必要がある。
 
