@@ -53,8 +53,21 @@ function Get-PayloadPropertyValue {
 
     foreach ($name in $Names) {
         $property = $Object.PSObject.Properties[$name]
+        if (-not $property) {
+            continue
+        }
+
+        $value = $property.Value
+        if ($null -eq $value) {
+            continue
+        }
+
+        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
         if ($property) {
-            return $property.Value
+            return $value
         }
     }
 
@@ -91,6 +104,24 @@ function Resolve-FullPath {
     )
 
     $expanded = [Environment]::ExpandEnvironmentVariables($PathValue.Trim())
+    if ($expanded -match '^\$(?:\{HOME\}|env:HOME)([\\/].*)?$') {
+        $suffix = $Matches[1]
+        if ([string]::IsNullOrWhiteSpace($suffix)) {
+            $expanded = $HOME
+        }
+        else {
+            $expanded = Join-Path $HOME $suffix.TrimStart('\', '/')
+        }
+    }
+    elseif ($expanded -match '^\$HOME([\\/].*)?$') {
+        $suffix = $Matches[1]
+        if ([string]::IsNullOrWhiteSpace($suffix)) {
+            $expanded = $HOME
+        }
+        else {
+            $expanded = Join-Path $HOME $suffix.TrimStart('\', '/')
+        }
+    }
     if ($expanded.StartsWith("~/") -or $expanded.StartsWith("~\")) {
         $expanded = Join-Path $HOME $expanded.Substring(2)
     }
@@ -415,12 +446,15 @@ if ($toolName -in @("create", "edit")) {
         }
     )
 
-    if (@($pathValues).Count -gt 0) {
-        $candidatePaths = @(
-            foreach ($pathValue in @($pathValues | Select-Object -Unique)) {
-                Resolve-FullPath -PathValue $pathValue -BasePath $resolutionBase
-            }
-        )
+        if (@($pathValues).Count -gt 0) {
+            $candidatePaths = @(
+                foreach ($pathValue in @($pathValues | Select-Object -Unique)) {
+                    if (-not [string]::IsNullOrWhiteSpace($repoRoot) -and -not [System.IO.Path]::IsPathRooted([Environment]::ExpandEnvironmentVariables($pathValue)) -and -not $pathValue.StartsWith("~/") -and -not $pathValue.StartsWith("~\") -and -not $pathValue.StartsWith('$HOME') -and -not $pathValue.StartsWith('${HOME}') -and -not $pathValue.StartsWith('$env:HOME')) {
+                        Resolve-FullPath -PathValue $pathValue -BasePath $repoRoot
+                    }
+                    Resolve-FullPath -PathValue $pathValue -BasePath $resolutionBase
+                }
+            )
         $protectedMatch = Find-ProtectedPathMatch -CandidatePaths $candidatePaths -ProtectedRules (Get-ProtectedPathRules -RepoRoot $repoRoot)
         if ($null -ne $protectedMatch) {
             $reason = "Protected path change detected for {0} via {1}. This path requires an atomic issue/PR and explicit human review." -f $protectedMatch.Rule.Display, $toolName

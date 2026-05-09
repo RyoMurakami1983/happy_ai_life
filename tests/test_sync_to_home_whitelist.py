@@ -593,3 +593,22 @@ def test_guard_pre_tool_allows_non_protected_create_path() -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stdout == ""
+
+
+def test_guard_pre_tool_asks_for_home_managed_path_with_home_prefix() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "$HOME/.copilot/config.json",
+                "oldString": "{}",
+                "newString": '{"hooks":{}}',
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "$HOME/.copilot/**" in response["permissionDecisionReason"]
