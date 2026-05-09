@@ -91,7 +91,7 @@ uv run app.py home --dry-run
 uv run app.py home
 ```
 
-これで `copilot-instructions.md`、repo bootstrap 用 script、managed safety hook entry を `$HOME/.copilot/` に同期できます。
+これで `copilot-instructions.md`、repo bootstrap 用 script、managed な user-level safety hook entry（enterprise/global guard）を `$HOME/.copilot/` に同期できます。
 
 ### 確認
 

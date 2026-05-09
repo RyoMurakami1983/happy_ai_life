@@ -18,7 +18,7 @@
 | レイヤー | 置き場所 | 信頼度 | 主な役割 |
 |---|---|---:|---|
 | L0 | enterprise managed policy / device policy | 最高 | 組織の最終方針 |
-| L1 | `$HOME/.copilot/` managed guard | 高 | 全 repository 共通の user-level safety guard |
+| L1 | `$HOME/.copilot/` managed guard | 高 | 全 repository 共通の managed enterprise/global guard |
 | L2 | GitHub Rulesets / Branch Protection / Required checks | 高 | merge 前の最終防衛線 |
 | L3 | `.github/hooks/` | 中 | repository 固有の補助 guard（信頼の根ではない） |
 | L4 | `.githooks/` | 中 | local Git 操作の補助 guard |
@@ -66,7 +66,9 @@ Copilot CLI と共同作業するときは、次の順で判断する。
 
 ## user-level / enterprise-level guard の扱い
 
-`$HOME/.copilot/config.json` に managed safety hook entry を持たせ、`$HOME/.copilot/hooks/scripts/` に guard script を置く構成を標準とする。
+`$HOME/.copilot/config.json` に managed な enterprise/global guard entry を持たせ、`$HOME/.copilot/hooks/scripts/` に guard script を置く構成を標準とする。
+
+互換性のため、managed entry は `env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"` を継続利用し、sync-to-home はその entry だけを更新する。
 
 この guard は全 repository で有効になることを目指す。
 

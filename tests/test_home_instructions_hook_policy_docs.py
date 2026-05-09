@@ -27,4 +27,5 @@ def test_home_sync_doc_matches_user_level_guard_policy() -> None:
     content = read_text(HOME_SYNC_DOC_PATH)
 
     assert "managed な user-level safety hook entry" in content
-    assert "安全弁の優先順位は user-level guard を最上位" in content
+    assert "ローカルで運用する安全弁の範囲では user-level guard を最上位" in content
+    assert "enterprise managed policy / device policy を上書きするものではなく" in content
