@@ -155,8 +155,222 @@ function Test-DotNetProject {
 function Test-GitRepository {
     param([Parameter(Mandatory = $true)][string]$Path)
 
-    & git -C $Path rev-parse --is-inside-work-tree 1>$null 2>$null
-    return $LASTEXITCODE -eq 0
+    try {
+        & git -C $Path rev-parse --is-inside-work-tree 1>$null 2>$null
+        return $LASTEXITCODE -eq 0
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-WindowsHost {
+    return $env:OS -eq "Windows_NT"
+}
+
+function Test-CommandAvailable {
+    param([Parameter(Mandatory = $true)][string[]]$Names)
+
+    foreach ($name in $Names) {
+        if ([string]::IsNullOrWhiteSpace($name)) {
+            continue
+        }
+
+        if ($null -ne (Get-Command $name -ErrorAction SilentlyContinue | Select-Object -First 1)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Get-HookCommandVariant {
+    param([Parameter(Mandatory = $true)]$HookEntry)
+
+    $bashCommand = ""
+    $powershellCommand = ""
+    if ($null -ne $HookEntry.PSObject.Properties["bash"]) {
+        $bashCommand = [string]$HookEntry.bash
+    }
+    if ($null -ne $HookEntry.PSObject.Properties["powershell"]) {
+        $powershellCommand = [string]$HookEntry.powershell
+    }
+    $preferPowerShell = Test-WindowsHost
+
+    if ($preferPowerShell) {
+        if (-not [string]::IsNullOrWhiteSpace($powershellCommand)) {
+            return [pscustomobject]@{
+                runner = "powershell"
+                command = $powershellCommand
+            }
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($bashCommand)) {
+            return [pscustomobject]@{
+                runner = "bash"
+                command = $bashCommand
+            }
+        }
+    }
+    else {
+        if (-not [string]::IsNullOrWhiteSpace($bashCommand)) {
+            return [pscustomobject]@{
+                runner = "bash"
+                command = $bashCommand
+            }
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($powershellCommand)) {
+            return [pscustomobject]@{
+                runner = "powershell"
+                command = $powershellCommand
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        runner = ""
+        command = ""
+    }
+}
+
+function Get-FirstHookCommandVariant {
+    param(
+        [Parameter(Mandatory = $true)][string]$ConfigPath,
+        [Parameter(Mandatory = $true)][string]$EventName
+    )
+
+    if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+    }
+    catch {
+        return $null
+    }
+
+    if ($null -eq $config -or $null -eq $config.PSObject.Properties["hooks"]) {
+        return $null
+    }
+
+    $hookEntries = $config.hooks.$EventName
+    foreach ($hookEntry in @($hookEntries)) {
+        if ($null -eq $hookEntry) {
+            continue
+        }
+
+        $variant = Get-HookCommandVariant -HookEntry $hookEntry
+        if (-not [string]::IsNullOrWhiteSpace($variant.command)) {
+            return $variant
+        }
+    }
+
+    return $null
+}
+
+function Add-RequiredTool {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][System.Collections.Generic.List[string]]$RequiredTools,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][System.Collections.Generic.List[string]]$MissingTools,
+        [Parameter(Mandatory = $true)][System.Collections.Specialized.OrderedDictionary]$Reasons,
+        [Parameter(Mandatory = $true)][string]$ToolName,
+        [Parameter(Mandatory = $true)][string]$Reason,
+        [Parameter(Mandatory = $true)][bool]$Available
+    )
+
+    if (-not $RequiredTools.Contains($ToolName)) {
+        [void]$RequiredTools.Add($ToolName)
+    }
+
+    if (-not $Reasons.Contains($ToolName)) {
+        $Reasons.Add($ToolName, $Reason)
+    }
+
+    if (-not $Available -and -not $MissingTools.Contains($ToolName)) {
+        [void]$MissingTools.Add($ToolName)
+    }
+}
+
+function Get-ToolDependencyState {
+    param([Parameter(Mandatory = $true)][string]$HooksPath)
+
+    $requiredTools = New-Object System.Collections.Generic.List[string]
+    $missingTools = New-Object System.Collections.Generic.List[string]
+    $reasonMap = [System.Collections.Specialized.OrderedDictionary]::new()
+
+    Add-RequiredTool `
+        -RequiredTools $requiredTools `
+        -MissingTools $missingTools `
+        -Reasons $reasonMap `
+        -ToolName "git" `
+        -Reason "repo-secure-check と git hooks の基盤として常に必要です。" `
+        -Available (Test-CommandAvailable -Names @("git"))
+
+    Add-RequiredTool `
+        -RequiredTools $requiredTools `
+        -MissingTools $missingTools `
+        -Reasons $reasonMap `
+        -ToolName "gitleaks" `
+        -Reason "secret scan を実行する safety guard / git hooks に必要です。" `
+        -Available (Test-CommandAvailable -Names @("gitleaks"))
+
+    Add-RequiredTool `
+        -RequiredTools $requiredTools `
+        -MissingTools $missingTools `
+        -Reasons $reasonMap `
+        -ToolName "pwsh or powershell" `
+        -Reason "PowerShell hook variant と Windows bootstrap script 実行に必要です。" `
+        -Available (Test-CommandAvailable -Names @("pwsh", "powershell"))
+
+    $safetyGuardPath = Join-Path $HooksPath "safety-guard.json"
+    $safetyGuardCommand = Get-FirstHookCommandVariant -ConfigPath $safetyGuardPath -EventName "preToolUse"
+    if ($null -ne $safetyGuardCommand -and $safetyGuardCommand.runner -eq "bash" -and $safetyGuardCommand.command -match "guard_pre_tool\.sh") {
+        Add-RequiredTool `
+            -RequiredTools $requiredTools `
+            -MissingTools $missingTools `
+            -Reasons $reasonMap `
+            -ToolName "jq" `
+            -Reason "現在の host では safety-guard.json の bash variant が有効で、guard_pre_tool.sh が jq を使います。" `
+            -Available (Test-CommandAvailable -Names @("jq"))
+    }
+
+    $sessionContinuityPath = Join-Path $HooksPath "session-continuity.json"
+    if (Test-Path -LiteralPath $sessionContinuityPath -PathType Leaf) {
+        $sessionStartCommand = Get-FirstHookCommandVariant -ConfigPath $sessionContinuityPath -EventName "sessionStart"
+        $sessionEndCommand = Get-FirstHookCommandVariant -ConfigPath $sessionContinuityPath -EventName "sessionEnd"
+        $usesSessionNode = (
+            ($null -ne $sessionStartCommand -and $sessionStartCommand.command -match "session-start\.js") `
+                -or ($null -ne $sessionEndCommand -and $sessionEndCommand.command -match "session-end\.js")
+        )
+
+        if ($usesSessionNode) {
+            Add-RequiredTool `
+                -RequiredTools $requiredTools `
+                -MissingTools $missingTools `
+                -Reasons $reasonMap `
+                -ToolName "node" `
+                -Reason "session-continuity.json が有効で、session hook script は node runtime で動きます。" `
+                -Available (Test-CommandAvailable -Names @("node"))
+        }
+
+        if ($null -ne $sessionStartCommand -and $sessionStartCommand.command -match "session-start\.js") {
+            Add-RequiredTool `
+                -RequiredTools $requiredTools `
+                -MissingTools $missingTools `
+                -Reasons $reasonMap `
+                -ToolName "gh" `
+                -Reason "session-start hook は open issue 取得で GitHub CLI を使います。" `
+                -Available (Test-CommandAvailable -Names @("gh"))
+        }
+    }
+
+    return [ordered]@{
+        required = @($requiredTools)
+        missing = @($missingTools)
+        reasons = $reasonMap
+    }
 }
 
 $targetRepoPath = [System.IO.Path]::GetFullPath($TargetRepoPath)
@@ -180,9 +394,14 @@ if ($targetRepoPath -eq $sourceRootPath) {
 }
 
 if ($isGitRepo) {
-    $coreHooksRaw = & git -C $targetRepoPath config --local --get core.hooksPath 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        $coreHooksConfigured = (($coreHooksRaw | Select-Object -First 1) | Out-String).Trim()
+    try {
+        $coreHooksRaw = & git -C $targetRepoPath config --local --get core.hooksPath 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $coreHooksConfigured = (($coreHooksRaw | Select-Object -First 1) | Out-String).Trim()
+        }
+    }
+    catch {
+        $coreHooksConfigured = ""
     }
 
     if (-not [string]::IsNullOrWhiteSpace($coreHooksConfigured)) {
@@ -221,6 +440,14 @@ else {
 }
 $gitHookIssues = @(Get-RequiredGitHookIssues -Path $gitHooksPath)
 $gitHooksOk = $gitHookIssues.Count -eq 0
+$toolDependencyState = Get-ToolDependencyState -HooksPath $copilotHooksPath
+$toolDependenciesOk = $toolDependencyState.missing.Count -eq 0
+$toolDependencyDetails = if ($toolDependenciesOk) {
+    "必要ツール: $($toolDependencyState.required -join ', ')。現在の host で必要な依存は利用可能です。"
+}
+else {
+    "必要ツール: $($toolDependencyState.required -join ', ')。不足: $($toolDependencyState.missing -join ', ')。"
+}
 $coreHooksOk = $false
 $coreHooksDetails = ""
 
@@ -268,7 +495,13 @@ $checks = @(
         -Label "core.hooksPath" `
         -Ok $coreHooksOk `
         -Path $(if ([string]::IsNullOrWhiteSpace($coreHooksResolvedPath)) { $gitHooksPath } else { $coreHooksResolvedPath }) `
-        -Details $coreHooksDetails)
+        -Details $coreHooksDetails),
+    (New-CheckResult `
+        -Key "toolDependencies" `
+        -Label "hook tool dependencies" `
+        -Ok $toolDependenciesOk `
+        -Path $copilotHooksPath `
+        -Details $toolDependencyDetails)
 )
 
 $missing = New-Object System.Collections.Generic.List[string]
@@ -289,6 +522,7 @@ $report = [ordered]@{
     isGitRepo = $isGitRepo
     missing = @($missing)
     warnings = @($warnings)
+    toolDependencies = $toolDependencyState
     checks = $checks
 }
 

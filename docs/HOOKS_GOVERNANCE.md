@@ -221,6 +221,15 @@ gh
 
 OS / hook mode によって必要なものは変わるため、preflight では必要条件を分けて確認する。
 
+`repo-secure-check.ps1` では、現在の host で実際に使う Copilot hook variant を基準に依存を決める。
+
+- 常時確認: `git`, `gitleaks`, `pwsh or powershell`
+- `safety-guard.json` の bash variant が有効な host だけ: `jq`
+- `session-continuity.json` が存在し、session hook が有効な repo: `node`
+- 有効な `sessionStart` hook が GitHub issue 取得を使う場合: `gh`
+
+つまり Windows で `safety-guard.json` の PowerShell variant を使う repo では、bash 側の `jq` を必須にしない。一方で legacy opt-in として `session-continuity.json` を持つ repo では、`node` と必要に応じて `gh` を preflight 対象に含める。
+
 ## ExecutionPolicy 方針
 
 PowerShell の `ExecutionPolicy Bypass` は企業利用では既定にしない。
