@@ -614,6 +614,7 @@ $isGitConfigRemoveCoreSection = $compact -match "(^|[;&|]\s*)git\s+config(?:\s+[
 $hasInlineGitHooksPathConfig = $compact -match "(^|[;&|]\s*)git(?:\s+[^;&|]+)*\s+-c\s+core\.hookspath(?:\s*=\s*|\s+)[^;&|]+"
 $isGitUpdateIndexSkipWorktree = ($compact -match "(^|[;&|]\s*)git\s+update-index(\s|$)") -and ($compact -match "(^|\s)--skip-worktree(\s|$)")
 $isGitUpdateIndexAssumeUnchanged = ($compact -match "(^|[;&|]\s*)git\s+update-index(\s|$)") -and ($compact -match "(^|\s)--assume-unchanged(\s|$)")
+$hasGitPushForce = $compact -match '(^|[;&|]\s*)git\s+push(?:\s+[^;&|]+)*\s+(?:-f|--force(?:-with-lease(?:=[^;&|]+)?)?)(?=\s|$|[;&|])'
 $hasNoVerify = $compact -match "(^|\s)--no-verify(\s|$)"
 $hasCommitNoVerifyShort = $isGitCommit -and ($compact -match "(^|\s)-[a-z]*n[a-z]*(\s|$)")
 
@@ -624,6 +625,11 @@ if (($isGitCommit -and ($hasNoVerify -or $hasCommitNoVerifyShort)) -or ($isGitPu
 
 if ($isGitConfigHooksPathWrite -or $isGitConfigHooksPathUnset -or $isGitConfigRemoveCoreSection -or $hasInlineGitHooksPathConfig -or $isGitUpdateIndexSkipWorktree -or $isGitUpdateIndexAssumeUnchanged) {
     Write-Deny "AI is not allowed to disable or bypass Git hooks via core.hooksPath changes, git -c core.hooksPath, or git update-index skip-worktree/assume-unchanged."
+    exit 0
+}
+
+if ($hasGitPushForce) {
+    Write-Deny ("Blocked potentially destructive command: {0}" -f $command)
     exit 0
 }
 
@@ -665,7 +671,6 @@ $denyPatterns = @(
     "\bstop-computer\b",               # Stop-Computer
     "\brestart-computer\b",            # Restart-Computer
     "(?=.*\bremove-item\b)(?=.*(?:^|\s)-recurse(?:\s|$))(?=.*(?:^|\s)-force(?:\s|$))", # Remove-Item with -Recurse and -Force in any order
-    '(^|[;&|]\s*)git\s+push(?:\s+[^;&|]+)*\s+(?:-f|--force(?:-with-lease(?:=[^;&|]+)?)?)(?=\s|$|[;&|])', # git push -f/--force/--force-with-lease in same command chunk
     "\bgit\s+reset\s+--hard\b",        # git reset --hard
     '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:encodedcommand|enc|ec)(?=\s|$|[;&|])', # powershell/pwsh -EncodedCommand and common aliases
     '(^|[;&|]\s*)(?:(?:[\w.\\]+\\)?invoke-expression|iex)(?=\s|$|[;&|])', # direct Invoke-Expression / iex

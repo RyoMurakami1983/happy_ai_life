@@ -945,6 +945,42 @@ def test_guard_permission_request_denies_enterprise_dangerous_commands(command: 
     assert "Blocked potentially destructive command" in response["message"]
 
 
+def test_guard_pre_tool_short_circuits_force_push_before_secret_scan() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git push origin main -f"}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+def test_guard_permission_request_short_circuits_force_push_before_secret_scan() -> None:
+    script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
+    result = subprocess.run(
+        [
+            _powershell_executable(),
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            "$env:HAPPY_AI_LIFE_HOOK_EVENT = 'permissionRequest'; $env:GITLEAKS_BIN = 'missing-gitleaks'; $payload = @{ toolName = 'powershell'; toolArgs = (@{ command = 'git push origin main -f' } | ConvertTo-Json -Compress) } | ConvertTo-Json -Compress; $payload | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'" % (_powershell_executable(), script),
+        ],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["behavior"] == "deny"
+    assert response["interrupt"] is True
+    assert "Blocked potentially destructive command" in response["message"]
+
+
 @pytest.mark.parametrize(
     "command",
     [
