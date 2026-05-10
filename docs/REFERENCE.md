@@ -124,6 +124,7 @@ git config core.hooksPath .githooks
 
 ## 関連
 
+- [Security Policy](../SECURITY.md)
 - [Enterprise Security（企業向け保護設定）](ENTERPRISE_SECURITY.md)
 - [開発ガイド](DEVELOPMENT.md)
 - [作成ガイド](AUTHORING.md)

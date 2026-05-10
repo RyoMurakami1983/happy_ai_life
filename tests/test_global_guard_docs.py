@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+SECURITY_PATH = ROOT_DIR / "SECURITY.md"
 HOME_SYNC_PATH = ROOT_DIR / "docs" / "HOME_SYNC.md"
 HOOKS_GOVERNANCE_PATH = ROOT_DIR / "docs" / "HOOKS_GOVERNANCE.md"
 TRUST_BOUNDARY_PATH = ROOT_DIR / "docs" / "TRUST_BOUNDARY.md"
@@ -135,3 +136,29 @@ def test_readme_and_reference_link_enterprise_security_doc() -> None:
 
     assert "[Enterprise Security（企業向け保護設定）](docs/ENTERPRISE_SECURITY.md)" in readme
     assert "[Enterprise Security（企業向け保護設定）](ENTERPRISE_SECURITY.md)" in reference
+
+
+def test_security_doc_defines_secret_incident_response() -> None:
+    content = read_text(SECURITY_PATH)
+
+    assert_contains_all(
+        content,
+        (
+            "非公開チャネルで連絡",
+            "private vulnerability reporting / Security Advisory",
+            "gitleaks",
+            "無効化 / rotation",
+            "commit 履歴",
+            "GitHub Actions logs",
+            "やってはいけないこと",
+            "`.gitleaks.toml` の allowlist で incident を隠す",
+        ),
+    )
+
+
+def test_readme_and_reference_link_security_doc() -> None:
+    readme = read_text(README_PATH)
+    reference = read_text(REFERENCE_PATH)
+
+    assert "[Security Policy](SECURITY.md)" in readme
+    assert "[Security Policy](../SECURITY.md)" in reference
