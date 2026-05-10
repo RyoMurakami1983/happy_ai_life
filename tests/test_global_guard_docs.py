@@ -80,6 +80,7 @@ def test_related_docs_use_global_guard_naming() -> None:
     assert_contains_all(
         trust_boundary,
         (
+            "enterprise / user-level security policy",
             "managed enterprise/global guard",
             'env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"',
             "同レイヤー内では policy を上位に扱う",
@@ -171,11 +172,15 @@ def test_readme_and_reference_link_security_doc() -> None:
 
 def test_trust_boundary_precedence_keeps_security_policy_above_user_instruction() -> None:
     content = read_text(TRUST_BOUNDARY_PATH)
+    precedence_section = content.split("## 優先順位", maxsplit=1)[1].split(
+        "## repo-scoped hooks の扱い",
+        maxsplit=1,
+    )[0]
 
     assert "enterprise / user-level security policy" in content
     assert "明示された user instruction" in content
     assert "repo-scoped hooks / Git hooks" in content
 
-    assert content.index("enterprise / user-level security policy") < content.index(
+    assert precedence_section.index("enterprise / user-level security policy") < precedence_section.index(
         "明示された user instruction"
     )

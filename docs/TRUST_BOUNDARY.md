@@ -9,7 +9,7 @@
 ## 基本方針
 
 `repo-scoped hooks` は信頼の根ではない。  
-`user-level / enterprise-level guard` を最上位の安全弁とする。
+`enterprise managed policy / device policy`、enterprise / user-level security policy、managed enterprise/global guard を最上位の安全弁とする。
 
 理由は単純で、repository 内のファイルは repository の変更対象であり、悪意ある repository や侵害された repository では hook 自体を書き換えられるためである。
 
@@ -18,7 +18,7 @@
 | レイヤー | 置き場所 | 信頼度 | 主な役割 |
 |---|---|---:|---|
 | L0 | enterprise managed policy / device policy | 最高 | 組織の最終方針 |
-| L1 | user-level security policy / `$HOME/.copilot/` managed guard | 高 | 全 repository 共通の user-level security policy と managed enterprise/global guard（同レイヤー内では policy を上位に扱う） |
+| L1 | enterprise / user-level security policy / `$HOME/.copilot/` managed guard | 高 | 全 repository 共通の enterprise / user-level security policy と managed enterprise/global guard（同レイヤー内では policy を上位に扱う） |
 | L2 | GitHub Rulesets / Branch Protection / Required checks | 高 | merge 前の最終防衛線 |
 | L3 | `.github/hooks/` | 中 | repository 固有の補助 guard（信頼の根ではない） |
 | L4 | `.githooks/` | 中 | local Git 操作の補助 guard |
