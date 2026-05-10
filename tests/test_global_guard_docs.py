@@ -63,6 +63,7 @@ def test_hooks_governance_docs_define_managed_entry_boundary() -> None:
             "permissionRequest` では `ask` を返せない",
             "fallback behavior",
             "agent へ deny message を返し",
+            "docs/ENTERPRISE_SECURITY_REVIEW.md の変更",
             "既存の managed home hook entry に `-ExecutionPolicy Bypass` が残っている場合",
             "repo-scoped `safety-guard.json` も既定では `-ExecutionPolicy Bypass` を付けない",
         ),
@@ -81,10 +82,13 @@ def test_related_docs_use_global_guard_naming() -> None:
         (
             "managed enterprise/global guard",
             'env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"',
+            "installed plugin / approved skill",
+            "repo-local MCP",
             "repo-relative path:",
             "home-managed path:",
             "create` / `edit` 判定では",
             "`permissionRequest` による deny 系の早期ブロック",
+            "docs/ENTERPRISE_SECURITY_REVIEW.md",
         ),
     )
     assert_contains_all(
@@ -162,3 +166,15 @@ def test_readme_and_reference_link_security_doc() -> None:
 
     assert "[Security Policy](SECURITY.md)" in readme
     assert "[Security Policy](../SECURITY.md)" in reference
+
+
+def test_trust_boundary_precedence_keeps_security_policy_above_user_instruction() -> None:
+    content = read_text(TRUST_BOUNDARY_PATH)
+
+    assert "enterprise / user-level security policy" in content
+    assert "明示された user instruction" in content
+    assert "repo-scoped hooks / Git hooks" in content
+
+    assert content.index("enterprise / user-level security policy") < content.index(
+        "明示された user instruction"
+    )

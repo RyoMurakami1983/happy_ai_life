@@ -195,6 +195,7 @@ MCP 設定変更
 SECURITY.md の変更
 docs/TRUST_BOUNDARY.md の変更
 docs/HOOKS_GOVERNANCE.md の変更
+docs/ENTERPRISE_SECURITY_REVIEW.md の変更
 ```
 
 global guard では `create` / `edit` の payload から `path` / `filePath` / `file_path` / `targetPath` / `target_path` を抽出し、protected path に一致した場合は `ask` を返す。文字列化 JSON や入れ子の object / array に入った file operation payload も同じ監視対象にする。これにより、通常の source code 変更は止めずに、security boundary に触れる変更だけを明示確認へ送る。
