@@ -30,6 +30,31 @@ merge 前にすべて通す前提です。
 3. **GitHub Action**  
    PR 上で最終確認します。
 
+### third-party action の扱い
+
+GitHub Actions で third-party action を使う場合は、tag ではなく **full commit SHA で pin** します。
+
+この repo では `gitleaks/gitleaks-action` をその対象とし、workflow では SHA の後ろに `# v2` のような comment を付けて、人間が意図した upstream tag を読めるようにしています。
+
+更新手順:
+
+1. upstream release tag を決める。
+2. tag が指す commit SHA を確認する。
+3. workflow の `uses:` を `owner/repo@<40文字SHA>` に更新する。
+4. comment の tag 表記も合わせて更新する。
+5. PR で変更理由と確認結果を残す。
+
+[Windows: PowerShell]
+```powershell
+git ls-remote https://github.com/gitleaks/gitleaks-action "refs/tags/v2^{}"
+```
+
+### 更新方針
+
+- **Dependabot を使える repo** では `github-actions` ecosystem を有効化し、SHA 更新 PR を人間レビューで取り込む。
+- Dependabot を使わない repo でも、同等の定期見直しを行い、tag 参照へ戻さず commit SHA pinning を維持する。
+- GitHub 公式 action (`actions/*`) はこの issue の pin 対象外だが、third-party action を追加する場合は最初から SHA pinning する。
+
 ### 設定
 
 既定では gitleaks の標準ルールを使います。調整したい場合は `.gitleaks.toml` を編集してください。
@@ -113,3 +138,4 @@ git config core.hooksPath
 
 - [README](../README.md)
 - [開発ガイド](DEVELOPMENT.md)
+- [Enterprise Security](ENTERPRISE_SECURITY.md)

@@ -1,5 +1,7 @@
 name: .NET Quality Gate
 
+# Policy: if you add a third-party action to this template, pin it to a full commit SHA.
+
 on:
   pull_request:
     paths:
