@@ -82,6 +82,7 @@ def test_related_docs_use_global_guard_naming() -> None:
         (
             "managed enterprise/global guard",
             'env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"',
+            "同レイヤー内では policy を上位に扱う",
             "installed plugin / approved skill",
             "repo-local MCP",
             "repo-relative path:",

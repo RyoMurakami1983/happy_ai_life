@@ -18,7 +18,7 @@
 | レイヤー | 置き場所 | 信頼度 | 主な役割 |
 |---|---|---:|---|
 | L0 | enterprise managed policy / device policy | 最高 | 組織の最終方針 |
-| L1 | user-level security policy / `$HOME/.copilot/` managed guard | 高 | 全 repository 共通の managed enterprise/global guard と user-owned policy |
+| L1 | user-level security policy / `$HOME/.copilot/` managed guard | 高 | 全 repository 共通の user-level security policy と managed enterprise/global guard（同レイヤー内では policy を上位に扱う） |
 | L2 | GitHub Rulesets / Branch Protection / Required checks | 高 | merge 前の最終防衛線 |
 | L3 | `.github/hooks/` | 中 | repository 固有の補助 guard（信頼の根ではない） |
 | L4 | `.githooks/` | 中 | local Git 操作の補助 guard |
@@ -32,6 +32,7 @@
 補足:
 
 - trust level は「どの層を security boundary の根拠にできるか」を示す。
+- L1 の中では、user-level security policy を managed enterprise/global guard より上位に扱う。
 - repo 固有の事実確認では、trust level とは別に repository の source of truth（実装、設定、tests、workflow）を repo instructions より優先する。
 
 ## 優先順位
