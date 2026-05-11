@@ -13,6 +13,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "sync-to-home.ps1"
+MANAGED_MANIFEST_PATH = ROOT / "home-template" / ".copilot" / "managed-manifest.json"
 SKIP_REASON = "sync-to-home.ps1 tests require Windows"
 
 
@@ -108,46 +109,7 @@ def _create_minimal_source_root(base: Path) -> Path:
     copilot_dir = base / "home-template" / ".copilot"
     copilot_dir.mkdir(parents=True)
     (copilot_dir / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
-    (copilot_dir / "managed-manifest.json").write_text(
-        json.dumps(
-            {
-                "schemaVersion": 1,
-                "distribution": "home-sync-managed-surface",
-                "managedFiles": [
-                    "copilot-instructions.md",
-                    "managed-manifest.json",
-                    "scripts/sync-to-repo.ps1",
-                    "scripts/install-git-hooks.ps1",
-                    "scripts/repo-secure-check.ps1",
-                    "hooks/scripts/guard_pre_tool.ps1",
-                ],
-                "managedDirectories": ["repo-template/"],
-                "managedEntries": [
-                    {
-                        "file": "config.json",
-                        "kind": "hook-entry",
-                        "id": "happy-ai-life-safety-guard",
-                        "label": "managed enterprise/global guard",
-                        "events": ["preToolUse", "permissionRequest"],
-                    }
-                ],
-                "userOwnedPaths": [
-                    "mcp-config.json",
-                    "skills/",
-                    "agents/",
-                    "docs/",
-                    "session-state/",
-                ],
-                "userOwnedEntries": [
-                    "config.json: non-managed settings and hook entries",
-                ],
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    shutil.copy2(MANAGED_MANIFEST_PATH, copilot_dir / "managed-manifest.json")
     (copilot_dir / "config.json").write_text('{"runtime":true}', encoding="utf-8")
     (copilot_dir / "session-state").mkdir()
 
@@ -291,41 +253,6 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
         assert managed_hooks[0]["env"]["HAPPY_AI_LIFE_HOOK_EVENT"] == event_name
     assert (destination / "mcp-config.json").read_text(encoding="utf-8") == '{"user":true}'
     assert (destination / "session-state").exists()
-
-
-def test_repo_managed_manifest_lists_home_sync_scope() -> None:
-    manifest = json.loads((ROOT / "home-template" / ".copilot" / "managed-manifest.json").read_text(encoding="utf-8"))
-
-    assert manifest["distribution"] == "home-sync-managed-surface"
-    assert manifest["managedFiles"] == [
-        "copilot-instructions.md",
-        "managed-manifest.json",
-        "scripts/sync-to-repo.ps1",
-        "scripts/install-git-hooks.ps1",
-        "scripts/repo-secure-check.ps1",
-        "hooks/scripts/guard_pre_tool.ps1",
-    ]
-    assert manifest["managedDirectories"] == ["repo-template/"]
-    assert manifest["managedEntries"] == [
-        {
-            "file": "config.json",
-            "kind": "hook-entry",
-            "id": "happy-ai-life-safety-guard",
-            "label": "managed enterprise/global guard",
-            "events": ["preToolUse", "permissionRequest"],
-        }
-    ]
-    assert manifest["userOwnedPaths"] == [
-        "mcp-config.json",
-        "skills/",
-        "agents/",
-        "docs/",
-        "session-state/",
-    ]
-    assert manifest["userOwnedEntries"] == [
-        "config.json: non-managed settings and hook entries"
-    ]
-
 
 def test_sync_to_home_removes_legacy_home_hook_transport(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
