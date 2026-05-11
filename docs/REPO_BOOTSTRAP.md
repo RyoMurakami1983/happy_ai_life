@@ -47,9 +47,21 @@ bootstrap を実行すると、主に次が入ります。
 
 # 反映
 & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath C:\your-repo
+
+# enterprise 向け profile を使う場合
+& $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath C:\your-repo -PolicyProfile Enterprise
 ```
 
 `$HOME/.copilot/repo-template/` の内容を対象 repo に同期します。
+
+### PolicyProfile の違い
+
+| profile | 既定値 | 主な同期対象 | 意図 |
+|------|------|--------------|------|
+| `Default` | はい | 通常の repo bootstrap 一式。enterprise 固有の instructions は含めない | 一般的な repo bootstrap を最小構成で入れる |
+| `Enterprise` | いいえ | `Default` に加えて `.github/instructions/enterprise.instructions.md` を同期 | enterprise 向けの追加 guidance を明示 opt-in で入れる |
+
+`-PolicyProfile Enterprise` は repo 内 asset の同期範囲を切り替えるだけで、organization policy や GitHub Rulesets を自動設定するものではありません。
 
 ### Step 3: Git hooks を有効化
 
@@ -105,6 +117,8 @@ hooks を使う全員に `gitleaks` が必要です。未導入だと commit や
 ### instructions を調整
 
 `.github/copilot-instructions.md` をチーム向けに編集します。
+
+enterprise profile を使った repo では、`.github/instructions/enterprise.instructions.md` も対象になります。
 
 ### gitleaks ルールを調整
 

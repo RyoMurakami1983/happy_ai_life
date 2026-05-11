@@ -35,6 +35,7 @@ def _run_sync(
     *,
     dry_run: bool,
     hooks_mode: str | None = None,
+    policy_profile: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     command = [
         _powershell_executable(),
@@ -56,6 +57,8 @@ def _run_sync(
     ]
     if hooks_mode is not None:
         command.extend(["-HooksMode", hooks_mode])
+    if policy_profile is not None:
+        command.extend(["-PolicyProfile", policy_profile])
     if dry_run:
         command.append("-DryRun")
 
@@ -83,6 +86,10 @@ def _create_minimal_source_root(base: Path) -> Path:
         "# Python instructions\n",
         encoding="utf-8",
     )
+    (instructions_dir / "enterprise.instructions.md").write_text(
+        "# Enterprise instructions\n",
+        encoding="utf-8",
+    )
     return base
 
 
@@ -102,6 +109,7 @@ def _run_hooks_sync(
     hooks_mode: str | None = None,
     dry_run: bool = False,
     mirror: bool = False,
+    policy_profile: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     command = [
         _powershell_executable(),
@@ -121,6 +129,8 @@ def _run_hooks_sync(
     ]
     if hooks_mode is not None:
         command.extend(["-HooksMode", hooks_mode])
+    if policy_profile is not None:
+        command.extend(["-PolicyProfile", policy_profile])
     if dry_run:
         command.append("-DryRun")
     if mirror:
@@ -185,6 +195,29 @@ def test_sync_to_repo_creates_missing_github_gitignore(tmp_path: Path) -> None:
     assert "sessions/" in content
     assert "instructions/session-context.instructions.md" in content
     assert (target_repo / ".github" / "instructions" / "python.instructions.md").exists()
+    assert not (target_repo / ".github" / "instructions" / "enterprise.instructions.md").exists()
+
+
+def test_sync_to_repo_default_profile_excludes_enterprise_instruction(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    (target_repo / ".github").mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (target_repo / ".github" / "instructions" / "enterprise.instructions.md").exists()
+
+
+def test_sync_to_repo_enterprise_profile_includes_enterprise_instruction(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    (target_repo / ".github").mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False, policy_profile="Enterprise")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (target_repo / ".github" / "instructions" / "enterprise.instructions.md").exists()
 
 
 def test_sync_to_repo_safety_only_excludes_session_continuity_hook(tmp_path: Path) -> None:

@@ -15,6 +15,7 @@ ROADMAP_PATH = ROOT_DIR / "docs" / "ISSUE_ROADMAP_ENTERPRISE_SECURITY.md"
 ADR_PATH = ROOT_DIR / "docs" / "adr" / "2026-05-08-enterprise-global-guard-policy.md"
 README_PATH = ROOT_DIR / "README.md"
 REFERENCE_PATH = ROOT_DIR / "docs" / "REFERENCE.md"
+REPO_BOOTSTRAP_PATH = ROOT_DIR / "docs" / "REPO_BOOTSTRAP.md"
 
 
 def read_text(path: Path) -> str:
@@ -44,6 +45,23 @@ def test_home_sync_docs_formalize_managed_global_guard() -> None:
             "`preToolUse` と `permissionRequest`",
             "`$HOME/.copilot/managed-manifest.json`",
             "managed file / managed directory / managed entry / user-owned surface",
+        ),
+    )
+
+
+def test_repo_bootstrap_docs_define_policy_profile_enterprise() -> None:
+    content = read_text(REPO_BOOTSTRAP_PATH)
+
+    assert_contains_all(
+        content,
+        (
+            "-PolicyProfile Enterprise",
+            "PolicyProfile の違い",
+            "`Default`",
+            "`Enterprise`",
+            "enterprise.instructions.md",
+            "enterprise 向けの追加 guidance を明示 opt-in で入れる",
+            "organization policy や GitHub Rulesets を自動設定するものではありません",
         ),
     )
 

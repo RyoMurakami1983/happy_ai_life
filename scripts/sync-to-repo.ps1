@@ -13,6 +13,8 @@ param(
     # Copilot hooks の配布範囲。sessionStart/sessionEnd は既定では封印し、明示時のみ配布する。
     [ValidateSet("SafetyOnly", "All", "None")]
     [string]$HooksMode = "SafetyOnly",
+    [ValidateSet("Default", "Enterprise")]
+    [string]$PolicyProfile = "Default",
     # Git client hooks のテンプレート。target repo の .githooks に同期する。
     [string]$GitHooksRelativePath = "repo-template\.githooks",
     [switch]$Mirror,
@@ -369,6 +371,10 @@ $excludeFiles = @(
     ".gitignore"
 )
 
+if ($PolicyProfile -eq "Default") {
+    $excludeFiles += "enterprise.instructions.md"
+}
+
 # --- 1. repo-template/.github/ → 配布先 .github/ ---
 Write-Section "Sync repo-template to target repository (.github)"
 
@@ -380,6 +386,14 @@ Write-Host "Destination : $destinationPath"
 Write-Host "Mirror      : $Mirror"
 Write-Host "DryRun      : $DryRun"
 Write-Host "HooksMode   : $HooksMode"
+Write-Host "PolicyProfile : $PolicyProfile"
+
+if ($PolicyProfile -eq "Enterprise") {
+    Write-Host "Note        : enterprise.instructions.md を含む enterprise 向け guidance を同期します。" -ForegroundColor Yellow
+}
+else {
+    Write-Host "Note        : 既定 profile では enterprise 固有 instructions を同期しません。" -ForegroundColor Yellow
+}
 
 $duplicateHooksPath = Join-Path $sourcePath "hooks"
 Warn-IfPathExists `
