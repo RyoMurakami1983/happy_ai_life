@@ -73,6 +73,14 @@ def test_hooks_governance_docs_define_managed_entry_boundary() -> None:
             "現在の host で実際に使う variant",
             "`gh` は標準運用の baseline ではなく",
             "docs/ENTERPRISE_SECURITY_REVIEW.md の変更",
+            ".github/mcp.json / .mcp.json / ~/.copilot/mcp-config.json の MCP 設定変更",
+            "server entry の新規追加、削除、有効化 / 無効化",
+            "command / args / env / working directory の変更",
+            "remote endpoint / host / URL / transport の変更",
+            "credential、auth method、渡す token / header / secret の変更",
+            "公開する tool / capability 範囲の変更",
+            "user-owned live config を壊さないこと",
+            "`~/.copilot/mcp-config.json` は user-owned live config",
             "既存の managed home hook entry に `-ExecutionPolicy Bypass` が残っている場合",
             "repo-scoped `safety-guard.json` も既定では `-ExecutionPolicy Bypass` を付けない",
         ),
@@ -99,6 +107,12 @@ def test_related_docs_use_global_guard_naming() -> None:
             "home-managed path:",
             "create` / `edit` 判定では",
             "`permissionRequest` による deny 系の早期ブロック",
+            "MCP server は外部 tool surface と外部接続先を増やす",
+            "`~/.copilot/mcp-config.json` に設定される",
+            "user-owned file であり、home sync やこの repository の配布物で上書きしない",
+            "`.github/mcp.json`、`.mcp.json`、`~/.copilot/mcp-config.json` の server 定義追加・変更",
+            "MCP server 追加・変更時の review 観点",
+            "command / args / env / endpoint / auth の変更も同等に扱う",
             "docs/ENTERPRISE_SECURITY_REVIEW.md",
         ),
     )
@@ -151,6 +165,8 @@ def test_readme_and_reference_link_enterprise_security_doc() -> None:
 
     assert "[Enterprise Security（企業向け保護設定）](docs/ENTERPRISE_SECURITY.md)" in readme
     assert "[Enterprise Security（企業向け保護設定）](ENTERPRISE_SECURITY.md)" in reference
+    assert "[Trust Boundary](docs/TRUST_BOUNDARY.md)" in readme
+    assert "[Trust Boundary](TRUST_BOUNDARY.md)" in reference
 
 
 def test_security_doc_defines_secret_incident_response() -> None:

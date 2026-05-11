@@ -118,7 +118,8 @@ git config core.hooksPath .githooks
 
 - repo-scoped Copilot hooks は repository 固有の補助 guard です。
 - 信頼の根は `$HOME/.copilot/` の user-level / enterprise-level guard と GitHub Rulesets / Branch Protection / Required checks に置きます。
-- 詳しくは [Trust Boundary](TRUST_BOUNDARY.md) と [Hooks Governance](HOOKS_GOVERNANCE.md) を参照してください。
+- live `~/.copilot/mcp-config.json` は user-owned config として扱い、この repo の sync や template では上書きしません。
+- MCP server の追加・変更は governance 対象です。詳しくは [Trust Boundary](TRUST_BOUNDARY.md) と [Hooks Governance](HOOKS_GOVERNANCE.md) を参照してください。
 
 詳しくは [品質ゲート](QUALITY_GATES.md) を参照してください。
 
@@ -126,6 +127,8 @@ git config core.hooksPath .githooks
 
 - [Security Policy](../SECURITY.md)
 - [Enterprise Security（企業向け保護設定）](ENTERPRISE_SECURITY.md)
+- [Trust Boundary](TRUST_BOUNDARY.md)
+- [Hooks Governance](HOOKS_GOVERNANCE.md)
 - [開発ガイド](DEVELOPMENT.md)
 - [作成ガイド](AUTHORING.md)
 - [docs/adr/](../docs/adr/)
