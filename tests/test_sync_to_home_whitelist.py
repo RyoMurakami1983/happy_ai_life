@@ -254,6 +254,7 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     assert (destination / "mcp-config.json").read_text(encoding="utf-8") == '{"user":true}'
     assert (destination / "session-state").exists()
 
+
 def test_sync_to_home_removes_legacy_home_hook_transport(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     destination = tmp_path / "home"
