@@ -67,7 +67,7 @@ def test_hooks_governance_docs_define_managed_entry_boundary() -> None:
             "create / edit による protected path 変更",
             "`path` / `filePath` / `file_path` / `targetPath` / `target_path`",
             "protected path に一致した場合は `ask` を返す",
-            "permissionRequest` では `ask` を返せない",
+            "`permissionRequest` では `ask` を返せない",
             "fallback behavior",
             "agent へ deny message を返し",
             "現在の host で実際に使う variant",
