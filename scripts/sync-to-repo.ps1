@@ -246,6 +246,36 @@ function Remove-SealedSessionContinuityArtifacts {
     }
 }
 
+function Remove-ExcludedPolicyProfileArtifacts {
+    param(
+        [Parameter(Mandatory = $true)][string]$TargetRepoRoot,
+        [Parameter(Mandatory = $true)][string]$PolicyProfile,
+        [switch]$WhatIfMode
+    )
+
+    if ($PolicyProfile -ne "Default") {
+        return
+    }
+
+    $excludedPaths = @(
+        (Join-Path $TargetRepoRoot ".github\instructions\enterprise.instructions.md")
+    )
+
+    foreach ($excludedPath in $excludedPaths) {
+        if (-not (Test-Path -LiteralPath $excludedPath -PathType Leaf)) {
+            continue
+        }
+
+        if ($WhatIfMode) {
+            Write-Host "Would remove excluded policy profile artifact: $excludedPath" -ForegroundColor Yellow
+            continue
+        }
+
+        Remove-Item -LiteralPath $excludedPath -Force
+        Write-Host "Removed excluded policy profile artifact: $excludedPath" -ForegroundColor Yellow
+    }
+}
+
 function Invoke-Robocopy {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
@@ -415,6 +445,11 @@ $githubGitIgnoreDestinationPath = Join-Path $destinationPath ".gitignore"
 Merge-AppendOnlyFile `
     -Source $githubGitIgnoreSourcePath `
     -Destination $githubGitIgnoreDestinationPath `
+    -WhatIfMode:$DryRun
+
+Remove-ExcludedPolicyProfileArtifacts `
+    -TargetRepoRoot $targetRepoPath `
+    -PolicyProfile $PolicyProfile `
     -WhatIfMode:$DryRun
 
 # --- 2. .github/hooks/ → 配布先 .github/hooks/ （$HooksRelativePath が空、または HooksMode=None ならスキップ）---

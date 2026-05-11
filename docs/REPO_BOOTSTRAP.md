@@ -62,6 +62,7 @@ bootstrap を実行すると、主に次が入ります。
 | `Enterprise` | いいえ | `Default` に加えて `.github/instructions/enterprise.instructions.md` を同期 | enterprise 向けの追加 guidance を明示 opt-in で入れる |
 
 `-PolicyProfile Enterprise` は repo 内 asset の同期範囲を切り替えるだけで、organization policy や GitHub Rulesets を自動設定するものではありません。
+`Default` で再実行した場合は、以前 `Enterprise` で配った `.github/instructions/enterprise.instructions.md` も取り除かれます。
 
 ### Step 3: Git hooks を有効化
 

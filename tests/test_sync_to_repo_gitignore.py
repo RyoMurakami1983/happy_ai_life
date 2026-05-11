@@ -195,7 +195,6 @@ def test_sync_to_repo_creates_missing_github_gitignore(tmp_path: Path) -> None:
     assert "sessions/" in content
     assert "instructions/session-context.instructions.md" in content
     assert (target_repo / ".github" / "instructions" / "python.instructions.md").exists()
-    assert not (target_repo / ".github" / "instructions" / "enterprise.instructions.md").exists()
 
 
 def test_sync_to_repo_default_profile_excludes_enterprise_instruction(tmp_path: Path) -> None:
@@ -207,6 +206,36 @@ def test_sync_to_repo_default_profile_excludes_enterprise_instruction(tmp_path: 
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert not (target_repo / ".github" / "instructions" / "enterprise.instructions.md").exists()
+
+
+def test_sync_to_repo_default_profile_removes_existing_enterprise_instruction(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    instructions_dir = target_repo / ".github" / "instructions"
+    instructions_dir.mkdir(parents=True)
+    stale_instruction = instructions_dir / "enterprise.instructions.md"
+    stale_instruction.write_text("# stale enterprise instructions\n", encoding="utf-8")
+
+    result = _run_sync(source_root, target_repo, dry_run=False, policy_profile="Default")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not stale_instruction.exists()
+    assert "Removed excluded policy profile artifact" in result.stdout
+
+
+def test_sync_to_repo_default_profile_dry_run_preserves_existing_enterprise_instruction(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    instructions_dir = target_repo / ".github" / "instructions"
+    instructions_dir.mkdir(parents=True)
+    stale_instruction = instructions_dir / "enterprise.instructions.md"
+    stale_instruction.write_text("# stale enterprise instructions\n", encoding="utf-8")
+
+    result = _run_sync(source_root, target_repo, dry_run=True, policy_profile="Default")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert stale_instruction.exists()
+    assert "Would remove excluded policy profile artifact" in result.stdout
 
 
 def test_sync_to_repo_enterprise_profile_includes_enterprise_instruction(tmp_path: Path) -> None:

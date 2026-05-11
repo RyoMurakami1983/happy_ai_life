@@ -62,6 +62,7 @@ def test_repo_bootstrap_docs_define_policy_profile_enterprise() -> None:
             "enterprise.instructions.md",
             "enterprise 向けの追加 guidance を明示 opt-in で入れる",
             "organization policy や GitHub Rulesets を自動設定するものではありません",
+            "以前 `Enterprise` で配った `.github/instructions/enterprise.instructions.md` も取り除かれます",
         ),
     )
 
