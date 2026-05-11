@@ -316,6 +316,10 @@ security policy、現在の user instruction、repository source of truth を優
 - skill の `allowed-tools` 拡大
 - `ExecutionPolicy Bypass` 関連変更
 
+repo-local skill（`.github/skills/**`、`.agents/skills/**`、`.claude/skills/**`）では、`allowed-tools: "*"` や `*` を含む同等の全許可を既定で禁止する。例外は human review 必須とし、Issue / PR に least privilege で代替できない理由、適用範囲、owner、rollback 方法、見直し時期を書く。
+
+この repo では `tests/test_repo_local_skill_policy.py` で repo-local skill の frontmatter を走査し、wildcard `allowed-tools` を検出したら fail する。
+
 MCP server 追加・変更には、少なくとも次を含める。
 
 - server entry の新規追加、削除、有効化 / 無効化
