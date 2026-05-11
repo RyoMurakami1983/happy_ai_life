@@ -13,6 +13,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "sync-to-home.ps1"
+MANAGED_MANIFEST_PATH = ROOT / "home-template" / ".copilot" / "managed-manifest.json"
 SKIP_REASON = "sync-to-home.ps1 tests require Windows"
 
 
@@ -108,6 +109,7 @@ def _create_minimal_source_root(base: Path) -> Path:
     copilot_dir = base / "home-template" / ".copilot"
     copilot_dir.mkdir(parents=True)
     (copilot_dir / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    shutil.copy2(MANAGED_MANIFEST_PATH, copilot_dir / "managed-manifest.json")
     (copilot_dir / "config.json").write_text('{"runtime":true}', encoding="utf-8")
     (copilot_dir / "session-state").mkdir()
 
@@ -238,6 +240,7 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     assert (destination / "scripts" / "repo-secure-check.ps1").exists()
     assert (destination / "hooks" / "scripts" / "guard_pre_tool.ps1").exists()
     assert (destination / "copilot-instructions.md").exists()
+    assert (destination / "managed-manifest.json").exists()
     assert not (destination / "mcp-config.sample.json").exists()
     assert (destination / "keep.txt").read_text(encoding="utf-8") == "keep"
     config = json.loads((destination / "config.json").read_text(encoding="utf-8"))

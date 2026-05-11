@@ -42,6 +42,8 @@ def test_home_sync_docs_formalize_managed_global_guard() -> None:
             "既存の managed entry に `-ExecutionPolicy Bypass` が入っている場合",
             "HAPPY_ENV_ALLOW_POLICY_BYPASS",
             "`preToolUse` と `permissionRequest`",
+            "`$HOME/.copilot/managed-manifest.json`",
+            "managed file / managed directory / managed entry / user-owned surface",
         ),
     )
 

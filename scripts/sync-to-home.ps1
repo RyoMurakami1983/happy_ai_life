@@ -719,6 +719,10 @@ $trackedFilePlans = @(
         Plan = (Get-TrackedFilePlan -Source (Join-Path $templateRoot "copilot-instructions.md") -Destination (Join-Path $destinationPath "copilot-instructions.md") -PreviewPath "copilot-instructions.md")
     },
     [pscustomobject]@{
+        Label = "managed-manifest.json"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path $templateRoot "managed-manifest.json") -Destination (Join-Path $destinationPath "managed-manifest.json") -PreviewPath "managed-manifest.json")
+    },
+    [pscustomobject]@{
         Label = "scripts/sync-to-repo.ps1"
         Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "sync-to-repo.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "sync-to-repo.ps1") -PreviewPath "scripts/sync-to-repo.ps1")
     },
