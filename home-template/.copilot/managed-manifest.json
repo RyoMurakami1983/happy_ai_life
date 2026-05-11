@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "distribution": "home-sync-managed-surface",
+  "managedFiles": [
+    "copilot-instructions.md",
+    "managed-manifest.json",
+    "scripts/sync-to-repo.ps1",
+    "scripts/install-git-hooks.ps1",
+    "scripts/repo-secure-check.ps1",
+    "hooks/scripts/guard_pre_tool.ps1"
+  ],
+  "managedDirectories": [
+    "repo-template/"
+  ],
+  "managedEntries": [
+    {
+      "file": "config.json",
+      "kind": "hook-entry",
+      "id": "happy-ai-life-safety-guard",
+      "label": "managed enterprise/global guard",
+      "events": [
+        "preToolUse",
+        "permissionRequest"
+      ]
+    }
+  ],
+  "userOwnedPaths": [
+    "mcp-config.json",
+    "skills/",
+    "agents/",
+    "docs/",
+    "session-state/"
+  ],
+  "userOwnedEntries": [
+    "config.json: non-managed settings and hook entries"
+  ]
+}
