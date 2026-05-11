@@ -73,7 +73,7 @@ def test_hooks_governance_docs_define_managed_entry_boundary() -> None:
             "現在の host で実際に使う variant",
             "`gh` は標準運用の baseline ではなく",
             "docs/ENTERPRISE_SECURITY_REVIEW.md の変更",
-            "`.github/mcp.json` / `.mcp.json` / `~/.copilot/mcp-config.json` の MCP 設定変更",
+            ".github/mcp.json / .mcp.json / ~/.copilot/mcp-config.json の MCP 設定変更",
             "server entry の新規追加、削除、有効化 / 無効化",
             "command / args / env / working directory の変更",
             "remote endpoint / host / URL / transport の変更",

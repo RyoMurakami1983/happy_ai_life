@@ -207,7 +207,7 @@ create / edit による protected path 変更
 .gitleaks.toml の変更
 .github/instructions/** の変更
 .github/skills/** の変更
-`.github/mcp.json` / `.mcp.json` / `~/.copilot/mcp-config.json` の MCP 設定変更
+.github/mcp.json / .mcp.json / ~/.copilot/mcp-config.json の MCP 設定変更
 SECURITY.md の変更
 docs/TRUST_BOUNDARY.md の変更
 docs/HOOKS_GOVERNANCE.md の変更
