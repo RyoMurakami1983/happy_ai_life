@@ -207,7 +207,7 @@ create / edit による protected path 変更
 .gitleaks.toml の変更
 .github/instructions/** の変更
 .github/skills/** の変更
-MCP 設定変更
+`.github/mcp.json` / `.mcp.json` / `~/.copilot/mcp-config.json` の MCP 設定変更
 SECURITY.md の変更
 docs/TRUST_BOUNDARY.md の変更
 docs/HOOKS_GOVERNANCE.md の変更
@@ -315,6 +315,16 @@ security policy、現在の user instruction、repository source of truth を優
 - MCP server 追加・変更
 - skill の `allowed-tools` 拡大
 - `ExecutionPolicy Bypass` 関連変更
+
+MCP server 追加・変更には、少なくとも次を含める。
+
+- server entry の新規追加、削除、有効化 / 無効化
+- command / args / env / working directory の変更
+- remote endpoint / host / URL / transport の変更
+- credential、auth method、渡す token / header / secret の変更
+- 公開する tool / capability 範囲の変更
+
+review では、追加理由、接続先、必要権限、外部送信されうるデータ、rollback 方法、user-owned live config を壊さないことを確認する。`~/.copilot/mcp-config.json` は user-owned live config であり、この repository の sync や template で上書きしない。
 
 ## 確認コマンド
 
