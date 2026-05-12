@@ -117,7 +117,12 @@ uv run pytest -q
 
 # 単体ファイル
 uv run pytest -q tests/test_happy_env.py
+
+# hook parity だけ確認
+uv run python -m pytest -q tests/test_git_hooks_secret_guard.py
 ```
+
+Git hooks 周りを変えた場合は、`quality.yml` の `hook-parity` job と同じく `tests/test_git_hooks_secret_guard.py` を先に流します。
 
 ### 品質確認の例
 

@@ -7,7 +7,8 @@
 主に次を確認します。
 
 1. **gitleaks** — secret の混入を検出
-2. **textlint** — Markdown の文書品質を確認（必要時のみ）
+2. **hook parity** — Git hooks が Windows / macOS / Linux で同じ前提で動くか確認
+3. **textlint** — Markdown の文書品質を確認（必要時のみ）
 
 merge 前にすべて通す前提です。
 
@@ -94,6 +95,40 @@ git ls-remote https://github.com/gitleaks/gitleaks-action "refs/tags/v2^{}"
 ### 設定
 
 ルールは `.textlintrc.json` で調整します。
+
+## hook parity
+
+### 何を確認するか
+
+- `repo-template/.githooks/pre-commit`
+- `repo-template/.githooks/pre-push`
+- `repo-template/.githooks/lib/secret-guard.sh`
+- Git hooks が path の空白や non-ASCII path を含む repo でも動くこと
+- Windows path と POSIX path の差で hook test が崩れないこと
+
+### どう動くか
+
+GitHub Actions の `quality.yml` で `hook-parity` job を流し、次の 3 OS で同じ test を実行します。
+
+- `ubuntu-latest`
+- `macos-latest`
+- `windows-latest`
+
+実行する test は `tests/test_git_hooks_secret_guard.py` です。
+
+### ローカル確認
+
+[Windows: PowerShell]
+```powershell
+uv run python -m pytest -q tests/test_git_hooks_secret_guard.py
+```
+
+macOS / Linux でも同じコマンドを使います。
+
+### 基本方針
+
+- parity test は Git hooks 自体の portable な挙動確認であり、repo-scoped hooks を信頼の根に昇格させるものではありません。
+- OS 固有の差分が見つかった場合は、hook script か test のどちらが source of truth に沿っていないかを明確にして修正します。
 
 ## ローカル hooks
 
