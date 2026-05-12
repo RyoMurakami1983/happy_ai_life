@@ -26,7 +26,7 @@ enterprise hardening は、次の順序で進める。
    先に [Enterprise Security Review](ENTERPRISE_SECURITY_REVIEW.md)、[Trust Boundary](TRUST_BOUNDARY.md)、[Hooks Governance](HOOKS_GOVERNANCE.md) を読み、repo-scoped hook を信頼の根にしない前提をそろえる。
 
 2. **repo bootstrap を入れる**  
-   `sync-to-repo.ps1`、`install-git-hooks.ps1`、`repo-secure-check.ps1` で、`.github/`、`.githooks/`、workflow の不足を埋める。enterprise 向け guidance が必要な repo では `-PolicyProfile Enterprise` を使う。
+   先に `sync-to-repo.ps1` で `.github/` と workflow を同期し、必要なら `sync-to-repo.ps1 -PolicyProfile Enterprise` で enterprise 向け guidance も入れる。続けて `install-git-hooks.ps1` で `.githooks/` を有効化する。`repo-secure-check.ps1` は不足を埋めるためのスクリプトではなく、次の Step で導入漏れを確認するために使う。
 
 3. **local で bootstrap の不足を確認する**  
    `& $HOME\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath .` を実行し、CI や Git hooks の導入漏れがないか確認する。CI / automation に組み込む前提なら `-Strict` も使う。

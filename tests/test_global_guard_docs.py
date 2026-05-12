@@ -187,6 +187,8 @@ def test_enterprise_security_doc_defines_server_side_requirements() -> None:
             "GitHub UI での目視確認を source of truth",
             "導入順序",
             "repo bootstrap を入れる",
+            "sync-to-repo.ps1 -PolicyProfile Enterprise",
+            "`repo-secure-check.ps1` は不足を埋めるためのスクリプトではなく",
             "& $HOME\\.copilot\\scripts\\repo-secure-check.ps1 -TargetRepoPath .",
             "& $HOME\\.copilot\\scripts\\repo-secure-check.ps1 -TargetRepoPath . -Strict",
             "human review が必要な領域",
