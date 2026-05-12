@@ -29,7 +29,7 @@ enterprise hardening は、次の順序で進める。
    `sync-to-repo.ps1`、`install-git-hooks.ps1`、`repo-secure-check.ps1` で、`.github/`、`.githooks/`、workflow の不足を埋める。enterprise 向け guidance が必要な repo では `-PolicyProfile Enterprise` を使う。
 
 3. **local で bootstrap の不足を確認する**  
-   `repo-secure-check.ps1 -TargetRepoPath .` を実行し、CI や Git hooks の導入漏れがないか確認する。CI / automation に組み込む前提なら `-Strict` も使う。
+   `& $HOME\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath .` を実行し、CI や Git hooks の導入漏れがないか確認する。CI / automation に組み込む前提なら `-Strict` も使う。
 
 4. **GitHub 側の server-side 保護を設定する**  
    Rulesets または Branch Protection、Required status checks、CODEOWNERS review を GitHub UI で設定する。local hook だけで完結させない。
@@ -168,8 +168,8 @@ local で通ることだけを根拠に merge せず、GitHub UI 上の保護設
 uv run pytest -q
 uv run ruff check .
 uv run ty check .
-& $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath .
-& $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath . -Strict
+& $HOME\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath .
+& $HOME\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath . -Strict
 ```
 
 ## 確認方法
