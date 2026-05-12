@@ -10,6 +10,8 @@ WORKFLOW_DIRS = (
     ROOT_DIR / "repo-template" / ".github" / "workflows",
 )
 QUALITY_GATES_PATH = ROOT_DIR / "docs" / "QUALITY_GATES.md"
+DEVELOPMENT_PATH = ROOT_DIR / "docs" / "DEVELOPMENT.md"
+QUALITY_WORKFLOW_PATH = ROOT_DIR / ".github" / "workflows" / "quality.yml"
 
 USES_PATTERN = re.compile(r"^\s*uses:\s*([^\s#]+)")
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
@@ -69,3 +71,40 @@ def test_quality_gates_doc_describes_sha_pinning_update_policy() -> None:
 
     for phrase in required_phrases:
         assert phrase in content
+
+
+def test_quality_workflow_runs_hook_parity_matrix() -> None:
+    content = QUALITY_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+    required_phrases = (
+        "hook-parity:",
+        "hook parity (${{ matrix.os }})",
+        "fail-fast: false",
+        "os: [ubuntu-latest, macos-latest, windows-latest]",
+        "actions/setup-python@v5",
+        "python -m pip install uv",
+        "uv sync --dev",
+        "uv run python -m pytest -q tests/test_git_hooks_secret_guard.py",
+    )
+
+    for phrase in required_phrases:
+        assert phrase in content
+
+
+def test_docs_describe_hook_parity_ci_and_local_command() -> None:
+    quality_gates = QUALITY_GATES_PATH.read_text(encoding="utf-8")
+    development = DEVELOPMENT_PATH.read_text(encoding="utf-8")
+
+    for phrase in (
+        "hook parity",
+        "Windows / macOS / Linux",
+        "`tests/test_git_hooks_secret_guard.py`",
+        "`ubuntu-latest`",
+        "`macos-latest`",
+        "`windows-latest`",
+        "uv run python -m pytest -q tests/test_git_hooks_secret_guard.py",
+    ):
+        assert phrase in quality_gates
+
+    assert "uv run python -m pytest -q tests/test_git_hooks_secret_guard.py" in development
+    assert "`hook-parity` job" in development
