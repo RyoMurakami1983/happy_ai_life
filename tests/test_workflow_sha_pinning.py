@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import yaml
+
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 WORKFLOW_DIRS = (
@@ -74,21 +76,45 @@ def test_quality_gates_doc_describes_sha_pinning_update_policy() -> None:
 
 
 def test_quality_workflow_runs_hook_parity_matrix() -> None:
-    content = QUALITY_WORKFLOW_PATH.read_text(encoding="utf-8")
+    workflow = yaml.safe_load(QUALITY_WORKFLOW_PATH.read_text(encoding="utf-8"))
 
-    required_phrases = (
-        "hook-parity:",
-        "hook parity (${{ matrix.os }})",
-        "fail-fast: false",
-        "os: [ubuntu-latest, macos-latest, windows-latest]",
-        "actions/setup-python@v5",
-        "python -m pip install uv",
-        "uv sync --dev",
-        "uv run python -m pytest -q tests/test_git_hooks_secret_guard.py",
-    )
+    assert isinstance(workflow, dict)
+    jobs = workflow.get("jobs")
+    assert isinstance(jobs, dict)
 
-    for phrase in required_phrases:
-        assert phrase in content
+    hook_parity = jobs.get("hook-parity")
+    assert isinstance(hook_parity, dict)
+    assert hook_parity.get("name") == "hook parity (${{ matrix.os }})"
+    assert hook_parity.get("runs-on") == "${{ matrix.os }}"
+
+    strategy = hook_parity.get("strategy")
+    assert isinstance(strategy, dict)
+    assert strategy.get("fail-fast") is False
+
+    matrix = strategy.get("matrix")
+    assert isinstance(matrix, dict)
+    assert matrix.get("os") == ["ubuntu-latest", "macos-latest", "windows-latest"]
+
+    steps = hook_parity.get("steps")
+    assert isinstance(steps, list)
+
+    uses_steps = [step.get("uses") for step in steps if isinstance(step, dict)]
+    assert "actions/checkout@v4" in uses_steps
+    assert "actions/setup-python@v5" in uses_steps
+
+    setup_python = next(step for step in steps if isinstance(step, dict) and step.get("uses") == "actions/setup-python@v5")
+    with_config = setup_python.get("with")
+    assert isinstance(with_config, dict)
+    assert with_config.get("python-version") == "3.14"
+
+    run_steps = {
+        step.get("name"): step.get("run")
+        for step in steps
+        if isinstance(step, dict) and "name" in step and "run" in step
+    }
+    assert run_steps.get("Install uv") == "python -m pip install uv==0.9.15"
+    assert run_steps.get("Sync dev dependencies") == "uv sync --dev --frozen"
+    assert run_steps.get("Run hook parity tests") == "uv run python -m pytest -q tests/test_git_hooks_secret_guard.py"
 
 
 def test_docs_describe_hook_parity_ci_and_local_command() -> None:
