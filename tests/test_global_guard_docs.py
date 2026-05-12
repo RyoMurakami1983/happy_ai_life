@@ -185,6 +185,17 @@ def test_enterprise_security_doc_defines_server_side_requirements() -> None:
             "force push 禁止",
             "branch deletion 禁止",
             "GitHub UI での目視確認を source of truth",
+            "導入順序",
+            "repo bootstrap を入れる",
+            "& $HOME\\.copilot\\scripts\\sync-to-repo.ps1 -TargetRepoPath .",
+            "& $HOME\\.copilot\\scripts\\sync-to-repo.ps1 -TargetRepoPath . -PolicyProfile Enterprise",
+            "`repo-secure-check.ps1` は不足を埋めるためのスクリプトではなく",
+            "& $HOME\\.copilot\\scripts\\repo-secure-check.ps1 -TargetRepoPath .",
+            "& $HOME\\.copilot\\scripts\\repo-secure-check.ps1 -TargetRepoPath . -Strict",
+            "human review が必要な領域",
+            "security policy を弱める変更",
+            "Rulesets / Branch Protection / Required checks の変更",
+            "Repo Bootstrap（repo 初期導入）",
         ),
     )
 

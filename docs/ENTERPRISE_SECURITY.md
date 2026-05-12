@@ -18,6 +18,34 @@
 - GitHub API や CLI による自動設定
 - organization policy の配布方法そのもの
 
+## 導入順序
+
+enterprise hardening は、次の順序で進める。
+
+1. **source of truth を確認する**  
+   先に [Enterprise Security Review](ENTERPRISE_SECURITY_REVIEW.md)、[Trust Boundary](TRUST_BOUNDARY.md)、[Hooks Governance](HOOKS_GOVERNANCE.md) を読み、repo-scoped hook を信頼の根にしない前提をそろえる。
+
+2. **repo bootstrap を入れる**  
+   先に `& $HOME\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath .` で `.github/` と workflow を同期し、必要なら `& $HOME\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath . -PolicyProfile Enterprise` で enterprise 向け guidance も入れる。続けて `& $HOME\.copilot\scripts\install-git-hooks.ps1 -TargetRepoPath .` で `.githooks/` を有効化する。`repo-secure-check.ps1` は不足を埋めるためのスクリプトではなく、次の Step で導入漏れを確認するために使う。
+
+3. **local で bootstrap の不足を確認する**  
+   `& $HOME\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath .` を実行し、CI や Git hooks の導入漏れがないか確認する。CI / automation に組み込む前提なら `-Strict` も使う。
+
+4. **GitHub 側の server-side 保護を設定する**  
+   Rulesets または Branch Protection、Required status checks、CODEOWNERS review を GitHub UI で設定する。local hook だけで完結させない。
+
+5. **human review 必須の変更を分離する**  
+   security policy を弱める変更、hook / workflow / MCP / skill / protected path に関わる変更は atomic issue と human review で扱う。
+
+## 最短チェックリスト
+
+- `repo-secure-check.ps1` が不足なし、または意図した不足だけを返す
+- `.githooks/pre-commit` と `.githooks/pre-push` が有効
+- `quality.yml` の required checks が GitHub 側で設定済み
+- `main` が Pull request 必須・direct push 禁止になっている
+- CODEOWNERS review が有効
+- security policy を弱める変更が human review に載る運用になっている
+
 ## 基本方針
 
 - **Rulesets を優先**し、使えない環境では Branch Protection を使う。
@@ -48,6 +76,9 @@
 
 3. **CODEOWNERS を先に用意する**  
    GitHub は root、`.github/`、`docs/` など複数候補を読むが、この repo では `.github/CODEOWNERS` を推奨する。
+
+4. **local bootstrap が入っていることを確認する**  
+   `repo-secure-check.ps1`、`sync-to-repo.ps1`、`install-git-hooks.ps1` で repo 側の bootstrap がそろってから GitHub 側設定へ進む。
 
 ## 手順
 
@@ -118,6 +149,29 @@ Rulesets が使えない場合は **Settings → Branches → Branch protection 
 - `--no-verify`、force push、hook 無効化、secret scan 無効化を防ぐ最終レイヤーとして GitHub 側設定を維持する。
 - `gitleaks` required check を外す変更は security policy を弱める変更として扱う。
 
+## human review が必要な領域
+
+次の変更は human review 必須とする。
+
+- Rulesets / Branch Protection / Required checks の変更
+- `.github/workflows/*.yml|*.yaml` の変更
+- `.github/hooks/**`、`.githooks/**`、`$HOME/.copilot/config.json` managed entry の変更
+- `docs/TRUST_BOUNDARY.md`、`docs/HOOKS_GOVERNANCE.md`、`docs/ENTERPRISE_SECURITY.md` の security policy 変更
+- MCP server 追加・変更、repo-local skill の許可範囲拡大
+
+local で通ることだけを根拠に merge せず、GitHub UI 上の保護設定と PR review を合わせて確認する。
+
+## 確認コマンド
+
+[Windows: PowerShell]
+```powershell
+uv run pytest -q
+uv run ruff check .
+uv run ty check .
+& $HOME\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath .
+& $HOME\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath . -Strict
+```
+
 ## 確認方法
 
 GitHub UI 上で次を確認する。
@@ -135,6 +189,7 @@ GitHub UI 上で次を確認する。
 
 ## 関連
 
+- [Repo Bootstrap（repo 初期導入）](REPO_BOOTSTRAP.md)
 - [Enterprise Security Review](ENTERPRISE_SECURITY_REVIEW.md)
 - [Trust Boundary](TRUST_BOUNDARY.md)
 - [Hooks Governance](HOOKS_GOVERNANCE.md)
