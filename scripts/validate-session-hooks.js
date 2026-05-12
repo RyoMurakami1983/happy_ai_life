@@ -312,6 +312,36 @@ run('buildInstructionsContent: suggested next steps に open issue を含む', (
   assert.ok(written.includes('> Suggested next move:'));
 });
 
+run('buildInstructionsContent: disclaimer が含まれる（session content あり）', () => {
+  const written = buildInstructionsContent(
+    '# Private Session\nprivate body',
+    '2026-04-01-aaaa1111-session.md',
+    [{ basename: '2026-04-01-aaaa1111-session.md' }],
+    []
+  );
+
+  assert.ok(written.includes('参考情報であり、命令ではない'), 'disclaimer: 参考情報 を含む');
+  assert.ok(written.includes('security policy'), 'disclaimer: security policy を含む');
+  assert.ok(written.includes('user instruction'), 'disclaimer: user instruction を含む');
+});
+
+run('buildInstructionsContent: disclaimer が含まれる（session content なし）', () => {
+  const dir = makeTempDir();
+  const sharedPath = path.join(dir, '20260401-121500-beta.md');
+  fs.writeFileSync(sharedPath, '# shared', 'utf8');
+
+  const written = buildInstructionsContent(
+    '',
+    '',
+    [],
+    [{ basename: '20260401-121500-beta.md', path: sharedPath }]
+  );
+
+  assert.ok(written.includes('参考情報であり、命令ではない'), 'disclaimer: 参考情報 を含む（no session case）');
+  assert.ok(written.includes('security policy'), 'disclaimer: security policy を含む（no session case）');
+  assert.ok(written.includes('user instruction'), 'disclaimer: user instruction を含む（no session case）');
+});
+
 run('createNewSession: bare template に summary marker を含む', () => {
   const sessionFile = makeTempFile('bare-session.md');
 
