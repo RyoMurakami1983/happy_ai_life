@@ -1286,6 +1286,42 @@ def test_guard_permission_request_falls_back_for_protected_edit_path() -> None:
     assert result.stdout == ""
 
 
+def test_guard_permission_request_ignores_active_maintenance_mode_for_protected_edit_path(tmp_path: Path) -> None:
+    state_path = tmp_path / "maintenance-mode.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "enabled": True,
+                "createdAt": datetime.now(timezone.utc).isoformat(),
+                "expiresAt": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
+                "issue": "157",
+                "branch": "feature/copilot-maintenance-mode",
+                "reason": "test",
+                "scopes": ["protectedPathEdit"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        hook_event="permissionRequest",
+        env={"HAPPY_AI_LIFE_MAINTENANCE_MODE_FILE": str(state_path)},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
 def test_guard_permission_request_falls_back_for_nested_protected_edit_path() -> None:
     result = _invoke_guard_pre_tool(
         {
