@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Guard Policy Draft Schema",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "protectedPaths",
+    "denyCommandPatterns",
+    "toolNames",
+    "pathPropertyNames",
+    "requiredTools"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "purpose": { "type": "string" },
+    "responsePolicy": { "type": "object" },
+    "protectedPaths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "denyCommandPatterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "pattern"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "pattern": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": true
+      }
+    },
+    "toolNames": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1 },
+        "uniqueItems": true
+      }
+    },
+    "pathPropertyNames": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "requiredTools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "requiredWhen"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "minimumVersion": { "type": ["string", "null"] },
+          "requiredWhen": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
