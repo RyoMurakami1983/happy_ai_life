@@ -22,7 +22,9 @@ function Resolve-HookEventName {
 
 function Resolve-MaintenanceModePath {
     $overridePath = [Environment]::GetEnvironmentVariable("HAPPY_AI_LIFE_MAINTENANCE_MODE_FILE")
-    if (-not [string]::IsNullOrWhiteSpace($overridePath)) {
+    $isPytest = -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable("PYTEST_CURRENT_TEST"))
+    $isAbsolutePath = $overridePath -match '^[A-Za-z]:[\\/]' -or $overridePath -match '^[\\/]{2}'
+    if ($isPytest -and -not [string]::IsNullOrWhiteSpace($overridePath) -and $isAbsolutePath) {
         return Resolve-FullPath -PathValue $overridePath -BasePath ([System.IO.Path]::GetFullPath((Get-Location).Path))
     }
 

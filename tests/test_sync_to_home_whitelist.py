@@ -1145,6 +1145,84 @@ def test_guard_pre_tool_allows_protected_edit_path_during_active_maintenance_mod
     assert result.stdout == ""
 
 
+def test_guard_pre_tool_ignores_maintenance_mode_override_outside_pytest(tmp_path: Path) -> None:
+    state_path = tmp_path / "maintenance-mode.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "enabled": True,
+                "createdAt": datetime.now(timezone.utc).isoformat(),
+                "expiresAt": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
+                "issue": "157",
+                "branch": "feature/copilot-maintenance-mode",
+                "reason": "test",
+                "scopes": ["protectedPathEdit"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env={
+            "HAPPY_AI_LIFE_MAINTENANCE_MODE_FILE": str(state_path),
+            "PYTEST_CURRENT_TEST": "",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+
+
+def test_guard_pre_tool_ignores_relative_maintenance_mode_override() -> None:
+    state_path = ROOT / "relative-maintenance-mode.json"
+    try:
+        state_path.write_text(
+            json.dumps(
+                {
+                    "schemaVersion": 1,
+                    "enabled": True,
+                    "createdAt": datetime.now(timezone.utc).isoformat(),
+                    "expiresAt": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
+                    "issue": "157",
+                    "branch": "feature/copilot-maintenance-mode",
+                    "reason": "test",
+                    "scopes": ["protectedPathEdit"],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = _invoke_guard_pre_tool(
+            {
+                "toolName": "edit",
+                "toolArgs": {
+                    "path": "docs/HOOKS_GOVERNANCE.md",
+                    "oldString": "old",
+                    "newString": "new",
+                },
+            },
+            cwd=ROOT,
+            env={"HAPPY_AI_LIFE_MAINTENANCE_MODE_FILE": state_path.name},
+        )
+    finally:
+        state_path.unlink(missing_ok=True)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+
+
 def test_guard_pre_tool_asks_for_protected_edit_path_after_maintenance_mode_expiry(tmp_path: Path) -> None:
     state_path = tmp_path / "maintenance-mode.json"
     state_path.write_text(
