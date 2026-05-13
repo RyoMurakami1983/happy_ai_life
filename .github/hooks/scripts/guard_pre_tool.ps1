@@ -20,6 +20,62 @@ function Resolve-HookEventName {
     return "preToolUse"
 }
 
+function Resolve-MaintenanceModePath {
+    $overridePath = [Environment]::GetEnvironmentVariable("HAPPY_AI_LIFE_MAINTENANCE_MODE_FILE")
+    if (-not [string]::IsNullOrWhiteSpace($overridePath)) {
+        return Resolve-FullPath -PathValue $overridePath -BasePath ([System.IO.Path]::GetFullPath((Get-Location).Path))
+    }
+
+    return [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot\maintenance-mode.json"))
+}
+
+function Test-MaintenanceModeScope {
+    param(
+        $State,
+        [Parameter(Mandatory = $true)][string]$Scope
+    )
+
+    $scopes = @($State.scopes)
+    foreach ($candidate in $scopes) {
+        if ([string]$candidate -eq $Scope) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Test-MaintenanceModeActive {
+    param([Parameter(Mandatory = $true)][string]$Scope)
+
+    $statePath = Resolve-MaintenanceModePath
+    if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
+        return $false
+    }
+
+    try {
+        $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+    }
+    catch {
+        return $false
+    }
+
+    if ($state.schemaVersion -ne 1 -or $state.enabled -ne $true) {
+        return $false
+    }
+
+    if (-not (Test-MaintenanceModeScope -State $state -Scope $Scope)) {
+        return $false
+    }
+
+    $expiresAt = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse([string]$state.expiresAt, [ref]$expiresAt)) {
+        return $false
+    }
+
+    return $expiresAt -gt [DateTimeOffset]::Now
+}
+
 function Write-Deny([string]$reason) {
     if ($script:HookEvent -eq "permissionRequest") {
         Write-HookResponse @{
@@ -576,6 +632,9 @@ if ($toolName -in @("create", "edit")) {
         if ($null -ne $protectedMatch) {
             if ($script:HookEvent -eq "permissionRequest") {
                 # permissionRequest cannot ask, so fall through to the normal permission flow.
+                exit 0
+            }
+            if (Test-MaintenanceModeActive -Scope "protectedPathEdit") {
                 exit 0
             }
             $reason = "Protected path change detected for {0} via {1}. This path requires an atomic issue/PR and explicit human review." -f $protectedMatch.Rule.Display, $toolName

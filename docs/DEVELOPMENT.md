@@ -74,6 +74,38 @@ feature branch を切って変更します。
 git checkout -b feature/your-feature-name
 ```
 
+#### protected path 開発時の maintenance mode
+
+`.github/hooks/**`、`.githooks/**`、`.github/workflows/**`、`docs/TRUST_BOUNDARY.md`、`docs/HOOKS_GOVERNANCE.md` などの protected path を変更する作業では、通常の guard が `ask` または human review に止めることがあります。これは通常運用では正しい挙動です。
+
+guard / policy / protected docs 自体を開発する場合だけ、人間が時限付き maintenance mode を有効にできます。AI が勝手に有効化してはいけません。
+
+```powershell
+.\scripts\enter-copilot-maintenance-mode.ps1 `
+  -Minutes 30 `
+  -Issue 157 `
+  -Branch feature/copilot-maintenance-mode `
+  -Reason "guard / policy protected path 開発"
+```
+
+既定の状態ファイルは `$HOME\.copilot\maintenance-mode.json` です。期限が切れると guard は自動的に通常モードとして扱います。最大有効時間は 120 分です。
+
+maintenance mode で緩和されるのは protected path edit の `ask` だけです。次の安全弁は維持されます。
+
+- secret scan
+- `git commit --no-verify` / `git push --no-verify` の拒否
+- force push の拒否
+- `git config core.hooksPath` など hook bypass の拒否
+- `git reset --hard` や破壊的 command の拒否
+
+作業後は明示的に終了します。
+
+```powershell
+.\scripts\exit-copilot-maintenance-mode.ps1
+```
+
+home sync 後は同じ script を `$HOME\.copilot\scripts\` から使えます。
+
 ### 5. 確認
 
 ```powershell
