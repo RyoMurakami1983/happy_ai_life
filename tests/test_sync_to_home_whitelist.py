@@ -1145,6 +1145,43 @@ def test_guard_pre_tool_allows_protected_edit_path_during_active_maintenance_mod
     assert result.stdout == ""
 
 
+def test_guard_pre_tool_asks_for_maintenance_state_edit_during_active_maintenance_mode(tmp_path: Path) -> None:
+    state_path = tmp_path / "maintenance-mode.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "enabled": True,
+                "createdAt": datetime.now(timezone.utc).isoformat(),
+                "expiresAt": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
+                "issue": "157",
+                "branch": "feature/copilot-maintenance-mode",
+                "reason": "test",
+                "scopes": ["protectedPathEdit"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": str(state_path),
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env={"HAPPY_AI_LIFE_MAINTENANCE_MODE_FILE": str(state_path)},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "Maintenance state changes require explicit human review" in response["permissionDecisionReason"]
+
+
 def test_guard_pre_tool_ignores_maintenance_mode_override_outside_pytest(tmp_path: Path) -> None:
     state_path = tmp_path / "maintenance-mode.json"
     state_path.write_text(
@@ -1232,6 +1269,43 @@ def test_guard_pre_tool_asks_for_protected_edit_path_after_maintenance_mode_expi
                 "enabled": True,
                 "createdAt": (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat(),
                 "expiresAt": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
+                "issue": "157",
+                "branch": "feature/copilot-maintenance-mode",
+                "reason": "test",
+                "scopes": ["protectedPathEdit"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env={"HAPPY_AI_LIFE_MAINTENANCE_MODE_FILE": str(state_path)},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+
+
+def test_guard_pre_tool_asks_for_protected_edit_path_when_maintenance_mode_exceeds_max_ttl(tmp_path: Path) -> None:
+    state_path = tmp_path / "maintenance-mode.json"
+    now = datetime.now(timezone.utc)
+    state_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "enabled": True,
+                "createdAt": now.isoformat(),
+                "expiresAt": (now + timedelta(minutes=121)).isoformat(),
                 "issue": "157",
                 "branch": "feature/copilot-maintenance-mode",
                 "reason": "test",

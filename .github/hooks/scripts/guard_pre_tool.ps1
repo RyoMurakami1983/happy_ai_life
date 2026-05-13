@@ -23,12 +23,22 @@ function Resolve-HookEventName {
 function Resolve-MaintenanceModePath {
     $overridePath = [Environment]::GetEnvironmentVariable("HAPPY_AI_LIFE_MAINTENANCE_MODE_FILE")
     $isPytest = -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable("PYTEST_CURRENT_TEST"))
-    $isAbsolutePath = $overridePath -match '^[A-Za-z]:[\\/]' -or $overridePath -match '^[\\/]{2}'
-    if ($isPytest -and -not [string]::IsNullOrWhiteSpace($overridePath) -and $isAbsolutePath) {
+    if ($isPytest -and -not [string]::IsNullOrWhiteSpace($overridePath) -and [System.IO.Path]::IsPathRooted($overridePath)) {
         return Resolve-FullPath -PathValue $overridePath -BasePath ([System.IO.Path]::GetFullPath((Get-Location).Path))
     }
 
     return [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot\maintenance-mode.json"))
+}
+
+function Test-SamePath {
+    param(
+        [Parameter(Mandatory = $true)][string]$Left,
+        [Parameter(Mandatory = $true)][string]$Right
+    )
+
+    $leftFull = [System.IO.Path]::GetFullPath($Left).TrimEnd('\', '/')
+    $rightFull = [System.IO.Path]::GetFullPath($Right).TrimEnd('\', '/')
+    return $leftFull.Equals($rightFull, [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 function Test-MaintenanceModeScope {
@@ -70,8 +80,17 @@ function Test-MaintenanceModeActive {
         return $false
     }
 
+    $createdAt = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse([string]$state.createdAt, [ref]$createdAt)) {
+        return $false
+    }
+
     $expiresAt = [DateTimeOffset]::MinValue
     if (-not [DateTimeOffset]::TryParse([string]$state.expiresAt, [ref]$expiresAt)) {
+        return $false
+    }
+
+    if ($expiresAt -le $createdAt -or $expiresAt -gt $createdAt.AddMinutes(120)) {
         return $false
     }
 
@@ -381,6 +400,11 @@ function Get-ProtectedPathRules {
 
     $homeCopilotRoot = [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot"))
     $rules += [pscustomobject]@{
+            Scope = "file"
+            Display = '$HOME/.copilot/maintenance-mode.json'
+            FullPath = (Resolve-MaintenanceModePath)
+        }
+    $rules += [pscustomobject]@{
             Scope = "directory"
             Display = '$HOME/.copilot/**'
             FullPath = $homeCopilotRoot
@@ -634,6 +658,11 @@ if ($toolName -in @("create", "edit")) {
         if ($null -ne $protectedMatch) {
             if ($script:HookEvent -eq "permissionRequest") {
                 # permissionRequest cannot ask, so fall through to the normal permission flow.
+                exit 0
+            }
+            if (Test-SamePath -Left $protectedMatch.Candidate -Right (Resolve-MaintenanceModePath)) {
+                $reason = "Protected path change detected for {0} via {1}. Maintenance state changes require explicit human review." -f $protectedMatch.Rule.Display, $toolName
+                Write-Ask $reason
                 exit 0
             }
             if (Test-MaintenanceModeActive -Scope "protectedPathEdit") {
