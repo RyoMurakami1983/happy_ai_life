@@ -1247,6 +1247,26 @@ def test_enter_maintenance_mode_requires_only_minutes(tmp_path: Path) -> None:
     assert "Reason:" not in result.stdout
 
 
+def test_enter_maintenance_mode_allows_missing_git(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    script_path = ROOT / "scripts" / "enter-copilot-maintenance-mode.ps1"
+
+    result = _run_maintenance_script(
+        script_path,
+        "-Minutes",
+        "30",
+        env={
+            **_isolated_home_env(home_root),
+            "PATH": "",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    state = json.loads(_maintenance_state_path(home_root).read_text(encoding="utf-8"))
+    assert state["enabled"] is True
+    assert "branch" not in state
+
+
 def test_exit_maintenance_mode_uses_canonical_state_path(tmp_path: Path) -> None:
     home_root = tmp_path / "home"
     _write_maintenance_state(home_root)
@@ -1520,6 +1540,23 @@ def test_guard_pre_tool_blocks_shell_maintenance_state_write_command() -> None:
             "toolName": "powershell",
             "toolArgs": {
                 "command": 'Set-Content -LiteralPath "$HOME\\.copilot\\maintenance-mode.json" -Value "{}"',
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "maintenance state file" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_blocks_shell_maintenance_state_write_command_with_join_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": "Set-Content -LiteralPath (Join-Path $HOME '.copilot\\maintenance-mode.json') -Value '{}'",
             },
         },
         cwd=ROOT,

@@ -701,7 +701,7 @@ $compact = ($normalized -replace "\s+", " ")
 $normalizedForPath = $normalized.Replace('/', '\')
 $maintenanceStatePath = (Resolve-MaintenanceModePath).ToLowerInvariant()
 $touchesMaintenanceModeScript = $compact -match '(^|[;&|]\s*)(?:\.\s+)?(?:&\s+)?[^;&|]*?(?:enter|exit)-copilot-maintenance-mode(?:\.ps1)?(?=\s|$|[;&|])'
-$touchesMaintenanceStateFile = $normalizedForPath.Contains($maintenanceStatePath) -or ($compact -match '(?:\$home|\$env:home|\$\{home\}|~)[\\/]\.copilot[\\/](?:[^;&|]*[\\/])?maintenance-mode\.json')
+$touchesMaintenanceStateFile = $normalizedForPath.Contains($maintenanceStatePath) -or ($compact -match 'maintenance-mode\.json') -or ($compact -match '(?:\$home|\$env:home|\$\{home\}|~)[\\/]\.copilot[\\/](?:[^;&|]*[\\/])?maintenance-mode\.json')
 
 if ($touchesMaintenanceModeScript -or $touchesMaintenanceStateFile) {
     Write-Deny "AI is not allowed to enter or exit maintenance mode, or modify the maintenance state file. Ask a human to run the maintenance scripts manually."

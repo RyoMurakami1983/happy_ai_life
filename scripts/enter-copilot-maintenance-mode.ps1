@@ -11,10 +11,16 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 function Get-CurrentBranch {
-    $branch = (& git branch --show-current 2>$null | Select-Object -First 1)
-    if (-not [string]::IsNullOrWhiteSpace($branch)) {
-        return [string]$branch
+    try {
+        $branch = (& git branch --show-current 2>$null | Select-Object -First 1)
+        if (-not [string]::IsNullOrWhiteSpace($branch)) {
+            return [string]$branch
+        }
     }
+    catch {
+        return ""
+    }
+
     return ""
 }
 
