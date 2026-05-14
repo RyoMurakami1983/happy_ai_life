@@ -2,10 +2,9 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][ValidateRange(1, 120)][int]$Minutes,
-    [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$Issue,
-    [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$Reason,
-    [string]$Branch = "",
-    [string]$StatePath = (Join-Path $HOME ".copilot\maintenance-mode.json")
+    [string]$Issue = "",
+    [string]$Reason = "",
+    [string]$Branch = ""
 )
 
 Set-StrictMode -Version Latest
@@ -13,13 +12,13 @@ $ErrorActionPreference = "Stop"
 
 function Get-CurrentBranch {
     $branch = (& git branch --show-current 2>$null | Select-Object -First 1)
-    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($branch)) {
+    if (-not [string]::IsNullOrWhiteSpace($branch)) {
         return [string]$branch
     }
     return ""
 }
 
-$resolvedStatePath = [System.IO.Path]::GetFullPath($StatePath)
+$resolvedStatePath = [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot\maintenance-mode.json"))
 $stateDirectory = Split-Path -Parent $resolvedStatePath
 if (-not (Test-Path -LiteralPath $stateDirectory)) {
     New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
@@ -31,23 +30,41 @@ if ([string]::IsNullOrWhiteSpace($effectiveBranch)) {
     $effectiveBranch = Get-CurrentBranch
 }
 
-$state = [pscustomobject][ordered]@{
+$stateProperties = [ordered]@{
     schemaVersion = 1
     enabled = $true
     createdAt = $now.ToString("o")
     expiresAt = $now.AddMinutes($Minutes).ToString("o")
-    issue = $Issue
-    branch = $effectiveBranch
-    reason = $Reason
     scopes = @("protectedPathEdit")
 }
+
+if (-not [string]::IsNullOrWhiteSpace($Issue)) {
+    $stateProperties.issue = $Issue
+}
+
+if (-not [string]::IsNullOrWhiteSpace($effectiveBranch)) {
+    $stateProperties.branch = $effectiveBranch
+}
+
+if (-not [string]::IsNullOrWhiteSpace($Reason)) {
+    $stateProperties.reason = $Reason
+}
+
+$state = [pscustomobject]$stateProperties
 
 $state | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $resolvedStatePath -Encoding utf8
 
 Write-Host "Copilot maintenance mode enabled." -ForegroundColor Yellow
 Write-Host "State: $resolvedStatePath"
-Write-Host "Issue: $Issue"
-Write-Host "Branch: $effectiveBranch"
+if (-not [string]::IsNullOrWhiteSpace($Issue)) {
+    Write-Host "Issue: $Issue"
+}
+if (-not [string]::IsNullOrWhiteSpace($effectiveBranch)) {
+    Write-Host "Branch: $effectiveBranch"
+}
+if (-not [string]::IsNullOrWhiteSpace($Reason)) {
+    Write-Host "Reason: $Reason"
+}
 Write-Host "ExpiresAt: $($state.expiresAt)"
 Write-Host "Scope: protectedPathEdit"
 Write-Host "Deny rules for secrets, destructive commands, and hook bypass remain active."

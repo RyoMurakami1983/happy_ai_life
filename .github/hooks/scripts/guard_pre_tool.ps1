@@ -21,12 +21,6 @@ function Resolve-HookEventName {
 }
 
 function Resolve-MaintenanceModePath {
-    $overridePath = [Environment]::GetEnvironmentVariable("HAPPY_AI_LIFE_MAINTENANCE_MODE_FILE")
-    $isPytest = -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable("PYTEST_CURRENT_TEST"))
-    if ($isPytest -and -not [string]::IsNullOrWhiteSpace($overridePath) -and [System.IO.Path]::IsPathRooted($overridePath)) {
-        return Resolve-FullPath -PathValue $overridePath -BasePath ([System.IO.Path]::GetFullPath((Get-Location).Path))
-    }
-
     return [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot\maintenance-mode.json"))
 }
 
@@ -665,6 +659,11 @@ if ($toolName -in @("create", "edit")) {
                 Write-Ask $reason
                 exit 0
             }
+            if ($protectedMatch.Rule.Display -eq '$HOME/.copilot/**') {
+                $reason = "Protected path change detected for {0} via {1}. Home-managed Copilot files always require explicit human review, even during maintenance mode." -f $protectedMatch.Rule.Display, $toolName
+                Write-Ask $reason
+                exit 0
+            }
             if (Test-MaintenanceModeActive -Scope "protectedPathEdit") {
                 exit 0
             }
@@ -694,6 +693,15 @@ if ([string]::IsNullOrWhiteSpace($command)) {
 
 $normalized = $command.Trim().ToLowerInvariant()
 $compact = ($normalized -replace "\s+", " ")
+$normalizedForPath = $normalized.Replace('/', '\')
+$maintenanceStatePath = (Resolve-MaintenanceModePath).ToLowerInvariant()
+$touchesMaintenanceModeScript = $compact -match '(^|[;&|]\s*)(?:\.\s+)?(?:&\s+)?[^;&|]*?(?:enter|exit)-copilot-maintenance-mode(?:\.ps1)?(?=\s|$|[;&|])'
+$touchesMaintenanceStateFile = $normalizedForPath.Contains($maintenanceStatePath) -or ($compact -match '(?:\$home|\$env:home|\$\{home\}|~)[\\/]\.copilot[\\/](?:[^;&|]*[\\/])?maintenance-mode\.json')
+
+if ($touchesMaintenanceModeScript -or $touchesMaintenanceStateFile) {
+    Write-Deny "AI is not allowed to enter or exit maintenance mode, or modify the maintenance state file. Ask a human to run the maintenance scripts manually."
+    exit 0
+}
 
 $isGitCommit = $compact -match "(^|[;&|]\s*)git\s+commit(\s|$)"
 $isGitPush = $compact -match "(^|[;&|]\s*)git\s+push(\s|$)"

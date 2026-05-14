@@ -81,14 +81,10 @@ git checkout -b feature/your-feature-name
 guard / policy / protected docs 自体を開発する場合だけ、人間が時限付き maintenance mode を有効にできます。AI が勝手に有効化してはいけません。
 
 ```powershell
-.\scripts\enter-copilot-maintenance-mode.ps1 `
-  -Minutes 30 `
-  -Issue 157 `
-  -Branch feature/copilot-maintenance-mode `
-  -Reason "guard / policy protected path 開発"
+.\scripts\enter-copilot-maintenance-mode.ps1 -Minutes 120
 ```
 
-既定の状態ファイルは `$HOME\.copilot\maintenance-mode.json` です。期限が切れると guard は自動的に通常モードとして扱います。最大有効時間は 120 分です。
+必須なのは `-Minutes` だけです。必要なら `-Issue`、`-Branch`、`-Reason` を補足できますが、状態ファイルの場所は常に `$HOME\.copilot\maintenance-mode.json` で固定です。期限が切れると guard は自動的に通常モードとして扱います。最大有効時間は 120 分です。
 
 maintenance mode で緩和されるのは protected path edit の `ask` だけです。次の安全弁は維持されます。
 

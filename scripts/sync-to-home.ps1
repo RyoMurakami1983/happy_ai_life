@@ -442,12 +442,11 @@ function Set-JsonProperty {
 function Get-ManagedPowerShellHookCommand {
     param([Parameter(Mandatory = $true)][string]$ScriptPath)
 
-    $baseCommand = 'powershell -NoProfile'
     if ([Environment]::GetEnvironmentVariable($AllowPolicyBypassEnv) -eq "1") {
-        return ('{0} -ExecutionPolicy Bypass -File "{1}"' -f $baseCommand, $ScriptPath)
+        return ('powershell -NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $ScriptPath)
     }
 
-    return ('{0} -File "{1}"' -f $baseCommand, $ScriptPath)
+    return ('if ($PSVersionTable.PSEdition -eq ''Core'') {{ & "{0}" }} elseif (Get-Command pwsh -ErrorAction SilentlyContinue) {{ & pwsh -NoProfile -File "{0}" }} else {{ & "{0}" }}' -f $ScriptPath)
 }
 
 function Get-ManagedHookEntryId {

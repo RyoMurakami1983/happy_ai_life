@@ -90,7 +90,7 @@ $env:HAPPY_ENV_ALLOW_POLICY_BYPASS = "1"
 uv run app.py home
 ```
 
-環境変数を付けずに再同期すると、managed entry は既定の `powershell -NoProfile -File ...` に戻ります。
+環境変数を付けずに再同期すると、managed entry は既定の non-bypass 呼び出しに戻ります。PowerShell 7 / Core host では script をそのまま呼び、Windows PowerShell host でも `pwsh` が見つかればそちらを優先します。
 
 ### 4. 確認
 
@@ -128,7 +128,7 @@ team repo に配る場合は marketplace install または repo bootstrap を使
 home sync は `env.HAPPY_AI_LIFE_HOOK_ID = "happy-ai-life-safety-guard"` を持つ既存 entry を同じ managed entry として更新します。managed entry には `env.HAPPY_AI_LIFE_HOOK_EVENT` も付き、`preToolUse` / `permissionRequest` のどちら向けかを script 側へ伝えます。user-owned な他の hook entry や `config.json` の他設定は保持します。
 
 ⚠️ **ExecutionPolicy Bypass は既定では入らない**  
-企業管理端末の実行ポリシーを尊重するため、managed entry は既定で `-ExecutionPolicy Bypass` を付けません。既存ユーザーは home sync を再実行して migration してください。どうしても必要な場合だけ `HAPPY_ENV_ALLOW_POLICY_BYPASS=1` を付けて再同期します。
+企業管理端末の実行ポリシーを尊重するため、managed entry は既定で `-ExecutionPolicy Bypass` を付けません。既定では PowerShell 7 / Core host をそのまま使い、Windows PowerShell host でも `pwsh` があればそちらを優先して `guard_pre_tool.ps1` を実行します。既存ユーザーは home sync を再実行して migration してください。どうしても必要な場合だけ `HAPPY_ENV_ALLOW_POLICY_BYPASS=1` を付けて再同期します。
 
 ⚠️ **`skills/` `agents/` `docs/` は触らない**  
 これらは plugin install / user-owned surface として扱うため、home sync では作成・更新・削除しません。

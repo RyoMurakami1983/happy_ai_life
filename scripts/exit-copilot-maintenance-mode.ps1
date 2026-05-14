@@ -1,14 +1,13 @@
 #requires -Version 5.1
 [CmdletBinding()]
 param(
-    [string]$StatePath = (Join-Path $HOME ".copilot\maintenance-mode.json"),
     [switch]$Remove
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$resolvedStatePath = [System.IO.Path]::GetFullPath($StatePath)
+$resolvedStatePath = [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot\maintenance-mode.json"))
 if (-not (Test-Path -LiteralPath $resolvedStatePath -PathType Leaf)) {
     Write-Host "Copilot maintenance mode state does not exist: $resolvedStatePath"
     exit 0
