@@ -84,11 +84,16 @@ function Test-MaintenanceModeActive {
         return $false
     }
 
-    if ($expiresAt -le $createdAt -or $expiresAt -gt $createdAt.AddMinutes(120)) {
+    $now = [DateTimeOffset]::Now
+    if ($createdAt -gt $now) {
         return $false
     }
 
-    return $expiresAt -gt [DateTimeOffset]::Now
+    if ($expiresAt -le $createdAt -or $expiresAt -gt $createdAt.AddMinutes(120) -or $expiresAt -gt $now.AddMinutes(120)) {
+        return $false
+    }
+
+    return $expiresAt -gt $now
 }
 
 function Write-Deny([string]$reason) {
@@ -655,8 +660,8 @@ if ($toolName -in @("create", "edit")) {
                 exit 0
             }
             if (Test-SamePath -Left $protectedMatch.Candidate -Right (Resolve-MaintenanceModePath)) {
-                $reason = "Protected path change detected for {0} via {1}. Maintenance state changes require explicit human review." -f $protectedMatch.Rule.Display, $toolName
-                Write-Ask $reason
+                $reason = "Protected path change detected for {0} via {1}. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits." -f $protectedMatch.Rule.Display, $toolName
+                Write-Deny $reason
                 exit 0
             }
             if ($protectedMatch.Rule.Display -eq '$HOME/.copilot/**') {

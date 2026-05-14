@@ -6,7 +6,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, cast
@@ -267,25 +266,42 @@ def _invoke_guard_pre_tool(
     )
     effective_env = os.environ.copy()
     effective_env["HAPPY_AI_LIFE_HOOK_EVENT"] = hook_event
-    isolated_home = Path(tempfile.gettempdir()) / f"pytest-home-{uuid.uuid4().hex}"
-    effective_env.update(_isolated_home_env(isolated_home))
     if env is not None:
         effective_env.update(env)
-    return subprocess.run(
-        [
-            _powershell_executable(),
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            command,
-        ],
-        cwd=cwd,
-        check=False,
-        capture_output=True,
-        text=True,
-        env=effective_env,
-    )
+    if all(key in effective_env for key in ("HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH")):
+        return subprocess.run(
+            [
+                _powershell_executable(),
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                command,
+            ],
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+            env=effective_env,
+        )
+
+    with tempfile.TemporaryDirectory(prefix="pytest-home-") as temp_home:
+        effective_env.update(_isolated_home_env(Path(temp_home)))
+        return subprocess.run(
+            [
+                _powershell_executable(),
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                command,
+            ],
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+            env=effective_env,
+        )
 
 
 def _invoke_bash_guard_pre_tool(
@@ -1283,8 +1299,8 @@ def test_guard_pre_tool_asks_for_maintenance_state_edit_during_active_maintenanc
 
     assert result.returncode == 0, result.stdout + result.stderr
     response = json.loads(result.stdout)
-    assert response["permissionDecision"] == "ask"
-    assert "Maintenance state changes require explicit human review" in response["permissionDecisionReason"]
+    assert response["permissionDecision"] == "deny"
+    assert "Maintenance state changes must go through the maintenance scripts" in response["permissionDecisionReason"]
 
 
 def test_guard_pre_tool_ignores_maintenance_mode_file_env_override(tmp_path: Path) -> None:
@@ -1380,6 +1396,33 @@ def test_guard_pre_tool_asks_for_protected_edit_path_when_maintenance_mode_excee
         home_root,
         created_at=now,
         expires_at=now + timedelta(minutes=121),
+    )
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+
+
+def test_guard_pre_tool_asks_for_protected_edit_path_with_future_created_at(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    future_created_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+    _write_maintenance_state(
+        home_root,
+        created_at=future_created_at,
+        expires_at=future_created_at + timedelta(minutes=30),
     )
 
     result = _invoke_guard_pre_tool(
@@ -1738,3 +1781,31 @@ def test_guard_pre_tool_asks_for_home_managed_path_during_active_maintenance_mod
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "ask"
     assert "$HOME/.copilot/**" in response["permissionDecisionReason"]
+
+
+def test_invoke_guard_pre_tool_uses_provided_home_without_creating_temp_dir(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    home_root = tmp_path / "home"
+
+    class _UnexpectedTemporaryDirectory:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            raise AssertionError("TemporaryDirectory should not be used when HOME is provided")
+
+    monkeypatch.setattr(tempfile, "TemporaryDirectory", _UnexpectedTemporaryDirectory)
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
