@@ -442,12 +442,11 @@ function Set-JsonProperty {
 function Get-ManagedPowerShellHookCommand {
     param([Parameter(Mandatory = $true)][string]$ScriptPath)
 
-    $baseCommand = 'powershell -NoProfile'
     if ([Environment]::GetEnvironmentVariable($AllowPolicyBypassEnv) -eq "1") {
-        return ('{0} -ExecutionPolicy Bypass -File "{1}"' -f $baseCommand, $ScriptPath)
+        return ('powershell -NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $ScriptPath)
     }
 
-    return ('{0} -File "{1}"' -f $baseCommand, $ScriptPath)
+    return ('if ($PSVersionTable.PSEdition -eq ''Core'') {{ & "{0}" }} elseif (Get-Command pwsh -ErrorAction SilentlyContinue) {{ & pwsh -NoProfile -File "{0}" }} else {{ & "{0}" }}' -f $ScriptPath)
 }
 
 function Get-ManagedHookEntryId {
@@ -733,6 +732,14 @@ $trackedFilePlans = @(
     [pscustomobject]@{
         Label = "scripts/repo-secure-check.ps1"
         Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "repo-secure-check.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "repo-secure-check.ps1") -PreviewPath "scripts/repo-secure-check.ps1")
+    },
+    [pscustomobject]@{
+        Label = "scripts/enter-copilot-maintenance-mode.ps1"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "enter-copilot-maintenance-mode.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "enter-copilot-maintenance-mode.ps1") -PreviewPath "scripts/enter-copilot-maintenance-mode.ps1")
+    },
+    [pscustomobject]@{
+        Label = "scripts/exit-copilot-maintenance-mode.ps1"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "exit-copilot-maintenance-mode.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "exit-copilot-maintenance-mode.ps1") -PreviewPath "scripts/exit-copilot-maintenance-mode.ps1")
     },
     [pscustomobject]@{
         Label = "hooks/scripts/guard_pre_tool.ps1"

@@ -23,7 +23,7 @@ $HOME/.copilot/config.json
 $HOME/.copilot/hooks/scripts/**
 ```
 
-home sync は `config.json` の managed entry と `hooks/scripts/guard_pre_tool.ps1` を配布し、この managed entry を正式な enterprise/global guard として扱う。managed entry は `preToolUse` と `permissionRequest` の両方に入り、同じ script を event env 付きで呼び分ける。
+home sync は `config.json` の managed entry と `hooks/scripts/guard_pre_tool.ps1` を配布し、この managed entry を正式な enterprise/global guard として扱う。managed entry は `preToolUse` と `permissionRequest` の両方に入り、同じ script を event env 付きで呼び分ける。既定では `-ExecutionPolicy Bypass` を付けず、PowerShell 7 / Core host をそのまま使い、Windows PowerShell host では `pwsh` があればそちらを優先する。
 
 役割:
 

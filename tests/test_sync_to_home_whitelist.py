@@ -5,6 +5,8 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, cast
 
@@ -129,6 +131,8 @@ def _create_minimal_source_root(base: Path) -> Path:
     (scripts_dir / "sync-to-repo.ps1").write_text("Write-Host 'sync repo'\n", encoding="utf-8")
     (scripts_dir / "install-git-hooks.ps1").write_text("Write-Host 'install hooks'\n", encoding="utf-8")
     (scripts_dir / "repo-secure-check.ps1").write_text("Write-Host 'secure check'\n", encoding="utf-8")
+    (scripts_dir / "enter-copilot-maintenance-mode.ps1").write_text("Write-Host 'enter maintenance'\n", encoding="utf-8")
+    (scripts_dir / "exit-copilot-maintenance-mode.ps1").write_text("Write-Host 'exit maintenance'\n", encoding="utf-8")
     return base
 
 
@@ -157,11 +161,100 @@ def _managed_hooks(config: dict[str, Any], event_name: str) -> list[dict[str, An
     ]
 
 
+def _expected_managed_hook_command(script_path: Path, *, allow_policy_bypass: bool = False) -> str:
+    normalized = script_path.as_posix().replace("/", "\\")
+    if allow_policy_bypass:
+        return 'powershell -NoProfile -ExecutionPolicy Bypass -File "%s"' % normalized
+
+    return (
+        "if ($PSVersionTable.PSEdition -eq 'Core') { & \"%s\" } "
+        "elseif (Get-Command pwsh -ErrorAction SilentlyContinue) { & pwsh -NoProfile -File \"%s\" } "
+        "else { & \"%s\" }"
+    ) % (normalized, normalized, normalized)
+
+
+def _isolated_home_env(home_root: Path) -> dict[str, str]:
+    home_root.mkdir(parents=True, exist_ok=True)
+    drive, tail = os.path.splitdrive(str(home_root))
+    if not drive:
+        raise ValueError(f"Expected drive-qualified Windows path, got: {home_root}")
+
+    return {
+        "HOME": str(home_root),
+        "USERPROFILE": str(home_root),
+        "HOMEDRIVE": drive,
+        "HOMEPATH": tail or "\\",
+    }
+
+
+def _maintenance_state_path(home_root: Path) -> Path:
+    return home_root / ".copilot" / "maintenance-mode.json"
+
+
+def _write_maintenance_state(
+    home_root: Path,
+    *,
+    enabled: bool = True,
+    created_at: datetime | None = None,
+    expires_at: datetime | None = None,
+) -> Path:
+    state_path = _maintenance_state_path(home_root)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(timezone.utc)
+    effective_created_at = created_at or now
+    effective_expires_at = expires_at or (effective_created_at + timedelta(minutes=30))
+    state_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "enabled": enabled,
+                "createdAt": effective_created_at.isoformat(),
+                "expiresAt": effective_expires_at.isoformat(),
+                "issue": "157",
+                "branch": "feature/copilot-maintenance-mode",
+                "reason": "test",
+                "scopes": ["protectedPathEdit"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return state_path
+
+
+def _run_maintenance_script(
+    script_path: Path,
+    *args: str,
+    env: dict[str, str] | None = None,
+    cwd: Path = ROOT,
+) -> subprocess.CompletedProcess[str]:
+    effective_env = os.environ.copy()
+    if env:
+        effective_env.update(env)
+
+    return subprocess.run(
+        [
+            _powershell_executable(),
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script_path),
+            *args,
+        ],
+        cwd=cwd,
+        check=False,
+        capture_output=True,
+        text=True,
+        env=effective_env,
+    )
+
+
 def _invoke_guard_pre_tool(
     payload: dict[str, object],
     cwd: Path,
     *,
     hook_event: str = "preToolUse",
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
     payload_json = json.dumps(payload)
@@ -171,23 +264,44 @@ def _invoke_guard_pre_tool(
         "'@ | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'"
         % (_powershell_executable(), script)
     )
-    env = os.environ.copy()
-    env["HAPPY_AI_LIFE_HOOK_EVENT"] = hook_event
-    return subprocess.run(
-        [
-            _powershell_executable(),
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            command,
-        ],
-        cwd=cwd,
-        check=False,
-        capture_output=True,
-        text=True,
-        env=env,
-    )
+    effective_env = os.environ.copy()
+    effective_env["HAPPY_AI_LIFE_HOOK_EVENT"] = hook_event
+    if env is not None:
+        effective_env.update(env)
+    if all(key in effective_env for key in ("HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH")):
+        return subprocess.run(
+            [
+                _powershell_executable(),
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                command,
+            ],
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+            env=effective_env,
+        )
+
+    with tempfile.TemporaryDirectory(prefix="pytest-home-") as temp_home:
+        effective_env.update(_isolated_home_env(Path(temp_home)))
+        return subprocess.run(
+            [
+                _powershell_executable(),
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                command,
+            ],
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+            env=effective_env,
+        )
 
 
 def _invoke_bash_guard_pre_tool(
@@ -238,6 +352,8 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     assert (destination / "scripts" / "sync-to-repo.ps1").exists()
     assert (destination / "scripts" / "install-git-hooks.ps1").exists()
     assert (destination / "scripts" / "repo-secure-check.ps1").exists()
+    assert (destination / "scripts" / "enter-copilot-maintenance-mode.ps1").exists()
+    assert (destination / "scripts" / "exit-copilot-maintenance-mode.ps1").exists()
     assert (destination / "hooks" / "scripts" / "guard_pre_tool.ps1").exists()
     assert (destination / "copilot-instructions.md").exists()
     assert (destination / "managed-manifest.json").exists()
@@ -406,7 +522,7 @@ def test_sync_to_home_migrates_managed_hook_from_execution_policy_bypass(tmp_pat
 
     assert result.returncode == 0, result.stdout + result.stderr
     config = json.loads(config_path.read_text(encoding="utf-8"))
-    expected_command = 'powershell -NoProfile -File "%s"' % managed_script_path.as_posix().replace("/", "\\")
+    expected_command = _expected_managed_hook_command(managed_script_path)
     for event_name in ("preToolUse", "permissionRequest"):
         managed_hook = _managed_hooks(config, event_name)[0]
         assert managed_hook["powershell"] == expected_command
@@ -436,14 +552,14 @@ def test_sync_to_home_does_not_rewrite_formatting_only_differences(tmp_path: Pat
     archive_root = tmp_path / "archive"
     destination.mkdir(parents=True)
     config_path = destination / "config.json"
-    managed_script = (destination / "hooks" / "scripts" / "guard_pre_tool.ps1").as_posix().replace("/", "\\")
+    managed_command = _expected_managed_hook_command(destination / "hooks" / "scripts" / "guard_pre_tool.ps1")
     config_text = """{
   "hooks": {
     "preToolUse": [
       {
         "timeoutSec": 10,
         "cwd": ".",
-        "powershell": "powershell -NoProfile -File \\"%s\\"",
+        "powershell": "%s",
         "type": "command",
         "env": {
           "HAPPY_AI_LIFE_HOOK_ID": "happy-ai-life-safety-guard",
@@ -455,7 +571,7 @@ def test_sync_to_home_does_not_rewrite_formatting_only_differences(tmp_path: Pat
       {
         "timeoutSec": 10,
         "cwd": ".",
-        "powershell": "powershell -NoProfile -File \\"%s\\"",
+        "powershell": "%s",
         "type": "command",
         "env": {
           "HAPPY_AI_LIFE_HOOK_ID": "happy-ai-life-safety-guard",
@@ -466,7 +582,10 @@ def test_sync_to_home_does_not_rewrite_formatting_only_differences(tmp_path: Pat
   },
   "theme": "dark"
 }
-""" % (managed_script, managed_script)
+""" % (
+        managed_command.replace("\\", "\\\\").replace('"', '\\"'),
+        managed_command.replace("\\", "\\\\").replace('"', '\\"'),
+    )
     config_path.write_text(config_text, encoding="utf-8")
 
     result = _run_sync(source_root, destination, archive_root=archive_root, dry_run=False)
@@ -495,7 +614,10 @@ def test_sync_to_home_allows_explicit_execution_policy_bypass_opt_in(tmp_path: P
     for event_name in ("preToolUse", "permissionRequest"):
         managed_hooks = _managed_hooks(config, event_name)
         assert len(managed_hooks) == 1
-        assert "-ExecutionPolicy Bypass" in managed_hooks[0]["powershell"]
+        assert managed_hooks[0]["powershell"] == _expected_managed_hook_command(
+            destination / "hooks" / "scripts" / "guard_pre_tool.ps1",
+            allow_policy_bypass=True,
+        )
         assert managed_hooks[0]["env"]["HAPPY_AI_LIFE_HOOK_EVENT"] == event_name
 
 
@@ -529,6 +651,7 @@ def test_repo_safety_guard_defaults_to_no_execution_policy_bypass() -> None:
     powershell_command = config["hooks"]["preToolUse"][0]["powershell"]
     assert "guard_pre_tool.ps1" in powershell_command
     assert "-ExecutionPolicy Bypass" not in powershell_command
+    assert "$PSVersionTable.PSEdition -eq 'Core'" in powershell_command
 
 
 def test_sync_to_home_writes_config_json_without_bom(tmp_path: Path) -> None:
@@ -1102,6 +1225,349 @@ def test_guard_pre_tool_asks_for_protected_edit_path() -> None:
     assert "explicit human review" in response["permissionDecisionReason"]
 
 
+def test_enter_maintenance_mode_requires_only_minutes(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    script_path = ROOT / "scripts" / "enter-copilot-maintenance-mode.ps1"
+
+    result = _run_maintenance_script(
+        script_path,
+        "-Minutes",
+        "30",
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    state = json.loads(_maintenance_state_path(home_root).read_text(encoding="utf-8"))
+    assert state["enabled"] is True
+    assert state["scopes"] == ["protectedPathEdit"]
+    assert "issue" not in state
+    assert "reason" not in state
+    assert "State: " in result.stdout
+    assert "Issue:" not in result.stdout
+    assert "Reason:" not in result.stdout
+
+
+def test_enter_maintenance_mode_allows_missing_git(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    script_path = ROOT / "scripts" / "enter-copilot-maintenance-mode.ps1"
+
+    result = _run_maintenance_script(
+        script_path,
+        "-Minutes",
+        "30",
+        env={
+            **_isolated_home_env(home_root),
+            "PATH": "",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    state = json.loads(_maintenance_state_path(home_root).read_text(encoding="utf-8"))
+    assert state["enabled"] is True
+    assert "branch" not in state
+
+
+def test_exit_maintenance_mode_uses_canonical_state_path(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    _write_maintenance_state(home_root)
+    script_path = ROOT / "scripts" / "exit-copilot-maintenance-mode.ps1"
+
+    result = _run_maintenance_script(script_path, env=_isolated_home_env(home_root))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    state = json.loads(_maintenance_state_path(home_root).read_text(encoding="utf-8"))
+    assert state["enabled"] is False
+
+
+def test_guard_pre_tool_allows_protected_edit_path_during_active_maintenance_mode(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    _write_maintenance_state(home_root)
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_guard_pre_tool_asks_for_maintenance_state_edit_during_active_maintenance_mode(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    state_path = _write_maintenance_state(home_root)
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": str(state_path),
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Maintenance state changes must go through the maintenance scripts" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_ignores_maintenance_mode_file_env_override(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    state_path = tmp_path / "override-maintenance-mode.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "enabled": True,
+                "createdAt": datetime.now(timezone.utc).isoformat(),
+                "expiresAt": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
+                "scopes": ["protectedPathEdit"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env={
+            **_isolated_home_env(home_root),
+            "HAPPY_AI_LIFE_MAINTENANCE_MODE_FILE": str(state_path),
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+
+
+def test_guard_pre_tool_ignores_relative_maintenance_mode_override(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env={
+            **_isolated_home_env(home_root),
+            "HAPPY_AI_LIFE_MAINTENANCE_MODE_FILE": "relative-maintenance-mode.json",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+
+
+def test_guard_pre_tool_asks_for_protected_edit_path_after_maintenance_mode_expiry(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    _write_maintenance_state(
+        home_root,
+        created_at=datetime.now(timezone.utc) - timedelta(hours=2),
+        expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+    )
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+
+
+def test_guard_pre_tool_asks_for_protected_edit_path_when_maintenance_mode_exceeds_max_ttl(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    now = datetime.now(timezone.utc)
+    _write_maintenance_state(
+        home_root,
+        created_at=now,
+        expires_at=now + timedelta(minutes=121),
+    )
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+
+
+def test_guard_pre_tool_asks_for_protected_edit_path_with_future_created_at(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    future_created_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+    _write_maintenance_state(
+        home_root,
+        created_at=future_created_at,
+        expires_at=future_created_at + timedelta(minutes=30),
+    )
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+
+
+def test_guard_pre_tool_asks_for_protected_edit_path_with_invalid_maintenance_expiry(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    state_path = _maintenance_state_path(home_root)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "enabled": True,
+                "createdAt": datetime.now(timezone.utc).isoformat(),
+                "expiresAt": "not-a-date",
+                "issue": "157",
+                "branch": "feature/copilot-maintenance-mode",
+                "reason": "test",
+                "scopes": ["protectedPathEdit"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+
+
+def test_guard_pre_tool_keeps_deny_commands_blocked_during_maintenance_mode(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    _write_maintenance_state(home_root)
+
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git commit -n -m test"}},
+        cwd=ROOT,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "bypass Git hooks" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_blocks_shell_enter_maintenance_mode_command() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": ".\\scripts\\enter-copilot-maintenance-mode.ps1 -Minutes 30",
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "enter or exit maintenance mode" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_blocks_shell_maintenance_state_write_command() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": 'Set-Content -LiteralPath "$HOME\\.copilot\\maintenance-mode.json" -Value "{}"',
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "maintenance state file" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_blocks_shell_maintenance_state_write_command_with_join_path() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": "Set-Content -LiteralPath (Join-Path $HOME '.copilot\\maintenance-mode.json') -Value '{}'",
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "maintenance state file" in response["permissionDecisionReason"]
+
+
 def test_guard_pre_tool_asks_for_protected_edit_path_from_stringified_json() -> None:
     result = _invoke_guard_pre_tool(
         {
@@ -1135,6 +1601,28 @@ def test_guard_permission_request_falls_back_for_protected_edit_path() -> None:
         },
         cwd=ROOT,
         hook_event="permissionRequest",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_guard_permission_request_ignores_active_maintenance_mode_for_protected_edit_path(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    _write_maintenance_state(home_root)
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        hook_event="permissionRequest",
+        env=_isolated_home_env(home_root),
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -1307,3 +1795,54 @@ def test_guard_pre_tool_asks_for_home_managed_path_with_home_prefix() -> None:
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "ask"
     assert "$HOME/.copilot/**" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_asks_for_home_managed_path_during_active_maintenance_mode(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    _write_maintenance_state(home_root)
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "$HOME/.copilot/config.json",
+                "oldString": "{}",
+                "newString": '{"hooks":{}}',
+            },
+        },
+        cwd=ROOT,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "$HOME/.copilot/**" in response["permissionDecisionReason"]
+
+
+def test_invoke_guard_pre_tool_uses_provided_home_without_creating_temp_dir(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    home_root = tmp_path / "home"
+
+    class _UnexpectedTemporaryDirectory:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            raise AssertionError("TemporaryDirectory should not be used when HOME is provided")
+
+    monkeypatch.setattr(tempfile, "TemporaryDirectory", _UnexpectedTemporaryDirectory)
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr

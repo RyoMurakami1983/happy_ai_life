@@ -438,7 +438,7 @@ def test_repo_secure_check_does_not_require_jq_for_windows_powershell_variant(tm
                         {
                             "type": "command",
                             "bash": "bash .github/hooks/scripts/guard_pre_tool.sh",
-                            "powershell": "powershell -File .github/hooks/scripts/guard_pre_tool.ps1",
+                            "powershell": "if ($PSVersionTable.PSEdition -eq 'Core') { & '.github\\hooks\\scripts\\guard_pre_tool.ps1' } elseif (Get-Command pwsh -ErrorAction SilentlyContinue) { & pwsh -NoProfile -File '.github\\hooks\\scripts\\guard_pre_tool.ps1' } else { & '.github\\hooks\\scripts\\guard_pre_tool.ps1' }",
                         }
                     ]
                 },

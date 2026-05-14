@@ -18,6 +18,8 @@ def test_repo_managed_manifest_lists_home_sync_scope() -> None:
         "scripts/sync-to-repo.ps1",
         "scripts/install-git-hooks.ps1",
         "scripts/repo-secure-check.ps1",
+        "scripts/enter-copilot-maintenance-mode.ps1",
+        "scripts/exit-copilot-maintenance-mode.ps1",
         "hooks/scripts/guard_pre_tool.ps1",
     ]
     assert manifest["managedDirectories"] == ["repo-template/"]

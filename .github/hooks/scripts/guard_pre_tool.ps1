@@ -20,6 +20,82 @@ function Resolve-HookEventName {
     return "preToolUse"
 }
 
+function Resolve-MaintenanceModePath {
+    return [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot\maintenance-mode.json"))
+}
+
+function Test-SamePath {
+    param(
+        [Parameter(Mandatory = $true)][string]$Left,
+        [Parameter(Mandatory = $true)][string]$Right
+    )
+
+    $leftFull = [System.IO.Path]::GetFullPath($Left).TrimEnd('\', '/')
+    $rightFull = [System.IO.Path]::GetFullPath($Right).TrimEnd('\', '/')
+    return $leftFull.Equals($rightFull, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Test-MaintenanceModeScope {
+    param(
+        $State,
+        [Parameter(Mandatory = $true)][string]$Scope
+    )
+
+    $scopes = @($State.scopes)
+    foreach ($candidate in $scopes) {
+        if ([string]$candidate -eq $Scope) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Test-MaintenanceModeActive {
+    param([Parameter(Mandatory = $true)][string]$Scope)
+
+    $statePath = Resolve-MaintenanceModePath
+    if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
+        return $false
+    }
+
+    try {
+        $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+    }
+    catch {
+        return $false
+    }
+
+    if ($state.schemaVersion -ne 1 -or $state.enabled -ne $true) {
+        return $false
+    }
+
+    if (-not (Test-MaintenanceModeScope -State $state -Scope $Scope)) {
+        return $false
+    }
+
+    $createdAt = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse([string]$state.createdAt, [ref]$createdAt)) {
+        return $false
+    }
+
+    $expiresAt = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse([string]$state.expiresAt, [ref]$expiresAt)) {
+        return $false
+    }
+
+    $now = [DateTimeOffset]::Now
+    if ($createdAt -gt $now) {
+        return $false
+    }
+
+    if ($expiresAt -le $createdAt -or $expiresAt -gt $createdAt.AddMinutes(120) -or $expiresAt -gt $now.AddMinutes(120)) {
+        return $false
+    }
+
+    return $expiresAt -gt $now
+}
+
 function Write-Deny([string]$reason) {
     if ($script:HookEvent -eq "permissionRequest") {
         Write-HookResponse @{
@@ -323,6 +399,11 @@ function Get-ProtectedPathRules {
 
     $homeCopilotRoot = [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot"))
     $rules += [pscustomobject]@{
+            Scope = "file"
+            Display = '$HOME/.copilot/maintenance-mode.json'
+            FullPath = (Resolve-MaintenanceModePath)
+        }
+    $rules += [pscustomobject]@{
             Scope = "directory"
             Display = '$HOME/.copilot/**'
             FullPath = $homeCopilotRoot
@@ -578,6 +659,19 @@ if ($toolName -in @("create", "edit")) {
                 # permissionRequest cannot ask, so fall through to the normal permission flow.
                 exit 0
             }
+            if (Test-SamePath -Left $protectedMatch.Candidate -Right (Resolve-MaintenanceModePath)) {
+                $reason = "Protected path change detected for {0} via {1}. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits." -f $protectedMatch.Rule.Display, $toolName
+                Write-Deny $reason
+                exit 0
+            }
+            if ($protectedMatch.Rule.Display -eq '$HOME/.copilot/**') {
+                $reason = "Protected path change detected for {0} via {1}. Home-managed Copilot files always require explicit human review, even during maintenance mode." -f $protectedMatch.Rule.Display, $toolName
+                Write-Ask $reason
+                exit 0
+            }
+            if (Test-MaintenanceModeActive -Scope "protectedPathEdit") {
+                exit 0
+            }
             $reason = "Protected path change detected for {0} via {1}. This path requires an atomic issue/PR and explicit human review." -f $protectedMatch.Rule.Display, $toolName
             Write-Ask $reason
             exit 0
@@ -604,6 +698,15 @@ if ([string]::IsNullOrWhiteSpace($command)) {
 
 $normalized = $command.Trim().ToLowerInvariant()
 $compact = ($normalized -replace "\s+", " ")
+$normalizedForPath = $normalized.Replace('/', '\')
+$maintenanceStatePath = (Resolve-MaintenanceModePath).ToLowerInvariant()
+$touchesMaintenanceModeScript = $compact -match '(^|[;&|]\s*)(?:\.\s+)?(?:&\s+)?[^;&|]*?(?:enter|exit)-copilot-maintenance-mode(?:\.ps1)?(?=\s|$|[;&|])'
+$touchesMaintenanceStateFile = $normalizedForPath.Contains($maintenanceStatePath) -or ($compact -match 'maintenance-mode\.json') -or ($compact -match '(?:\$home|\$env:home|\$\{home\}|~)[\\/]\.copilot[\\/](?:[^;&|]*[\\/])?maintenance-mode\.json')
+
+if ($touchesMaintenanceModeScript -or $touchesMaintenanceStateFile) {
+    Write-Deny "AI is not allowed to enter or exit maintenance mode, or modify the maintenance state file. Ask a human to run the maintenance scripts manually."
+    exit 0
+}
 
 $isGitCommit = $compact -match "(^|[;&|]\s*)git\s+commit(\s|$)"
 $isGitPush = $compact -match "(^|[;&|]\s*)git\s+push(\s|$)"
