@@ -38,17 +38,22 @@ copilot plugin install happy-coding@happy-ai-life-marketplace
 
 この repo には Copilot CLI plugin、bootstrap script、品質確認用ツールが入っています。
 
-1. **設計** — `/design-workshop` または design-workshop skill を使う
-2. **計画** — PLAN mode で実装を分解する
-3. **確認** — PR 前に品質チェックを流す
+1. **hooks を有効化** — clone 直後に `./scripts/install-git-hooks.ps1` を実行し、`git config --local core.hooksPath` が `repo-template/.githooks` を返すことを確認する
+2. **設計** — `/design-workshop` または design-workshop skill を使う
+3. **計画** — PLAN mode で実装を分解する
+4. **確認** — PR 前に品質チェックを流す
 
 ```powershell
+./scripts/install-git-hooks.ps1
+git config --local core.hooksPath
 uv run pytest -q
 uv run ruff check .
 uv run ty check .
 ```
 
-詳しくは [開発ガイド](docs/DEVELOPMENT.md) を参照してください。
+この母艦 repo では `repo-template/.githooks/` が hook 正本です。bootstrap 先の通常 repo では `sync-to-repo.ps1` で `.githooks/` へ配布し、`install-git-hooks.ps1` が `core.hooksPath=.githooks` を設定します。
+
+詳しくは [開発ガイド](docs/DEVELOPMENT.md) と [Repo Bootstrap（repo 初期導入）](docs/REPO_BOOTSTRAP.md) を参照してください。
 
 ## ✅ 品質ゲート
 

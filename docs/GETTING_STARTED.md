@@ -79,7 +79,11 @@ copilot plugin marketplace remove happy-ai-life-marketplace
 git clone https://github.com/RyoMurakami1983/happy_ai_life.git
 cd happy_ai_life
 uv sync --dev
+./scripts/install-git-hooks.ps1
+git config --local core.hooksPath
 ```
+
+この repo 自体を変更する場合は、`repo-template/.githooks` を `core.hooksPath` に結び付けるところまでを初期セットアップに含めます。`repo-template/.githooks` が母艦 repo の hook 正本で、clone 直後は自動で有効化されません。
 
 ### 個人環境へ反映
 
@@ -142,11 +146,13 @@ cat $HOME/.copilot/copilot-instructions.md
 4. 反映を確認します。
 
    ```powershell
-   cd <your-repo-path>
-   git status
-   ```
+    cd <your-repo-path>
+    git status
+    git config --local core.hooksPath
+    & $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath . -Strict
+    ```
 
-   `.github/` と `.githooks/` の追加が見えれば正常です。
+    `.github/` と `.githooks/` の追加が見え、`core.hooksPath` が `.githooks` を返し、`repo-secure-check.ps1 -Strict` が成功すれば正常です。
 
 ### 注意
 

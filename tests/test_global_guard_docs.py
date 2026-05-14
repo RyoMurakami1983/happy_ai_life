@@ -63,6 +63,13 @@ def test_repo_bootstrap_docs_define_policy_profile_enterprise() -> None:
             "enterprise 向けの追加 guidance を明示 opt-in で入れる",
             "organization policy や GitHub Rulesets を自動設定するものではありません",
             "以前 `Enterprise` で配った `.github/instructions/enterprise.instructions.md` も取り除かれます",
+            "& $HOME/.copilot/scripts/install-git-hooks.ps1 -TargetRepoPath C:\\your-repo",
+            "`.githooks` と `repo-template/.githooks` の責務差",
+            "母艦 repo が配布する hook の正本",
+            "bootstrap 先 repo で実際に参照される hook 配置先",
+            "git config --local core.hooksPath",
+            "& $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath . -Strict",
+            "`coreHooksPath` / `gitHooksDirectory` / `toolDependencies`",
         ),
     )
 
@@ -151,6 +158,10 @@ def test_related_docs_use_global_guard_naming() -> None:
         (
             "managed な user-level safety hook entry",
             "enterprise/global guard",
+            "./scripts/install-git-hooks.ps1",
+            "git config --local core.hooksPath",
+            "repo-template/.githooks",
+            "& $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath . -Strict",
         ),
     )
     assert "managed な enterprise/global guard entry" in security_review
@@ -208,6 +219,9 @@ def test_readme_and_reference_link_enterprise_security_doc() -> None:
     assert "[Enterprise Security（企業向け保護設定）](ENTERPRISE_SECURITY.md)" in reference
     assert "[Trust Boundary](docs/TRUST_BOUNDARY.md)" in readme
     assert "[Trust Boundary](TRUST_BOUNDARY.md)" in reference
+    assert "./scripts/install-git-hooks.ps1" in readme
+    assert "git config --local core.hooksPath" in readme
+    assert "repo-template/.githooks" in readme
 
 
 def test_security_doc_defines_secret_incident_response() -> None:

@@ -72,16 +72,27 @@ bootstrap を実行すると、主に次が入ります。
 
 `.githooks/pre-commit` と `.githooks/pre-push` を使える状態にします。
 
+### `.githooks` と `repo-template/.githooks` の責務差
+
+| path | 役割 | どこで使うか |
+|------|------|--------------|
+| `repo-template/.githooks/` | 母艦 repo が配布する hook の正本 | この母艦 repo と、配布元としての source of truth |
+| `.githooks/` | bootstrap 先 repo で実際に参照される hook 配置先 | 各 target repo の local Git hooks |
+
+母艦 repo 自体では `install-git-hooks.ps1` が `core.hooksPath=repo-template/.githooks` を設定します。  
+bootstrap 先の通常 repo では `sync-to-repo.ps1` が `repo-template/.githooks/` の内容を `.githooks/` へ配布し、`install-git-hooks.ps1` が `core.hooksPath=.githooks` を設定します。
+
 ### Step 4: 反映を確認
 
 ```powershell
 cd C:\your-repo
 git status
-git config core.hooksPath
+git config --local core.hooksPath
 & $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath .
+& $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath . -Strict
 ```
 
-`core.hooksPath` が `.githooks` になっていれば正常です。
+`core.hooksPath` が `.githooks` になっており、`repo-secure-check.ps1 -Strict` が PASS すれば正常です。
 
 CI / automation で導入漏れを失敗扱いにしたい場合は、`-Strict` を付けます。
 
@@ -89,10 +100,13 @@ CI / automation で導入漏れを失敗扱いにしたい場合は、`-Strict` 
 & $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath . -Strict
 ```
 
-## 何を確認するか
+## 運用で必須にする確認
 
 | 項目 | 役割 | 問題があると |
 |------|------|--------------|
+| `install-git-hooks.ps1` 実行 | `core.hooksPath` を正しい hook 先へ向ける | `pre-commit` / `pre-push` が起動しない |
+| `git config --local core.hooksPath` | Git が実際に参照する hook path を確認 | `.githooks/` / `repo-template/.githooks/` を見ていないまま作業が進む |
+| `repo-secure-check.ps1 -Strict` | `coreHooksPath` / `gitHooksDirectory` / `toolDependencies` を fail-close で点検 | 導入漏れを CI / automation で見逃す |
 | gitleaks（pre-commit） | commit 前に secret を検査 | commit が止まる |
 | gitleaks（pre-push） | push 前に secret を検査 | push が止まる |
 | gitleaks（GitHub Action） | PR 上で最終確認 | PR check が落ちる |

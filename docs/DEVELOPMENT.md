@@ -48,7 +48,11 @@ happy_ai_life/
 git clone https://github.com/RyoMurakami1983/happy_ai_life.git
 cd happy_ai_life
 uv sync --dev
+./scripts/install-git-hooks.ps1
+git config --local core.hooksPath
 ```
+
+この母艦 repo 自体では `repo-template/.githooks` が hook 正本です。`install-git-hooks.ps1` を実行すると `core.hooksPath=repo-template/.githooks` が設定され、`pre-commit` / `pre-push` が実際に動く状態になります。
 
 ### 2. 設計
 
