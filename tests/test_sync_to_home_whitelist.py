@@ -1224,6 +1224,58 @@ def test_bash_guard_pre_tool_short_circuits_force_push_before_secret_scan() -> N
     assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
 
 
+def test_bash_guard_pre_tool_uses_policy_shell_tool_names(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    hooks_dir = repo / ".github" / "hooks" / "scripts"
+    hooks_dir.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.sh", hooks_dir / "guard_pre_tool.sh")
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["toolNames"]["shell"] = ["terminal"]
+    (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "terminal", "toolArgs": {"command": "git reset --hard HEAD"}},
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+def test_bash_guard_pre_tool_uses_policy_deny_rule_ids(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    hooks_dir = repo / ".github" / "hooks" / "scripts"
+    hooks_dir.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.sh", hooks_dir / "guard_pre_tool.sh")
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["denyCommandRules"] = [rule for rule in policy["denyCommandRules"] if rule["id"] != "git-reset-hard"]
+    (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git reset --hard HEAD"}},
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
 def test_guard_pre_tool_asks_for_protected_edit_path() -> None:
     result = _invoke_guard_pre_tool(
         {

@@ -138,7 +138,7 @@
             "then": {
               "properties": {
                 "path": {
-                  "not": { "pattern": ".*/\\*\\*$" }
+                  "not": { "pattern": ".*(?:/|\\\\)\\*\\*$" }
                 }
               }
             }

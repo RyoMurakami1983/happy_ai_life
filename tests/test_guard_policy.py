@@ -217,6 +217,24 @@ def test_guard_policy_schema_rejects_file_scope_path_with_directory_wildcard() -
     raise AssertionError("file-scope protected path unexpectedly accepted directory wildcard")
 
 
+def test_guard_policy_schema_rejects_file_scope_path_with_backslash_directory_wildcard() -> None:
+    schema = _read_json(SCHEMA_PATH)
+    invalid_path_rule = {
+        "id": "file-with-backslash-wildcard",
+        "path": ".github\\hooks\\**",
+        "scope": "file",
+        "action": "ask",
+        "maintenanceScope": "protectedPathEdit",
+    }
+
+    try:
+        _assert_matches_schema(invalid_path_rule, schema["properties"]["protectedPaths"]["items"], "$.protectedPaths[0]")
+    except AssertionError:
+        return
+
+    raise AssertionError("file-scope protected path unexpectedly accepted backslash directory wildcard")
+
+
 def test_guard_policy_has_unique_deny_rule_ids() -> None:
     policy = _read_json(POLICY_PATH)
 
