@@ -1525,6 +1525,43 @@ def test_guard_pre_tool_falls_back_to_minimal_baseline_when_policy_pattern_is_in
     assert "policy/guard-policy.json" in ask_response["permissionDecisionReason"]
 
 
+def test_guard_pre_tool_falls_back_to_minimal_baseline_when_deny_rule_kind_is_invalid(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    guard_dir = repo / ".github" / "hooks" / "scripts"
+    guard_dir.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", guard_dir / "guard_pre_tool.ps1")
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    invalid_policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    invalid_policy["denyCommandRules"][0] = {
+        "id": "invalid-kind",
+        "kind": "patern",
+        "description": "typo should invalidate policy",
+    }
+    (policy_dir / "guard-policy.json").write_text(json.dumps(invalid_policy), encoding="utf-8")
+
+    deny_result = _invoke_guard_pre_tool_script(
+        guard_dir / "guard_pre_tool.ps1",
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": "git reset --hard HEAD",
+            },
+        },
+        cwd=repo,
+    )
+
+    assert deny_result.returncode == 0, deny_result.stdout + deny_result.stderr
+    deny_response = json.loads(deny_result.stdout)
+    assert deny_response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in deny_response["permissionDecisionReason"]
+
+
 def test_enter_maintenance_mode_requires_only_minutes(tmp_path: Path) -> None:
     home_root = tmp_path / "home"
     script_path = ROOT / "scripts" / "enter-copilot-maintenance-mode.ps1"

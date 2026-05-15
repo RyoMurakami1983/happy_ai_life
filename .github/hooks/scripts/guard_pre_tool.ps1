@@ -180,7 +180,8 @@ function Test-GuardPolicyShape {
     $denyRuleIds = @{}
     foreach ($entry in @($Policy.denyCommandRules)) {
         $entryId = [string]$entry.id
-        if ([string]::IsNullOrWhiteSpace($entryId) -or [string]::IsNullOrWhiteSpace([string]$entry.kind)) {
+        $entryKind = [string]$entry.kind
+        if ([string]::IsNullOrWhiteSpace($entryId) -or [string]::IsNullOrWhiteSpace($entryKind)) {
             return $false
         }
         if ($denyRuleIds.ContainsKey($entryId)) {
@@ -188,7 +189,11 @@ function Test-GuardPolicyShape {
         }
         $denyRuleIds[$entryId] = $true
 
-        if ([string]$entry.kind -eq "pattern") {
+        if ($entryKind -notin @("specialized", "pattern")) {
+            return $false
+        }
+
+        if ($entryKind -eq "pattern") {
             if ([string]::IsNullOrWhiteSpace([string]$entry.pattern) -or [string]$entry.matchAgainst -notin @("normalized", "compact")) {
                 return $false
             }
@@ -203,6 +208,9 @@ function Test-GuardPolicyShape {
             catch {
                 return $false
             }
+        }
+        elseif ($null -ne $entry.matchAgainst -or $null -ne $entry.pattern) {
+            return $false
         }
     }
 

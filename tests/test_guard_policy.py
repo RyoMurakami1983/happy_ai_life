@@ -34,6 +34,14 @@ def _assert_matches_schema(value: Any, schema: dict[str, Any], path: str = "$") 
     if enum is not None:
         assert value in enum, f"{path}: unexpected enum value {value!r}"
 
+    any_of = schema.get("anyOf")
+    if any_of is not None:
+        assert any(_matches_schema_fragment(value, candidate, path) for candidate in any_of), f"{path}: no anyOf branch matched"
+
+    not_schema = schema.get("not")
+    if not_schema is not None:
+        assert not _matches_schema_fragment(value, not_schema, path), f"{path}: matched forbidden schema"
+
     const = schema.get("const")
     if const is not None:
         assert value == const, f"{path}: unexpected const value {value!r}"
@@ -112,6 +120,14 @@ def _matches_condition(value: Any, condition: dict[str, Any]) -> bool:
     return True
 
 
+def _matches_schema_fragment(value: Any, schema: dict[str, Any], path: str) -> bool:
+    try:
+        _assert_matches_schema(value, schema, path)
+    except AssertionError:
+        return False
+    return True
+
+
 def _json_key(value: Any) -> str:
     return json.dumps(value, sort_keys=True, ensure_ascii=True)
 
@@ -183,6 +199,24 @@ def test_guard_policy_has_unique_deny_rule_ids() -> None:
     deny_rule_ids = [entry["id"] for entry in policy["denyCommandRules"]]
 
     assert len(deny_rule_ids) == len(set(deny_rule_ids))
+
+
+def test_guard_policy_schema_rejects_specialized_rule_with_pattern_fields() -> None:
+    schema = _read_json(SCHEMA_PATH)
+    invalid_rule = {
+        "id": "specialized-with-pattern",
+        "kind": "specialized",
+        "description": "should be rejected",
+        "matchAgainst": "normalized",
+        "pattern": "git reset --hard",
+    }
+
+    try:
+        _assert_matches_schema(invalid_rule, schema["properties"]["denyCommandRules"]["items"], "$.denyCommandRules[0]")
+    except AssertionError:
+        return
+
+    raise AssertionError("specialized deny rule unexpectedly accepted pattern fields")
 
 
 def test_guard_policy_docs_reference_policy_as_source_of_truth() -> None:

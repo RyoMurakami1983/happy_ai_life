@@ -165,6 +165,19 @@
                 "pattern"
               ]
             }
+          },
+          {
+            "if": {
+              "properties": { "kind": { "const": "specialized" } }
+            },
+            "then": {
+              "not": {
+                "anyOf": [
+                  { "required": ["matchAgainst"] },
+                  { "required": ["pattern"] }
+                ]
+              }
+            }
           }
         ]
       },
