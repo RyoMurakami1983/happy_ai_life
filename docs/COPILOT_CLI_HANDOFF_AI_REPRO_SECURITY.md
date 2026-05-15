@@ -49,7 +49,7 @@
 
 良い例:
 
-- `policy/guard-policy.json` を source of truth にする。
+- `policy/guard-policy.json` と `policy/guard-policy.schema.json` を source of truth にする。
 - PowerShell / Bash wrapper は同じ policy engine を呼ぶだけにする。
 - protected path 変更は原則 `ask` にし、明確な bypass / destructive command だけ `deny` にする。
 - local と CI で同じ確認コマンドを走らせる。
@@ -118,7 +118,7 @@ protected path が docs、PowerShell script、tests に分散している。
 
 目標:
 
-- `policy/guard-policy.json` を source of truth にする。
+- `policy/guard-policy.json` と `policy/guard-policy.schema.json` を source of truth にする。
 - docs / tests / guard engine は policy を参照するか、一致を検証する。
 
 ### 課題 4: tool version の再現性が弱い

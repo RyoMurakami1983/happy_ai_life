@@ -4,7 +4,9 @@ param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "SilentlyContinue"
-$ProtectedPathPropertyNames = @("path", "filePath", "file_path", "targetPath", "target_path")
+$script:ProtectedPathPropertyNames = @("path", "filePath", "file_path", "targetPath", "target_path")
+$script:GuardPolicy = $null
+$script:GuardPolicyRepoRoot = $null
 
 function Write-HookResponse($obj) {
     $json = $obj | ConvertTo-Json -Compress
@@ -22,6 +24,144 @@ function Resolve-HookEventName {
 
 function Resolve-MaintenanceModePath {
     return [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot\maintenance-mode.json"))
+}
+
+function Get-DefaultGuardPolicy {
+    return [pscustomobject]@{
+        schemaVersion = 1
+        pathPropertyNames = @("path", "filePath", "file_path", "targetPath", "target_path")
+        protectedPaths = @(
+            [pscustomobject]@{ id = "repo-hooks"; path = ".github/hooks/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-githooks"; path = ".githooks/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-workflows"; path = ".github/workflows/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-instructions-dir"; path = ".github/instructions/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-skills-dir"; path = ".github/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "agents-skills-dir"; path = ".agents/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "claude-skills-dir"; path = ".claude/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-copilot-instructions"; path = ".github/copilot-instructions.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-mcp"; path = ".github/mcp.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "root-mcp"; path = ".mcp.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "gitleaks-config"; path = ".gitleaks.toml"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "security-policy"; path = "SECURITY.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "trust-boundary-doc"; path = "docs/TRUST_BOUNDARY.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "hooks-governance-doc"; path = "docs/HOOKS_GOVERNANCE.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "enterprise-security-review-doc"; path = "docs/ENTERPRISE_SECURITY_REVIEW.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "guard-policy-json"; path = "policy/guard-policy.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "guard-policy-schema"; path = "policy/guard-policy.schema.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "maintenance-mode-state"; path = '$HOME/.copilot/maintenance-mode.json'; scope = "file"; action = "deny"; maintenanceScope = $null }
+            [pscustomobject]@{ id = "home-copilot-root"; path = '$HOME/.copilot/**'; scope = "directory"; action = "ask"; maintenanceScope = $null }
+        )
+        denyCommandRules = @(
+            [pscustomobject]@{ id = "maintenance-mode-manual-only"; kind = "specialized"; description = "AI must not enter or exit maintenance mode, or edit the maintenance state file." }
+            [pscustomobject]@{ id = "git-hooks-no-verify"; kind = "specialized"; description = "Block git commit --no-verify, git commit -n, and git push --no-verify." }
+            [pscustomobject]@{ id = "git-hooks-path-change"; kind = "specialized"; description = "Block core.hooksPath writes, unsets, and inline git -c core.hooksPath usage." }
+            [pscustomobject]@{ id = "git-hooks-update-index-bypass"; kind = "specialized"; description = "Block git update-index --skip-worktree and --assume-unchanged." }
+            [pscustomobject]@{ id = "git-push-force"; kind = "specialized"; description = "Block git push -f, --force, and --force-with-lease." }
+            [pscustomobject]@{ id = "git-commit-secret-scan"; kind = "specialized"; description = "Run staged gitleaks scan before git commit." }
+            [pscustomobject]@{ id = "git-push-secret-scan"; kind = "specialized"; description = "Run unpushed-commit gitleaks scan before git push." }
+            [pscustomobject]@{ id = "gh-pr-create-secret-scan"; kind = "specialized"; description = "Run unpushed-commit gitleaks scan before gh pr create." }
+            [pscustomobject]@{ id = "rm-rf-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block rm -rf /."; pattern = "\brm\s+-rf\s+\/" }
+            [pscustomobject]@{ id = "rm-rf-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block rm -rf ."; pattern = "\brm\s+-rf\s+\.(?:\s|$)" }
+            [pscustomobject]@{ id = "windows-del-force-recursive"; kind = "pattern"; matchAgainst = "normalized"; description = "Block del /f /s /q."; pattern = "\bdel\s+\/f\s+\/s\s+\/q\b" }
+            [pscustomobject]@{ id = "format-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block format."; pattern = "\bformat\b" }
+            [pscustomobject]@{ id = "mkfs-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block mkfs."; pattern = "\bmkfs\b" }
+            [pscustomobject]@{ id = "shutdown-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block shutdown."; pattern = "\bshutdown\b" }
+            [pscustomobject]@{ id = "reboot-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block reboot."; pattern = "\breboot\b" }
+            [pscustomobject]@{ id = "init-zero-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block init 0."; pattern = "\binit\s+0\b" }
+            [pscustomobject]@{ id = "poweroff-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block poweroff."; pattern = "\bpoweroff\b" }
+            [pscustomobject]@{ id = "stop-computer-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Stop-Computer."; pattern = "\bstop-computer\b" }
+            [pscustomobject]@{ id = "restart-computer-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Restart-Computer."; pattern = "\brestart-computer\b" }
+            [pscustomobject]@{ id = "remove-item-recurse-force"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Remove-Item -Recurse -Force."; pattern = "(?=.*\bremove-item\b)(?=.*(?:^|\s)-recurse(?:\s|$))(?=.*(?:^|\s)-force(?:\s|$))" }
+            [pscustomobject]@{ id = "git-reset-hard"; kind = "pattern"; matchAgainst = "normalized"; description = "Block git reset --hard."; pattern = "\bgit\s+reset\s+--hard\b" }
+            [pscustomobject]@{ id = "powershell-encoded-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block powershell/pwsh -EncodedCommand."; pattern = '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:encodedcommand|enc|ec)(?=\s|$|[;&|])' }
+            [pscustomobject]@{ id = "invoke-expression"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Invoke-Expression / iex."; pattern = '(^|[;&|]\s*)(?:(?:[\w.\\]+\\)?invoke-expression|iex)(?=\s|$|[;&|])' }
+            [pscustomobject]@{ id = "powershell-command-invoke-expression"; kind = "pattern"; matchAgainst = "normalized"; description = "Block powershell -Command Invoke-Expression / iex."; pattern = '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:command|c)\s+(?:"|'')?(?:&\s*\{\s*)?(?:(?:[\w.\\]+\\)?invoke-expression|iex)\b' }
+            [pscustomobject]@{ id = "curl-pipe-sh"; kind = "pattern"; matchAgainst = "normalized"; description = "Block curl ... | sh."; pattern = '\bcurl(?:\.exe)?\b[^;&|]*\|\s*sh\b' }
+            [pscustomobject]@{ id = "wget-pipe-sh"; kind = "pattern"; matchAgainst = "normalized"; description = "Block wget ... | sh."; pattern = '\bwget(?:\.exe)?\b[^;&|]*\|\s*sh\b' }
+        )
+    }
+}
+
+function Resolve-GuardPolicyPath {
+    param([string]$RepoRoot)
+
+    if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+        $repoPolicyPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot "policy\guard-policy.json"))
+        if (Test-Path -LiteralPath $repoPolicyPath -PathType Leaf) {
+            return $repoPolicyPath
+        }
+    }
+
+    $scriptRelativePolicyPath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\..\policy\guard-policy.json"))
+    if (Test-Path -LiteralPath $scriptRelativePolicyPath -PathType Leaf) {
+        return $scriptRelativePolicyPath
+    }
+
+    return $null
+}
+
+function Test-GuardPolicyShape {
+    param($Policy)
+
+    if ($null -eq $Policy -or $Policy.schemaVersion -ne 1) {
+        return $false
+    }
+
+    if (@($Policy.pathPropertyNames).Count -eq 0 -or @($Policy.protectedPaths).Count -eq 0 -or @($Policy.denyCommandRules).Count -eq 0) {
+        return $false
+    }
+
+    foreach ($entry in @($Policy.protectedPaths)) {
+        if ([string]::IsNullOrWhiteSpace([string]$entry.id) -or [string]::IsNullOrWhiteSpace([string]$entry.path)) {
+            return $false
+        }
+        if ([string]$entry.scope -notin @("file", "directory")) {
+            return $false
+        }
+        if ([string]$entry.action -notin @("ask", "deny")) {
+            return $false
+        }
+    }
+
+    foreach ($entry in @($Policy.denyCommandRules)) {
+        if ([string]::IsNullOrWhiteSpace([string]$entry.id) -or [string]::IsNullOrWhiteSpace([string]$entry.kind)) {
+            return $false
+        }
+        if ([string]$entry.kind -eq "pattern") {
+            if ([string]::IsNullOrWhiteSpace([string]$entry.pattern) -or [string]::IsNullOrWhiteSpace([string]$entry.matchAgainst)) {
+                return $false
+            }
+        }
+    }
+
+    return $true
+}
+
+function Get-GuardPolicy {
+    param([string]$RepoRoot)
+
+    if ($null -ne $script:GuardPolicy -and $script:GuardPolicyRepoRoot -eq $RepoRoot) {
+        return $script:GuardPolicy
+    }
+
+    $policy = $null
+    $policyPath = Resolve-GuardPolicyPath -RepoRoot $RepoRoot
+    if (-not [string]::IsNullOrWhiteSpace($policyPath)) {
+        try {
+            $policy = Get-Content -LiteralPath $policyPath -Raw | ConvertFrom-Json
+        }
+        catch {
+            $policy = $null
+        }
+    }
+
+    if (-not (Test-GuardPolicyShape -Policy $policy)) {
+        $policy = Get-DefaultGuardPolicy
+    }
+
+    $script:GuardPolicy = $policy
+    $script:GuardPolicyRepoRoot = $RepoRoot
+    return $policy
 }
 
 function Test-SamePath {
@@ -361,53 +501,36 @@ function Get-ProtectedPathRules {
     param([string]$RepoRoot)
 
     $rules = @()
+    $policy = Get-GuardPolicy -RepoRoot $RepoRoot
 
-    if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-        foreach ($relativePath in @(
-                ".github\hooks",
-                ".githooks",
-                ".github\workflows",
-                ".github\instructions",
-                ".github\skills",
-                ".agents\skills",
-                ".claude\skills"
-            )) {
-            $rules += [pscustomobject]@{
-                    Scope = "directory"
-                    Display = ($relativePath -replace "\\", "/") + "/**"
-                    FullPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $relativePath))
-                }
+    foreach ($entry in @($policy.protectedPaths)) {
+        $pathText = [string]$entry.path
+        $basePath = if ($pathText.StartsWith('$HOME') -or $pathText.StartsWith('${HOME}') -or $pathText.StartsWith('$env:HOME') -or $pathText.StartsWith("~/") -or $pathText.StartsWith("~\")) {
+            $HOME
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+            $RepoRoot
+        }
+        else {
+            (Get-Location).Path
         }
 
-        foreach ($relativePath in @(
-                ".github\copilot-instructions.md",
-                ".github\mcp.json",
-                ".mcp.json",
-                ".gitleaks.toml",
-                "SECURITY.md",
-                "docs\TRUST_BOUNDARY.md",
-                "docs\HOOKS_GOVERNANCE.md",
-                "docs\ENTERPRISE_SECURITY_REVIEW.md"
-            )) {
-            $rules += [pscustomobject]@{
-                    Scope = "file"
-                    Display = ($relativePath -replace "\\", "/")
-                    FullPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $relativePath))
-                }
+        $resolvedPath = if ([string]$entry.scope -eq "directory" -and $pathText.EndsWith("/**")) {
+            Resolve-FullPath -PathValue $pathText.Substring(0, $pathText.Length - 3) -BasePath $basePath
+        }
+        else {
+            Resolve-FullPath -PathValue $pathText -BasePath $basePath
+        }
+
+        $rules += [pscustomobject]@{
+            Id = [string]$entry.id
+            Scope = [string]$entry.scope
+            Action = [string]$entry.action
+            MaintenanceScope = [string]$entry.maintenanceScope
+            Display = $pathText
+            FullPath = $resolvedPath
         }
     }
-
-    $homeCopilotRoot = [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot"))
-    $rules += [pscustomobject]@{
-            Scope = "file"
-            Display = '$HOME/.copilot/maintenance-mode.json'
-            FullPath = (Resolve-MaintenanceModePath)
-        }
-    $rules += [pscustomobject]@{
-            Scope = "directory"
-            Display = '$HOME/.copilot/**'
-            FullPath = $homeCopilotRoot
-        }
 
     return $rules
 }
@@ -634,6 +757,8 @@ if ([string]::IsNullOrWhiteSpace($toolName)) {
 }
 
 $repoRoot = Get-RepoRoot
+$script:GuardPolicy = Get-GuardPolicy -RepoRoot $repoRoot
+$script:ProtectedPathPropertyNames = @($script:GuardPolicy.pathPropertyNames)
 $resolutionBase = if (-not [string]::IsNullOrWhiteSpace($hookCwd)) {
     [System.IO.Path]::GetFullPath($hookCwd)
 }
@@ -659,7 +784,7 @@ if ($toolName -in @("create", "edit")) {
                 # permissionRequest cannot ask, so fall through to the normal permission flow.
                 exit 0
             }
-            if (Test-SamePath -Left $protectedMatch.Candidate -Right (Resolve-MaintenanceModePath)) {
+            if ($protectedMatch.Rule.Action -eq "deny") {
                 $reason = "Protected path change detected for {0} via {1}. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits." -f $protectedMatch.Rule.Display, $toolName
                 Write-Deny $reason
                 exit 0
@@ -669,7 +794,7 @@ if ($toolName -in @("create", "edit")) {
                 Write-Ask $reason
                 exit 0
             }
-            if (Test-MaintenanceModeActive -Scope "protectedPathEdit") {
+            if (-not [string]::IsNullOrWhiteSpace($protectedMatch.Rule.MaintenanceScope) -and (Test-MaintenanceModeActive -Scope $protectedMatch.Rule.MaintenanceScope)) {
                 exit 0
             }
             $reason = "Protected path change detected for {0} via {1}. This path requires an atomic issue/PR and explicit human review." -f $protectedMatch.Rule.Display, $toolName
@@ -762,28 +887,19 @@ if ($isGhPrCreate) {
 
 # Block list: keep it minimal and destructive-only at first
 $denyPatterns = @(
-    "\brm\s+-rf\s+\/",                 # rm -rf /
-    "\brm\s+-rf\s+\.(?:\s|$)",        # rm -rf .
-    "\bdel\s+\/f\s+\/s\s+\/q\b",       # del /f /s /q
-    "\bformat\b",                      # format
-    "\bmkfs\b",                        # mkfs
-    "\bshutdown\b",                    # shutdown
-    "\breboot\b",                      # reboot
-    "\binit\s+0\b",                    # init 0
-    "\bpoweroff\b",                    # poweroff
-    "\bstop-computer\b",               # Stop-Computer
-    "\brestart-computer\b",            # Restart-Computer
-    "(?=.*\bremove-item\b)(?=.*(?:^|\s)-recurse(?:\s|$))(?=.*(?:^|\s)-force(?:\s|$))", # Remove-Item with -Recurse and -Force in any order
-    "\bgit\s+reset\s+--hard\b",        # git reset --hard
-    '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:encodedcommand|enc|ec)(?=\s|$|[;&|])', # powershell/pwsh -EncodedCommand and common aliases
-    '(^|[;&|]\s*)(?:(?:[\w.\\]+\\)?invoke-expression|iex)(?=\s|$|[;&|])', # direct Invoke-Expression / iex
-    '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:command|c)\s+(?:"|'')?(?:&\s*\{\s*)?(?:(?:[\w.\\]+\\)?invoke-expression|iex)\b', # powershell -Command iex / "& { iex ... }"
-    '\bcurl(?:\.exe)?\b[^;&|]*\|\s*sh\b', # curl ... | sh
-    '\bwget(?:\.exe)?\b[^;&|]*\|\s*sh\b'  # wget ... | sh
+    foreach ($rule in @($script:GuardPolicy.denyCommandRules)) {
+        if ([string]$rule.kind -eq "pattern") {
+            [pscustomobject]@{
+                Pattern = [string]$rule.pattern
+                MatchAgainst = [string]$rule.matchAgainst
+            }
+        }
+    }
 )
 
-foreach ($pattern in $denyPatterns) {
-    if ($normalized -match $pattern) {
+foreach ($rule in $denyPatterns) {
+    $candidate = if ($rule.MatchAgainst -eq "compact") { $compact } else { $normalized }
+    if ($candidate -match $rule.Pattern) {
         Write-Deny ("Blocked potentially destructive command: {0}" -f $command)
         exit 0
     }

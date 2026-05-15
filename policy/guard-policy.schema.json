@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Guard Policy Schema",
+  "type": "object",
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "purpose",
+    "responsePolicy",
+    "pathPropertyNames",
+    "toolNames",
+    "protectedPaths",
+    "denyCommandRules",
+    "requiredTools"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "responsePolicy": {
+      "type": "object",
+      "required": [
+        "permissionRequest",
+        "preToolUse"
+      ],
+      "properties": {
+        "permissionRequest": {
+          "type": "object",
+          "required": [
+            "deny",
+            "ask"
+          ],
+          "properties": {
+            "deny": { "type": "string", "minLength": 1 },
+            "ask": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "preToolUse": {
+          "type": "object",
+          "required": [
+            "deny",
+            "ask"
+          ],
+          "properties": {
+            "deny": { "type": "string", "minLength": 1 },
+            "ask": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "pathPropertyNames": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "minItems": 1
+    },
+    "toolNames": {
+      "type": "object",
+      "required": [
+        "shell",
+        "fileWrite"
+      ],
+      "properties": {
+        "shell": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "fileWrite": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "observe": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "delegation": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "protectedPaths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "path",
+          "scope",
+          "action",
+          "maintenanceScope"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "scope": { "type": "string", "enum": ["file", "directory"] },
+          "action": { "type": "string", "enum": ["ask", "deny"] },
+          "maintenanceScope": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": { "action": { "const": "deny" } }
+            },
+            "then": {
+              "properties": {
+                "maintenanceScope": { "const": null }
+              }
+            }
+          }
+        ]
+      },
+      "uniqueItems": true,
+      "minItems": 1
+    },
+    "denyCommandRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "description"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "enum": ["specialized", "pattern"] },
+          "description": { "type": "string", "minLength": 1 },
+          "matchAgainst": { "type": "string", "enum": ["normalized", "compact"] },
+          "pattern": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": { "kind": { "const": "pattern" } }
+            },
+            "then": {
+              "required": [
+                "matchAgainst",
+                "pattern"
+              ]
+            }
+          }
+        ]
+      },
+      "uniqueItems": true,
+      "minItems": 1
+    },
+    "requiredTools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "minimumVersion",
+          "requiredWhen"
+        ],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "minimumVersion": { "type": ["string", "null"] },
+          "requiredWhen": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true,
+      "minItems": 1
+    }
+  },
+  "additionalProperties": false
+}

@@ -1225,6 +1225,63 @@ def test_guard_pre_tool_asks_for_protected_edit_path() -> None:
     assert "explicit human review" in response["permissionDecisionReason"]
 
 
+def test_guard_pre_tool_asks_for_policy_file_edit() -> None:
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "policy/guard-policy.json",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "policy/guard-policy.json" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_loads_repo_policy_for_custom_protected_path(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    policy = json.loads((ROOT / "policy" / "guard-policy.json").read_text(encoding="utf-8"))
+    policy["protectedPaths"].append(
+        {
+            "id": "custom-protected-file",
+            "path": "custom-protected.txt",
+            "scope": "file",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+    (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "custom-protected.txt",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "custom-protected.txt" in response["permissionDecisionReason"]
+
+
 def test_enter_maintenance_mode_requires_only_minutes(tmp_path: Path) -> None:
     home_root = tmp_path / "home"
     script_path = ROOT / "scripts" / "enter-copilot-maintenance-mode.ps1"
