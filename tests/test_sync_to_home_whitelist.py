@@ -16,6 +16,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "sync-to-home.ps1"
 MANAGED_MANIFEST_PATH = ROOT / "home-template" / ".copilot" / "managed-manifest.json"
+GUARD_POLICY_PATH = ROOT / "policy" / "guard-policy.json"
+GUARD_POLICY_SCHEMA_PATH = ROOT / "policy" / "guard-policy.schema.json"
 SKIP_REASON = "sync-to-home.ps1 tests require Windows"
 
 
@@ -133,6 +135,10 @@ def _create_minimal_source_root(base: Path) -> Path:
     (scripts_dir / "repo-secure-check.ps1").write_text("Write-Host 'secure check'\n", encoding="utf-8")
     (scripts_dir / "enter-copilot-maintenance-mode.ps1").write_text("Write-Host 'enter maintenance'\n", encoding="utf-8")
     (scripts_dir / "exit-copilot-maintenance-mode.ps1").write_text("Write-Host 'exit maintenance'\n", encoding="utf-8")
+    policy_dir = base / "policy"
+    policy_dir.mkdir(parents=True)
+    shutil.copy2(GUARD_POLICY_PATH, policy_dir / "guard-policy.json")
+    shutil.copy2(GUARD_POLICY_SCHEMA_PATH, policy_dir / "guard-policy.schema.json")
     return base
 
 
@@ -257,6 +263,17 @@ def _invoke_guard_pre_tool(
     env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
+    return _invoke_guard_pre_tool_script(script, payload, cwd, hook_event=hook_event, env=env)
+
+
+def _invoke_guard_pre_tool_script(
+    script: Path,
+    payload: dict[str, object],
+    cwd: Path,
+    *,
+    hook_event: str = "preToolUse",
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     payload_json = json.dumps(payload)
     command = (
         "@'\n"
@@ -355,6 +372,8 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     assert (destination / "scripts" / "enter-copilot-maintenance-mode.ps1").exists()
     assert (destination / "scripts" / "exit-copilot-maintenance-mode.ps1").exists()
     assert (destination / "hooks" / "scripts" / "guard_pre_tool.ps1").exists()
+    assert (destination / "policy" / "guard-policy.json").exists()
+    assert (destination / "policy" / "guard-policy.schema.json").exists()
     assert (destination / "copilot-instructions.md").exists()
     assert (destination / "managed-manifest.json").exists()
     assert not (destination / "mcp-config.sample.json").exists()
@@ -1244,7 +1263,7 @@ def test_guard_pre_tool_asks_for_policy_file_edit() -> None:
     assert "policy/guard-policy.json" in response["permissionDecisionReason"]
 
 
-def test_guard_pre_tool_loads_repo_policy_for_custom_protected_path(tmp_path: Path) -> None:
+def test_guard_pre_tool_ignores_untrusted_cwd_policy_for_custom_protected_path(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
     init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
@@ -1265,6 +1284,47 @@ def test_guard_pre_tool_loads_repo_policy_for_custom_protected_path(tmp_path: Pa
     (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
 
     result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "custom-protected.txt",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_repo_scoped_guard_pre_tool_loads_colocated_policy_for_custom_protected_path(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    guard_dir = repo / ".github" / "hooks" / "scripts"
+    guard_dir.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", guard_dir / "guard_pre_tool.ps1")
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["protectedPaths"].append(
+        {
+            "id": "custom-protected-file",
+            "path": "custom-protected.txt",
+            "scope": "file",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+    (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+    result = _invoke_guard_pre_tool_script(
+        guard_dir / "guard_pre_tool.ps1",
         {
             "toolName": "edit",
             "toolArgs": {

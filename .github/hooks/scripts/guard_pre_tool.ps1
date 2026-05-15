@@ -85,16 +85,14 @@ function Get-DefaultGuardPolicy {
 function Resolve-GuardPolicyPath {
     param([string]$RepoRoot)
 
-    if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-        $repoPolicyPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot "policy\guard-policy.json"))
-        if (Test-Path -LiteralPath $repoPolicyPath -PathType Leaf) {
-            return $repoPolicyPath
+    $current = Get-Item -LiteralPath $PSScriptRoot -ErrorAction SilentlyContinue
+    while ($null -ne $current) {
+        $candidate = Join-Path $current.FullName "policy\guard-policy.json"
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return [System.IO.Path]::GetFullPath($candidate)
         }
-    }
 
-    $scriptRelativePolicyPath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\..\policy\guard-policy.json"))
-    if (Test-Path -LiteralPath $scriptRelativePolicyPath -PathType Leaf) {
-        return $scriptRelativePolicyPath
+        $current = $current.Parent
     }
 
     return $null
