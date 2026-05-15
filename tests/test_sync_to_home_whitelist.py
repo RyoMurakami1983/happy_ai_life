@@ -1342,6 +1342,189 @@ def test_repo_scoped_guard_pre_tool_loads_colocated_policy_for_custom_protected_
     assert "custom-protected.txt" in response["permissionDecisionReason"]
 
 
+def test_home_synced_guard_pre_tool_loads_colocated_policy_for_custom_protected_path(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    guard_dir = home_root / ".copilot" / "hooks" / "scripts"
+    guard_dir.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", guard_dir / "guard_pre_tool.ps1")
+
+    policy_dir = home_root / ".copilot" / "policy"
+    policy_dir.mkdir(parents=True)
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["protectedPaths"].append(
+        {
+            "id": "custom-home-protected-file",
+            "path": "custom-home-protected.txt",
+            "scope": "file",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+    (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+    result = _invoke_guard_pre_tool_script(
+        guard_dir / "guard_pre_tool.ps1",
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "custom-home-protected.txt",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=workspace,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "custom-home-protected.txt" in response["permissionDecisionReason"]
+
+
+def test_home_synced_guard_pre_tool_ignores_parent_policy_outside_copilot_root(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    guard_dir = home_root / ".copilot" / "hooks" / "scripts"
+    guard_dir.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", guard_dir / "guard_pre_tool.ps1")
+
+    parent_policy_dir = home_root / "policy"
+    parent_policy_dir.mkdir()
+    parent_policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    parent_policy["protectedPaths"].append(
+        {
+            "id": "parent-home-custom-protected-file",
+            "path": "parent-home-custom-protected.txt",
+            "scope": "file",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+    (parent_policy_dir / "guard-policy.json").write_text(json.dumps(parent_policy), encoding="utf-8")
+
+    result = _invoke_guard_pre_tool_script(
+        guard_dir / "guard_pre_tool.ps1",
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "parent-home-custom-protected.txt",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=workspace,
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_repo_scoped_guard_pre_tool_ignores_parent_policy_outside_repo_root(tmp_path: Path) -> None:
+    parent_root = tmp_path / "parent"
+    repo = parent_root / "repo"
+    repo.mkdir(parents=True)
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    guard_dir = repo / ".github" / "hooks" / "scripts"
+    guard_dir.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", guard_dir / "guard_pre_tool.ps1")
+
+    parent_policy_dir = parent_root / "policy"
+    parent_policy_dir.mkdir()
+    parent_policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    parent_policy["protectedPaths"].append(
+        {
+            "id": "parent-custom-protected-file",
+            "path": "parent-custom-protected.txt",
+            "scope": "file",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+    (parent_policy_dir / "guard-policy.json").write_text(json.dumps(parent_policy), encoding="utf-8")
+
+    result = _invoke_guard_pre_tool_script(
+        guard_dir / "guard_pre_tool.ps1",
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "parent-custom-protected.txt",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_guard_pre_tool_falls_back_to_minimal_baseline_when_policy_pattern_is_invalid(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    guard_dir = repo / ".github" / "hooks" / "scripts"
+    guard_dir.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", guard_dir / "guard_pre_tool.ps1")
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    invalid_policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    invalid_policy["denyCommandRules"][0] = {
+        "id": "invalid-pattern",
+        "kind": "pattern",
+        "description": "invalid regex",
+        "matchAgainst": "normalized",
+        "pattern": "(",
+    }
+    (policy_dir / "guard-policy.json").write_text(json.dumps(invalid_policy), encoding="utf-8")
+
+    deny_result = _invoke_guard_pre_tool_script(
+        guard_dir / "guard_pre_tool.ps1",
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": "git reset --hard HEAD",
+            },
+        },
+        cwd=repo,
+    )
+
+    assert deny_result.returncode == 0, deny_result.stdout + deny_result.stderr
+    deny_response = json.loads(deny_result.stdout)
+    assert deny_response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in deny_response["permissionDecisionReason"]
+
+    ask_result = _invoke_guard_pre_tool_script(
+        guard_dir / "guard_pre_tool.ps1",
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "policy/guard-policy.json",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+    )
+
+    assert ask_result.returncode == 0, ask_result.stdout + ask_result.stderr
+    ask_response = json.loads(ask_result.stdout)
+    assert ask_response["permissionDecision"] == "ask"
+    assert "policy/guard-policy.json" in ask_response["permissionDecisionReason"]
+
+
 def test_enter_maintenance_mode_requires_only_minutes(tmp_path: Path) -> None:
     home_root = tmp_path / "home"
     script_path = ROOT / "scripts" / "enter-copilot-maintenance-mode.ps1"

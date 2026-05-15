@@ -100,6 +100,7 @@
     },
     "protectedPaths": {
       "type": "array",
+      "$comment": "uniqueItems only covers whole-object duplicates; guard_pre_tool.ps1 and tests/test_guard_policy.py also enforce unique ids and normalized path values.",
       "items": {
         "type": "object",
         "required": [
@@ -137,6 +138,7 @@
     },
     "denyCommandRules": {
       "type": "array",
+      "$comment": "guard_pre_tool.ps1 and tests/test_guard_policy.py enforce unique ids and .NET regex compilation in addition to this structural schema.",
       "items": {
         "type": "object",
         "required": [

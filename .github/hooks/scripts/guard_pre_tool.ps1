@@ -26,7 +26,7 @@ function Resolve-MaintenanceModePath {
     return [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot\maintenance-mode.json"))
 }
 
-function Get-DefaultGuardPolicy {
+function Get-MinimalGuardPolicy {
     return [pscustomobject]@{
         schemaVersion = 1
         pathPropertyNames = @("path", "filePath", "file_path", "targetPath", "target_path")
@@ -42,10 +42,6 @@ function Get-DefaultGuardPolicy {
             [pscustomobject]@{ id = "repo-mcp"; path = ".github/mcp.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "root-mcp"; path = ".mcp.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "gitleaks-config"; path = ".gitleaks.toml"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "security-policy"; path = "SECURITY.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "trust-boundary-doc"; path = "docs/TRUST_BOUNDARY.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "hooks-governance-doc"; path = "docs/HOOKS_GOVERNANCE.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "enterprise-security-review-doc"; path = "docs/ENTERPRISE_SECURITY_REVIEW.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "guard-policy-json"; path = "policy/guard-policy.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "guard-policy-schema"; path = "policy/guard-policy.schema.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "maintenance-mode-state"; path = '$HOME/.copilot/maintenance-mode.json'; scope = "file"; action = "deny"; maintenanceScope = $null }
@@ -82,17 +78,53 @@ function Get-DefaultGuardPolicy {
     }
 }
 
+function Normalize-GuardPolicyPathValue {
+    param([Parameter(Mandatory = $true)][string]$PathValue)
+
+    $normalized = $PathValue.Trim()
+    if ([string]::IsNullOrWhiteSpace($normalized)) {
+        return ""
+    }
+
+    $normalized = $normalized -replace "\\", "/"
+    if ($normalized.EndsWith("/**")) {
+        return $normalized.ToLowerInvariant()
+    }
+
+    return $normalized.TrimEnd('/').ToLowerInvariant()
+}
+
 function Resolve-GuardPolicyPath {
     param([string]$RepoRoot)
 
-    $current = Get-Item -LiteralPath $PSScriptRoot -ErrorAction SilentlyContinue
-    while ($null -ne $current) {
-        $candidate = Join-Path $current.FullName "policy\guard-policy.json"
+    $scriptDirectory = Get-Item -LiteralPath $PSScriptRoot -ErrorAction SilentlyContinue
+    if ($null -eq $scriptDirectory -or $scriptDirectory.Name -ne "scripts") {
+        return $null
+    }
+
+    $hooksDirectory = $scriptDirectory.Parent
+    if ($null -eq $hooksDirectory -or $hooksDirectory.Name -ne "hooks") {
+        return $null
+    }
+
+    $layoutRoot = $hooksDirectory.Parent
+    if ($null -eq $layoutRoot) {
+        return $null
+    }
+
+    if ($layoutRoot.Name -eq ".copilot") {
+        $candidate = Join-Path $layoutRoot.FullName "policy\guard-policy.json"
         if (Test-Path -LiteralPath $candidate -PathType Leaf) {
             return [System.IO.Path]::GetFullPath($candidate)
         }
+        return $null
+    }
 
-        $current = $current.Parent
+    if ($layoutRoot.Name -eq ".github" -and $null -ne $layoutRoot.Parent) {
+        $candidate = Join-Path $layoutRoot.Parent.FullName "policy\guard-policy.json"
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return [System.IO.Path]::GetFullPath($candidate)
+        }
     }
 
     return $null
@@ -109,8 +141,23 @@ function Test-GuardPolicyShape {
         return $false
     }
 
+    $pathPropertyNames = @{}
+    foreach ($name in @($Policy.pathPropertyNames)) {
+        $propertyName = [string]$name
+        if ([string]::IsNullOrWhiteSpace($propertyName) -or $pathPropertyNames.ContainsKey($propertyName)) {
+            return $false
+        }
+        $pathPropertyNames[$propertyName] = $true
+    }
+
+    $protectedIds = @{}
+    $protectedPaths = @{}
     foreach ($entry in @($Policy.protectedPaths)) {
-        if ([string]::IsNullOrWhiteSpace([string]$entry.id) -or [string]::IsNullOrWhiteSpace([string]$entry.path)) {
+        $entryId = [string]$entry.id
+        $entryPath = [string]$entry.path
+        $normalizedPath = Normalize-GuardPolicyPathValue -PathValue $entryPath
+
+        if ([string]::IsNullOrWhiteSpace($entryId) -or [string]::IsNullOrWhiteSpace($entryPath) -or [string]::IsNullOrWhiteSpace($normalizedPath)) {
             return $false
         }
         if ([string]$entry.scope -notin @("file", "directory")) {
@@ -119,14 +166,41 @@ function Test-GuardPolicyShape {
         if ([string]$entry.action -notin @("ask", "deny")) {
             return $false
         }
-    }
-
-    foreach ($entry in @($Policy.denyCommandRules)) {
-        if ([string]::IsNullOrWhiteSpace([string]$entry.id) -or [string]::IsNullOrWhiteSpace([string]$entry.kind)) {
+        if ([string]$entry.action -eq "deny" -and $null -ne $entry.maintenanceScope) {
             return $false
         }
+        if ($protectedIds.ContainsKey($entryId) -or $protectedPaths.ContainsKey($normalizedPath)) {
+            return $false
+        }
+
+        $protectedIds[$entryId] = $true
+        $protectedPaths[$normalizedPath] = $true
+    }
+
+    $denyRuleIds = @{}
+    foreach ($entry in @($Policy.denyCommandRules)) {
+        $entryId = [string]$entry.id
+        if ([string]::IsNullOrWhiteSpace($entryId) -or [string]::IsNullOrWhiteSpace([string]$entry.kind)) {
+            return $false
+        }
+        if ($denyRuleIds.ContainsKey($entryId)) {
+            return $false
+        }
+        $denyRuleIds[$entryId] = $true
+
         if ([string]$entry.kind -eq "pattern") {
-            if ([string]::IsNullOrWhiteSpace([string]$entry.pattern) -or [string]::IsNullOrWhiteSpace([string]$entry.matchAgainst)) {
+            if ([string]::IsNullOrWhiteSpace([string]$entry.pattern) -or [string]$entry.matchAgainst -notin @("normalized", "compact")) {
+                return $false
+            }
+
+            try {
+                [void][System.Text.RegularExpressions.Regex]::new(
+                    [string]$entry.pattern,
+                    [System.Text.RegularExpressions.RegexOptions]::IgnoreCase,
+                    [TimeSpan]::FromSeconds(1)
+                )
+            }
+            catch {
                 return $false
             }
         }
@@ -154,7 +228,7 @@ function Get-GuardPolicy {
     }
 
     if (-not (Test-GuardPolicyShape -Policy $policy)) {
-        $policy = Get-DefaultGuardPolicy
+        $policy = Get-MinimalGuardPolicy
     }
 
     $script:GuardPolicy = $policy

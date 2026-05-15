@@ -16,6 +16,13 @@ def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _normalize_policy_path(path_value: str) -> str:
+    normalized = path_value.strip().replace("\\", "/")
+    if normalized.endswith("/**"):
+        return normalized.lower()
+    return normalized.rstrip("/").lower()
+
+
 def _assert_matches_schema(value: Any, schema: dict[str, Any], path: str = "$") -> None:
     schema_type = schema.get("type")
     if isinstance(schema_type, list):
@@ -158,6 +165,24 @@ def test_guard_policy_covers_current_boundary_rules() -> None:
         "curl-pipe-sh",
         "wget-pipe-sh",
     }.issubset(deny_rule_ids)
+
+
+def test_guard_policy_has_unique_protected_path_ids_and_paths() -> None:
+    policy = _read_json(POLICY_PATH)
+
+    protected_ids = [entry["id"] for entry in policy["protectedPaths"]]
+    normalized_paths = [_normalize_policy_path(entry["path"]) for entry in policy["protectedPaths"]]
+
+    assert len(protected_ids) == len(set(protected_ids))
+    assert len(normalized_paths) == len(set(normalized_paths))
+
+
+def test_guard_policy_has_unique_deny_rule_ids() -> None:
+    policy = _read_json(POLICY_PATH)
+
+    deny_rule_ids = [entry["id"] for entry in policy["denyCommandRules"]]
+
+    assert len(deny_rule_ids) == len(set(deny_rule_ids))
 
 
 def test_guard_policy_docs_reference_policy_as_source_of_truth() -> None:
