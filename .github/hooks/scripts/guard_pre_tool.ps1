@@ -30,6 +30,12 @@ function Get-MinimalGuardPolicy {
     return [pscustomobject]@{
         schemaVersion = 1
         pathPropertyNames = @("path", "filePath", "file_path", "targetPath", "target_path")
+        toolNames = [pscustomobject]@{
+            shell = @("bash", "powershell")
+            fileWrite = @("create", "edit")
+            observe = @("view", "web_fetch")
+            delegation = @("task")
+        }
         protectedPaths = @(
             [pscustomobject]@{ id = "repo-hooks"; path = ".github/hooks/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "repo-githooks"; path = ".githooks/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
@@ -94,6 +100,13 @@ function Normalize-GuardPolicyPathValue {
     return $normalized.TrimEnd('/').ToLowerInvariant()
 }
 
+function Normalize-GuardPolicyRuntimePathText {
+    param([Parameter(Mandatory = $true)][string]$PathValue)
+
+    $normalized = $PathValue.Trim() -replace "\\", "/"
+    return $normalized
+}
+
 function Resolve-GuardPolicyPath {
     param([string]$RepoRoot)
 
@@ -141,6 +154,10 @@ function Test-GuardPolicyShape {
         return $false
     }
 
+    if ($null -eq $Policy.toolNames -or @($Policy.toolNames.shell).Count -eq 0 -or @($Policy.toolNames.fileWrite).Count -eq 0) {
+        return $false
+    }
+
     $pathPropertyNames = @{}
     foreach ($name in @($Policy.pathPropertyNames)) {
         $propertyName = [string]$name
@@ -164,6 +181,9 @@ function Test-GuardPolicyShape {
             return $false
         }
         if ([string]$entry.action -notin @("ask", "deny")) {
+            return $false
+        }
+        if ([string]$entry.scope -eq "file" -and $normalizedPath.EndsWith("/**")) {
             return $false
         }
         if ([string]$entry.action -eq "deny" -and $null -ne $entry.maintenanceScope) {
@@ -584,7 +604,7 @@ function Get-ProtectedPathRules {
     $policy = Get-GuardPolicy -RepoRoot $RepoRoot
 
     foreach ($entry in @($policy.protectedPaths)) {
-        $pathText = [string]$entry.path
+        $pathText = Normalize-GuardPolicyRuntimePathText -PathValue ([string]$entry.path)
         $basePath = if ($pathText.StartsWith('$HOME') -or $pathText.StartsWith('${HOME}') -or $pathText.StartsWith('$env:HOME') -or $pathText.StartsWith("~/") -or $pathText.StartsWith("~\")) {
             $HOME
         }
@@ -839,6 +859,8 @@ if ([string]::IsNullOrWhiteSpace($toolName)) {
 $repoRoot = Get-RepoRoot
 $script:GuardPolicy = Get-GuardPolicy -RepoRoot $repoRoot
 $script:ProtectedPathPropertyNames = @($script:GuardPolicy.pathPropertyNames)
+$fileWriteToolNames = @($script:GuardPolicy.toolNames.fileWrite)
+$shellToolNames = @($script:GuardPolicy.toolNames.shell)
 $resolutionBase = if (-not [string]::IsNullOrWhiteSpace($hookCwd)) {
     [System.IO.Path]::GetFullPath($hookCwd)
 }
@@ -846,7 +868,7 @@ else {
     [System.IO.Path]::GetFullPath((Get-Location).Path)
 }
 
-if ($toolName -in @("create", "edit")) {
+if ($toolName -in $fileWriteToolNames) {
     $pathValues = @(Get-ProtectedPathValues -Value $toolArgs)
 
     if (@($pathValues).Count -gt 0) {
@@ -885,7 +907,7 @@ if ($toolName -in @("create", "edit")) {
 }
 
 # Guard shell command tools. Windows Copilot CLI reports PowerShell tool use as "powershell".
-if ($toolName -notin @("bash", "powershell")) {
+if ($toolName -notin $shellToolNames) {
     exit 0
 }
 

@@ -1562,6 +1562,117 @@ def test_guard_pre_tool_falls_back_to_minimal_baseline_when_deny_rule_kind_is_in
     assert "Blocked potentially destructive command" in deny_response["permissionDecisionReason"]
 
 
+def test_repo_scoped_guard_pre_tool_normalizes_backslash_directory_policy_path(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    guard_dir = repo / ".github" / "hooks" / "scripts"
+    guard_dir.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", guard_dir / "guard_pre_tool.ps1")
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["protectedPaths"].append(
+        {
+            "id": "backslash-hooks-directory",
+            "path": ".github\\hooks\\**",
+            "scope": "directory",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+    (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+    result = _invoke_guard_pre_tool_script(
+        guard_dir / "guard_pre_tool.ps1",
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": ".github/hooks/test.json",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert ".github/hooks/**" in response["permissionDecisionReason"]
+
+
+def test_repo_scoped_guard_pre_tool_uses_policy_file_write_tool_names(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    guard_dir = repo / ".github" / "hooks" / "scripts"
+    guard_dir.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", guard_dir / "guard_pre_tool.ps1")
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["toolNames"]["fileWrite"] = ["rewrite"]
+    (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+    result = _invoke_guard_pre_tool_script(
+        guard_dir / "guard_pre_tool.ps1",
+        {
+            "toolName": "rewrite",
+            "toolArgs": {
+                "path": "policy/guard-policy.json",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "policy/guard-policy.json" in response["permissionDecisionReason"]
+
+
+def test_repo_scoped_guard_pre_tool_uses_policy_shell_tool_names(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    guard_dir = repo / ".github" / "hooks" / "scripts"
+    guard_dir.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", guard_dir / "guard_pre_tool.ps1")
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["toolNames"]["shell"] = ["terminal"]
+    (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+    result = _invoke_guard_pre_tool_script(
+        guard_dir / "guard_pre_tool.ps1",
+        {
+            "toolName": "terminal",
+            "toolArgs": {
+                "command": "git reset --hard HEAD",
+            },
+        },
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
 def test_enter_maintenance_mode_requires_only_minutes(tmp_path: Path) -> None:
     home_root = tmp_path / "home"
     script_path = ROOT / "scripts" / "enter-copilot-maintenance-mode.ps1"

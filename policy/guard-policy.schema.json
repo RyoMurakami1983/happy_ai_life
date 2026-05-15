@@ -130,6 +130,18 @@
                 "maintenanceScope": { "const": null }
               }
             }
+          },
+          {
+            "if": {
+              "properties": { "scope": { "const": "file" } }
+            },
+            "then": {
+              "properties": {
+                "path": {
+                  "not": { "pattern": ".*/\\*\\*$" }
+                }
+              }
+            }
           }
         ]
       },

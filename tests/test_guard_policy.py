@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -55,6 +56,11 @@ def _assert_matches_schema(value: Any, schema: dict[str, Any], path: str = "$") 
     if min_length is not None:
         assert isinstance(value, str), f"{path}: minLength requires string"
         assert len(value) >= min_length, f"{path}: shorter than {min_length}"
+
+    pattern = schema.get("pattern")
+    if pattern is not None:
+        assert isinstance(value, str), f"{path}: pattern requires string"
+        assert re.search(pattern, value) is not None, f"{path}: does not match pattern {pattern!r}"
 
     min_items = schema.get("minItems")
     if min_items is not None:
@@ -193,6 +199,24 @@ def test_guard_policy_has_unique_protected_path_ids_and_paths() -> None:
     assert len(normalized_paths) == len(set(normalized_paths))
 
 
+def test_guard_policy_schema_rejects_file_scope_path_with_directory_wildcard() -> None:
+    schema = _read_json(SCHEMA_PATH)
+    invalid_path_rule = {
+        "id": "file-with-wildcard",
+        "path": ".github/hooks/**",
+        "scope": "file",
+        "action": "ask",
+        "maintenanceScope": "protectedPathEdit",
+    }
+
+    try:
+        _assert_matches_schema(invalid_path_rule, schema["properties"]["protectedPaths"]["items"], "$.protectedPaths[0]")
+    except AssertionError:
+        return
+
+    raise AssertionError("file-scope protected path unexpectedly accepted directory wildcard")
+
+
 def test_guard_policy_has_unique_deny_rule_ids() -> None:
     policy = _read_json(POLICY_PATH)
 
@@ -217,6 +241,13 @@ def test_guard_policy_schema_rejects_specialized_rule_with_pattern_fields() -> N
         return
 
     raise AssertionError("specialized deny rule unexpectedly accepted pattern fields")
+
+
+def test_guard_policy_tool_names_match_runtime_defaults() -> None:
+    policy = _read_json(POLICY_PATH)
+
+    assert policy["toolNames"]["shell"] == ["bash", "powershell"]
+    assert policy["toolNames"]["fileWrite"] == ["create", "edit"]
 
 
 def test_guard_policy_docs_reference_policy_as_source_of_truth() -> None:
