@@ -197,6 +197,31 @@ def test_engine_denies_shell_maintenance_mode_command(isolated_home: Path) -> No
     }
 
 
+@pytest.mark.parametrize(
+    ("command",),
+    [
+        ("git commit --no-verify -m \"skip hooks\"",),
+        ("git commit -n -m \"skip hooks\"",),
+        ("git push origin HEAD --no-verify",),
+    ],
+)
+def test_engine_denies_git_hooks_no_verify_variants(isolated_home: Path, command: str) -> None:
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": command,
+            },
+        },
+        home=isolated_home,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": "AI is not allowed to bypass Git hooks with --no-verify or git commit -n.",
+    }
+
+
 def test_resolve_full_path_preserves_unc_prefix(isolated_home: Path) -> None:
     resolved = resolve_full_path(
         "//SERVER//Share///guards/../policy/guard-policy.json",
