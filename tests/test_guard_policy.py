@@ -235,6 +235,24 @@ def test_guard_policy_schema_rejects_file_scope_path_with_backslash_directory_wi
     raise AssertionError("file-scope protected path unexpectedly accepted backslash directory wildcard")
 
 
+def test_guard_policy_schema_rejects_whitespace_only_protected_path_fields() -> None:
+    schema = _read_json(SCHEMA_PATH)
+    invalid_rule = {
+        "id": " ",
+        "path": "   ",
+        "scope": "file",
+        "action": "ask",
+        "maintenanceScope": "protectedPathEdit",
+    }
+
+    try:
+        _assert_matches_schema(invalid_rule, schema["properties"]["protectedPaths"]["items"], "$.protectedPaths[0]")
+    except AssertionError:
+        return
+
+    raise AssertionError("protected path unexpectedly accepted whitespace-only id/path")
+
+
 def test_guard_policy_has_unique_deny_rule_ids() -> None:
     policy = _read_json(POLICY_PATH)
 
@@ -259,6 +277,24 @@ def test_guard_policy_schema_rejects_specialized_rule_with_pattern_fields() -> N
         return
 
     raise AssertionError("specialized deny rule unexpectedly accepted pattern fields")
+
+
+def test_guard_policy_schema_rejects_whitespace_only_pattern_rule_fields() -> None:
+    schema = _read_json(SCHEMA_PATH)
+    invalid_rule = {
+        "id": " ",
+        "kind": "pattern",
+        "description": "valid description",
+        "matchAgainst": "normalized",
+        "pattern": "   ",
+    }
+
+    try:
+        _assert_matches_schema(invalid_rule, schema["properties"]["denyCommandRules"]["items"], "$.denyCommandRules[0]")
+    except AssertionError:
+        return
+
+    raise AssertionError("pattern deny rule unexpectedly accepted whitespace-only id/pattern")
 
 
 def test_guard_policy_schema_rejects_whitespace_only_tool_name() -> None:

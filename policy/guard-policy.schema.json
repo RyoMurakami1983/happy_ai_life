@@ -111,8 +111,8 @@
           "maintenanceScope"
         ],
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "path": { "type": "string", "minLength": 1 },
+          "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
+          "path": { "type": "string", "minLength": 1, "pattern": "\\S" },
           "scope": { "type": "string", "enum": ["file", "directory"] },
           "action": { "type": "string", "enum": ["ask", "deny"] },
           "maintenanceScope": {
@@ -159,11 +159,11 @@
           "description"
         ],
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
+          "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
           "kind": { "type": "string", "enum": ["specialized", "pattern"] },
           "description": { "type": "string", "minLength": 1 },
           "matchAgainst": { "type": "string", "enum": ["normalized", "compact"] },
-          "pattern": { "type": "string", "minLength": 1 }
+          "pattern": { "type": "string", "minLength": 1, "pattern": "\\S" }
         },
         "additionalProperties": false,
         "allOf": [
