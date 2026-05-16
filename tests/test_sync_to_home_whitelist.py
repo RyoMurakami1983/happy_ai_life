@@ -2221,6 +2221,55 @@ def test_guard_permission_request_denies_maintenance_state_edit(tmp_path: Path) 
     assert "Maintenance state changes must go through the maintenance scripts" in response["message"]
 
 
+def test_guard_permission_request_prefers_specific_deny_over_broad_ask_policy_order(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    guard_dir = repo / ".github" / "hooks" / "scripts"
+    guard_dir.mkdir(parents=True)
+    script = guard_dir / "guard_pre_tool.ps1"
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", script)
+
+    home_root = tmp_path / "home"
+    state_path = _write_maintenance_state(home_root)
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    deny_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/maintenance-mode.json")
+    broad_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/**")
+    remaining_entries = [
+        entry
+        for entry in policy["protectedPaths"]
+        if entry["path"] not in {"$HOME/.copilot/maintenance-mode.json", "$HOME/.copilot/**"}
+    ]
+    policy["protectedPaths"] = [broad_entry, deny_entry, *remaining_entries]
+    (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+    result = _invoke_guard_pre_tool_script(
+        script,
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": str(state_path),
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+        hook_event="permissionRequest",
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["behavior"] == "deny"
+    assert response["interrupt"] is True
+    assert "Maintenance state changes must go through the maintenance scripts" in response["message"]
+
+
 def test_guard_pre_tool_ignores_maintenance_mode_file_env_override(tmp_path: Path) -> None:
     home_root = tmp_path / "home"
     state_path = tmp_path / "override-maintenance-mode.json"

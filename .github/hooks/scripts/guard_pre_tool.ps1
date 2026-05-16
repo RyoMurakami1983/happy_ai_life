@@ -716,26 +716,59 @@ function Find-ProtectedPathMatch {
         [Parameter(Mandatory = $true)][object[]]$ProtectedRules
     )
 
+    $bestMatch = $null
     foreach ($candidate in $CandidatePaths) {
         foreach ($rule in $ProtectedRules) {
+            $isMatch = $false
             if ($rule.Scope -eq "directory") {
                 if (Test-PathWithinRoot -CandidatePath $candidate -RootPath $rule.FullPath) {
-                    return [pscustomobject]@{
-                        Candidate = $candidate
-                        Rule = $rule
-                    }
+                    $isMatch = $true
                 }
             }
             elseif ($candidate.Equals($rule.FullPath, [System.StringComparison]::OrdinalIgnoreCase)) {
-                return [pscustomobject]@{
-                    Candidate = $candidate
-                    Rule = $rule
-                }
+                $isMatch = $true
+            }
+
+            if (-not $isMatch) {
+                continue
+            }
+
+            $candidateMatch = [pscustomobject]@{
+                Candidate = $candidate
+                Rule = $rule
+            }
+            if ($null -eq $bestMatch) {
+                $bestMatch = $candidateMatch
+                continue
+            }
+
+            $bestActionRank = if ($bestMatch.Rule.Action -eq "deny") { 1 } else { 0 }
+            $candidateActionRank = if ($candidateMatch.Rule.Action -eq "deny") { 1 } else { 0 }
+            if ($candidateActionRank -gt $bestActionRank) {
+                $bestMatch = $candidateMatch
+                continue
+            }
+            if ($candidateActionRank -lt $bestActionRank) {
+                continue
+            }
+
+            $bestScopeRank = if ($bestMatch.Rule.Scope -eq "file") { 1 } else { 0 }
+            $candidateScopeRank = if ($candidateMatch.Rule.Scope -eq "file") { 1 } else { 0 }
+            if ($candidateScopeRank -gt $bestScopeRank) {
+                $bestMatch = $candidateMatch
+                continue
+            }
+            if ($candidateScopeRank -lt $bestScopeRank) {
+                continue
+            }
+
+            if (([string]$candidateMatch.Rule.FullPath).Length -gt (([string]$bestMatch.Rule.FullPath).Length)) {
+                $bestMatch = $candidateMatch
             }
         }
     }
 
-    return $null
+    return $bestMatch
 }
 
 function Get-RepoRoot {

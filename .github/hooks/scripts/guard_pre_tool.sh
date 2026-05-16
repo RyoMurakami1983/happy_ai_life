@@ -495,7 +495,8 @@ protected_path_match_for_candidate() {
   local repo_root_path="$2"
   local current_dir="$3"
   local rule_json display scope action maintenance_scope base_path rule_path resolved_rule
-
+  local best_json="" best_action_rank=-1 best_scope_rank=-1 best_path_length=-1
+  local candidate_action_rank candidate_scope_rank candidate_path_length
   for rule_json in "${protected_path_rules[@]}"; do
     display="$(normalize_policy_path_text "$(jq -r '.path' <<<"${rule_json}")")"
     scope="$(jq -r '.scope' <<<"${rule_json}")"
@@ -522,26 +523,52 @@ protected_path_match_for_candidate() {
 
     if [[ "${scope}" == "directory" ]]; then
       if path_within_root "${candidate}" "${resolved_rule}"; then
-        jq -nc \
-          --arg display "${display}" \
-          --arg action "${action}" \
-          --arg maintenanceScope "${maintenance_scope}" \
-          '{display:$display, action:$action, maintenanceScope:($maintenanceScope | if length == 0 then null else . end)}'
-        return 0
+        candidate_action_rank=0
+        [[ "${action}" == "deny" ]] && candidate_action_rank=1
+        candidate_scope_rank=0
+        [[ "${scope}" == "file" ]] && candidate_scope_rank=1
+        candidate_path_length=${#resolved_rule}
+        if (( candidate_action_rank > best_action_rank )) || \
+           (( candidate_action_rank == best_action_rank && candidate_scope_rank > best_scope_rank )) || \
+           (( candidate_action_rank == best_action_rank && candidate_scope_rank == best_scope_rank && candidate_path_length > best_path_length )); then
+          best_json="$(jq -nc \
+            --arg display "${display}" \
+            --arg action "${action}" \
+            --arg maintenanceScope "${maintenance_scope}" \
+            '{display:$display, action:$action, maintenanceScope:($maintenanceScope | if length == 0 then null else . end)}')"
+          best_action_rank=$candidate_action_rank
+          best_scope_rank=$candidate_scope_rank
+          best_path_length=$candidate_path_length
+        fi
       fi
       continue
     fi
 
     if [[ "${candidate}" == "${resolved_rule}" ]]; then
-      jq -nc \
-        --arg display "${display}" \
-        --arg action "${action}" \
-        --arg maintenanceScope "${maintenance_scope}" \
-        '{display:$display, action:$action, maintenanceScope:($maintenanceScope | if length == 0 then null else . end)}'
-      return 0
+      candidate_action_rank=0
+      [[ "${action}" == "deny" ]] && candidate_action_rank=1
+      candidate_scope_rank=0
+      [[ "${scope}" == "file" ]] && candidate_scope_rank=1
+      candidate_path_length=${#resolved_rule}
+      if (( candidate_action_rank > best_action_rank )) || \
+         (( candidate_action_rank == best_action_rank && candidate_scope_rank > best_scope_rank )) || \
+         (( candidate_action_rank == best_action_rank && candidate_scope_rank == best_scope_rank && candidate_path_length > best_path_length )); then
+        best_json="$(jq -nc \
+          --arg display "${display}" \
+          --arg action "${action}" \
+          --arg maintenanceScope "${maintenance_scope}" \
+          '{display:$display, action:$action, maintenanceScope:($maintenanceScope | if length == 0 then null else . end)}')"
+        best_action_rank=$candidate_action_rank
+        best_scope_rank=$candidate_scope_rank
+        best_path_length=$candidate_path_length
+      fi
     fi
   done
 
+  if [[ -n "${best_json}" ]]; then
+    printf '%s\n' "${best_json}"
+    return 0
+  fi
   return 1
 }
 
