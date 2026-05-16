@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -85,6 +86,25 @@ def _write_policy(repo: Path, policy: dict[str, object]) -> None:
     (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
 
 
+def _write_maintenance_state(home_root: Path) -> Path:
+    state_path = home_root / ".copilot" / "maintenance-mode.json"
+    state_path.parent.mkdir(parents=True)
+    now = datetime.now(timezone.utc)
+    state_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "enabled": True,
+                "createdAt": now.isoformat(),
+                "expiresAt": (now + timedelta(minutes=30)).isoformat(),
+                "scopes": ["protectedPathEdit"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return state_path
+
+
 def test_bash_guard_script_avoids_mapfile_for_bash32_compatibility() -> None:
     content = GUARD_SCRIPT_PATH.read_text(encoding="utf-8")
 
@@ -157,6 +177,54 @@ def test_bash_guard_pre_tool_uses_policy_file_write_tool_names_and_path_properti
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "ask"
     assert "policy/guard-policy.json" in response["permissionDecisionReason"]
+
+
+def test_bash_guard_pre_tool_allows_protected_edit_during_active_maintenance_mode(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home_root = tmp_path / "home"
+    _init_repo_with_bash_guard(repo)
+    _write_maintenance_state(home_root)
+
+    result = _invoke_bash_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "policy/guard-policy.json",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+        env={"HOME": str(home_root)},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_bash_guard_pre_tool_asks_for_home_managed_path_during_active_maintenance_mode(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home_root = tmp_path / "home"
+    _init_repo_with_bash_guard(repo)
+    _write_maintenance_state(home_root)
+
+    result = _invoke_bash_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": str(home_root / ".copilot" / "copilot-instructions.md"),
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+        env={"HOME": str(home_root)},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "Home-managed Copilot files always require explicit human review" in response["permissionDecisionReason"]
 
 
 def test_bash_guard_pre_tool_normalizes_backslash_directory_policy_path(tmp_path: Path) -> None:
@@ -238,6 +306,58 @@ def test_bash_guard_pre_tool_blocks_remove_item_recurse_force_in_fallback_baseli
             "toolName": "powershell",
             "toolArgs": {"command": "Remove-Item temp.txt -Recurse -Force"},
         },
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+def test_bash_guard_permission_request_uses_event_specific_deny_response(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git push origin main -f"}},
+        cwd=repo,
+        env={"HAPPY_AI_LIFE_HOOK_EVENT": "permissionRequest"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["behavior"] == "deny"
+    assert response["interrupt"] is True
+    assert "Blocked potentially destructive command" in response["message"]
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "ruff format .",
+        "git log --format=%H",
+    ],
+)
+def test_bash_guard_pre_tool_allows_safe_format_neighbors(tmp_path: Path, command: str) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": command}},
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+
+
+def test_bash_guard_pre_tool_blocks_disk_format_command(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "format c:"}},
         cwd=repo,
     )
 

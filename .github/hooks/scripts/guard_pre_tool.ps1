@@ -78,7 +78,7 @@ function Get-MinimalGuardPolicy {
             [pscustomobject]@{ id = "rm-rf-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block rm -rf /."; pattern = "\brm\s+-rf\s+\/" }
             [pscustomobject]@{ id = "rm-rf-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block rm -rf ."; pattern = "\brm\s+-rf\s+\.(?:\s|$)" }
             [pscustomobject]@{ id = "windows-del-force-recursive"; kind = "pattern"; matchAgainst = "normalized"; description = "Block del /f /s /q."; pattern = "\bdel\s+\/f\s+\/s\s+\/q\b" }
-            [pscustomobject]@{ id = "format-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block format."; pattern = "\bformat\b" }
+            [pscustomobject]@{ id = "format-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block disk format command."; pattern = '(^|[;&|]\s*)format(?:\.com|\.exe)?(?:\s|$)' }
             [pscustomobject]@{ id = "mkfs-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block mkfs."; pattern = "\bmkfs\b" }
             [pscustomobject]@{ id = "shutdown-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block shutdown."; pattern = "\bshutdown\b" }
             [pscustomobject]@{ id = "reboot-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block reboot."; pattern = "\breboot\b" }
@@ -163,11 +163,19 @@ function Test-GuardPolicyShape {
         return $false
     }
 
+    if ($Policy.pathPropertyNames -isnot [System.Array] -or $Policy.protectedPaths -isnot [System.Array] -or $Policy.denyCommandRules -isnot [System.Array]) {
+        return $false
+    }
+
     if (@($Policy.pathPropertyNames).Count -eq 0 -or @($Policy.protectedPaths).Count -eq 0 -or @($Policy.denyCommandRules).Count -eq 0) {
         return $false
     }
 
-    if ($null -eq $Policy.toolNames -or @($Policy.toolNames.shell).Count -eq 0 -or @($Policy.toolNames.fileWrite).Count -eq 0) {
+    if ($null -eq $Policy.toolNames -or $Policy.toolNames.shell -isnot [System.Array] -or $Policy.toolNames.fileWrite -isnot [System.Array]) {
+        return $false
+    }
+
+    if (@($Policy.toolNames.shell).Count -eq 0 -or @($Policy.toolNames.fileWrite).Count -eq 0) {
         return $false
     }
 

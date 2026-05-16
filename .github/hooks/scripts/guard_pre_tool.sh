@@ -57,7 +57,7 @@ default_pattern_rules_json="$(cat <<'JSON'
   {"id":"rm-rf-root","pattern":"\\brm\\s+-rf\\s+\\/","matchAgainst":"normalized"},
   {"id":"rm-rf-dot","pattern":"\\brm\\s+-rf\\s+\\.(?:\\s|$)","matchAgainst":"normalized"},
   {"id":"windows-del-force-recursive","pattern":"\\bdel\\s+\\/f\\s+\\/s\\s+\\/q\\b","matchAgainst":"normalized"},
-  {"id":"format-command","pattern":"\\bformat\\b","matchAgainst":"normalized"},
+  {"id":"format-command","pattern":"(^|[;&|]\\s*)format(?:\\.com|\\.exe)?(?:\\s|$)","matchAgainst":"normalized"},
   {"id":"mkfs-command","pattern":"\\bmkfs\\b","matchAgainst":"normalized"},
   {"id":"shutdown-command","pattern":"\\bshutdown\\b","matchAgainst":"normalized"},
   {"id":"reboot-command","pattern":"\\breboot\\b","matchAgainst":"normalized"},
@@ -103,6 +103,12 @@ pattern_rules=()
 protected_path_rules=()
 
 deny() {
+  if [[ "${hook_event}" == "permissionRequest" ]]; then
+    jq -nc --arg reason "$1" \
+      '{behavior:"deny", message:$reason, interrupt:true}'
+    return
+  fi
+
   jq -nc --arg reason "$1" \
     '{permissionDecision:"deny", permissionDecisionReason:$reason}'
 }
@@ -345,6 +351,64 @@ path_within_root() {
     return 1
   fi
   [[ "${candidate}" == "${root}" || "${candidate}" == "${root}/"* ]]
+}
+
+iso_to_epoch() {
+  local value="$1"
+  local normalized
+  if date -u -d "${value}" +%s >/dev/null 2>&1; then
+    date -u -d "${value}" +%s
+    return 0
+  fi
+
+  normalized="$(printf '%s' "${value}" \
+    | sed -E 's/\.[0-9]+([+-][0-9]{2}:?[0-9]{2}|Z)$/\1/; s/Z$/+0000/; s/([+-][0-9]{2}):([0-9]{2})$/\1\2/')"
+  date -u -j -f "%Y-%m-%dT%H:%M:%S%z" "${normalized}" +%s 2>/dev/null
+}
+
+maintenance_mode_active() {
+  local scope="$1"
+  local state_path created_at expires_at created_epoch expires_epoch now_epoch max_epoch
+
+  if [[ -z "${scope}" || -z "${HOME:-}" ]]; then
+    return 1
+  fi
+
+  state_path="${HOME}/.copilot/maintenance-mode.json"
+  if [[ ! -f "${state_path}" ]]; then
+    return 1
+  fi
+
+  if ! jq -e --arg scope "${scope}" '
+    .schemaVersion == 1
+    and .enabled == true
+    and (.scopes | type == "array")
+    and ((.scopes | index($scope)) != null)
+    and (.createdAt | type == "string")
+    and (.expiresAt | type == "string")
+  ' "${state_path}" >/dev/null 2>&1; then
+    return 1
+  fi
+
+  created_at="$(jq -r '.createdAt' "${state_path}")"
+  expires_at="$(jq -r '.expiresAt' "${state_path}")"
+  if ! created_epoch="$(iso_to_epoch "${created_at}")"; then
+    return 1
+  fi
+  if ! expires_epoch="$(iso_to_epoch "${expires_at}")"; then
+    return 1
+  fi
+
+  now_epoch="$(date -u +%s)"
+  max_epoch=$((created_epoch + 7200))
+  if (( created_epoch > now_epoch )); then
+    return 1
+  fi
+  if (( expires_epoch <= created_epoch || expires_epoch > max_epoch || expires_epoch > now_epoch + 7200 )); then
+    return 1
+  fi
+
+  (( expires_epoch > now_epoch ))
 }
 
 json_array_from_strings() {
@@ -620,12 +684,17 @@ if [[ "${is_file_write_tool}" -eq 1 ]]; then
 
     protected_display="$(jq -r '.display' <<<"${protected_match}")"
     protected_action="$(jq -r '.action' <<<"${protected_match}")"
+    protected_maintenance_scope="$(jq -r 'if .maintenanceScope == null then "" else .maintenanceScope end' <<<"${protected_match}")"
     if [[ "${protected_action}" == "deny" ]]; then
       deny "Protected path change detected for ${protected_display} via ${tool_name}. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits."
       exit 0
     fi
     if [[ "${protected_display}" == '$HOME/.copilot/**' ]]; then
       ask "Protected path change detected for ${protected_display} via ${tool_name}. Home-managed Copilot files always require explicit human review, even during maintenance mode."
+      exit 0
+    fi
+
+    if maintenance_mode_active "${protected_maintenance_scope}"; then
       exit 0
     fi
 

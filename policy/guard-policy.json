@@ -237,8 +237,8 @@
       "id": "format-command",
       "kind": "pattern",
       "matchAgainst": "normalized",
-      "description": "Block format.",
-      "pattern": "\\bformat\\b"
+      "description": "Block disk format command.",
+      "pattern": "(^|[;&|]\\s*)format(?:\\.com|\\.exe)?(?:\\s|$)"
     },
     {
       "id": "mkfs-command",
