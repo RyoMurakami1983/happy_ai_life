@@ -148,9 +148,11 @@ policy/
 └── tool-versions.json              # 必要なら分離
 
 .github/hooks/scripts/
-├── guard_policy.py                 # 単一 policy engine
 ├── guard_pre_tool.ps1              # thin wrapper
 └── guard_pre_tool.sh               # thin wrapper
+
+`scripts/`
+└── guard_policy.py                 # 単一 policy engine
 
 tests/
 ├── test_guard_policy_engine.py
