@@ -332,6 +332,45 @@ def test_bash_guard_permission_request_prefers_specific_deny_over_broad_ask_poli
     assert "Maintenance state changes must go through the maintenance scripts" in response["message"]
 
 
+def test_bash_guard_permission_request_prefers_deny_across_all_candidate_paths(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home_root = tmp_path / "home"
+    _init_repo_with_bash_guard(repo)
+    state_path = _write_maintenance_state(home_root)
+
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    deny_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/maintenance-mode.json")
+    broad_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/**")
+    remaining_entries = [
+        entry
+        for entry in policy["protectedPaths"]
+        if entry["path"] not in {"$HOME/.copilot/maintenance-mode.json", "$HOME/.copilot/**"}
+    ]
+    policy["protectedPaths"] = [broad_entry, deny_entry, *remaining_entries]
+    policy["pathPropertyNames"] = ["path", "destination"]
+    _write_policy(repo, policy)
+
+    result = _invoke_bash_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": str(home_root / ".copilot" / "copilot-instructions.md"),
+                "destination": str(state_path),
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+        env={"HOME": str(home_root), "HAPPY_AI_LIFE_HOOK_EVENT": "permissionRequest"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["behavior"] == "deny"
+    assert response["interrupt"] is True
+    assert "Maintenance state changes must go through the maintenance scripts" in response["message"]
+
+
 def test_bash_guard_pre_tool_normalizes_home_backslash_directory_policy_path(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     home_root = tmp_path / "home"

@@ -394,6 +394,13 @@ if (-not [string]::IsNullOrWhiteSpace($PolicyRelativePath)) {
     if (-not (Test-Path -LiteralPath $policySourcePath -PathType Container)) {
         throw "Guard policy source path not found: $policySourcePath. Pass -PolicyRelativePath '' only when intentionally skipping policy sync."
     }
+
+    foreach ($requiredPolicyFile in @("guard-policy.json", "guard-policy.schema.json")) {
+        $requiredPolicyPath = Join-Path $policySourcePath $requiredPolicyFile
+        if (-not (Test-Path -LiteralPath $requiredPolicyPath -PathType Leaf)) {
+            throw "Guard policy source file not found: $requiredPolicyPath. Pass -PolicyRelativePath '' only when intentionally skipping policy sync."
+        }
+    }
 }
 
 # repo-template では .github/hooks を保持しない。

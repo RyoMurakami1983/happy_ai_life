@@ -245,6 +245,23 @@ def test_sync_to_repo_missing_policy_source_fails_before_any_writes(tmp_path: Pa
     assert not (target_repo / "policy").exists()
 
 
+@pytest.mark.parametrize("missing_policy_file", ["guard-policy.json", "guard-policy.schema.json"])
+def test_sync_to_repo_missing_required_policy_file_fails_before_any_writes(tmp_path: Path, missing_policy_file: str) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    (source_root / "policy" / missing_policy_file).unlink()
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False)
+
+    assert result.returncode != 0
+    assert "Guard policy source file not found" in result.stderr
+    assert missing_policy_file in result.stderr
+    assert not (target_repo / ".github").exists()
+    assert not (target_repo / ".githooks").exists()
+    assert not (target_repo / "policy").exists()
+
+
 def test_sync_to_repo_allows_explicit_policy_sync_opt_out(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     shutil.rmtree(source_root / "policy")

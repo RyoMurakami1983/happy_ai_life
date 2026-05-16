@@ -255,6 +255,38 @@ rule_enabled() {
   return 1
 }
 
+select_better_protected_match() {
+  local current_best="$1"
+  local candidate_match="$2"
+  local current_action_rank current_scope_rank current_path_length
+  local candidate_action_rank candidate_scope_rank candidate_path_length
+
+  if [[ -z "${candidate_match}" ]]; then
+    printf '%s\n' "${current_best}"
+    return 0
+  fi
+  if [[ -z "${current_best}" ]]; then
+    printf '%s\n' "${candidate_match}"
+    return 0
+  fi
+
+  current_action_rank="$(jq -r '.action | if . == "deny" then 1 else 0 end' <<<"${current_best}")"
+  current_scope_rank="$(jq -r '.scope | if . == "file" then 1 else 0 end' <<<"${current_best}")"
+  current_path_length="$(jq -r '.resolvedPathLength' <<<"${current_best}")"
+  candidate_action_rank="$(jq -r '.action | if . == "deny" then 1 else 0 end' <<<"${candidate_match}")"
+  candidate_scope_rank="$(jq -r '.scope | if . == "file" then 1 else 0 end' <<<"${candidate_match}")"
+  candidate_path_length="$(jq -r '.resolvedPathLength' <<<"${candidate_match}")"
+
+  if (( candidate_action_rank > current_action_rank )) || \
+     (( candidate_action_rank == current_action_rank && candidate_scope_rank > current_scope_rank )) || \
+     (( candidate_action_rank == current_action_rank && candidate_scope_rank == current_scope_rank && candidate_path_length > current_path_length )); then
+    printf '%s\n' "${candidate_match}"
+    return 0
+  fi
+
+  printf '%s\n' "${current_best}"
+}
+
 tool_enabled() {
   local target="$1"
   shift
@@ -534,8 +566,10 @@ protected_path_match_for_candidate() {
           best_json="$(jq -nc \
             --arg display "${display}" \
             --arg action "${action}" \
+            --arg scope "${scope}" \
             --arg maintenanceScope "${maintenance_scope}" \
-            '{display:$display, action:$action, maintenanceScope:($maintenanceScope | if length == 0 then null else . end)}')"
+            --argjson resolvedPathLength "${candidate_path_length}" \
+            '{display:$display, action:$action, scope:$scope, resolvedPathLength:$resolvedPathLength, maintenanceScope:($maintenanceScope | if length == 0 then null else . end)}')"
           best_action_rank=$candidate_action_rank
           best_scope_rank=$candidate_scope_rank
           best_path_length=$candidate_path_length
@@ -556,8 +590,10 @@ protected_path_match_for_candidate() {
         best_json="$(jq -nc \
           --arg display "${display}" \
           --arg action "${action}" \
+          --arg scope "${scope}" \
           --arg maintenanceScope "${maintenance_scope}" \
-          '{display:$display, action:$action, maintenanceScope:($maintenanceScope | if length == 0 then null else . end)}')"
+          --argjson resolvedPathLength "${candidate_path_length}" \
+          '{display:$display, action:$action, scope:$scope, resolvedPathLength:$resolvedPathLength, maintenanceScope:($maintenanceScope | if length == 0 then null else . end)}')"
         best_action_rank=$candidate_action_rank
         best_scope_rank=$candidate_scope_rank
         best_path_length=$candidate_path_length
@@ -729,8 +765,7 @@ if [[ "${is_file_write_tool}" -eq 1 ]]; then
   for candidate_path in "${candidate_paths[@]}"; do
     match_json="$(protected_path_match_for_candidate "${candidate_path}" "${repo_root_path}" "${current_dir}" || true)"
     if [[ -n "${match_json}" ]]; then
-      protected_match="${match_json}"
-      break
+      protected_match="$(select_better_protected_match "${protected_match}" "${match_json}")"
     fi
   done
 

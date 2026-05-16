@@ -145,6 +145,19 @@ def test_guard_policy_matches_schema() -> None:
     _assert_matches_schema(policy, schema)
 
 
+def test_guard_policy_schema_rejects_future_schema_version() -> None:
+    schema = _read_json(SCHEMA_PATH)
+    invalid_policy = _read_json(POLICY_PATH)
+    invalid_policy["schemaVersion"] = 2
+
+    try:
+        _assert_matches_schema(invalid_policy, schema)
+    except AssertionError:
+        return
+
+    raise AssertionError("schemaVersion 2 unexpectedly accepted by policy schema")
+
+
 def test_guard_policy_covers_current_boundary_rules() -> None:
     policy = _read_json(POLICY_PATH)
 
