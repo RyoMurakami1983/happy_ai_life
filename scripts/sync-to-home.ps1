@@ -744,6 +744,14 @@ $trackedFilePlans = @(
     [pscustomobject]@{
         Label = "hooks/scripts/guard_pre_tool.ps1"
         Plan = (Get-TrackedFilePlan -Source (Join-Path $sourceRootPath ".github\hooks\scripts\guard_pre_tool.ps1") -Destination (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.ps1") -PreviewPath "hooks/scripts/guard_pre_tool.ps1")
+    },
+    [pscustomobject]@{
+        Label = "policy/guard-policy.json"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "policy") "guard-policy.json") -Destination (Join-Path (Join-Path $destinationPath "policy") "guard-policy.json") -PreviewPath "policy/guard-policy.json")
+    },
+    [pscustomobject]@{
+        Label = "policy/guard-policy.schema.json"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "policy") "guard-policy.schema.json") -Destination (Join-Path (Join-Path $destinationPath "policy") "guard-policy.schema.json") -PreviewPath "policy/guard-policy.schema.json")
     }
 )
 

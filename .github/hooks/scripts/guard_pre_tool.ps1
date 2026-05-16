@@ -4,7 +4,22 @@ param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "SilentlyContinue"
-$ProtectedPathPropertyNames = @("path", "filePath", "file_path", "targetPath", "target_path")
+$script:ProtectedPathPropertyNames = @("path", "filePath", "file_path", "targetPath", "target_path")
+$script:GuardPolicy = $null
+$script:GuardPolicyRepoRoot = $null
+
+function Get-RequiredSpecializedDenyRuleIds {
+    return @(
+        "maintenance-mode-manual-only",
+        "git-hooks-no-verify",
+        "git-hooks-path-change",
+        "git-hooks-update-index-bypass",
+        "git-push-force",
+        "git-commit-secret-scan",
+        "git-push-secret-scan",
+        "gh-pr-create-secret-scan"
+    )
+}
 
 function Write-HookResponse($obj) {
     $json = $obj | ConvertTo-Json -Compress
@@ -22,6 +37,306 @@ function Resolve-HookEventName {
 
 function Resolve-MaintenanceModePath {
     return [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot\maintenance-mode.json"))
+}
+
+function Get-MinimalGuardPolicy {
+    return [pscustomobject]@{
+        schemaVersion = 1
+        pathPropertyNames = @("path", "filePath", "file_path", "targetPath", "target_path")
+        toolNames = [pscustomobject]@{
+            shell = @("bash", "powershell")
+            fileWrite = @("create", "edit")
+            observe = @("view", "web_fetch")
+            delegation = @("task")
+        }
+        protectedPaths = @(
+            [pscustomobject]@{ id = "repo-hooks"; path = ".github/hooks/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-githooks"; path = ".githooks/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-workflows"; path = ".github/workflows/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-instructions-dir"; path = ".github/instructions/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-skills-dir"; path = ".github/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "agents-skills-dir"; path = ".agents/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "claude-skills-dir"; path = ".claude/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-copilot-instructions"; path = ".github/copilot-instructions.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "repo-mcp"; path = ".github/mcp.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "root-mcp"; path = ".mcp.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "gitleaks-config"; path = ".gitleaks.toml"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "guard-policy-json"; path = "policy/guard-policy.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "guard-policy-schema"; path = "policy/guard-policy.schema.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
+            [pscustomobject]@{ id = "maintenance-mode-state"; path = '$HOME/.copilot/maintenance-mode.json'; scope = "file"; action = "deny"; maintenanceScope = $null }
+            [pscustomobject]@{ id = "home-copilot-root"; path = '$HOME/.copilot/**'; scope = "directory"; action = "ask"; maintenanceScope = $null }
+        )
+        denyCommandRules = @(
+            [pscustomobject]@{ id = "maintenance-mode-manual-only"; kind = "specialized"; description = "AI must not enter or exit maintenance mode, or edit the maintenance state file." }
+            [pscustomobject]@{ id = "git-hooks-no-verify"; kind = "specialized"; description = "Block git commit --no-verify, git commit -n, and git push --no-verify." }
+            [pscustomobject]@{ id = "git-hooks-path-change"; kind = "specialized"; description = "Block core.hooksPath writes, unsets, and inline git -c core.hooksPath usage." }
+            [pscustomobject]@{ id = "git-hooks-update-index-bypass"; kind = "specialized"; description = "Block git update-index --skip-worktree and --assume-unchanged." }
+            [pscustomobject]@{ id = "git-push-force"; kind = "specialized"; description = "Block git push -f, --force, and --force-with-lease." }
+            [pscustomobject]@{ id = "git-commit-secret-scan"; kind = "specialized"; description = "Run staged gitleaks scan before git commit." }
+            [pscustomobject]@{ id = "git-push-secret-scan"; kind = "specialized"; description = "Run unpushed-commit gitleaks scan before git push." }
+            [pscustomobject]@{ id = "gh-pr-create-secret-scan"; kind = "specialized"; description = "Run unpushed-commit gitleaks scan before gh pr create." }
+            [pscustomobject]@{ id = "rm-rf-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced rm against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*r[a-z]*f[a-z]*[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "rm-fr-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block forced recursive rm against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*f[a-z]*r[a-z]*[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "rm-r-f-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block split recursive forced rm against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*r[a-z]*(?=\s|$|[;&|])[^;&|]*\s-[a-z]*f[a-z]*[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "rm-f-r-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block split forced recursive rm against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*f[a-z]*(?=\s|$|[;&|])[^;&|]*\s-[a-z]*r[a-z]*[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "rm-rf-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced rm against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*r[a-z]*f[a-z]*[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "rm-fr-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block forced recursive rm against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*f[a-z]*r[a-z]*[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "rm-r-f-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block split recursive forced rm against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*r[a-z]*(?=\s|$|[;&|])[^;&|]*\s-[a-z]*f[a-z]*[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "rm-f-r-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block split forced recursive rm against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*f[a-z]*(?=\s|$|[;&|])[^;&|]*\s-[a-z]*r[a-z]*[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "rm-recursive-force-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced rm with long options against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*(?:\s-[a-z]*r[a-z]*|\s--recursive)(?=\s|$|[;&|])[^;&|]*(?:\s-[a-z]*f[a-z]*|\s--force)(?=\s|$|[;&|])[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "rm-force-recursive-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block forced recursive rm with long options against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*(?:\s-[a-z]*f[a-z]*|\s--force)(?=\s|$|[;&|])[^;&|]*(?:\s-[a-z]*r[a-z]*|\s--recursive)(?=\s|$|[;&|])[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "rm-recursive-force-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced rm with long options against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*(?:\s-[a-z]*r[a-z]*|\s--recursive)(?=\s|$|[;&|])[^;&|]*(?:\s-[a-z]*f[a-z]*|\s--force)(?=\s|$|[;&|])[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "rm-force-recursive-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block forced recursive rm with long options against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*(?:\s-[a-z]*f[a-z]*|\s--force)(?=\s|$|[;&|])[^;&|]*(?:\s-[a-z]*r[a-z]*|\s--recursive)(?=\s|$|[;&|])[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
+            [pscustomobject]@{ id = "windows-del-force-recursive"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced del regardless of flag order."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/f(?=\s|$|[;&|])[^;&|]*\s\/s(?=\s|$|[;&|])[^;&|]*\s\/q(?=\s|$|[;&|])' }
+            [pscustomobject]@{ id = "windows-del-force-quiet-recursive"; kind = "pattern"; matchAgainst = "normalized"; description = "Block forced quiet recursive del."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/f(?=\s|$|[;&|])[^;&|]*\s\/q(?=\s|$|[;&|])[^;&|]*\s\/s(?=\s|$|[;&|])' }
+            [pscustomobject]@{ id = "windows-del-recursive-force-quiet"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced quiet del."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/s(?=\s|$|[;&|])[^;&|]*\s\/f(?=\s|$|[;&|])[^;&|]*\s\/q(?=\s|$|[;&|])' }
+            [pscustomobject]@{ id = "windows-del-recursive-quiet-force"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive quiet forced del."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/s(?=\s|$|[;&|])[^;&|]*\s\/q(?=\s|$|[;&|])[^;&|]*\s\/f(?=\s|$|[;&|])' }
+            [pscustomobject]@{ id = "windows-del-quiet-force-recursive"; kind = "pattern"; matchAgainst = "normalized"; description = "Block quiet forced recursive del."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/q(?=\s|$|[;&|])[^;&|]*\s\/f(?=\s|$|[;&|])[^;&|]*\s\/s(?=\s|$|[;&|])' }
+            [pscustomobject]@{ id = "windows-del-quiet-recursive-force"; kind = "pattern"; matchAgainst = "normalized"; description = "Block quiet recursive forced del."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/q(?=\s|$|[;&|])[^;&|]*\s\/s(?=\s|$|[;&|])[^;&|]*\s\/f(?=\s|$|[;&|])' }
+            [pscustomobject]@{ id = "format-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block disk format command."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?format(?:\.com|\.exe)?(?:\s|$)' }
+            [pscustomobject]@{ id = "mkfs-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block mkfs."; pattern = "\bmkfs\b" }
+            [pscustomobject]@{ id = "shutdown-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block shutdown."; pattern = "\bshutdown\b" }
+            [pscustomobject]@{ id = "reboot-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block reboot."; pattern = "\breboot\b" }
+            [pscustomobject]@{ id = "init-zero-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block init 0."; pattern = "\binit\s+0\b" }
+            [pscustomobject]@{ id = "poweroff-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block poweroff."; pattern = "\bpoweroff\b" }
+            [pscustomobject]@{ id = "stop-computer-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Stop-Computer."; pattern = "\bstop-computer\b" }
+            [pscustomobject]@{ id = "restart-computer-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Restart-Computer."; pattern = "\brestart-computer\b" }
+            [pscustomobject]@{ id = "remove-item-recurse-force"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Remove-Item -Recurse -Force."; pattern = "(?=.*\bremove-item\b)(?=.*(?:^|\s)-recurse(?:\s|$))(?=.*(?:^|\s)-force(?:\s|$))" }
+            [pscustomobject]@{ id = "git-reset-hard"; kind = "pattern"; matchAgainst = "normalized"; description = "Block git reset --hard."; pattern = "\bgit\s+reset\s+--hard\b" }
+            [pscustomobject]@{ id = "powershell-encoded-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block powershell/pwsh -EncodedCommand."; pattern = '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:encodedcommand|enc|ec)(?=\s|$|[;&|])' }
+            [pscustomobject]@{ id = "invoke-expression"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Invoke-Expression / iex."; pattern = '(^|[;&|]\s*)(?:(?:[\w.\\]+\\)?invoke-expression|iex)(?=\s|$|[;&|])' }
+            [pscustomobject]@{ id = "powershell-command-invoke-expression"; kind = "pattern"; matchAgainst = "normalized"; description = "Block powershell -Command Invoke-Expression / iex."; pattern = '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:command|c)\s+(?:"|'')?(?:&\s*\{\s*)?(?:(?:[\w.\\]+\\)?invoke-expression|iex)\b' }
+            [pscustomobject]@{ id = "curl-pipe-sh"; kind = "pattern"; matchAgainst = "normalized"; description = "Block curl ... | sh."; pattern = '\bcurl(?:\.exe)?\b[^;&|]*\|\s*sh\b' }
+            [pscustomobject]@{ id = "wget-pipe-sh"; kind = "pattern"; matchAgainst = "normalized"; description = "Block wget ... | sh."; pattern = '\bwget(?:\.exe)?\b[^;&|]*\|\s*sh\b' }
+        )
+    }
+}
+
+function Normalize-GuardPolicyPathValue {
+    param([Parameter(Mandatory = $true)][string]$PathValue)
+
+    $normalized = $PathValue.Trim()
+    if ([string]::IsNullOrWhiteSpace($normalized)) {
+        return ""
+    }
+
+    $normalized = $normalized -replace "\\", "/"
+    if ($normalized.EndsWith("/**")) {
+        return $normalized.ToLowerInvariant()
+    }
+
+    return $normalized.TrimEnd('/').ToLowerInvariant()
+}
+
+function Normalize-GuardPolicyRuntimePathText {
+    param([Parameter(Mandatory = $true)][string]$PathValue)
+
+    $normalized = $PathValue.Trim() -replace "\\", "/"
+    return $normalized
+}
+
+function Resolve-GuardPolicyPath {
+    param([string]$RepoRoot)
+
+    $scriptDirectory = Get-Item -LiteralPath $PSScriptRoot -ErrorAction SilentlyContinue
+    if ($null -eq $scriptDirectory -or $scriptDirectory.Name -ne "scripts") {
+        return $null
+    }
+
+    $hooksDirectory = $scriptDirectory.Parent
+    if ($null -eq $hooksDirectory -or $hooksDirectory.Name -ne "hooks") {
+        return $null
+    }
+
+    $layoutRoot = $hooksDirectory.Parent
+    if ($null -eq $layoutRoot) {
+        return $null
+    }
+
+    if ($layoutRoot.Name -eq ".copilot") {
+        $candidate = Join-Path $layoutRoot.FullName "policy\guard-policy.json"
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return [System.IO.Path]::GetFullPath($candidate)
+        }
+        return $null
+    }
+
+    if ($layoutRoot.Name -eq ".github" -and $null -ne $layoutRoot.Parent) {
+        $candidate = Join-Path $layoutRoot.Parent.FullName "policy\guard-policy.json"
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return [System.IO.Path]::GetFullPath($candidate)
+        }
+    }
+
+    return $null
+}
+
+function Test-GuardPolicyShape {
+    param($Policy)
+
+    if ($null -eq $Policy -or ($Policy.schemaVersion -isnot [int] -and $Policy.schemaVersion -isnot [long]) -or $Policy.schemaVersion -ne 1) {
+        return $false
+    }
+
+    if ($Policy.pathPropertyNames -isnot [System.Array] -or $Policy.protectedPaths -isnot [System.Array] -or $Policy.denyCommandRules -isnot [System.Array]) {
+        return $false
+    }
+
+    if (@($Policy.pathPropertyNames).Count -eq 0 -or @($Policy.protectedPaths).Count -eq 0 -or @($Policy.denyCommandRules).Count -eq 0) {
+        return $false
+    }
+
+    if ($null -eq $Policy.toolNames -or $Policy.toolNames.shell -isnot [System.Array] -or $Policy.toolNames.fileWrite -isnot [System.Array]) {
+        return $false
+    }
+
+    if (@($Policy.toolNames.shell).Count -eq 0 -or @($Policy.toolNames.fileWrite).Count -eq 0) {
+        return $false
+    }
+
+    foreach ($toolName in @($Policy.toolNames.shell) + @($Policy.toolNames.fileWrite)) {
+        if ($toolName -isnot [string] -or [string]::IsNullOrWhiteSpace($toolName)) {
+            return $false
+        }
+    }
+
+    $pathPropertyNames = @{}
+    foreach ($name in @($Policy.pathPropertyNames)) {
+        if ($name -isnot [string]) {
+            return $false
+        }
+        $propertyName = [string]$name
+        if ([string]::IsNullOrWhiteSpace($propertyName) -or $pathPropertyNames.ContainsKey($propertyName)) {
+            return $false
+        }
+        $pathPropertyNames[$propertyName] = $true
+    }
+
+    $protectedIds = @{}
+    $protectedPaths = @{}
+    foreach ($entry in @($Policy.protectedPaths)) {
+        $entryId = [string]$entry.id
+        $entryPath = [string]$entry.path
+        $normalizedPath = Normalize-GuardPolicyPathValue -PathValue $entryPath
+
+        if ($entry.id -isnot [string] -or $entry.path -isnot [string] -or $entry.scope -isnot [string] -or $entry.action -isnot [string]) {
+            return $false
+        }
+        if ($null -ne $entry.maintenanceScope -and $entry.maintenanceScope -isnot [string]) {
+            return $false
+        }
+        if ([string]::IsNullOrWhiteSpace($entryId) -or [string]::IsNullOrWhiteSpace($entryPath) -or [string]::IsNullOrWhiteSpace($normalizedPath)) {
+            return $false
+        }
+        if ([string]$entry.scope -notin @("file", "directory")) {
+            return $false
+        }
+        if ([string]$entry.action -notin @("ask", "deny")) {
+            return $false
+        }
+        if ([string]$entry.scope -eq "file" -and $normalizedPath.EndsWith("/**")) {
+            return $false
+        }
+        if ([string]$entry.action -eq "deny" -and $null -ne $entry.maintenanceScope) {
+            return $false
+        }
+        if ($protectedIds.ContainsKey($entryId) -or $protectedPaths.ContainsKey($normalizedPath)) {
+            return $false
+        }
+
+        $protectedIds[$entryId] = $true
+        $protectedPaths[$normalizedPath] = $true
+    }
+
+    $denyRuleIds = @{}
+    foreach ($entry in @($Policy.denyCommandRules)) {
+        $entryId = [string]$entry.id
+        $entryKind = [string]$entry.kind
+        if ($entry.id -isnot [string] -or $entry.kind -isnot [string]) {
+            return $false
+        }
+        if ([string]::IsNullOrWhiteSpace($entryId) -or [string]::IsNullOrWhiteSpace($entryKind)) {
+            return $false
+        }
+        if ($denyRuleIds.ContainsKey($entryId)) {
+            return $false
+        }
+        $denyRuleIds[$entryId] = $true
+
+        if ($entryKind -notin @("specialized", "pattern")) {
+            return $false
+        }
+
+        if ($entryKind -eq "pattern") {
+            if ($entry.pattern -isnot [string] -or $entry.matchAgainst -isnot [string] -or [string]::IsNullOrWhiteSpace($entry.pattern) -or $entry.matchAgainst -notin @("normalized", "compact")) {
+                return $false
+            }
+
+            try {
+                [void][System.Text.RegularExpressions.Regex]::new(
+                    [string]$entry.pattern,
+                    [System.Text.RegularExpressions.RegexOptions]::IgnoreCase,
+                    [TimeSpan]::FromSeconds(1)
+                )
+            }
+            catch {
+                return $false
+            }
+        }
+        elseif ($null -ne $entry.matchAgainst -or $null -ne $entry.pattern) {
+            return $false
+        }
+    }
+
+    foreach ($requiredId in @(Get-RequiredSpecializedDenyRuleIds)) {
+        if (-not $denyRuleIds.ContainsKey($requiredId)) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+function Get-GuardPolicy {
+    param([string]$RepoRoot)
+
+    if ($null -ne $script:GuardPolicy -and $script:GuardPolicyRepoRoot -eq $RepoRoot) {
+        return $script:GuardPolicy
+    }
+
+    $policy = $null
+    $policyPath = Resolve-GuardPolicyPath -RepoRoot $RepoRoot
+    if (-not [string]::IsNullOrWhiteSpace($policyPath)) {
+        try {
+            $policy = Get-Content -LiteralPath $policyPath -Raw | ConvertFrom-Json
+        }
+        catch {
+            $policy = $null
+        }
+    }
+
+    if (-not (Test-GuardPolicyShape -Policy $policy)) {
+        $policy = Get-MinimalGuardPolicy
+    }
+
+    $script:GuardPolicy = $policy
+    $script:GuardPolicyRepoRoot = $RepoRoot
+    return $policy
+}
+
+function Test-DenyCommandRuleEnabled {
+    param(
+        [Parameter(Mandatory = $true)][string]$RuleId,
+        [Parameter()][object]$Policy = $script:GuardPolicy
+    )
+
+    foreach ($entry in @($Policy.denyCommandRules)) {
+        if ([string]$entry.id -eq $RuleId) {
+            return $true
+        }
+    }
+
+    return $false
 }
 
 function Test-SamePath {
@@ -361,53 +676,36 @@ function Get-ProtectedPathRules {
     param([string]$RepoRoot)
 
     $rules = @()
+    $policy = Get-GuardPolicy -RepoRoot $RepoRoot
 
-    if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-        foreach ($relativePath in @(
-                ".github\hooks",
-                ".githooks",
-                ".github\workflows",
-                ".github\instructions",
-                ".github\skills",
-                ".agents\skills",
-                ".claude\skills"
-            )) {
-            $rules += [pscustomobject]@{
-                    Scope = "directory"
-                    Display = ($relativePath -replace "\\", "/") + "/**"
-                    FullPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $relativePath))
-                }
+    foreach ($entry in @($policy.protectedPaths)) {
+        $pathText = Normalize-GuardPolicyRuntimePathText -PathValue ([string]$entry.path)
+        $basePath = if ($pathText.StartsWith('$HOME') -or $pathText.StartsWith('${HOME}') -or $pathText.StartsWith('$env:HOME') -or $pathText.StartsWith("~/") -or $pathText.StartsWith("~\")) {
+            $HOME
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+            $RepoRoot
+        }
+        else {
+            (Get-Location).Path
         }
 
-        foreach ($relativePath in @(
-                ".github\copilot-instructions.md",
-                ".github\mcp.json",
-                ".mcp.json",
-                ".gitleaks.toml",
-                "SECURITY.md",
-                "docs\TRUST_BOUNDARY.md",
-                "docs\HOOKS_GOVERNANCE.md",
-                "docs\ENTERPRISE_SECURITY_REVIEW.md"
-            )) {
-            $rules += [pscustomobject]@{
-                    Scope = "file"
-                    Display = ($relativePath -replace "\\", "/")
-                    FullPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $relativePath))
-                }
+        $resolvedPath = if ([string]$entry.scope -eq "directory" -and $pathText.EndsWith("/**")) {
+            Resolve-FullPath -PathValue $pathText.Substring(0, $pathText.Length - 3) -BasePath $basePath
+        }
+        else {
+            Resolve-FullPath -PathValue $pathText -BasePath $basePath
+        }
+
+        $rules += [pscustomobject]@{
+            Id = [string]$entry.id
+            Scope = [string]$entry.scope
+            Action = [string]$entry.action
+            MaintenanceScope = [string]$entry.maintenanceScope
+            Display = $pathText
+            FullPath = $resolvedPath
         }
     }
-
-    $homeCopilotRoot = [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot"))
-    $rules += [pscustomobject]@{
-            Scope = "file"
-            Display = '$HOME/.copilot/maintenance-mode.json'
-            FullPath = (Resolve-MaintenanceModePath)
-        }
-    $rules += [pscustomobject]@{
-            Scope = "directory"
-            Display = '$HOME/.copilot/**'
-            FullPath = $homeCopilotRoot
-        }
 
     return $rules
 }
@@ -418,26 +716,59 @@ function Find-ProtectedPathMatch {
         [Parameter(Mandatory = $true)][object[]]$ProtectedRules
     )
 
+    $bestMatch = $null
     foreach ($candidate in $CandidatePaths) {
         foreach ($rule in $ProtectedRules) {
+            $isMatch = $false
             if ($rule.Scope -eq "directory") {
                 if (Test-PathWithinRoot -CandidatePath $candidate -RootPath $rule.FullPath) {
-                    return [pscustomobject]@{
-                        Candidate = $candidate
-                        Rule = $rule
-                    }
+                    $isMatch = $true
                 }
             }
             elseif ($candidate.Equals($rule.FullPath, [System.StringComparison]::OrdinalIgnoreCase)) {
-                return [pscustomobject]@{
-                    Candidate = $candidate
-                    Rule = $rule
-                }
+                $isMatch = $true
+            }
+
+            if (-not $isMatch) {
+                continue
+            }
+
+            $candidateMatch = [pscustomobject]@{
+                Candidate = $candidate
+                Rule = $rule
+            }
+            if ($null -eq $bestMatch) {
+                $bestMatch = $candidateMatch
+                continue
+            }
+
+            $bestActionRank = if ($bestMatch.Rule.Action -eq "deny") { 1 } else { 0 }
+            $candidateActionRank = if ($candidateMatch.Rule.Action -eq "deny") { 1 } else { 0 }
+            if ($candidateActionRank -gt $bestActionRank) {
+                $bestMatch = $candidateMatch
+                continue
+            }
+            if ($candidateActionRank -lt $bestActionRank) {
+                continue
+            }
+
+            $bestScopeRank = if ($bestMatch.Rule.Scope -eq "file") { 1 } else { 0 }
+            $candidateScopeRank = if ($candidateMatch.Rule.Scope -eq "file") { 1 } else { 0 }
+            if ($candidateScopeRank -gt $bestScopeRank) {
+                $bestMatch = $candidateMatch
+                continue
+            }
+            if ($candidateScopeRank -lt $bestScopeRank) {
+                continue
+            }
+
+            if (([string]$candidateMatch.Rule.FullPath).Length -gt (([string]$bestMatch.Rule.FullPath).Length)) {
+                $bestMatch = $candidateMatch
             }
         }
     }
 
-    return $null
+    return $bestMatch
 }
 
 function Get-RepoRoot {
@@ -634,6 +965,10 @@ if ([string]::IsNullOrWhiteSpace($toolName)) {
 }
 
 $repoRoot = Get-RepoRoot
+$script:GuardPolicy = Get-GuardPolicy -RepoRoot $repoRoot
+$script:ProtectedPathPropertyNames = @($script:GuardPolicy.pathPropertyNames)
+$fileWriteToolNames = @($script:GuardPolicy.toolNames.fileWrite)
+$shellToolNames = @($script:GuardPolicy.toolNames.shell)
 $resolutionBase = if (-not [string]::IsNullOrWhiteSpace($hookCwd)) {
     [System.IO.Path]::GetFullPath($hookCwd)
 }
@@ -641,7 +976,7 @@ else {
     [System.IO.Path]::GetFullPath((Get-Location).Path)
 }
 
-if ($toolName -in @("create", "edit")) {
+if ($toolName -in $fileWriteToolNames) {
     $pathValues = @(Get-ProtectedPathValues -Value $toolArgs)
 
     if (@($pathValues).Count -gt 0) {
@@ -655,13 +990,13 @@ if ($toolName -in @("create", "edit")) {
         )
         $protectedMatch = Find-ProtectedPathMatch -CandidatePaths $candidatePaths -ProtectedRules (Get-ProtectedPathRules -RepoRoot $repoRoot)
         if ($null -ne $protectedMatch) {
-            if ($script:HookEvent -eq "permissionRequest") {
-                # permissionRequest cannot ask, so fall through to the normal permission flow.
-                exit 0
-            }
-            if (Test-SamePath -Left $protectedMatch.Candidate -Right (Resolve-MaintenanceModePath)) {
+            if ($protectedMatch.Rule.Action -eq "deny") {
                 $reason = "Protected path change detected for {0} via {1}. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits." -f $protectedMatch.Rule.Display, $toolName
                 Write-Deny $reason
+                exit 0
+            }
+            if ($script:HookEvent -eq "permissionRequest") {
+                # permissionRequest cannot ask, so fall through to the normal permission flow.
                 exit 0
             }
             if ($protectedMatch.Rule.Display -eq '$HOME/.copilot/**') {
@@ -669,7 +1004,7 @@ if ($toolName -in @("create", "edit")) {
                 Write-Ask $reason
                 exit 0
             }
-            if (Test-MaintenanceModeActive -Scope "protectedPathEdit") {
+            if (-not [string]::IsNullOrWhiteSpace($protectedMatch.Rule.MaintenanceScope) -and (Test-MaintenanceModeActive -Scope $protectedMatch.Rule.MaintenanceScope)) {
                 exit 0
             }
             $reason = "Protected path change detected for {0} via {1}. This path requires an atomic issue/PR and explicit human review." -f $protectedMatch.Rule.Display, $toolName
@@ -680,7 +1015,7 @@ if ($toolName -in @("create", "edit")) {
 }
 
 # Guard shell command tools. Windows Copilot CLI reports PowerShell tool use as "powershell".
-if ($toolName -notin @("bash", "powershell")) {
+if ($toolName -notin $shellToolNames) {
     exit 0
 }
 
@@ -703,7 +1038,7 @@ $maintenanceStatePath = (Resolve-MaintenanceModePath).ToLowerInvariant()
 $touchesMaintenanceModeScript = $compact -match '(^|[;&|]\s*)(?:\.\s+)?(?:&\s+)?[^;&|]*?(?:enter|exit)-copilot-maintenance-mode(?:\.ps1)?(?=\s|$|[;&|])'
 $touchesMaintenanceStateFile = $normalizedForPath.Contains($maintenanceStatePath) -or ($compact -match 'maintenance-mode\.json') -or ($compact -match '(?:\$home|\$env:home|\$\{home\}|~)[\\/]\.copilot[\\/](?:[^;&|]*[\\/])?maintenance-mode\.json')
 
-if ($touchesMaintenanceModeScript -or $touchesMaintenanceStateFile) {
+if ((Test-DenyCommandRuleEnabled -RuleId "maintenance-mode-manual-only") -and ($touchesMaintenanceModeScript -or $touchesMaintenanceStateFile)) {
     Write-Deny "AI is not allowed to enter or exit maintenance mode, or modify the maintenance state file. Ask a human to run the maintenance scripts manually."
     exit 0
 }
@@ -721,22 +1056,27 @@ $hasGitPushForce = $compact -match '(^|[;&|]\s*)git\s+push(?:\s+[^;&|]+)*\s+(?:-
 $hasNoVerify = $compact -match "(^|\s)--no-verify(\s|$)"
 $hasCommitNoVerifyShort = $isGitCommit -and ($compact -match "(^|\s)-[a-z]*n[a-z]*(\s|$)")
 
-if (($isGitCommit -and ($hasNoVerify -or $hasCommitNoVerifyShort)) -or ($isGitPush -and $hasNoVerify)) {
+if ((Test-DenyCommandRuleEnabled -RuleId "git-hooks-no-verify") -and (($isGitCommit -and ($hasNoVerify -or $hasCommitNoVerifyShort)) -or ($isGitPush -and $hasNoVerify))) {
     Write-Deny "AI is not allowed to bypass Git hooks with --no-verify or git commit -n."
     exit 0
 }
 
-if ($isGitConfigHooksPathWrite -or $isGitConfigHooksPathUnset -or $isGitConfigRemoveCoreSection -or $hasInlineGitHooksPathConfig -or $isGitUpdateIndexSkipWorktree -or $isGitUpdateIndexAssumeUnchanged) {
+if ((Test-DenyCommandRuleEnabled -RuleId "git-hooks-path-change") -and ($isGitConfigHooksPathWrite -or $isGitConfigHooksPathUnset -or $isGitConfigRemoveCoreSection -or $hasInlineGitHooksPathConfig)) {
     Write-Deny "AI is not allowed to disable or bypass Git hooks via core.hooksPath changes, git -c core.hooksPath, or git update-index skip-worktree/assume-unchanged."
     exit 0
 }
 
-if ($hasGitPushForce) {
+if ((Test-DenyCommandRuleEnabled -RuleId "git-hooks-update-index-bypass") -and ($isGitUpdateIndexSkipWorktree -or $isGitUpdateIndexAssumeUnchanged)) {
+    Write-Deny "AI is not allowed to disable or bypass Git hooks via core.hooksPath changes, git -c core.hooksPath, or git update-index skip-worktree/assume-unchanged."
+    exit 0
+}
+
+if ((Test-DenyCommandRuleEnabled -RuleId "git-push-force") -and $hasGitPushForce) {
     Write-Deny ("Blocked potentially destructive command: {0}" -f $command)
     exit 0
 }
 
-if ($isGitCommit) {
+if ((Test-DenyCommandRuleEnabled -RuleId "git-commit-secret-scan") -and $isGitCommit) {
     $secretScanReason = Invoke-StagedSecretScan
     if (-not [string]::IsNullOrWhiteSpace($secretScanReason)) {
         Write-Deny $secretScanReason
@@ -744,7 +1084,7 @@ if ($isGitCommit) {
     }
 }
 
-if ($isGitPush) {
+if ((Test-DenyCommandRuleEnabled -RuleId "git-push-secret-scan") -and $isGitPush) {
     $secretScanReason = Invoke-UnpushedSecretScan -ActionName "git push"
     if (-not [string]::IsNullOrWhiteSpace($secretScanReason)) {
         Write-Deny $secretScanReason
@@ -752,7 +1092,7 @@ if ($isGitPush) {
     }
 }
 
-if ($isGhPrCreate) {
+if ((Test-DenyCommandRuleEnabled -RuleId "gh-pr-create-secret-scan") -and $isGhPrCreate) {
     $secretScanReason = Invoke-UnpushedSecretScan -ActionName "gh pr create"
     if (-not [string]::IsNullOrWhiteSpace($secretScanReason)) {
         Write-Deny $secretScanReason
@@ -762,28 +1102,19 @@ if ($isGhPrCreate) {
 
 # Block list: keep it minimal and destructive-only at first
 $denyPatterns = @(
-    "\brm\s+-rf\s+\/",                 # rm -rf /
-    "\brm\s+-rf\s+\.(?:\s|$)",        # rm -rf .
-    "\bdel\s+\/f\s+\/s\s+\/q\b",       # del /f /s /q
-    "\bformat\b",                      # format
-    "\bmkfs\b",                        # mkfs
-    "\bshutdown\b",                    # shutdown
-    "\breboot\b",                      # reboot
-    "\binit\s+0\b",                    # init 0
-    "\bpoweroff\b",                    # poweroff
-    "\bstop-computer\b",               # Stop-Computer
-    "\brestart-computer\b",            # Restart-Computer
-    "(?=.*\bremove-item\b)(?=.*(?:^|\s)-recurse(?:\s|$))(?=.*(?:^|\s)-force(?:\s|$))", # Remove-Item with -Recurse and -Force in any order
-    "\bgit\s+reset\s+--hard\b",        # git reset --hard
-    '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:encodedcommand|enc|ec)(?=\s|$|[;&|])', # powershell/pwsh -EncodedCommand and common aliases
-    '(^|[;&|]\s*)(?:(?:[\w.\\]+\\)?invoke-expression|iex)(?=\s|$|[;&|])', # direct Invoke-Expression / iex
-    '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:command|c)\s+(?:"|'')?(?:&\s*\{\s*)?(?:(?:[\w.\\]+\\)?invoke-expression|iex)\b', # powershell -Command iex / "& { iex ... }"
-    '\bcurl(?:\.exe)?\b[^;&|]*\|\s*sh\b', # curl ... | sh
-    '\bwget(?:\.exe)?\b[^;&|]*\|\s*sh\b'  # wget ... | sh
+    foreach ($rule in @($script:GuardPolicy.denyCommandRules)) {
+        if ([string]$rule.kind -eq "pattern") {
+            [pscustomobject]@{
+                Pattern = [string]$rule.pattern
+                MatchAgainst = [string]$rule.matchAgainst
+            }
+        }
+    }
 )
 
-foreach ($pattern in $denyPatterns) {
-    if ($normalized -match $pattern) {
+foreach ($rule in $denyPatterns) {
+    $candidate = if ($rule.MatchAgainst -eq "compact") { $compact } else { $normalized }
+    if ($candidate -match $rule.Pattern) {
         Write-Deny ("Blocked potentially destructive command: {0}" -f $command)
         exit 0
     }

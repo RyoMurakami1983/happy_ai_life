@@ -21,6 +21,8 @@ def test_repo_managed_manifest_lists_home_sync_scope() -> None:
         "scripts/enter-copilot-maintenance-mode.ps1",
         "scripts/exit-copilot-maintenance-mode.ps1",
         "hooks/scripts/guard_pre_tool.ps1",
+        "policy/guard-policy.json",
+        "policy/guard-policy.schema.json",
     ]
     assert manifest["managedDirectories"] == ["repo-template/"]
     assert manifest["managedEntries"] == [

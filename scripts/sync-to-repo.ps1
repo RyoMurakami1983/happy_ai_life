@@ -17,6 +17,8 @@ param(
     [string]$PolicyProfile = "Default",
     # Git client hooks のテンプレート。target repo の .githooks に同期する。
     [string]$GitHooksRelativePath = "repo-template\.githooks",
+    # guard policy の source of truth。target repo の policy に同期する。
+    [string]$PolicyRelativePath = "policy",
     [switch]$Mirror,
     [switch]$DryRun,
     [switch]$VerboseLog
@@ -385,6 +387,22 @@ if (-not (Test-Path -LiteralPath $targetRepoPath)) {
     throw "Target repository path not found: $targetRepoPath"
 }
 
+$sourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $TemplateRelativePath))
+$policySourcePath = $null
+if (-not [string]::IsNullOrWhiteSpace($PolicyRelativePath)) {
+    $policySourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $PolicyRelativePath))
+    if (-not (Test-Path -LiteralPath $policySourcePath -PathType Container)) {
+        throw "Guard policy source path not found: $policySourcePath. Pass -PolicyRelativePath '' only when intentionally skipping policy sync."
+    }
+
+    foreach ($requiredPolicyFile in @("guard-policy.json", "guard-policy.schema.json")) {
+        $requiredPolicyPath = Join-Path $policySourcePath $requiredPolicyFile
+        if (-not (Test-Path -LiteralPath $requiredPolicyPath -PathType Leaf)) {
+            throw "Guard policy source file not found: $requiredPolicyPath. Pass -PolicyRelativePath '' only when intentionally skipping policy sync."
+        }
+    }
+}
+
 # repo-template では .github/hooks を保持しない。
 # repo 用 hooks の正本は母艦 .github/hooks で、Step 2 でのみ配布する。
 # sessionStart/sessionEnd の自動保存は封印済みのため、既定では safety guard のみ配布する。
@@ -408,7 +426,6 @@ if ($PolicyProfile -eq "Default") {
 # --- 1. repo-template/.github/ → 配布先 .github/ ---
 Write-Section "Sync repo-template to target repository (.github)"
 
-$sourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $TemplateRelativePath))
 $destinationPath = Join-Path $targetRepoPath ".github"
 
 Write-Host "Source      : $sourcePath"
@@ -505,7 +522,24 @@ if (-not [string]::IsNullOrWhiteSpace($GitHooksRelativePath)) {
         -ShowVerboseLog:$VerboseLog
 }
 
-# --- 4. repo-template/docs/furikaeri/ → 配布先 docs/furikaeri/ ---
+# --- 4. policy/ → 配布先 policy/ ---
+if (-not [string]::IsNullOrWhiteSpace($PolicyRelativePath)) {
+    Write-Section "Sync guard policy to target repository (policy)"
+
+    $policyDestinationPath = Join-Path $targetRepoPath "policy"
+
+    Write-Host "Source      : $policySourcePath"
+    Write-Host "Destination : $policyDestinationPath"
+
+    Invoke-Robocopy `
+        -Source $policySourcePath `
+        -Destination $policyDestinationPath `
+        -MirrorMode:$Mirror `
+        -WhatIfMode:$DryRun `
+        -ShowVerboseLog:$VerboseLog
+}
+
+# --- 5. repo-template/docs/furikaeri/ → 配布先 docs/furikaeri/ ---
 if (-not [string]::IsNullOrWhiteSpace($DocsFurikaeriRelativePath)) {
     $docsFurikaeriSourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $DocsFurikaeriRelativePath))
     if (Test-Path -LiteralPath $docsFurikaeriSourcePath) {

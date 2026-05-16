@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "sync-to-repo.ps1"
 ROBOCOPY = shutil.which("robocopy")
 SKIP_REASON = "sync-to-repo.ps1 requires Windows robocopy"
+GUARD_POLICY_PATH = ROOT / "policy" / "guard-policy.json"
+GUARD_POLICY_SCHEMA_PATH = ROOT / "policy" / "guard-policy.schema.json"
 
 
 def _powershell_executable() -> str:
@@ -36,6 +38,7 @@ def _run_sync(
     dry_run: bool,
     hooks_mode: str | None = None,
     policy_profile: str | None = None,
+    policy_relative_path: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     command = [
         _powershell_executable(),
@@ -59,6 +62,8 @@ def _run_sync(
         command.extend(["-HooksMode", hooks_mode])
     if policy_profile is not None:
         command.extend(["-PolicyProfile", policy_profile])
+    if policy_relative_path is not None:
+        command.extend(["-PolicyRelativePath", policy_relative_path])
     if dry_run:
         command.append("-DryRun")
 
@@ -90,6 +95,10 @@ def _create_minimal_source_root(base: Path) -> Path:
         "# Enterprise instructions\n",
         encoding="utf-8",
     )
+    policy_dir = base / "policy"
+    policy_dir.mkdir()
+    shutil.copy2(GUARD_POLICY_PATH, policy_dir / "guard-policy.json")
+    shutil.copy2(GUARD_POLICY_SCHEMA_PATH, policy_dir / "guard-policy.schema.json")
     return base
 
 
@@ -195,6 +204,74 @@ def test_sync_to_repo_creates_missing_github_gitignore(tmp_path: Path) -> None:
     assert "sessions/" in content
     assert "instructions/session-context.instructions.md" in content
     assert (target_repo / ".github" / "instructions" / "python.instructions.md").exists()
+
+
+def test_sync_to_repo_copies_guard_policy_files(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (target_repo / "policy" / "guard-policy.json").read_text(encoding="utf-8") == GUARD_POLICY_PATH.read_text(encoding="utf-8")
+    assert (target_repo / "policy" / "guard-policy.schema.json").read_text(encoding="utf-8") == GUARD_POLICY_SCHEMA_PATH.read_text(encoding="utf-8")
+
+
+def test_sync_to_repo_fails_when_policy_source_is_missing(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    shutil.rmtree(source_root / "policy")
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False)
+
+    assert result.returncode != 0
+    assert "Guard policy source path not found" in result.stderr
+
+
+def test_sync_to_repo_missing_policy_source_fails_before_any_writes(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    shutil.rmtree(source_root / "policy")
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False)
+
+    assert result.returncode != 0
+    assert "Guard policy source path not found" in result.stderr
+    assert not (target_repo / ".github").exists()
+    assert not (target_repo / ".githooks").exists()
+    assert not (target_repo / "policy").exists()
+
+
+@pytest.mark.parametrize("missing_policy_file", ["guard-policy.json", "guard-policy.schema.json"])
+def test_sync_to_repo_missing_required_policy_file_fails_before_any_writes(tmp_path: Path, missing_policy_file: str) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    (source_root / "policy" / missing_policy_file).unlink()
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False)
+
+    assert result.returncode != 0
+    assert "Guard policy source file not found" in result.stderr
+    assert missing_policy_file in result.stderr
+    assert not (target_repo / ".github").exists()
+    assert not (target_repo / ".githooks").exists()
+    assert not (target_repo / "policy").exists()
+
+
+def test_sync_to_repo_allows_explicit_policy_sync_opt_out(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    shutil.rmtree(source_root / "policy")
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False, policy_relative_path="")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (target_repo / "policy").exists()
 
 
 def test_sync_to_repo_default_profile_excludes_enterprise_instruction(tmp_path: Path) -> None:
