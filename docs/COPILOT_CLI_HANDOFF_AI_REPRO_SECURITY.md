@@ -151,7 +151,7 @@ policy/
 ├── guard_pre_tool.ps1              # thin wrapper
 └── guard_pre_tool.sh               # thin wrapper
 
-`scripts/`
+scripts/
 └── guard_policy.py                 # 単一 policy engine
 
 tests/

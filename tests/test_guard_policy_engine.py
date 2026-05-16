@@ -4,11 +4,17 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
 from scripts.guard_policy import EvaluationContext, HookEvent, evaluate_payload
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_TEST_HOME = ROOT / ".pytest-temp-home"
+
+
+@pytest.fixture
+def isolated_home(tmp_path: Path) -> Path:
+    return tmp_path / "home"
 
 
 def _evaluate(
@@ -17,7 +23,7 @@ def _evaluate(
     hook_event: HookEvent = "preToolUse",
     cwd: Path | None = None,
     repo_root: Path | None = None,
-    home: Path | None = None,
+    home: Path,
     policy_path: Path | None = None,
 ) -> dict[str, object] | None:
     decision = evaluate_payload(
@@ -26,7 +32,7 @@ def _evaluate(
             hook_event=hook_event,
             cwd=str(cwd) if cwd is not None else str(ROOT),
             repo_root=str(repo_root) if repo_root is not None else str(ROOT),
-            home=str(home) if home is not None else str(DEFAULT_TEST_HOME),
+            home=str(home),
             policy_path=str(policy_path) if policy_path is not None else None,
         ),
     )
@@ -52,7 +58,7 @@ def _write_maintenance_state(home_root: Path, *, created_at: datetime | None = N
     return state_path
 
 
-def test_engine_asks_for_protected_edit_path_from_stringified_json() -> None:
+def test_engine_asks_for_protected_edit_path_from_stringified_json(isolated_home: Path) -> None:
     response = _evaluate(
         {
             "toolName": "edit",
@@ -63,7 +69,8 @@ def test_engine_asks_for_protected_edit_path_from_stringified_json() -> None:
                     "newString": "new",
                 }
             ),
-        }
+        },
+        home=isolated_home,
     )
 
     assert response == {
@@ -72,7 +79,7 @@ def test_engine_asks_for_protected_edit_path_from_stringified_json() -> None:
     }
 
 
-def test_engine_permission_request_falls_through_for_protected_path() -> None:
+def test_engine_permission_request_falls_through_for_protected_path(isolated_home: Path) -> None:
     response = _evaluate(
         {
             "toolName": "edit",
@@ -83,12 +90,13 @@ def test_engine_permission_request_falls_through_for_protected_path() -> None:
             },
         },
         hook_event="permissionRequest",
+        home=isolated_home,
     )
 
     assert response is None
 
 
-def test_engine_asks_for_traversed_protected_create_path() -> None:
+def test_engine_asks_for_traversed_protected_create_path(isolated_home: Path) -> None:
     response = _evaluate(
         {
             "tool_name": "create",
@@ -98,6 +106,7 @@ def test_engine_asks_for_traversed_protected_create_path() -> None:
             },
         },
         cwd=ROOT / "tests",
+        home=isolated_home,
     )
 
     assert response == {
@@ -106,14 +115,15 @@ def test_engine_asks_for_traversed_protected_create_path() -> None:
     }
 
 
-def test_engine_denies_git_reset_hard() -> None:
+def test_engine_denies_git_reset_hard(isolated_home: Path) -> None:
     response = _evaluate(
         {
             "toolName": "powershell",
             "toolArgs": {
                 "command": "git reset --hard HEAD",
             },
-        }
+        },
+        home=isolated_home,
     )
 
     assert response == {
@@ -122,14 +132,15 @@ def test_engine_denies_git_reset_hard() -> None:
     }
 
 
-def test_engine_denies_shell_maintenance_mode_command() -> None:
+def test_engine_denies_shell_maintenance_mode_command(isolated_home: Path) -> None:
     response = _evaluate(
         {
             "toolName": "powershell",
             "toolArgs": {
                 "command": ".\\scripts\\enter-copilot-maintenance-mode.ps1 -Minutes 30",
             },
-        }
+        },
+        home=isolated_home,
     )
 
     assert response == {
@@ -179,7 +190,7 @@ def test_engine_keeps_home_copilot_under_ask_during_maintenance_mode(tmp_path: P
     }
 
 
-def test_engine_prefers_specific_deny_over_broad_ask_policy_order(tmp_path: Path) -> None:
+def test_engine_prefers_specific_deny_over_broad_ask_policy_order(tmp_path: Path, isolated_home: Path) -> None:
     policy = json.loads((ROOT / "policy" / "guard-policy.json").read_text(encoding="utf-8"))
     deny_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/maintenance-mode.json")
     broad_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/**")
@@ -192,8 +203,7 @@ def test_engine_prefers_specific_deny_over_broad_ask_policy_order(tmp_path: Path
     policy_path = tmp_path / "guard-policy.json"
     policy_path.write_text(json.dumps(policy), encoding="utf-8")
 
-    home_root = tmp_path / "home"
-    state_path = _write_maintenance_state(home_root)
+    state_path = _write_maintenance_state(isolated_home)
     response = _evaluate(
         {
             "toolName": "edit",
@@ -203,7 +213,7 @@ def test_engine_prefers_specific_deny_over_broad_ask_policy_order(tmp_path: Path
                 "newString": '{"enabled":false}',
             },
         },
-        home=home_root,
+        home=isolated_home,
         policy_path=policy_path,
     )
 
@@ -213,7 +223,7 @@ def test_engine_prefers_specific_deny_over_broad_ask_policy_order(tmp_path: Path
     }
 
 
-def test_engine_invalid_policy_falls_back_to_protected_rule(tmp_path: Path) -> None:
+def test_engine_invalid_policy_falls_back_to_protected_rule(tmp_path: Path, isolated_home: Path) -> None:
     policy_path = tmp_path / "guard-policy.json"
     policy_path.write_text("{invalid json", encoding="utf-8")
 
@@ -226,10 +236,34 @@ def test_engine_invalid_policy_falls_back_to_protected_rule(tmp_path: Path) -> N
                 "newString": '{"hooks":{}}',
             },
         },
+        home=isolated_home,
         policy_path=policy_path,
     )
 
     assert response == {
         "permissionDecision": "ask",
         "permissionDecisionReason": "Protected path change detected for home-template/.copilot/** via edit. This path requires an atomic issue/PR and explicit human review.",
+    }
+
+
+def test_engine_invalid_policy_falls_back_to_trust_boundary_protection(tmp_path: Path, isolated_home: Path) -> None:
+    policy_path = tmp_path / "guard-policy.json"
+    policy_path.write_text("{invalid json", encoding="utf-8")
+
+    response = _evaluate(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/TRUST_BOUNDARY.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        home=isolated_home,
+        policy_path=policy_path,
+    )
+
+    assert response == {
+        "permissionDecision": "ask",
+        "permissionDecisionReason": "Protected path change detected for docs/TRUST_BOUNDARY.md via edit. This path requires an atomic issue/PR and explicit human review.",
     }
