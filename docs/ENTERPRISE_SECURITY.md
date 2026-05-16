@@ -155,8 +155,8 @@ Rulesets が使えない場合は **Settings → Branches → Branch protection 
 
 - Rulesets / Branch Protection / Required checks の変更
 - `.github/workflows/*.yml|*.yaml` の変更
-- `.github/hooks/**`、`.githooks/**`、`$HOME/.copilot/config.json` managed entry の変更
-- `docs/TRUST_BOUNDARY.md`、`docs/HOOKS_GOVERNANCE.md`、`docs/ENTERPRISE_SECURITY.md` の security policy 変更
+- `.github/hooks/**`、`.githooks/**`、`scripts/sync-to-home.ps1`、`scripts/sync-to-repo.ps1`、`scripts/repo-secure-check.ps1`、`home-template/.copilot/**`、`$HOME/.copilot/config.json` managed entry の変更
+- `docs/TRUST_BOUNDARY.md`、`docs/HOOKS_GOVERNANCE.md`、`docs/ENTERPRISE_SECURITY_REVIEW.md`、`docs/ENTERPRISE_SECURITY.md`、`docs/ISSUE_ROADMAP_ENTERPRISE_SECURITY.md` の security boundary / governance 変更
 - MCP server 追加・変更、repo-local skill の許可範囲拡大
 
 local で通ることだけを根拠に merge せず、GitHub UI 上の保護設定と PR review を合わせて確認する。
