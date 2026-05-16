@@ -461,6 +461,17 @@ def resolve_full_path(path_value: str, *, base_path: str, home: str) -> str:
     return _collapse_path(f"{_normalize_runtime_path_text(base_path)}/{normalized}")
 
 
+def _resolve_repo_root(repo_root: str | None, resolution_base: str) -> str:
+    if repo_root:
+        return _collapse_path(_normalize_runtime_path_text(repo_root))
+
+    start_path = Path(resolution_base)
+    for candidate in (start_path, *start_path.parents):
+        if (candidate / ".git").exists():
+            return _collapse_path(_normalize_runtime_path_text(str(candidate)))
+    return _collapse_path(_normalize_runtime_path_text(resolution_base))
+
+
 def _path_within_root(candidate_path: str, root_path: str) -> bool:
     candidate = _collapse_path(candidate_path).rstrip("/")
     root = _collapse_path(root_path).rstrip("/")
@@ -632,9 +643,9 @@ def _rule_enabled(policy: GuardPolicy, rule_id: str) -> bool:
 
 
 def _evaluate_file_write(payload: HookPayload, *, policy: GuardPolicy, context: EvaluationContext) -> GuardDecision:
-    repo_root = context.repo_root
     home = context.home or _default_home()
     resolution_base = context.cwd or payload.cwd or str(ROOT)
+    repo_root = _resolve_repo_root(context.repo_root, resolution_base)
     path_values = _extract_known_property_paths(payload.tool_args, property_names=policy.path_property_names)
     if not path_values:
         return allow()

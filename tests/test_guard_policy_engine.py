@@ -21,8 +21,8 @@ def _evaluate(
     payload: dict[str, object],
     *,
     hook_event: HookEvent = "preToolUse",
-    cwd: Path | None = None,
-    repo_root: Path | None = None,
+    cwd: Path | None = ROOT,
+    repo_root: Path | None = ROOT,
     home: Path,
     policy_path: Path | None = None,
 ) -> dict[str, object] | None:
@@ -30,8 +30,8 @@ def _evaluate(
         payload,
         context=EvaluationContext(
             hook_event=hook_event,
-            cwd=str(cwd) if cwd is not None else str(ROOT),
-            repo_root=str(repo_root) if repo_root is not None else str(ROOT),
+            cwd=str(cwd) if cwd is not None else None,
+            repo_root=str(repo_root) if repo_root is not None else None,
             home=str(home),
             policy_path=str(policy_path) if policy_path is not None else None,
         ),
@@ -129,6 +129,31 @@ def test_engine_asks_for_traversed_protected_create_path(isolated_home: Path) ->
             },
         },
         cwd=ROOT / "tests",
+        home=isolated_home,
+    )
+
+    assert response == {
+        "permissionDecision": "ask",
+        "permissionDecisionReason": "Protected path change detected for .github/workflows/** via create. This path requires an atomic issue/PR and explicit human review.",
+    }
+
+
+def test_engine_infers_repo_root_from_cwd_when_repo_root_missing(isolated_home: Path, tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    (repo_root / ".git").mkdir(parents=True)
+    subdir = repo_root / "packages" / "guard"
+    subdir.mkdir(parents=True)
+
+    response = _evaluate(
+        {
+            "tool_name": "create",
+            "tool_input": {
+                "path": "..\\..\\.github\\workflows\\quality.yml",
+                "content": "name: test",
+            },
+        },
+        cwd=subdir,
+        repo_root=None,
         home=isolated_home,
     )
 
