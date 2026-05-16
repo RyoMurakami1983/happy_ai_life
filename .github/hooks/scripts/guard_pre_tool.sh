@@ -7,7 +7,13 @@ if [[ -z "${raw}" ]]; then
 fi
 
 script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+hook_event="${HAPPY_AI_LIFE_HOOK_EVENT:-preToolUse}"
+if [[ "${hook_event}" != "preToolUse" && "${hook_event}" != "permissionRequest" ]]; then
+  hook_event="preToolUse"
+fi
 default_shell_tool_names=(bash powershell)
+default_file_write_tool_names=(create edit)
+default_path_property_names=(path filePath file_path targetPath target_path)
 default_active_rule_ids=(
   maintenance-mode-manual-only
   git-hooks-no-verify
@@ -28,6 +34,7 @@ default_active_rule_ids=(
   poweroff-command
   stop-computer-command
   restart-computer-command
+  remove-item-recurse-force
   git-reset-hard
   powershell-encoded-command
   invoke-expression
@@ -68,13 +75,41 @@ default_pattern_rules_json="$(cat <<'JSON'
 ]
 JSON
 )"
+default_protected_paths_json="$(cat <<'JSON'
+[
+  {"id":"repo-hooks","path":".github/hooks/**","scope":"directory","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"repo-githooks","path":".githooks/**","scope":"directory","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"repo-workflows","path":".github/workflows/**","scope":"directory","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"repo-instructions-dir","path":".github/instructions/**","scope":"directory","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"repo-skills-dir","path":".github/skills/**","scope":"directory","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"agents-skills-dir","path":".agents/skills/**","scope":"directory","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"claude-skills-dir","path":".claude/skills/**","scope":"directory","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"repo-copilot-instructions","path":".github/copilot-instructions.md","scope":"file","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"repo-mcp","path":".github/mcp.json","scope":"file","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"root-mcp","path":".mcp.json","scope":"file","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"gitleaks-config","path":".gitleaks.toml","scope":"file","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"guard-policy-json","path":"policy/guard-policy.json","scope":"file","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"guard-policy-schema","path":"policy/guard-policy.schema.json","scope":"file","action":"ask","maintenanceScope":"protectedPathEdit"},
+  {"id":"maintenance-mode-state","path":"$HOME/.copilot/maintenance-mode.json","scope":"file","action":"deny","maintenanceScope":null},
+  {"id":"home-copilot-root","path":"$HOME/.copilot/**","scope":"directory","action":"ask","maintenanceScope":null}
+]
+JSON
+)"
 shell_tool_names=("${default_shell_tool_names[@]}")
+file_write_tool_names=("${default_file_write_tool_names[@]}")
+protected_path_property_names=("${default_path_property_names[@]}")
 active_rule_ids=("${default_active_rule_ids[@]}")
 pattern_rules=()
+protected_path_rules=()
 
 deny() {
   jq -nc --arg reason "$1" \
     '{permissionDecision:"deny", permissionDecisionReason:$reason}'
+}
+
+ask() {
+  jq -nc --arg reason "$1" \
+    '{permissionDecision:"ask", permissionDecisionReason:$reason}'
 }
 
 resolve_policy_path() {
@@ -86,14 +121,27 @@ resolve_policy_path() {
 }
 
 load_default_pattern_rules() {
-  mapfile -t pattern_rules < <(jq -cr '.[]' <<<"${default_pattern_rules_json}")
+  pattern_rules=()
+  while IFS= read -r rule_json || [[ -n "${rule_json}" ]]; do
+    pattern_rules+=("${rule_json}")
+  done < <(jq -cr '.[]' <<<"${default_pattern_rules_json}")
+}
+
+load_default_protected_path_rules() {
+  protected_path_rules=()
+  while IFS= read -r rule_json || [[ -n "${rule_json}" ]]; do
+    protected_path_rules+=("${rule_json}")
+  done < <(jq -cr '.[]' <<<"${default_protected_paths_json}")
 }
 
 load_guard_policy() {
   local policy_path
   shell_tool_names=("${default_shell_tool_names[@]}")
+  file_write_tool_names=("${default_file_write_tool_names[@]}")
+  protected_path_property_names=("${default_path_property_names[@]}")
   active_rule_ids=("${default_active_rule_ids[@]}")
   load_default_pattern_rules
+  load_default_protected_path_rules
 
   policy_path="$(resolve_policy_path)"
   if [[ -z "${policy_path}" ]]; then
@@ -103,10 +151,14 @@ load_guard_policy() {
   if ! jq -e '
     . as $policy
     | .schemaVersion == 1
+    and (.pathPropertyNames | type == "array" and length > 0)
+    and all(.pathPropertyNames[]; type == "string" and test("\\S"))
     and (.toolNames.shell | type == "array" and length > 0)
     and (.toolNames.fileWrite | type == "array" and length > 0)
     and all(.toolNames.shell[]; type == "string" and test("\\S"))
     and all(.toolNames.fileWrite[]; type == "string" and test("\\S"))
+    and (.protectedPaths | type == "array" and length > 0)
+    and all(.protectedPaths[]; (.id | type == "string" and test("\\S")) and (.path | type == "string" and test("\\S")) and (.scope | IN("file"; "directory")) and (.action | IN("ask"; "deny")) and ((.maintenanceScope | type) | IN("string"; "null")) and (if .action == "deny" then .maintenanceScope == null else true end) and (if .scope == "file" then (.path | test("(?:/|\\\\)\\*\\*$") | not) else true end))
     and (.denyCommandRules | type == "array" and length > 0)
     and all(.denyCommandRules[]; (.id | type == "string" and test("\\S")) and (.kind | IN("specialized"; "pattern")) and (if .kind == "pattern" then ((.pattern | type == "string" and test("\\S")) and (.matchAgainst | IN("normalized"; "compact")) and (.pattern as $pattern | try ("" | test($pattern)) catch false)) else ((has("pattern") | not) and (has("matchAgainst") | not)) end))
     and (["maintenance-mode-manual-only","git-hooks-no-verify","git-hooks-path-change","git-hooks-update-index-bypass","git-push-force","git-commit-secret-scan","git-push-secret-scan","gh-pr-create-secret-scan"] | all(.[] as $id | any($policy.denyCommandRules[]; .id == $id)))
@@ -114,9 +166,35 @@ load_guard_policy() {
     return 0
   fi
 
-  mapfile -t shell_tool_names < <(jq -r '.toolNames.shell[]' "${policy_path}")
-  mapfile -t active_rule_ids < <(jq -r '.denyCommandRules[].id' "${policy_path}")
-  mapfile -t pattern_rules < <(jq -cr '.denyCommandRules[] | select(.kind == "pattern") | {id, pattern, matchAgainst}' "${policy_path}")
+  shell_tool_names=()
+  while IFS= read -r tool || [[ -n "${tool}" ]]; do
+    shell_tool_names+=("${tool}")
+  done < <(jq -r '.toolNames.shell[]' "${policy_path}")
+
+  file_write_tool_names=()
+  while IFS= read -r tool || [[ -n "${tool}" ]]; do
+    file_write_tool_names+=("${tool}")
+  done < <(jq -r '.toolNames.fileWrite[]' "${policy_path}")
+
+  protected_path_property_names=()
+  while IFS= read -r property_name || [[ -n "${property_name}" ]]; do
+    protected_path_property_names+=("${property_name}")
+  done < <(jq -r '.pathPropertyNames[]' "${policy_path}")
+
+  active_rule_ids=()
+  while IFS= read -r rule_id || [[ -n "${rule_id}" ]]; do
+    active_rule_ids+=("${rule_id}")
+  done < <(jq -r '.denyCommandRules[].id' "${policy_path}")
+
+  pattern_rules=()
+  while IFS= read -r rule_json || [[ -n "${rule_json}" ]]; do
+    pattern_rules+=("${rule_json}")
+  done < <(jq -cr '.denyCommandRules[] | select(.kind == "pattern") | {id, pattern, matchAgainst}' "${policy_path}")
+
+  protected_path_rules=()
+  while IFS= read -r rule_json || [[ -n "${rule_json}" ]]; do
+    protected_path_rules+=("${rule_json}")
+  done < <(jq -cr '.protectedPaths[] | {id, path, scope, action, maintenanceScope}' "${policy_path}")
 }
 
 rule_enabled() {
@@ -127,6 +205,231 @@ rule_enabled() {
       return 0
     fi
   done
+  return 1
+}
+
+tool_enabled() {
+  local target="$1"
+  shift
+  local tool
+  for tool in "$@"; do
+    if [[ "${tool}" == "${target}" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+trim_whitespace() {
+  printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+expand_home_path() {
+  local value="$1"
+  case "${value}" in
+    '$HOME') printf '%s\n' "${HOME:-}"; return 0 ;;
+    '$HOME/'*) printf '%s\n' "${HOME:-}/${value#'$HOME/'}"; return 0 ;;
+    '${HOME}') printf '%s\n' "${HOME:-}"; return 0 ;;
+    '${HOME}/'*) printf '%s\n' "${HOME:-}/${value#'${HOME}/'}"; return 0 ;;
+    '$env:HOME') printf '%s\n' "${HOME:-}"; return 0 ;;
+    '$env:HOME/'*) printf '%s\n' "${HOME:-}/${value#'$env:HOME/'}"; return 0 ;;
+    "~") printf '%s\n' "${HOME:-}"; return 0 ;;
+    "~/"*) printf '%s\n' "${HOME:-}/${value#'~/'}"; return 0 ;;
+  esac
+  printf '%s\n' "${value}"
+}
+
+is_absolute_path() {
+  local value="$1"
+  [[ "${value}" == /* || "${value}" == [A-Za-z]:/* || "${value}" == //* ]]
+}
+
+normalize_join_path() {
+  local raw_path base_path path prefix rest joined result last_index
+  local -a parts stack
+  raw_path="$(trim_whitespace "$1")"
+  base_path="$(trim_whitespace "${2:-}")"
+  raw_path="${raw_path//\\//}"
+  base_path="${base_path//\\//}"
+  path="$(expand_home_path "${raw_path}")"
+  path="${path//\\//}"
+  if ! is_absolute_path "${path}" && [[ -n "${base_path}" ]]; then
+    path="${base_path%/}/${path}"
+  fi
+
+  prefix=""
+  rest="${path}"
+  if [[ "${path}" == [A-Za-z]:/* ]]; then
+    prefix="${path:0:2}"
+    rest="${path:2}"
+  elif [[ "${path}" == //* ]]; then
+    prefix="//"
+    rest="${path#//}"
+  elif [[ "${path}" == /* ]]; then
+    prefix="/"
+    rest="${path#/}"
+  fi
+
+  if [[ "${prefix}" == [A-Za-z]: ]]; then
+    rest="${rest#/}"
+  fi
+
+  IFS='/' read -r -a parts <<<"${rest}"
+  stack=()
+  for segment in "${parts[@]}"; do
+    case "${segment}" in
+      ""|.) continue ;;
+      ..)
+        if [[ "${#stack[@]}" -gt 0 ]]; then
+          last_index=$((${#stack[@]} - 1))
+          if [[ "${stack[${last_index}]}" != ".." ]]; then
+            unset "stack[${last_index}]"
+            continue
+          fi
+        fi
+        if [[ -z "${prefix}" ]]; then
+          stack+=("..")
+        fi
+        ;;
+      *)
+        stack+=("${segment}")
+        ;;
+    esac
+  done
+
+  joined="$(IFS=/; printf '%s' "${stack[*]}")"
+  if [[ "${prefix}" == "/" ]]; then
+    result="/${joined}"
+  elif [[ "${prefix}" == "//" ]]; then
+    result="//${joined}"
+  elif [[ -n "${prefix}" ]]; then
+    if [[ -n "${joined}" ]]; then
+      result="${prefix}/${joined}"
+    else
+      result="${prefix}/"
+    fi
+  else
+    result="${joined}"
+  fi
+
+  if [[ -z "${result}" ]]; then
+    result="."
+  fi
+
+  printf '%s\n' "$(tr '[:upper:]' '[:lower:]' <<<"${result}")"
+}
+
+path_within_root() {
+  local candidate root
+  candidate="${1%/}"
+  root="${2%/}"
+  if [[ -z "${candidate}" || -z "${root}" ]]; then
+    return 1
+  fi
+  [[ "${candidate}" == "${root}" || "${candidate}" == "${root}/"* ]]
+}
+
+json_array_from_strings() {
+  local first=1 encoded
+  printf '['
+  for value in "$@"; do
+    encoded="$(jq -Rn --arg value "${value}" '$value')"
+    if [[ "${first}" -eq 0 ]]; then
+      printf ','
+    fi
+    printf '%s' "${encoded}"
+    first=0
+  done
+  printf ']'
+}
+
+extract_path_values() {
+  local property_names_json
+  property_names_json="$(json_array_from_strings "${protected_path_property_names[@]}")"
+  jq -r --argjson propertyNames "${property_names_json}" '
+    def selected_args:
+      if .toolArgs? != null then .toolArgs
+      elif .tool_input? != null then .tool_input
+      else empty end;
+    def parsed_args:
+      selected_args | if type == "string" then (fromjson? // .) else . end;
+    def emit_strings($value):
+      if $value == null then empty
+      elif ($value | type) == "string" then $value
+      elif ($value | type) == "array" then $value[] | emit_strings(.)
+      elif ($value | type) == "object" then $value[] | emit_strings(.)
+      else empty end;
+    def collect_paths($value):
+      if $value == null then empty
+      elif ($value | type) == "array" then $value[] | collect_paths(.)
+      elif ($value | type) == "object" then
+        $value
+        | to_entries[]
+        | if ($propertyNames | index(.key)) != null
+          then emit_strings(.value)
+          else collect_paths(.value)
+          end
+      else empty end;
+    parsed_args as $args
+    | if ($args | type) == "object" or ($args | type) == "array"
+      then collect_paths($args)
+      else empty
+      end
+  ' <<<"${raw}" 2>/dev/null
+}
+
+protected_path_match_for_candidate() {
+  local candidate="$1"
+  local repo_root_path="$2"
+  local current_dir="$3"
+  local rule_json display scope action maintenance_scope base_path rule_path resolved_rule
+
+  for rule_json in "${protected_path_rules[@]}"; do
+    display="$(jq -r '.path' <<<"${rule_json}")"
+    scope="$(jq -r '.scope' <<<"${rule_json}")"
+    action="$(jq -r '.action' <<<"${rule_json}")"
+    maintenance_scope="$(jq -r 'if .maintenanceScope == null then "" else .maintenanceScope end' <<<"${rule_json}")"
+
+    if [[ "${display}" == '$HOME'* || "${display}" == '${HOME}'* || "${display}" == '$env:HOME'* || "${display}" == "~"* ]]; then
+      base_path="${HOME:-}"
+    elif [[ -n "${repo_root_path}" ]]; then
+      base_path="${repo_root_path}"
+    else
+      base_path="${current_dir}"
+    fi
+
+    if [[ -z "${base_path}" ]]; then
+      continue
+    fi
+
+    rule_path="${display}"
+    if [[ "${scope}" == "directory" && "${rule_path}" == *"/**" ]]; then
+      rule_path="${rule_path%/**}"
+    fi
+    resolved_rule="$(normalize_join_path "${rule_path}" "${base_path}")"
+
+    if [[ "${scope}" == "directory" ]]; then
+      if path_within_root "${candidate}" "${resolved_rule}"; then
+        jq -nc \
+          --arg display "${display}" \
+          --arg action "${action}" \
+          --arg maintenanceScope "${maintenance_scope}" \
+          '{display:$display, action:$action, maintenanceScope:($maintenanceScope | if length == 0 then null else . end)}'
+        return 0
+      fi
+      continue
+    fi
+
+    if [[ "${candidate}" == "${resolved_rule}" ]]; then
+      jq -nc \
+        --arg display "${display}" \
+        --arg action "${action}" \
+        --arg maintenanceScope "${maintenance_scope}" \
+        '{display:$display, action:$action, maintenanceScope:($maintenanceScope | if length == 0 then null else . end)}'
+      return 0
+    fi
+  done
+
   return 1
 }
 
@@ -252,7 +555,68 @@ if ! tool_name="$(jq -r '(.toolName // .tool_name // empty) | strings' <<<"${raw
   exit 0
 fi
 load_guard_policy
-if [[ ! " ${shell_tool_names[*]} " =~ (^|[[:space:]])"${tool_name}"($|[[:space:]]) ]]; then
+is_shell_tool=0
+is_file_write_tool=0
+tool_enabled "${tool_name}" "${shell_tool_names[@]}" && is_shell_tool=1
+tool_enabled "${tool_name}" "${file_write_tool_names[@]}" && is_file_write_tool=1
+if [[ "${is_shell_tool}" -eq 0 && "${is_file_write_tool}" -eq 0 ]]; then
+  exit 0
+fi
+
+repo_root_path="$(repo_root)"
+current_dir="$(pwd -P)"
+resolution_base="$(jq -r '(.cwd // empty) | strings' <<<"${raw}" 2>/dev/null || true)"
+if [[ -z "${resolution_base}" ]]; then
+  resolution_base="${current_dir}"
+fi
+resolution_base="$(normalize_join_path "${resolution_base}" "${current_dir}")"
+
+if [[ "${is_file_write_tool}" -eq 1 ]]; then
+  candidate_paths=()
+  while IFS= read -r path_value || [[ -n "${path_value}" ]]; do
+    trimmed_path="$(trim_whitespace "${path_value}")"
+    if [[ -z "${trimmed_path}" ]]; then
+      continue
+    fi
+
+    expanded_path="$(expand_home_path "${trimmed_path}")"
+    if [[ -n "${repo_root_path}" && ! is_absolute_path "${expanded_path}" ]]; then
+      candidate_paths+=("$(normalize_join_path "${trimmed_path}" "${repo_root_path}")")
+    fi
+    candidate_paths+=("$(normalize_join_path "${trimmed_path}" "${resolution_base}")")
+  done < <(extract_path_values)
+
+  protected_match=""
+  for candidate_path in "${candidate_paths[@]}"; do
+    match_json="$(protected_path_match_for_candidate "${candidate_path}" "${repo_root_path}" "${current_dir}" || true)"
+    if [[ -n "${match_json}" ]]; then
+      protected_match="${match_json}"
+      break
+    fi
+  done
+
+  if [[ -n "${protected_match}" ]]; then
+    if [[ "${hook_event}" == "permissionRequest" ]]; then
+      exit 0
+    fi
+
+    protected_display="$(jq -r '.display' <<<"${protected_match}")"
+    protected_action="$(jq -r '.action' <<<"${protected_match}")"
+    if [[ "${protected_action}" == "deny" ]]; then
+      deny "Protected path change detected for ${protected_display} via ${tool_name}. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits."
+      exit 0
+    fi
+    if [[ "${protected_display}" == '$HOME/.copilot/**' ]]; then
+      ask "Protected path change detected for ${protected_display} via ${tool_name}. Home-managed Copilot files always require explicit human review, even during maintenance mode."
+      exit 0
+    fi
+
+    ask "Protected path change detected for ${protected_display} via ${tool_name}. This path requires an atomic issue/PR and explicit human review."
+    exit 0
+  fi
+fi
+
+if [[ "${is_shell_tool}" -eq 0 ]]; then
   exit 0
 fi
 

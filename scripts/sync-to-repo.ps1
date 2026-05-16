@@ -17,6 +17,8 @@ param(
     [string]$PolicyProfile = "Default",
     # Git client hooks のテンプレート。target repo の .githooks に同期する。
     [string]$GitHooksRelativePath = "repo-template\.githooks",
+    # guard policy の source of truth。target repo の policy に同期する。
+    [string]$PolicyRelativePath = "policy",
     [switch]$Mirror,
     [switch]$DryRun,
     [switch]$VerboseLog
@@ -505,7 +507,27 @@ if (-not [string]::IsNullOrWhiteSpace($GitHooksRelativePath)) {
         -ShowVerboseLog:$VerboseLog
 }
 
-# --- 4. repo-template/docs/furikaeri/ → 配布先 docs/furikaeri/ ---
+# --- 4. policy/ → 配布先 policy/ ---
+if (-not [string]::IsNullOrWhiteSpace($PolicyRelativePath)) {
+    $policySourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $PolicyRelativePath))
+    if (Test-Path -LiteralPath $policySourcePath) {
+        Write-Section "Sync guard policy to target repository (policy)"
+
+        $policyDestinationPath = Join-Path $targetRepoPath "policy"
+
+        Write-Host "Source      : $policySourcePath"
+        Write-Host "Destination : $policyDestinationPath"
+
+        Invoke-Robocopy `
+            -Source $policySourcePath `
+            -Destination $policyDestinationPath `
+            -MirrorMode:$Mirror `
+            -WhatIfMode:$DryRun `
+            -ShowVerboseLog:$VerboseLog
+    }
+}
+
+# --- 5. repo-template/docs/furikaeri/ → 配布先 docs/furikaeri/ ---
 if (-not [string]::IsNullOrWhiteSpace($DocsFurikaeriRelativePath)) {
     $docsFurikaeriSourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $DocsFurikaeriRelativePath))
     if (Test-Path -LiteralPath $docsFurikaeriSourcePath) {

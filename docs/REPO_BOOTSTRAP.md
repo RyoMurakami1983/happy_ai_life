@@ -13,6 +13,8 @@ bootstrap を実行すると、主に次が入ります。
 - `.github/workflows/*.yml`
 - `.githooks/pre-commit`
 - `.githooks/pre-push`
+- `policy/guard-policy.json`
+- `policy/guard-policy.schema.json`
 - `repo-template/` 由来の設定
 
 これらは repo にコミットされるため、チーム全員が同じ土台を使えます。
@@ -52,7 +54,7 @@ bootstrap を実行すると、主に次が入ります。
 & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath C:\your-repo -PolicyProfile Enterprise
 ```
 
-`$HOME/.copilot/repo-template/` の内容を対象 repo に同期します。
+`$HOME/.copilot/repo-template/` の内容に加えて、guard の source of truth である `policy/guard-policy.json` と `policy/guard-policy.schema.json` も対象 repo に同期します。
 
 ### PolicyProfile の違い
 

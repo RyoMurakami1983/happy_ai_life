@@ -62,7 +62,7 @@
     },
     "pathPropertyNames": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 },
+      "items": { "type": "string", "minLength": 1, "pattern": "\\S" },
       "uniqueItems": true,
       "minItems": 1
     },

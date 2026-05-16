@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "sync-to-repo.ps1"
 ROBOCOPY = shutil.which("robocopy")
 SKIP_REASON = "sync-to-repo.ps1 requires Windows robocopy"
+GUARD_POLICY_PATH = ROOT / "policy" / "guard-policy.json"
+GUARD_POLICY_SCHEMA_PATH = ROOT / "policy" / "guard-policy.schema.json"
 
 
 def _powershell_executable() -> str:
@@ -90,6 +92,10 @@ def _create_minimal_source_root(base: Path) -> Path:
         "# Enterprise instructions\n",
         encoding="utf-8",
     )
+    policy_dir = base / "policy"
+    policy_dir.mkdir()
+    shutil.copy2(GUARD_POLICY_PATH, policy_dir / "guard-policy.json")
+    shutil.copy2(GUARD_POLICY_SCHEMA_PATH, policy_dir / "guard-policy.schema.json")
     return base
 
 
@@ -195,6 +201,18 @@ def test_sync_to_repo_creates_missing_github_gitignore(tmp_path: Path) -> None:
     assert "sessions/" in content
     assert "instructions/session-context.instructions.md" in content
     assert (target_repo / ".github" / "instructions" / "python.instructions.md").exists()
+
+
+def test_sync_to_repo_copies_guard_policy_files(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (target_repo / "policy" / "guard-policy.json").read_text(encoding="utf-8") == GUARD_POLICY_PATH.read_text(encoding="utf-8")
+    assert (target_repo / "policy" / "guard-policy.schema.json").read_text(encoding="utf-8") == GUARD_POLICY_SCHEMA_PATH.read_text(encoding="utf-8")
 
 
 def test_sync_to_repo_default_profile_excludes_enterprise_instruction(tmp_path: Path) -> None:

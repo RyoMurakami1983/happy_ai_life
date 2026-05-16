@@ -253,6 +253,17 @@ def test_guard_policy_schema_rejects_whitespace_only_protected_path_fields() -> 
     raise AssertionError("protected path unexpectedly accepted whitespace-only id/path")
 
 
+def test_guard_policy_schema_rejects_whitespace_only_path_property_name() -> None:
+    schema = _read_json(SCHEMA_PATH)
+
+    try:
+        _assert_matches_schema(["path", "   "], schema["properties"]["pathPropertyNames"], "$.pathPropertyNames")
+    except AssertionError:
+        return
+
+    raise AssertionError("pathPropertyNames unexpectedly accepted whitespace-only entry")
+
+
 def test_guard_policy_has_unique_deny_rule_ids() -> None:
     policy = _read_json(POLICY_PATH)
 

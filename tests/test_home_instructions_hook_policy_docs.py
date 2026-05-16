@@ -29,3 +29,5 @@ def test_home_sync_doc_matches_user_level_guard_policy() -> None:
     assert "managed な user-level safety hook entry" in content
     assert "ローカルで運用する安全弁の範囲では user-level guard を最上位" in content
     assert "enterprise managed policy / device policy を上書きするものではなく" in content
+    assert "policy/guard-policy.json" in content
+    assert "policy/guard-policy.schema.json" in content
