@@ -96,6 +96,29 @@ def test_engine_permission_request_falls_through_for_protected_path(isolated_hom
     assert response is None
 
 
+def test_engine_permission_request_denies_maintenance_state_edit(isolated_home: Path) -> None:
+    state_path = _write_maintenance_state(isolated_home)
+
+    response = _evaluate(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": str(state_path),
+                "oldString": "{}",
+                "newString": '{"enabled":false}',
+            },
+        },
+        hook_event="permissionRequest",
+        home=isolated_home,
+    )
+
+    assert response == {
+        "behavior": "deny",
+        "message": "Protected path change detected for $HOME/.copilot/maintenance-mode.json via edit. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits.",
+        "interrupt": True,
+    }
+
+
 def test_engine_asks_for_traversed_protected_create_path(isolated_home: Path) -> None:
     response = _evaluate(
         {

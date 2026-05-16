@@ -392,7 +392,7 @@ def load_guard_policy(policy_path: str | Path | None = None) -> GuardPolicy:
     if candidate.is_file():
         try:
             loaded = json.loads(candidate.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             loaded = None
         if isinstance(loaded, dict) and _validate_policy_shape(loaded):
             return _build_policy(loaded)
@@ -594,7 +594,7 @@ def is_maintenance_mode_active(*, scope: str | None, home: str, now: datetime | 
         return False
     try:
         state = json.loads(state_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return False
     if not isinstance(state, dict):
         return False
