@@ -35,8 +35,42 @@ default_active_rule_ids=(
   curl-pipe-sh
   wget-pipe-sh
 )
+required_specialized_rule_ids=(
+  maintenance-mode-manual-only
+  git-hooks-no-verify
+  git-hooks-path-change
+  git-hooks-update-index-bypass
+  git-push-force
+  git-commit-secret-scan
+  git-push-secret-scan
+  gh-pr-create-secret-scan
+)
+default_pattern_rules_json="$(cat <<'JSON'
+[
+  {"id":"rm-rf-root","pattern":"\\brm\\s+-rf\\s+\\/","matchAgainst":"normalized"},
+  {"id":"rm-rf-dot","pattern":"\\brm\\s+-rf\\s+\\.(?:\\s|$)","matchAgainst":"normalized"},
+  {"id":"windows-del-force-recursive","pattern":"\\bdel\\s+\\/f\\s+\\/s\\s+\\/q\\b","matchAgainst":"normalized"},
+  {"id":"format-command","pattern":"\\bformat\\b","matchAgainst":"normalized"},
+  {"id":"mkfs-command","pattern":"\\bmkfs\\b","matchAgainst":"normalized"},
+  {"id":"shutdown-command","pattern":"\\bshutdown\\b","matchAgainst":"normalized"},
+  {"id":"reboot-command","pattern":"\\breboot\\b","matchAgainst":"normalized"},
+  {"id":"init-zero-command","pattern":"\\binit\\s+0\\b","matchAgainst":"normalized"},
+  {"id":"poweroff-command","pattern":"\\bpoweroff\\b","matchAgainst":"normalized"},
+  {"id":"stop-computer-command","pattern":"\\bstop-computer\\b","matchAgainst":"normalized"},
+  {"id":"restart-computer-command","pattern":"\\brestart-computer\\b","matchAgainst":"normalized"},
+  {"id":"remove-item-recurse-force","pattern":"(?=.*\\bremove-item\\b)(?=.*(?:^|\\s)-recurse(?:\\s|$))(?=.*(?:^|\\s)-force(?:\\s|$))","matchAgainst":"normalized"},
+  {"id":"git-reset-hard","pattern":"\\bgit\\s+reset\\s+--hard\\b","matchAgainst":"normalized"},
+  {"id":"powershell-encoded-command","pattern":"(^|[;&|]\\s*)(?:powershell|pwsh)(?:\\.exe)?(?:\\s+[^;&|]+)*\\s+-(?:encodedcommand|enc|ec)(?=\\s|$|[;&|])","matchAgainst":"normalized"},
+  {"id":"invoke-expression","pattern":"(^|[;&|]\\s*)(?:(?:[\\w.\\\\]+\\\\)?invoke-expression|iex)(?=\\s|$|[;&|])","matchAgainst":"normalized"},
+  {"id":"powershell-command-invoke-expression","pattern":"(^|[;&|]\\s*)(?:powershell|pwsh)(?:\\.exe)?(?:\\s+[^;&|]+)*\\s+-(?:command|c)\\s+(?:\"|')?(?:&\\s*\\{\\s*)?(?:(?:[\\w.\\\\]+\\\\)?invoke-expression|iex)\\b","matchAgainst":"normalized"},
+  {"id":"curl-pipe-sh","pattern":"\\bcurl(?:\\.exe)?\\b[^;&|]*\\|\\s*sh\\b","matchAgainst":"normalized"},
+  {"id":"wget-pipe-sh","pattern":"\\bwget(?:\\.exe)?\\b[^;&|]*\\|\\s*sh\\b","matchAgainst":"normalized"}
+]
+JSON
+)"
 shell_tool_names=("${default_shell_tool_names[@]}")
 active_rule_ids=("${default_active_rule_ids[@]}")
+pattern_rules=()
 
 deny() {
   jq -nc --arg reason "$1" \
@@ -51,10 +85,15 @@ resolve_policy_path() {
   fi
 }
 
+load_default_pattern_rules() {
+  mapfile -t pattern_rules < <(jq -cr '.[]' <<<"${default_pattern_rules_json}")
+}
+
 load_guard_policy() {
   local policy_path
   shell_tool_names=("${default_shell_tool_names[@]}")
   active_rule_ids=("${default_active_rule_ids[@]}")
+  load_default_pattern_rules
 
   policy_path="$(resolve_policy_path)"
   if [[ -z "${policy_path}" ]]; then
@@ -62,16 +101,22 @@ load_guard_policy() {
   fi
 
   if ! jq -e '
-    .schemaVersion == 1
+    . as $policy
+    | .schemaVersion == 1
     and (.toolNames.shell | type == "array" and length > 0)
+    and (.toolNames.fileWrite | type == "array" and length > 0)
+    and all(.toolNames.shell[]; type == "string" and test("\\S"))
+    and all(.toolNames.fileWrite[]; type == "string" and test("\\S"))
     and (.denyCommandRules | type == "array" and length > 0)
-    and all(.denyCommandRules[]; (.id | type == "string" and length > 0) and (.kind | IN("specialized"; "pattern")))
+    and all(.denyCommandRules[]; (.id | type == "string" and test("\\S")) and (.kind | IN("specialized"; "pattern")) and (if .kind == "pattern" then ((.pattern | type == "string" and test("\\S")) and (.matchAgainst | IN("normalized"; "compact")) and (.pattern as $pattern | try ("" | test($pattern)) catch false)) else ((has("pattern") | not) and (has("matchAgainst") | not)) end))
+    and (["maintenance-mode-manual-only","git-hooks-no-verify","git-hooks-path-change","git-hooks-update-index-bypass","git-push-force","git-commit-secret-scan","git-push-secret-scan","gh-pr-create-secret-scan"] | all(.[] as $id | any($policy.denyCommandRules[]; .id == $id)))
   ' "${policy_path}" >/dev/null 2>&1; then
     return 0
   fi
 
   mapfile -t shell_tool_names < <(jq -r '.toolNames.shell[]' "${policy_path}")
   mapfile -t active_rule_ids < <(jq -r '.denyCommandRules[].id' "${policy_path}")
+  mapfile -t pattern_rules < <(jq -cr '.denyCommandRules[] | select(.kind == "pattern") | {id, pattern, matchAgainst}' "${policy_path}")
 }
 
 rule_enabled() {
@@ -232,7 +277,7 @@ if [[ -z "${command}" ]]; then
 fi
 
 normalized="$(tr '[:upper:]' '[:lower:]' <<<"${command}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-normalized="$(tr -s '[:space:]' ' ' <<<"${normalized}")"
+compact="$(tr -s '[:space:]' ' ' <<<"${normalized}")"
 normalized_for_path="${normalized//\//\\}"
 maintenance_state_path=""
 if [[ -n "${HOME:-}" ]]; then
@@ -242,23 +287,23 @@ fi
 is_git_commit=0
 is_git_push=0
 is_gh_pr_create=0
-grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+commit([[:space:]]|$)' <<<"${normalized}" && is_git_commit=1
-grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+push([[:space:]]|$)' <<<"${normalized}" && is_git_push=1
-grep -E -q '(^|[;&|][[:space:]]*)gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$)' <<<"${normalized}" && is_gh_pr_create=1
+grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+commit([[:space:]]|$)' <<<"${compact}" && is_git_commit=1
+grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+push([[:space:]]|$)' <<<"${compact}" && is_git_push=1
+grep -E -q '(^|[;&|][[:space:]]*)gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$)' <<<"${compact}" && is_gh_pr_create=1
 
 has_no_verify=0
-grep -E -q '(^|[[:space:]])--no-verify([[:space:]]|$)' <<<"${normalized}" && has_no_verify=1
+grep -E -q '(^|[[:space:]])--no-verify([[:space:]]|$)' <<<"${compact}" && has_no_verify=1
 has_commit_n=0
-if [[ "${is_git_commit}" -eq 1 ]] && grep -E -q '(^|[[:space:]])-[a-z]*n[a-z]*([[:space:]]|$)' <<<"${normalized}"; then
+if [[ "${is_git_commit}" -eq 1 ]] && grep -E -q '(^|[[:space:]])-[a-z]*n[a-z]*([[:space:]]|$)' <<<"${compact}"; then
   has_commit_n=1
 fi
 
 touches_maintenance_mode_script=0
 touches_maintenance_state_file=0
-grep -E -q '(^|[;&|][[:space:]]*)(\.?[[:space:]]+)?(&[[:space:]]+)?[^;&|]*(enter|exit)-copilot-maintenance-mode(\.ps1)?([[:space:]]|$|[;&|])' <<<"${normalized}" && touches_maintenance_mode_script=1
+grep -E -q '(^|[;&|][[:space:]]*)(\.?[[:space:]]+)?(&[[:space:]]+)?[^;&|]*(enter|exit)-copilot-maintenance-mode(\.ps1)?([[:space:]]|$|[;&|])' <<<"${compact}" && touches_maintenance_mode_script=1
 if [[ -n "${maintenance_state_path}" && "${normalized_for_path}" == *"${maintenance_state_path}"* ]]; then
   touches_maintenance_state_file=1
-elif grep -E -q 'maintenance-mode\.json|(\$home|\$env:home|\$\{home\}|~)[\\/]\.copilot[\\/].*maintenance-mode\.json' <<<"${normalized}"; then
+elif grep -E -q 'maintenance-mode\.json|(\$home|\$env:home|\$\{home\}|~)[\\/]\.copilot[\\/].*maintenance-mode\.json' <<<"${compact}"; then
   touches_maintenance_state_file=1
 fi
 
@@ -267,8 +312,12 @@ if rule_enabled "maintenance-mode-manual-only" && { [[ "${touches_maintenance_mo
   exit 0
 fi
 
-if rule_enabled "git-hooks-no-verify" && ({ [[ "${is_git_commit}" -eq 1 ]] && { [[ "${has_no_verify}" -eq 1 ]] || [[ "${has_commit_n}" -eq 1 ]]; }; } ||
-   { [[ "${is_git_push}" -eq 1 ]] && [[ "${has_no_verify}" -eq 1 ]]; }; then
+has_git_hooks_no_verify_violation=0
+if { [[ "${is_git_commit}" -eq 1 ]] && { [[ "${has_no_verify}" -eq 1 ]] || [[ "${has_commit_n}" -eq 1 ]]; }; } || { [[ "${is_git_push}" -eq 1 ]] && [[ "${has_no_verify}" -eq 1 ]]; }; then
+  has_git_hooks_no_verify_violation=1
+fi
+
+if rule_enabled "git-hooks-no-verify" && [[ "${has_git_hooks_no_verify_violation}" -eq 1 ]]; then
   deny "AI is not allowed to bypass Git hooks with --no-verify or git commit -n."
   exit 0
 fi
@@ -279,17 +328,17 @@ is_git_config_remove_core_section=0
 has_inline_git_hooks_path_config=0
 is_git_update_index_skip_worktree=0
 is_git_update_index_assume_unchanged=0
-grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+config([[:space:]]|$)' <<<"${normalized}" &&
-  grep -E -q '(^|[[:space:]])core\.hookspath([[:space:]]*=|[[:space:]])[^;&|]+' <<<"${normalized}" &&
+grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+config([[:space:]]|$)' <<<"${compact}" &&
+  grep -E -q '(^|[[:space:]])core\.hookspath([[:space:]]*=|[[:space:]])[^;&|]+' <<<"${compact}" &&
   is_git_config_hooks_path_write=1
-grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+config([[:space:]]+[^;&|]+)*[[:space:]]+--unset(-all)?([[:space:]]+[^;&|]+)*[[:space:]]+core\.hookspath([[:space:]]*($|[;&|]))' <<<"${normalized}" && is_git_config_hooks_path_unset=1
-grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+config([[:space:]]+[^;&|]+)*[[:space:]]+--remove-section([[:space:]]+[^;&|]+)*[[:space:]]+core([[:space:]]*($|[;&|]))' <<<"${normalized}" && is_git_config_remove_core_section=1
-grep -E -q '(^|[;&|][[:space:]]*)git([[:space:]]+[^;&|]+)*[[:space:]]+-c[[:space:]]+core\.hookspath([[:space:]]*=|[[:space:]])[^;&|]+' <<<"${normalized}" && has_inline_git_hooks_path_config=1
-grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+update-index([[:space:]]|$)' <<<"${normalized}" &&
-  grep -E -q '(^|[[:space:]])--skip-worktree([[:space:]]|$)' <<<"${normalized}" &&
+grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+config([[:space:]]+[^;&|]+)*[[:space:]]+--unset(-all)?([[:space:]]+[^;&|]+)*[[:space:]]+core\.hookspath([[:space:]]*($|[;&|]))' <<<"${compact}" && is_git_config_hooks_path_unset=1
+grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+config([[:space:]]+[^;&|]+)*[[:space:]]+--remove-section([[:space:]]+[^;&|]+)*[[:space:]]+core([[:space:]]*($|[;&|]))' <<<"${compact}" && is_git_config_remove_core_section=1
+grep -E -q '(^|[;&|][[:space:]]*)git([[:space:]]+[^;&|]+)*[[:space:]]+-c[[:space:]]+core\.hookspath([[:space:]]*=|[[:space:]])[^;&|]+' <<<"${compact}" && has_inline_git_hooks_path_config=1
+grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+update-index([[:space:]]|$)' <<<"${compact}" &&
+  grep -E -q '(^|[[:space:]])--skip-worktree([[:space:]]|$)' <<<"${compact}" &&
   is_git_update_index_skip_worktree=1
-grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+update-index([[:space:]]|$)' <<<"${normalized}" &&
-  grep -E -q '(^|[[:space:]])--assume-unchanged([[:space:]]|$)' <<<"${normalized}" &&
+grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+update-index([[:space:]]|$)' <<<"${compact}" &&
+  grep -E -q '(^|[[:space:]])--assume-unchanged([[:space:]]|$)' <<<"${compact}" &&
   is_git_update_index_assume_unchanged=1
 
 if rule_enabled "git-hooks-path-change" && { [[ "${is_git_config_hooks_path_write}" -eq 1 ]] || [[ "${is_git_config_hooks_path_unset}" -eq 1 ]] || [[ "${is_git_config_remove_core_section}" -eq 1 ]] || [[ "${has_inline_git_hooks_path_config}" -eq 1 ]]; }; then
@@ -302,7 +351,7 @@ if rule_enabled "git-hooks-update-index-bypass" && { [[ "${is_git_update_index_s
   exit 0
 fi
 
-if rule_enabled "git-push-force" && grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+push([[:space:]]+[^;&|]+)*[[:space:]]+(-f|--force|--force-with-lease(=[^;&|]+)?)([[:space:]]|$|[;&|])' <<<"${normalized}"; then
+if rule_enabled "git-push-force" && grep -E -q '(^|[;&|][[:space:]]*)git[[:space:]]+push([[:space:]]+[^;&|]+)*[[:space:]]+(-f|--force|--force-with-lease(=[^;&|]+)?)([[:space:]]|$|[;&|])' <<<"${compact}"; then
   deny "Blocked potentially destructive command: ${command}"
   exit 0
 fi
@@ -319,31 +368,24 @@ if rule_enabled "gh-pr-create-secret-scan" && [[ "${is_gh_pr_create}" -eq 1 ]]; 
   scan_unpushed_for_secrets "gh pr create" || exit 0
 fi
 
-if { rule_enabled "powershell-encoded-command" && grep -E -q '(^|[;&|][[:space:]]*)(powershell|pwsh)(\.exe)?([[:space:]]+[^;&|]+)*[[:space:]]+-(encodedcommand|enc|ec)([[:space:]]|$|[;&|])' <<<"${normalized}"; } ||
-   { rule_enabled "invoke-expression" && grep -E -q '(^|[;&|][[:space:]]*)((([[:alnum:]_.\\]+\\)?invoke-expression)|iex)([[:space:]]|$|[;&|])' <<<"${normalized}"; } ||
-   { rule_enabled "powershell-command-invoke-expression" && grep -E -q '(^|[;&|][[:space:]]*)(powershell|pwsh)(\.exe)?([[:space:]]+[^;&|]+)*[[:space:]]+-(command|c)[[:space:]]+["'\'']?(&[[:space:]]*\{[[:space:]]*)?((([[:alnum:]_.\\]+\\)?invoke-expression)|iex)([[:space:]]|$|["'\'']|[;&|])' <<<"${normalized}"; } ||
-   { rule_enabled "curl-pipe-sh" && grep -E -q '(^|[;&|][[:space:]]*)curl(\.exe)?[^;&|]*\|[[:space:]]*sh([[:space:]]|$)' <<<"${normalized}"; } ||
-   { rule_enabled "wget-pipe-sh" && grep -E -q '(^|[;&|][[:space:]]*)wget(\.exe)?[^;&|]*\|[[:space:]]*sh([[:space:]]|$)' <<<"${normalized}"; }; then
-  deny "Blocked potentially destructive command: ${command}"
-  exit 0
-fi
+for rule_json in "${pattern_rules[@]}"; do
+  rule_id="$(jq -r '.id' <<<"${rule_json}")"
+  if ! rule_enabled "${rule_id}"; then
+    continue
+  fi
 
-# まずは破壊系だけを最小ブロック
-# 必要になってから増やす（誤ブロックで作業が止まるのを避ける）
-if { rule_enabled "rm-rf-root" && grep -F -q -- 'rm -rf /' <<<"${normalized}"; } ||
-   { rule_enabled "rm-rf-dot" && grep -F -q -- 'rm -rf .' <<<"${normalized}"; } ||
-   { rule_enabled "mkfs-command" && grep -F -q -- 'mkfs' <<<"${normalized}"; } ||
-   { rule_enabled "format-command" && grep -F -q -- 'format ' <<<"${normalized}"; } ||
-   { rule_enabled "shutdown-command" && grep -F -q -- 'shutdown' <<<"${normalized}"; } ||
-   { rule_enabled "reboot-command" && grep -F -q -- 'reboot' <<<"${normalized}"; } ||
-   { rule_enabled "poweroff-command" && grep -F -q -- 'poweroff' <<<"${normalized}"; } ||
-   { rule_enabled "init-zero-command" && grep -F -q -- 'init 0' <<<"${normalized}"; } ||
-   { rule_enabled "stop-computer-command" && grep -F -q -- 'stop-computer' <<<"${normalized}"; } ||
-   { rule_enabled "restart-computer-command" && grep -F -q -- 'restart-computer' <<<"${normalized}"; } ||
-   { rule_enabled "git-reset-hard" && grep -F -q -- 'git reset --hard' <<<"${normalized}"; }; then
-  deny "Blocked potentially destructive command: ${command}"
-  exit 0
-fi
+  match_against="$(jq -r '.matchAgainst' <<<"${rule_json}")"
+  candidate="${normalized}"
+  if [[ "${match_against}" == "compact" ]]; then
+    candidate="${compact}"
+  fi
+
+  pattern="$(jq -r '.pattern' <<<"${rule_json}")"
+  if [[ "$(jq -nr --arg candidate "${candidate}" --arg pattern "${pattern}" '$candidate | test($pattern)')" == "true" ]]; then
+    deny "Blocked potentially destructive command: ${command}"
+    exit 0
+  fi
+done
 
 # allow: 何も返さない
 exit 0

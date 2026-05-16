@@ -261,6 +261,17 @@ def test_guard_policy_schema_rejects_specialized_rule_with_pattern_fields() -> N
     raise AssertionError("specialized deny rule unexpectedly accepted pattern fields")
 
 
+def test_guard_policy_schema_rejects_whitespace_only_tool_name() -> None:
+    schema = _read_json(SCHEMA_PATH)
+
+    try:
+        _assert_matches_schema(["   "], schema["properties"]["toolNames"]["properties"]["shell"], "$.toolNames.shell")
+    except AssertionError:
+        return
+
+    raise AssertionError("toolNames.shell unexpectedly accepted whitespace-only entry")
+
+
 def test_guard_policy_tool_names_match_runtime_defaults() -> None:
     policy = _read_json(POLICY_PATH)
 

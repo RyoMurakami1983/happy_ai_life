@@ -75,24 +75,24 @@
       "properties": {
         "shell": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": { "type": "string", "minLength": 1, "pattern": "\\S" },
           "uniqueItems": true,
           "minItems": 1
         },
         "fileWrite": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": { "type": "string", "minLength": 1, "pattern": "\\S" },
           "uniqueItems": true,
           "minItems": 1
         },
         "observe": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": { "type": "string", "minLength": 1, "pattern": "\\S" },
           "uniqueItems": true
         },
         "delegation": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": { "type": "string", "minLength": 1, "pattern": "\\S" },
           "uniqueItems": true
         }
       },

@@ -8,6 +8,19 @@ $script:ProtectedPathPropertyNames = @("path", "filePath", "file_path", "targetP
 $script:GuardPolicy = $null
 $script:GuardPolicyRepoRoot = $null
 
+function Get-RequiredSpecializedDenyRuleIds {
+    return @(
+        "maintenance-mode-manual-only",
+        "git-hooks-no-verify",
+        "git-hooks-path-change",
+        "git-hooks-update-index-bypass",
+        "git-push-force",
+        "git-commit-secret-scan",
+        "git-push-secret-scan",
+        "gh-pr-create-secret-scan"
+    )
+}
+
 function Write-HookResponse($obj) {
     $json = $obj | ConvertTo-Json -Compress
     [Console]::Out.Write($json)
@@ -158,6 +171,12 @@ function Test-GuardPolicyShape {
         return $false
     }
 
+    foreach ($toolName in @($Policy.toolNames.shell) + @($Policy.toolNames.fileWrite)) {
+        if ([string]::IsNullOrWhiteSpace([string]$toolName)) {
+            return $false
+        }
+    }
+
     $pathPropertyNames = @{}
     foreach ($name in @($Policy.pathPropertyNames)) {
         $propertyName = [string]$name
@@ -234,6 +253,12 @@ function Test-GuardPolicyShape {
         }
     }
 
+    foreach ($requiredId in @(Get-RequiredSpecializedDenyRuleIds)) {
+        if (-not $denyRuleIds.ContainsKey($requiredId)) {
+            return $false
+        }
+    }
+
     return $true
 }
 
@@ -262,6 +287,21 @@ function Get-GuardPolicy {
     $script:GuardPolicy = $policy
     $script:GuardPolicyRepoRoot = $RepoRoot
     return $policy
+}
+
+function Test-DenyCommandRuleEnabled {
+    param(
+        [Parameter(Mandatory = $true)][string]$RuleId,
+        [Parameter()][object]$Policy = $script:GuardPolicy
+    )
+
+    foreach ($entry in @($Policy.denyCommandRules)) {
+        if ([string]$entry.id -eq $RuleId) {
+            return $true
+        }
+    }
+
+    return $false
 }
 
 function Test-SamePath {
@@ -930,7 +970,7 @@ $maintenanceStatePath = (Resolve-MaintenanceModePath).ToLowerInvariant()
 $touchesMaintenanceModeScript = $compact -match '(^|[;&|]\s*)(?:\.\s+)?(?:&\s+)?[^;&|]*?(?:enter|exit)-copilot-maintenance-mode(?:\.ps1)?(?=\s|$|[;&|])'
 $touchesMaintenanceStateFile = $normalizedForPath.Contains($maintenanceStatePath) -or ($compact -match 'maintenance-mode\.json') -or ($compact -match '(?:\$home|\$env:home|\$\{home\}|~)[\\/]\.copilot[\\/](?:[^;&|]*[\\/])?maintenance-mode\.json')
 
-if ($touchesMaintenanceModeScript -or $touchesMaintenanceStateFile) {
+if ((Test-DenyCommandRuleEnabled -RuleId "maintenance-mode-manual-only") -and ($touchesMaintenanceModeScript -or $touchesMaintenanceStateFile)) {
     Write-Deny "AI is not allowed to enter or exit maintenance mode, or modify the maintenance state file. Ask a human to run the maintenance scripts manually."
     exit 0
 }
@@ -948,22 +988,27 @@ $hasGitPushForce = $compact -match '(^|[;&|]\s*)git\s+push(?:\s+[^;&|]+)*\s+(?:-
 $hasNoVerify = $compact -match "(^|\s)--no-verify(\s|$)"
 $hasCommitNoVerifyShort = $isGitCommit -and ($compact -match "(^|\s)-[a-z]*n[a-z]*(\s|$)")
 
-if (($isGitCommit -and ($hasNoVerify -or $hasCommitNoVerifyShort)) -or ($isGitPush -and $hasNoVerify)) {
+if ((Test-DenyCommandRuleEnabled -RuleId "git-hooks-no-verify") -and (($isGitCommit -and ($hasNoVerify -or $hasCommitNoVerifyShort)) -or ($isGitPush -and $hasNoVerify))) {
     Write-Deny "AI is not allowed to bypass Git hooks with --no-verify or git commit -n."
     exit 0
 }
 
-if ($isGitConfigHooksPathWrite -or $isGitConfigHooksPathUnset -or $isGitConfigRemoveCoreSection -or $hasInlineGitHooksPathConfig -or $isGitUpdateIndexSkipWorktree -or $isGitUpdateIndexAssumeUnchanged) {
+if ((Test-DenyCommandRuleEnabled -RuleId "git-hooks-path-change") -and ($isGitConfigHooksPathWrite -or $isGitConfigHooksPathUnset -or $isGitConfigRemoveCoreSection -or $hasInlineGitHooksPathConfig)) {
     Write-Deny "AI is not allowed to disable or bypass Git hooks via core.hooksPath changes, git -c core.hooksPath, or git update-index skip-worktree/assume-unchanged."
     exit 0
 }
 
-if ($hasGitPushForce) {
+if ((Test-DenyCommandRuleEnabled -RuleId "git-hooks-update-index-bypass") -and ($isGitUpdateIndexSkipWorktree -or $isGitUpdateIndexAssumeUnchanged)) {
+    Write-Deny "AI is not allowed to disable or bypass Git hooks via core.hooksPath changes, git -c core.hooksPath, or git update-index skip-worktree/assume-unchanged."
+    exit 0
+}
+
+if ((Test-DenyCommandRuleEnabled -RuleId "git-push-force") -and $hasGitPushForce) {
     Write-Deny ("Blocked potentially destructive command: {0}" -f $command)
     exit 0
 }
 
-if ($isGitCommit) {
+if ((Test-DenyCommandRuleEnabled -RuleId "git-commit-secret-scan") -and $isGitCommit) {
     $secretScanReason = Invoke-StagedSecretScan
     if (-not [string]::IsNullOrWhiteSpace($secretScanReason)) {
         Write-Deny $secretScanReason
@@ -971,7 +1016,7 @@ if ($isGitCommit) {
     }
 }
 
-if ($isGitPush) {
+if ((Test-DenyCommandRuleEnabled -RuleId "git-push-secret-scan") -and $isGitPush) {
     $secretScanReason = Invoke-UnpushedSecretScan -ActionName "git push"
     if (-not [string]::IsNullOrWhiteSpace($secretScanReason)) {
         Write-Deny $secretScanReason
@@ -979,7 +1024,7 @@ if ($isGitPush) {
     }
 }
 
-if ($isGhPrCreate) {
+if ((Test-DenyCommandRuleEnabled -RuleId "gh-pr-create-secret-scan") -and $isGhPrCreate) {
     $secretScanReason = Invoke-UnpushedSecretScan -ActionName "gh pr create"
     if (-not [string]::IsNullOrWhiteSpace($secretScanReason)) {
         Write-Deny $secretScanReason
