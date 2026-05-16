@@ -298,6 +298,9 @@ def test_guard_policy_blocks_rm_long_option_root_and_current_directory_forms() -
         "rm --force --recursive .",
         "rm -r --force ./",
         "cmd /c rm --recursive --force /",
+        'bash -c "rm -rf /"',
+        "sh -c 'rm --recursive --force /'",
+        'powershell -Command "rm -rf /"',
     ]
     allowed_commands = [
         "rm --recursive --force /tmp/build",

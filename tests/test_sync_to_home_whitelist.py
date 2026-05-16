@@ -1047,6 +1047,9 @@ def test_guard_permission_request_denies_git_hook_disabling_commands(command: st
         "rm --force --recursive .",
         "rm -r --force ./",
         "cmd /c rm --recursive --force /",
+        'bash -c "rm -rf /"',
+        "sh -c 'rm --recursive --force /'",
+        'powershell -Command "rm -rf /"',
         "del /s /q /f temp",
         "del /q /f /s temp",
         "rm -fr /",
@@ -1056,6 +1059,18 @@ def test_guard_permission_request_denies_git_hook_disabling_commands(command: st
 def test_guard_pre_tool_blocks_enterprise_dangerous_commands(command: str) -> None:
     result = _invoke_guard_pre_tool(
         {"toolName": "powershell", "toolArgs": {"command": command}},
+        cwd=ROOT,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_blocks_nested_shell_wrapped_rm() -> None:
+    result = _invoke_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": 'powershell -Command "rm -rf /"'}},
         cwd=ROOT,
     )
 
@@ -1120,6 +1135,9 @@ def test_guard_pre_tool_allows_non_destructive_enterprise_command_neighbors(comm
         "rm --force --recursive .",
         "rm -r --force ./",
         "cmd /c rm --recursive --force /",
+        'bash -c "rm -rf /"',
+        "sh -c 'rm --recursive --force /'",
+        'powershell -Command "rm -rf /"',
         "del /s /q /f temp",
         "del /q /f /s temp",
         "rm -fr /",
@@ -1516,6 +1534,35 @@ def test_repo_scoped_guard_pre_tool_falls_back_when_array_fields_are_scalar(
     )
     assert fallback_result.returncode == 0, fallback_result.stdout + fallback_result.stderr
     response = json.loads(fallback_result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+def test_repo_scoped_guard_pre_tool_fallback_blocks_nested_shell_wrapped_rm(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    hooks_dir = repo / ".github" / "hooks" / "scripts"
+    hooks_dir.mkdir(parents=True)
+    script = hooks_dir / "guard_pre_tool.ps1"
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", script)
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["denyCommandRules"] = [rule for rule in policy["denyCommandRules"] if rule["id"] != "git-push-force"]
+    (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+    result = _invoke_guard_pre_tool_script(
+        script,
+        {"toolName": "powershell", "toolArgs": {"command": 'powershell -Command "rm -rf /"'}},
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
     assert response["permissionDecision"] == "deny"
     assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
 

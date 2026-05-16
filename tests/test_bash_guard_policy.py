@@ -493,6 +493,9 @@ def test_bash_guard_pre_tool_blocks_disk_format_command(tmp_path: Path) -> None:
         "rm --force --recursive .",
         "rm -r --force ./",
         "cmd /c rm --recursive --force /",
+        'bash -c "rm -rf /"',
+        "sh -c 'rm --recursive --force /'",
+        'powershell -Command "rm -rf /"',
         "del /s /q /f temp",
         "del /q /f /s temp",
         "rm -fr /",
@@ -505,6 +508,21 @@ def test_bash_guard_pre_tool_blocks_destructive_command_variants(tmp_path: Path,
 
     result = _invoke_bash_guard_pre_tool(
         {"toolName": "powershell", "toolArgs": {"command": command}},
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+def test_bash_guard_pre_tool_blocks_nested_shell_wrapped_rm(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": 'bash -c "rm -rf /"'}},
         cwd=repo,
     )
 
@@ -621,6 +639,25 @@ def test_bash_guard_pre_tool_falls_back_when_required_specialized_rule_is_missin
 
     result = _invoke_bash_guard_pre_tool(
         {"toolName": "powershell", "toolArgs": {"command": "git push origin main -f"}},
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+def test_bash_guard_pre_tool_fallback_blocks_nested_shell_wrapped_rm_cross_platform(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["denyCommandRules"] = [rule for rule in policy["denyCommandRules"] if rule["id"] != "git-push-force"]
+    _write_policy(repo, policy)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": 'bash -c "rm -rf /"'}},
         cwd=repo,
     )
 
