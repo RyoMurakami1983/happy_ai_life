@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -52,7 +53,7 @@ def _invoke_bash_guard_pre_tool(
 
     effective_env = None
     if env is not None:
-        effective_env = {**env}
+        effective_env = {**os.environ, **env}
 
     bash_path = _bash_executable()
     return subprocess.run(
@@ -158,6 +159,76 @@ def test_bash_guard_pre_tool_uses_policy_file_write_tool_names_and_path_properti
     assert "policy/guard-policy.json" in response["permissionDecisionReason"]
 
 
+def test_bash_guard_pre_tool_normalizes_backslash_directory_policy_path(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["protectedPaths"].append(
+        {
+            "id": "backslash-hooks-directory",
+            "path": ".github\\hooks\\**",
+            "scope": "directory",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+    _write_policy(repo, policy)
+
+    result = _invoke_bash_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": ".github/hooks/test.json",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert ".github/hooks/**" in response["permissionDecisionReason"]
+
+
+def test_bash_guard_pre_tool_normalizes_home_backslash_directory_policy_path(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home_root = tmp_path / "home"
+    _init_repo_with_bash_guard(repo)
+
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["protectedPaths"].append(
+        {
+            "id": "home-backslash-hooks-directory",
+            "path": "$HOME\\.copilot\\hooks\\**",
+            "scope": "directory",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+    _write_policy(repo, policy)
+
+    result = _invoke_bash_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": str(home_root / ".copilot" / "hooks" / "test.json"),
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=repo,
+        env={"HOME": str(home_root)},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "ask"
+    assert "$HOME/.copilot/hooks/**" in response["permissionDecisionReason"]
+
+
 def test_bash_guard_pre_tool_blocks_remove_item_recurse_force_in_fallback_baseline(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     _init_repo_with_bash_guard(repo)
@@ -172,6 +243,82 @@ def test_bash_guard_pre_tool_blocks_remove_item_recurse_force_in_fallback_baseli
 
     assert result.returncode == 0, result.stdout + result.stderr
     response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+@pytest.mark.parametrize(
+    "policy_mutation",
+    [
+        "duplicate_path_property_name",
+        "duplicate_protected_path_id",
+        "duplicate_normalized_protected_path",
+        "duplicate_deny_rule_id",
+    ],
+)
+def test_bash_guard_pre_tool_falls_back_when_policy_uniqueness_is_invalid(
+    tmp_path: Path,
+    policy_mutation: str,
+) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["toolNames"]["fileWrite"] = ["rewrite"]
+    policy["pathPropertyNames"] = ["destination"]
+    policy["protectedPaths"].append(
+        {
+            "id": "custom-protected-file",
+            "path": "custom-protected.txt",
+            "scope": "file",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+
+    if policy_mutation == "duplicate_path_property_name":
+        policy["pathPropertyNames"].append("destination")
+    elif policy_mutation == "duplicate_protected_path_id":
+        policy["protectedPaths"].append(
+            {
+                "id": "custom-protected-file",
+                "path": "another-custom-protected.txt",
+                "scope": "file",
+                "action": "ask",
+                "maintenanceScope": "protectedPathEdit",
+            }
+        )
+    elif policy_mutation == "duplicate_normalized_protected_path":
+        policy["protectedPaths"].append(
+            {
+                "id": "custom-protected-file-uppercase",
+                "path": "CUSTOM-PROTECTED.TXT/",
+                "scope": "file",
+                "action": "ask",
+                "maintenanceScope": "protectedPathEdit",
+            }
+        )
+    elif policy_mutation == "duplicate_deny_rule_id":
+        policy["denyCommandRules"].append(dict(policy["denyCommandRules"][0]))
+
+    _write_policy(repo, policy)
+
+    custom_tool_result = _invoke_bash_guard_pre_tool(
+        {
+            "toolName": "rewrite",
+            "toolArgs": {"destination": "custom-protected.txt"},
+        },
+        cwd=repo,
+    )
+    assert custom_tool_result.returncode == 0, custom_tool_result.stdout + custom_tool_result.stderr
+    assert custom_tool_result.stdout == ""
+
+    fallback_result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git push origin main -f"}},
+        cwd=repo,
+    )
+    assert fallback_result.returncode == 0, fallback_result.stdout + fallback_result.stderr
+    response = json.loads(fallback_result.stdout)
     assert response["permissionDecision"] == "deny"
     assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
 

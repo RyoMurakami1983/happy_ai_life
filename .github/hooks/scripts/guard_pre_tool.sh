@@ -149,18 +149,29 @@ load_guard_policy() {
   fi
 
   if ! jq -e '
+    def trim: sub("^\\s+"; "") | sub("\\s+$"; "");
+    def normalize_policy_path:
+      (trim | gsub("\\\\"; "/")) as $path
+      | if ($path | endswith("/**")) then ($path | ascii_downcase)
+        else ($path | sub("/+$"; "") | ascii_downcase)
+        end;
+    def unique_values($values): (($values | length) == ($values | unique | length));
     . as $policy
     | .schemaVersion == 1
     and (.pathPropertyNames | type == "array" and length > 0)
     and all(.pathPropertyNames[]; type == "string" and test("\\S"))
+    and unique_values([.pathPropertyNames[]])
     and (.toolNames.shell | type == "array" and length > 0)
     and (.toolNames.fileWrite | type == "array" and length > 0)
     and all(.toolNames.shell[]; type == "string" and test("\\S"))
     and all(.toolNames.fileWrite[]; type == "string" and test("\\S"))
     and (.protectedPaths | type == "array" and length > 0)
     and all(.protectedPaths[]; (.id | type == "string" and test("\\S")) and (.path | type == "string" and test("\\S")) and (.scope | IN("file"; "directory")) and (.action | IN("ask"; "deny")) and ((.maintenanceScope | type) | IN("string"; "null")) and (if .action == "deny" then .maintenanceScope == null else true end) and (if .scope == "file" then (.path | test("(?:/|\\\\)\\*\\*$") | not) else true end))
+    and unique_values([.protectedPaths[].id])
+    and unique_values([.protectedPaths[].path | normalize_policy_path])
     and (.denyCommandRules | type == "array" and length > 0)
     and all(.denyCommandRules[]; (.id | type == "string" and test("\\S")) and (.kind | IN("specialized"; "pattern")) and (if .kind == "pattern" then ((.pattern | type == "string" and test("\\S")) and (.matchAgainst | IN("normalized"; "compact")) and (.pattern as $pattern | try ("" | test($pattern)) catch false)) else ((has("pattern") | not) and (has("matchAgainst") | not)) end))
+    and unique_values([.denyCommandRules[].id])
     and (["maintenance-mode-manual-only","git-hooks-no-verify","git-hooks-path-change","git-hooks-update-index-bypass","git-push-force","git-commit-secret-scan","git-push-secret-scan","gh-pr-create-secret-scan"] | all(.[] as $id | any($policy.denyCommandRules[]; .id == $id)))
   ' "${policy_path}" >/dev/null 2>&1; then
     return 0
@@ -222,6 +233,13 @@ tool_enabled() {
 
 trim_whitespace() {
   printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+normalize_policy_path_text() {
+  local value
+  value="$(trim_whitespace "$1")"
+  value="${value//\\//}"
+  printf '%s\n' "${value}"
 }
 
 expand_home_path() {
@@ -385,7 +403,7 @@ protected_path_match_for_candidate() {
   local rule_json display scope action maintenance_scope base_path rule_path resolved_rule
 
   for rule_json in "${protected_path_rules[@]}"; do
-    display="$(jq -r '.path' <<<"${rule_json}")"
+    display="$(normalize_policy_path_text "$(jq -r '.path' <<<"${rule_json}")")"
     scope="$(jq -r '.scope' <<<"${rule_json}")"
     action="$(jq -r '.action' <<<"${rule_json}")"
     maintenance_scope="$(jq -r 'if .maintenanceScope == null then "" else .maintenanceScope end' <<<"${rule_json}")"
@@ -580,7 +598,7 @@ if [[ "${is_file_write_tool}" -eq 1 ]]; then
     fi
 
     expanded_path="$(expand_home_path "${trimmed_path}")"
-    if [[ -n "${repo_root_path}" && ! is_absolute_path "${expanded_path}" ]]; then
+    if [[ -n "${repo_root_path}" ]] && ! is_absolute_path "${expanded_path}"; then
       candidate_paths+=("$(normalize_join_path "${trimmed_path}" "${repo_root_path}")")
     fi
     candidate_paths+=("$(normalize_join_path "${trimmed_path}" "${resolution_base}")")
