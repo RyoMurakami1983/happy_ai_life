@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,7 @@ GUARD_SCRIPT_PATH = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.sh"
 GUARD_POLICY_PATH = ROOT / "policy" / "guard-policy.json"
 
 
+@lru_cache(maxsize=1)
 def _bash_executable() -> str:
     candidates = [
         shutil.which("bash"),
@@ -26,14 +28,20 @@ def _bash_executable() -> str:
     for candidate in candidates:
         if not candidate:
             continue
+        if "WindowsApps" in candidate:
+            continue
         if not Path(candidate).exists():
             continue
-        probe = subprocess.run(
-            [candidate, "-lc", "set -o pipefail >/dev/null 2>&1 && command -v jq >/dev/null 2>&1"],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
+        try:
+            probe = subprocess.run(
+                [candidate, "-lc", "set -o pipefail >/dev/null 2>&1 && command -v jq >/dev/null 2>&1"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except subprocess.TimeoutExpired:
+            continue
         if probe.returncode == 0:
             return candidate
 
@@ -365,6 +373,59 @@ def test_bash_guard_pre_tool_blocks_disk_format_command(tmp_path: Path) -> None:
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "deny"
     assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cmd /c format c:",
+        "cmd.exe /c format c:",
+        "cmd /c del /s /q /f temp",
+        "cmd.exe /c del /q /f /s temp",
+        "cmd /c rm -fr /",
+        "cmd.exe /c rm -r -f .",
+        "sudo rm -fr /",
+        "doas rm -r -f .",
+        "cmd /c sudo rm -fr /",
+        "del /s /q /f temp",
+        "del /q /f /s temp",
+        "rm -fr /",
+        "rm -r -f .",
+    ],
+)
+def test_bash_guard_pre_tool_blocks_destructive_command_variants(tmp_path: Path, command: str) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": command}},
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "rm -rf /tmp/build",
+        "sudo rm -rf /tmp/build",
+    ],
+)
+def test_bash_guard_pre_tool_allows_non_root_absolute_rm_targets(tmp_path: Path, command: str) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": command}},
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
 
 
 @pytest.mark.parametrize(
