@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.guard_policy import EvaluationContext, HookEvent, evaluate_payload
+from scripts.guard_policy import EvaluationContext, HookEvent, evaluate_payload, resolve_full_path
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -170,6 +170,16 @@ def test_engine_denies_shell_maintenance_mode_command(isolated_home: Path) -> No
         "permissionDecision": "deny",
         "permissionDecisionReason": "AI is not allowed to enter or exit maintenance mode, or modify the maintenance state file. Ask a human to run the maintenance scripts manually.",
     }
+
+
+def test_resolve_full_path_preserves_unc_prefix(isolated_home: Path) -> None:
+    resolved = resolve_full_path(
+        "//SERVER//Share///guards/../policy/guard-policy.json",
+        base_path=str(ROOT),
+        home=str(isolated_home),
+    )
+
+    assert resolved == "//server/share/policy/guard-policy.json"
 
 
 def test_engine_allows_protected_edit_path_during_active_maintenance_mode(tmp_path: Path) -> None:

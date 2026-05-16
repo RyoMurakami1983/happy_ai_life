@@ -415,10 +415,10 @@ def _split_path_prefix(path_value: str) -> tuple[str, str]:
 
 
 def _collapse_path(path_value: str) -> str:
-    normalized = re.sub(r"/{2,}", "/", path_value)
-    prefix, remainder = _split_path_prefix(normalized)
+    prefix, remainder = _split_path_prefix(path_value)
+    normalized_remainder = re.sub(r"/{2,}", "/", remainder)
     parts: list[str] = []
-    for segment in remainder.split("/"):
+    for segment in normalized_remainder.split("/"):
         if segment in {"", "."}:
             continue
         if segment == "..":
