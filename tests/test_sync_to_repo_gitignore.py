@@ -38,6 +38,7 @@ def _run_sync(
     dry_run: bool,
     hooks_mode: str | None = None,
     policy_profile: str | None = None,
+    policy_relative_path: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     command = [
         _powershell_executable(),
@@ -61,6 +62,8 @@ def _run_sync(
         command.extend(["-HooksMode", hooks_mode])
     if policy_profile is not None:
         command.extend(["-PolicyProfile", policy_profile])
+    if policy_relative_path is not None:
+        command.extend(["-PolicyRelativePath", policy_relative_path])
     if dry_run:
         command.append("-DryRun")
 
@@ -213,6 +216,30 @@ def test_sync_to_repo_copies_guard_policy_files(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     assert (target_repo / "policy" / "guard-policy.json").read_text(encoding="utf-8") == GUARD_POLICY_PATH.read_text(encoding="utf-8")
     assert (target_repo / "policy" / "guard-policy.schema.json").read_text(encoding="utf-8") == GUARD_POLICY_SCHEMA_PATH.read_text(encoding="utf-8")
+
+
+def test_sync_to_repo_fails_when_policy_source_is_missing(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    shutil.rmtree(source_root / "policy")
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False)
+
+    assert result.returncode != 0
+    assert "Guard policy source path not found" in result.stderr
+
+
+def test_sync_to_repo_allows_explicit_policy_sync_opt_out(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    shutil.rmtree(source_root / "policy")
+    target_repo = tmp_path / "target"
+    target_repo.mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False, policy_relative_path="")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (target_repo / "policy").exists()
 
 
 def test_sync_to_repo_default_profile_excludes_enterprise_instruction(tmp_path: Path) -> None:

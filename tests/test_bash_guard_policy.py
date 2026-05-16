@@ -413,6 +413,10 @@ def test_bash_guard_pre_tool_blocks_disk_format_command(tmp_path: Path) -> None:
         "sudo rm -fr /",
         "doas rm -r -f .",
         "cmd /c sudo rm -fr /",
+        "rm --recursive --force /",
+        "rm --force --recursive .",
+        "rm -r --force ./",
+        "cmd /c rm --recursive --force /",
         "del /s /q /f temp",
         "del /q /f /s temp",
         "rm -fr /",
@@ -439,6 +443,7 @@ def test_bash_guard_pre_tool_blocks_destructive_command_variants(tmp_path: Path,
     [
         "rm -rf /tmp/build",
         "sudo rm -rf /tmp/build",
+        "rm --recursive --force /tmp/build",
     ],
 )
 def test_bash_guard_pre_tool_allows_non_root_absolute_rm_targets(tmp_path: Path, command: str) -> None:

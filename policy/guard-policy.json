@@ -245,28 +245,56 @@
       "kind": "pattern",
       "matchAgainst": "normalized",
       "description": "Block recursive forced rm against current directory.",
-      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*r[a-z]*f[a-z]*[^;&|]*\\s+\\.(?=\\s|$|[;&|])"
+      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*r[a-z]*f[a-z]*[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])"
     },
     {
       "id": "rm-fr-dot",
       "kind": "pattern",
       "matchAgainst": "normalized",
       "description": "Block forced recursive rm against current directory.",
-      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*f[a-z]*r[a-z]*[^;&|]*\\s+\\.(?=\\s|$|[;&|])"
+      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*f[a-z]*r[a-z]*[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])"
     },
     {
       "id": "rm-r-f-dot",
       "kind": "pattern",
       "matchAgainst": "normalized",
       "description": "Block split recursive forced rm against current directory.",
-      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*r[a-z]*(?=\\s|$|[;&|])[^;&|]*\\s-[a-z]*f[a-z]*[^;&|]*\\s+\\.(?=\\s|$|[;&|])"
+      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*r[a-z]*(?=\\s|$|[;&|])[^;&|]*\\s-[a-z]*f[a-z]*[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])"
     },
     {
       "id": "rm-f-r-dot",
       "kind": "pattern",
       "matchAgainst": "normalized",
       "description": "Block split forced recursive rm against current directory.",
-      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*f[a-z]*(?=\\s|$|[;&|])[^;&|]*\\s-[a-z]*r[a-z]*[^;&|]*\\s+\\.(?=\\s|$|[;&|])"
+      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*f[a-z]*(?=\\s|$|[;&|])[^;&|]*\\s-[a-z]*r[a-z]*[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])"
+    },
+    {
+      "id": "rm-recursive-force-root",
+      "kind": "pattern",
+      "matchAgainst": "normalized",
+      "description": "Block recursive forced rm with long options against root.",
+      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*(?:\\s-[a-z]*r[a-z]*|\\s--recursive)(?=\\s|$|[;&|])[^;&|]*(?:\\s-[a-z]*f[a-z]*|\\s--force)(?=\\s|$|[;&|])[^;&|]*\\s+\\/(?=\\s|$|[;&|])"
+    },
+    {
+      "id": "rm-force-recursive-root",
+      "kind": "pattern",
+      "matchAgainst": "normalized",
+      "description": "Block forced recursive rm with long options against root.",
+      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*(?:\\s-[a-z]*f[a-z]*|\\s--force)(?=\\s|$|[;&|])[^;&|]*(?:\\s-[a-z]*r[a-z]*|\\s--recursive)(?=\\s|$|[;&|])[^;&|]*\\s+\\/(?=\\s|$|[;&|])"
+    },
+    {
+      "id": "rm-recursive-force-dot",
+      "kind": "pattern",
+      "matchAgainst": "normalized",
+      "description": "Block recursive forced rm with long options against current directory.",
+      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*(?:\\s-[a-z]*r[a-z]*|\\s--recursive)(?=\\s|$|[;&|])[^;&|]*(?:\\s-[a-z]*f[a-z]*|\\s--force)(?=\\s|$|[;&|])[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])"
+    },
+    {
+      "id": "rm-force-recursive-dot",
+      "kind": "pattern",
+      "matchAgainst": "normalized",
+      "description": "Block forced recursive rm with long options against current directory.",
+      "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*(?:\\s-[a-z]*f[a-z]*|\\s--force)(?=\\s|$|[;&|])[^;&|]*(?:\\s-[a-z]*r[a-z]*|\\s--recursive)(?=\\s|$|[;&|])[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])"
     },
     {
       "id": "windows-del-force-recursive",

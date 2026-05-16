@@ -1043,6 +1043,10 @@ def test_guard_permission_request_denies_git_hook_disabling_commands(command: st
         "sudo rm -fr /",
         "doas rm -r -f .",
         "cmd /c sudo rm -fr /",
+        "rm --recursive --force /",
+        "rm --force --recursive .",
+        "rm -r --force ./",
+        "cmd /c rm --recursive --force /",
         "del /s /q /f temp",
         "del /q /f /s temp",
         "rm -fr /",
@@ -1072,6 +1076,7 @@ def test_guard_pre_tool_blocks_enterprise_dangerous_commands(command: str) -> No
         "git log --format=%H",
         "rm -rf /tmp/build",
         "sudo rm -rf /tmp/build",
+        "rm --recursive --force /tmp/build",
     ],
 )
 def test_guard_pre_tool_allows_non_destructive_enterprise_command_neighbors(command: str) -> None:
@@ -1111,6 +1116,10 @@ def test_guard_pre_tool_allows_non_destructive_enterprise_command_neighbors(comm
         "sudo rm -fr /",
         "doas rm -r -f .",
         "cmd /c sudo rm -fr /",
+        "rm --recursive --force /",
+        "rm --force --recursive .",
+        "rm -r --force ./",
+        "cmd /c rm --recursive --force /",
         "del /s /q /f temp",
         "del /q /f /s temp",
         "rm -fr /",
@@ -1201,6 +1210,7 @@ def test_bash_guard_pre_tool_blocks_enterprise_dangerous_commands(command: str) 
         "git log --format=%H",
         "rm -rf /tmp/build",
         "sudo rm -rf /tmp/build",
+        "rm --recursive --force /tmp/build",
     ],
 )
 def test_bash_guard_pre_tool_allows_non_destructive_enterprise_command_neighbors(command: str) -> None:

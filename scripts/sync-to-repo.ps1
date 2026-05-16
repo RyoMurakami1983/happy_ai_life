@@ -510,21 +510,23 @@ if (-not [string]::IsNullOrWhiteSpace($GitHooksRelativePath)) {
 # --- 4. policy/ → 配布先 policy/ ---
 if (-not [string]::IsNullOrWhiteSpace($PolicyRelativePath)) {
     $policySourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $PolicyRelativePath))
-    if (Test-Path -LiteralPath $policySourcePath) {
-        Write-Section "Sync guard policy to target repository (policy)"
-
-        $policyDestinationPath = Join-Path $targetRepoPath "policy"
-
-        Write-Host "Source      : $policySourcePath"
-        Write-Host "Destination : $policyDestinationPath"
-
-        Invoke-Robocopy `
-            -Source $policySourcePath `
-            -Destination $policyDestinationPath `
-            -MirrorMode:$Mirror `
-            -WhatIfMode:$DryRun `
-            -ShowVerboseLog:$VerboseLog
+    if (-not (Test-Path -LiteralPath $policySourcePath -PathType Container)) {
+        throw "Guard policy source path not found: $policySourcePath. Pass -PolicyRelativePath '' only when intentionally skipping policy sync."
     }
+
+    Write-Section "Sync guard policy to target repository (policy)"
+
+    $policyDestinationPath = Join-Path $targetRepoPath "policy"
+
+    Write-Host "Source      : $policySourcePath"
+    Write-Host "Destination : $policyDestinationPath"
+
+    Invoke-Robocopy `
+        -Source $policySourcePath `
+        -Destination $policyDestinationPath `
+        -MirrorMode:$Mirror `
+        -WhatIfMode:$DryRun `
+        -ShowVerboseLog:$VerboseLog
 }
 
 # --- 5. repo-template/docs/furikaeri/ → 配布先 docs/furikaeri/ ---

@@ -272,6 +272,31 @@ def test_guard_policy_has_unique_deny_rule_ids() -> None:
     assert len(deny_rule_ids) == len(set(deny_rule_ids))
 
 
+def test_guard_policy_blocks_rm_long_option_root_and_current_directory_forms() -> None:
+    policy = _read_json(POLICY_PATH)
+    patterns = [
+        re.compile(entry["pattern"], re.IGNORECASE)
+        for entry in policy["denyCommandRules"]
+        if entry["kind"] == "pattern" and entry["matchAgainst"] == "normalized"
+    ]
+
+    blocked_commands = [
+        "rm --recursive --force /",
+        "rm --force --recursive .",
+        "rm -r --force ./",
+        "cmd /c rm --recursive --force /",
+    ]
+    allowed_commands = [
+        "rm --recursive --force /tmp/build",
+        "sudo rm --force --recursive /tmp/build",
+    ]
+
+    for command in blocked_commands:
+        assert any(pattern.search(command) for pattern in patterns), command
+    for command in allowed_commands:
+        assert not any(pattern.search(command) for pattern in patterns), command
+
+
 def test_guard_policy_schema_rejects_specialized_rule_with_pattern_fields() -> None:
     schema = _read_json(SCHEMA_PATH)
     invalid_rule = {

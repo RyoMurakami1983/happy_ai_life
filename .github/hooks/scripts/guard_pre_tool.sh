@@ -31,6 +31,10 @@ default_active_rule_ids=(
   rm-fr-dot
   rm-r-f-dot
   rm-f-r-dot
+  rm-recursive-force-root
+  rm-force-recursive-root
+  rm-recursive-force-dot
+  rm-force-recursive-dot
   windows-del-force-recursive
   windows-del-force-quiet-recursive
   windows-del-recursive-force-quiet
@@ -69,10 +73,14 @@ default_pattern_rules_json="$(cat <<'JSON'
   {"id":"rm-fr-root","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*f[a-z]*r[a-z]*[^;&|]*\\s+\\/(?=\\s|$|[;&|])","matchAgainst":"normalized"},
   {"id":"rm-r-f-root","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*r[a-z]*(?=\\s|$|[;&|])[^;&|]*\\s-[a-z]*f[a-z]*[^;&|]*\\s+\\/(?=\\s|$|[;&|])","matchAgainst":"normalized"},
   {"id":"rm-f-r-root","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*f[a-z]*(?=\\s|$|[;&|])[^;&|]*\\s-[a-z]*r[a-z]*[^;&|]*\\s+\\/(?=\\s|$|[;&|])","matchAgainst":"normalized"},
-  {"id":"rm-rf-dot","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*r[a-z]*f[a-z]*[^;&|]*\\s+\\.(?=\\s|$|[;&|])","matchAgainst":"normalized"},
-  {"id":"rm-fr-dot","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*f[a-z]*r[a-z]*[^;&|]*\\s+\\.(?=\\s|$|[;&|])","matchAgainst":"normalized"},
-  {"id":"rm-r-f-dot","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*r[a-z]*(?=\\s|$|[;&|])[^;&|]*\\s-[a-z]*f[a-z]*[^;&|]*\\s+\\.(?=\\s|$|[;&|])","matchAgainst":"normalized"},
-  {"id":"rm-f-r-dot","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*f[a-z]*(?=\\s|$|[;&|])[^;&|]*\\s-[a-z]*r[a-z]*[^;&|]*\\s+\\.(?=\\s|$|[;&|])","matchAgainst":"normalized"},
+  {"id":"rm-rf-dot","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*r[a-z]*f[a-z]*[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])","matchAgainst":"normalized"},
+  {"id":"rm-fr-dot","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*f[a-z]*r[a-z]*[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])","matchAgainst":"normalized"},
+  {"id":"rm-r-f-dot","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*r[a-z]*(?=\\s|$|[;&|])[^;&|]*\\s-[a-z]*f[a-z]*[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])","matchAgainst":"normalized"},
+  {"id":"rm-f-r-dot","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*f[a-z]*(?=\\s|$|[;&|])[^;&|]*\\s-[a-z]*r[a-z]*[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])","matchAgainst":"normalized"},
+  {"id":"rm-recursive-force-root","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*(?:\\s-[a-z]*r[a-z]*|\\s--recursive)(?=\\s|$|[;&|])[^;&|]*(?:\\s-[a-z]*f[a-z]*|\\s--force)(?=\\s|$|[;&|])[^;&|]*\\s+\\/(?=\\s|$|[;&|])","matchAgainst":"normalized"},
+  {"id":"rm-force-recursive-root","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*(?:\\s-[a-z]*f[a-z]*|\\s--force)(?=\\s|$|[;&|])[^;&|]*(?:\\s-[a-z]*r[a-z]*|\\s--recursive)(?=\\s|$|[;&|])[^;&|]*\\s+\\/(?=\\s|$|[;&|])","matchAgainst":"normalized"},
+  {"id":"rm-recursive-force-dot","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*(?:\\s-[a-z]*r[a-z]*|\\s--recursive)(?=\\s|$|[;&|])[^;&|]*(?:\\s-[a-z]*f[a-z]*|\\s--force)(?=\\s|$|[;&|])[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])","matchAgainst":"normalized"},
+  {"id":"rm-force-recursive-dot","pattern":"(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*(?:\\s-[a-z]*f[a-z]*|\\s--force)(?=\\s|$|[;&|])[^;&|]*(?:\\s-[a-z]*r[a-z]*|\\s--recursive)(?=\\s|$|[;&|])[^;&|]*\\s+\\.\\/?(?=\\s|$|[;&|])","matchAgainst":"normalized"},
   {"id":"windows-del-force-recursive","pattern":"(^|[;&|]\\s*)(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?del[^;&|]*\\s\\/f(?=\\s|$|[;&|])[^;&|]*\\s\\/s(?=\\s|$|[;&|])[^;&|]*\\s\\/q(?=\\s|$|[;&|])","matchAgainst":"normalized"},
   {"id":"windows-del-force-quiet-recursive","pattern":"(^|[;&|]\\s*)(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?del[^;&|]*\\s\\/f(?=\\s|$|[;&|])[^;&|]*\\s\\/q(?=\\s|$|[;&|])[^;&|]*\\s\\/s(?=\\s|$|[;&|])","matchAgainst":"normalized"},
   {"id":"windows-del-recursive-force-quiet","pattern":"(^|[;&|]\\s*)(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?del[^;&|]*\\s\\/s(?=\\s|$|[;&|])[^;&|]*\\s\\/f(?=\\s|$|[;&|])[^;&|]*\\s\\/q(?=\\s|$|[;&|])","matchAgainst":"normalized"},
