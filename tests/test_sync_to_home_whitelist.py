@@ -1510,6 +1510,108 @@ def test_repo_scoped_guard_pre_tool_falls_back_when_array_fields_are_scalar(
     assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
 
 
+@pytest.mark.parametrize(
+    ("policy_mutation", "invalid_value"),
+    [
+        ("schema_version", "1"),
+        ("path_property_name", 123),
+        ("shell_tool_name", 123),
+        ("file_write_tool_name", 123),
+        ("protected_path_id", 123),
+        ("protected_path_value", 123),
+        ("protected_path_scope", 123),
+        ("protected_path_action", 123),
+        ("protected_path_maintenance_scope", 123),
+        ("deny_rule_id", 123),
+        ("deny_rule_kind", 123),
+        ("deny_rule_pattern", 123),
+        ("deny_rule_match_against", 123),
+    ],
+)
+def test_repo_scoped_guard_pre_tool_falls_back_when_policy_field_types_are_invalid(
+    tmp_path: Path,
+    policy_mutation: str,
+    invalid_value: object,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    hooks_dir = repo / ".github" / "hooks" / "scripts"
+    hooks_dir.mkdir(parents=True)
+    script = hooks_dir / "guard_pre_tool.ps1"
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", script)
+
+    policy_dir = repo / "policy"
+    policy_dir.mkdir()
+    policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
+    policy["toolNames"]["shell"] = ["terminal"]
+    policy["toolNames"]["fileWrite"] = ["rewrite"]
+    policy["pathPropertyNames"] = ["destination"]
+    policy["protectedPaths"].append(
+        {
+            "id": "custom-protected-file",
+            "path": "custom-protected.txt",
+            "scope": "file",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+
+    if policy_mutation == "schema_version":
+        policy["schemaVersion"] = invalid_value
+    elif policy_mutation == "path_property_name":
+        policy["pathPropertyNames"][0] = invalid_value
+    elif policy_mutation == "shell_tool_name":
+        policy["toolNames"]["shell"][0] = invalid_value
+    elif policy_mutation == "file_write_tool_name":
+        policy["toolNames"]["fileWrite"][0] = invalid_value
+    elif policy_mutation == "protected_path_id":
+        policy["protectedPaths"][-1]["id"] = invalid_value
+    elif policy_mutation == "protected_path_value":
+        policy["protectedPaths"][-1]["path"] = invalid_value
+    elif policy_mutation == "protected_path_scope":
+        policy["protectedPaths"][-1]["scope"] = invalid_value
+    elif policy_mutation == "protected_path_action":
+        policy["protectedPaths"][-1]["action"] = invalid_value
+    elif policy_mutation == "protected_path_maintenance_scope":
+        policy["protectedPaths"][-1]["maintenanceScope"] = invalid_value
+    elif policy_mutation == "deny_rule_id":
+        policy["denyCommandRules"][0]["id"] = invalid_value
+    elif policy_mutation == "deny_rule_kind":
+        policy["denyCommandRules"][0]["kind"] = invalid_value
+    elif policy_mutation == "deny_rule_pattern":
+        policy["denyCommandRules"][-1]["pattern"] = invalid_value
+    elif policy_mutation == "deny_rule_match_against":
+        policy["denyCommandRules"][-1]["matchAgainst"] = invalid_value
+    else:
+        raise AssertionError(f"Unknown policy mutation: {policy_mutation}")
+
+    (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
+
+    custom_tool_result = _invoke_guard_pre_tool_script(
+        script,
+        {
+            "toolName": "rewrite",
+            "toolArgs": {"destination": "custom-protected.txt"},
+        },
+        cwd=repo,
+    )
+    assert custom_tool_result.returncode == 0, custom_tool_result.stdout + custom_tool_result.stderr
+    assert custom_tool_result.stdout == ""
+
+    fallback_result = _invoke_guard_pre_tool_script(
+        script,
+        {"toolName": "powershell", "toolArgs": {"command": "git push origin main -f"}},
+        cwd=repo,
+    )
+    assert fallback_result.returncode == 0, fallback_result.stdout + fallback_result.stderr
+    response = json.loads(fallback_result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
+
 def test_bash_guard_pre_tool_falls_back_when_required_specialized_rule_is_missing(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -2082,6 +2184,31 @@ def test_guard_pre_tool_asks_for_maintenance_state_edit_during_active_maintenanc
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "deny"
     assert "Maintenance state changes must go through the maintenance scripts" in response["permissionDecisionReason"]
+
+
+def test_guard_permission_request_denies_maintenance_state_edit(tmp_path: Path) -> None:
+    home_root = tmp_path / "home"
+    state_path = _write_maintenance_state(home_root)
+
+    result = _invoke_guard_pre_tool(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": str(state_path),
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        cwd=ROOT,
+        hook_event="permissionRequest",
+        env=_isolated_home_env(home_root),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["behavior"] == "deny"
+    assert response["interrupt"] is True
+    assert "Maintenance state changes must go through the maintenance scripts" in response["message"]
 
 
 def test_guard_pre_tool_ignores_maintenance_mode_file_env_override(tmp_path: Path) -> None:

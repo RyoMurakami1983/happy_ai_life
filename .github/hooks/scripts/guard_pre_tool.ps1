@@ -170,7 +170,7 @@ function Resolve-GuardPolicyPath {
 function Test-GuardPolicyShape {
     param($Policy)
 
-    if ($null -eq $Policy -or $Policy.schemaVersion -ne 1) {
+    if ($null -eq $Policy -or ($Policy.schemaVersion -isnot [int] -and $Policy.schemaVersion -isnot [long]) -or $Policy.schemaVersion -ne 1) {
         return $false
     }
 
@@ -191,13 +191,16 @@ function Test-GuardPolicyShape {
     }
 
     foreach ($toolName in @($Policy.toolNames.shell) + @($Policy.toolNames.fileWrite)) {
-        if ([string]::IsNullOrWhiteSpace([string]$toolName)) {
+        if ($toolName -isnot [string] -or [string]::IsNullOrWhiteSpace($toolName)) {
             return $false
         }
     }
 
     $pathPropertyNames = @{}
     foreach ($name in @($Policy.pathPropertyNames)) {
+        if ($name -isnot [string]) {
+            return $false
+        }
         $propertyName = [string]$name
         if ([string]::IsNullOrWhiteSpace($propertyName) -or $pathPropertyNames.ContainsKey($propertyName)) {
             return $false
@@ -212,6 +215,12 @@ function Test-GuardPolicyShape {
         $entryPath = [string]$entry.path
         $normalizedPath = Normalize-GuardPolicyPathValue -PathValue $entryPath
 
+        if ($entry.id -isnot [string] -or $entry.path -isnot [string] -or $entry.scope -isnot [string] -or $entry.action -isnot [string]) {
+            return $false
+        }
+        if ($null -ne $entry.maintenanceScope -and $entry.maintenanceScope -isnot [string]) {
+            return $false
+        }
         if ([string]::IsNullOrWhiteSpace($entryId) -or [string]::IsNullOrWhiteSpace($entryPath) -or [string]::IsNullOrWhiteSpace($normalizedPath)) {
             return $false
         }
@@ -239,6 +248,9 @@ function Test-GuardPolicyShape {
     foreach ($entry in @($Policy.denyCommandRules)) {
         $entryId = [string]$entry.id
         $entryKind = [string]$entry.kind
+        if ($entry.id -isnot [string] -or $entry.kind -isnot [string]) {
+            return $false
+        }
         if ([string]::IsNullOrWhiteSpace($entryId) -or [string]::IsNullOrWhiteSpace($entryKind)) {
             return $false
         }
@@ -252,7 +264,7 @@ function Test-GuardPolicyShape {
         }
 
         if ($entryKind -eq "pattern") {
-            if ([string]::IsNullOrWhiteSpace([string]$entry.pattern) -or [string]$entry.matchAgainst -notin @("normalized", "compact")) {
+            if ($entry.pattern -isnot [string] -or $entry.matchAgainst -isnot [string] -or [string]::IsNullOrWhiteSpace($entry.pattern) -or $entry.matchAgainst -notin @("normalized", "compact")) {
                 return $false
             }
 
@@ -941,13 +953,13 @@ if ($toolName -in $fileWriteToolNames) {
         )
         $protectedMatch = Find-ProtectedPathMatch -CandidatePaths $candidatePaths -ProtectedRules (Get-ProtectedPathRules -RepoRoot $repoRoot)
         if ($null -ne $protectedMatch) {
-            if ($script:HookEvent -eq "permissionRequest") {
-                # permissionRequest cannot ask, so fall through to the normal permission flow.
-                exit 0
-            }
             if ($protectedMatch.Rule.Action -eq "deny") {
                 $reason = "Protected path change detected for {0} via {1}. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits." -f $protectedMatch.Rule.Display, $toolName
                 Write-Deny $reason
+                exit 0
+            }
+            if ($script:HookEvent -eq "permissionRequest") {
+                # permissionRequest cannot ask, so fall through to the normal permission flow.
                 exit 0
             }
             if ($protectedMatch.Rule.Display -eq '$HOME/.copilot/**') {

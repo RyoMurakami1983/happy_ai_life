@@ -700,15 +700,14 @@ if [[ "${is_file_write_tool}" -eq 1 ]]; then
   done
 
   if [[ -n "${protected_match}" ]]; then
-    if [[ "${hook_event}" == "permissionRequest" ]]; then
-      exit 0
-    fi
-
     protected_display="$(jq -r '.display' <<<"${protected_match}")"
     protected_action="$(jq -r '.action' <<<"${protected_match}")"
     protected_maintenance_scope="$(jq -r 'if .maintenanceScope == null then "" else .maintenanceScope end' <<<"${protected_match}")"
     if [[ "${protected_action}" == "deny" ]]; then
       deny "Protected path change detected for ${protected_display} via ${tool_name}. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits."
+      exit 0
+    fi
+    if [[ "${hook_event}" == "permissionRequest" ]]; then
       exit 0
     fi
     if [[ "${protected_display}" == '$HOME/.copilot/**' ]]; then
