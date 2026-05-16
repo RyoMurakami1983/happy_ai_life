@@ -586,6 +586,12 @@ def _parse_datetime(value: Any) -> datetime | None:
         return None
 
 
+def _datetimes_share_timezone_style(*values: datetime) -> bool:
+    has_aware = any(value.tzinfo is not None for value in values)
+    has_naive = any(value.tzinfo is None for value in values)
+    return not (has_aware and has_naive)
+
+
 def is_maintenance_mode_active(*, scope: str | None, home: str, now: datetime | None = None) -> bool:
     if not scope:
         return False
@@ -608,6 +614,8 @@ def is_maintenance_mode_active(*, scope: str | None, home: str, now: datetime | 
     if created_at is None or expires_at is None:
         return False
     current = now if now is not None else datetime.now(created_at.tzinfo)
+    if not _datetimes_share_timezone_style(created_at, expires_at, current):
+        return False
     if created_at > current:
         return False
     if expires_at <= created_at:
@@ -649,9 +657,14 @@ def _evaluate_file_write(payload: HookPayload, *, policy: GuardPolicy, context: 
     tool_name = payload.tool_name
     rule = protected_match.resolved_rule.rule
     if rule.action == "deny":
+        if rule.id == "maintenance-mode-state":
+            return deny(
+                f"Protected path change detected for {display} via {tool_name}. "
+                "Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits."
+            )
         return deny(
             f"Protected path change detected for {display} via {tool_name}. "
-            "Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits."
+            "This protected path is denied from Copilot tool edits."
         )
     if context.hook_event == "permissionRequest":
         return allow()
@@ -719,11 +732,11 @@ def _evaluate_shell(payload: HookPayload, *, policy: GuardPolicy, context: Evalu
         value is not None
         for value in (is_git_config_hooks_path_write, is_git_config_hooks_path_unset, is_git_config_remove_core_section, has_inline_git_hooks_path_config)
     ):
-        return deny("AI is not allowed to disable or bypass Git hooks via core.hooksPath changes, git -c core.hooksPath, or git update-index skip-worktree/assume-unchanged.")
+        return deny("AI is not allowed to disable or bypass Git hooks via core.hooksPath changes or git -c core.hooksPath.")
     if _rule_enabled(policy, "git-hooks-update-index-bypass") and any(
         value is not None for value in (is_git_update_index_skip_worktree, is_git_update_index_assume_unchanged)
     ):
-        return deny("AI is not allowed to disable or bypass Git hooks via core.hooksPath changes, git -c core.hooksPath, or git update-index skip-worktree/assume-unchanged.")
+        return deny("AI is not allowed to disable or bypass Git hooks via git update-index --skip-worktree or --assume-unchanged.")
 
     has_git_push_force = re.search(
         r"(^|[;&|]\s*)git\s+push(?:\s+[^;&|]+)*\s+(?:-f|--force(?:-with-lease(?:=[^;&|]+)?)?)(?=\s|$|[;&|])",

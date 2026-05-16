@@ -191,6 +191,29 @@ def test_engine_allows_protected_edit_path_during_active_maintenance_mode(tmp_pa
     assert response is None
 
 
+def test_engine_treats_mixed_timezone_maintenance_state_as_inactive(isolated_home: Path) -> None:
+    created_at = datetime.now()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
+    _write_maintenance_state(isolated_home, created_at=created_at, expires_at=expires_at)
+
+    response = _evaluate(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        home=isolated_home,
+    )
+
+    assert response == {
+        "permissionDecision": "ask",
+        "permissionDecisionReason": "Protected path change detected for docs/HOOKS_GOVERNANCE.md via edit. This path requires an atomic issue/PR and explicit human review.",
+    }
+
+
 def test_engine_keeps_home_copilot_under_ask_during_maintenance_mode(tmp_path: Path) -> None:
     home_root = tmp_path / "home"
     _write_maintenance_state(home_root)
@@ -210,6 +233,37 @@ def test_engine_keeps_home_copilot_under_ask_during_maintenance_mode(tmp_path: P
     assert response == {
         "permissionDecision": "ask",
         "permissionDecisionReason": "Protected path change detected for $HOME/.copilot/** via edit. Home-managed Copilot files always require explicit human review, even during maintenance mode.",
+    }
+
+
+def test_engine_uses_generic_deny_reason_for_non_maintenance_protected_path(tmp_path: Path, isolated_home: Path) -> None:
+    policy = json.loads((ROOT / "policy" / "guard-policy.json").read_text(encoding="utf-8"))
+    for entry in policy["protectedPaths"]:
+        if entry["path"] == "docs/HOOKS_GOVERNANCE.md":
+            entry["action"] = "deny"
+            entry["maintenanceScope"] = None
+            break
+    else:
+        raise AssertionError("docs/HOOKS_GOVERNANCE.md protected path not found")
+    policy_path = tmp_path / "guard-policy.json"
+    policy_path.write_text(json.dumps(policy), encoding="utf-8")
+
+    response = _evaluate(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": "docs/HOOKS_GOVERNANCE.md",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        home=isolated_home,
+        policy_path=policy_path,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": "Protected path change detected for docs/HOOKS_GOVERNANCE.md via edit. This protected path is denied from Copilot tool edits.",
     }
 
 
@@ -243,6 +297,40 @@ def test_engine_prefers_specific_deny_over_broad_ask_policy_order(tmp_path: Path
     assert response == {
         "permissionDecision": "deny",
         "permissionDecisionReason": "Protected path change detected for $HOME/.copilot/maintenance-mode.json via edit. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits.",
+    }
+
+
+def test_engine_denies_git_hooks_path_change_with_specific_reason(isolated_home: Path) -> None:
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": "git config core.hooksPath .githooks",
+            },
+        },
+        home=isolated_home,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": "AI is not allowed to disable or bypass Git hooks via core.hooksPath changes or git -c core.hooksPath.",
+    }
+
+
+def test_engine_denies_git_update_index_bypass_with_specific_reason(isolated_home: Path) -> None:
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": "git update-index --skip-worktree scripts/guard_policy.py",
+            },
+        },
+        home=isolated_home,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": "AI is not allowed to disable or bypass Git hooks via git update-index --skip-worktree or --assume-unchanged.",
     }
 
 
