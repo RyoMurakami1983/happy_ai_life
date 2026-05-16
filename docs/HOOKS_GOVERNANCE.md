@@ -213,6 +213,12 @@ SECURITY.md の変更
 docs/TRUST_BOUNDARY.md の変更
 docs/HOOKS_GOVERNANCE.md の変更
 docs/ENTERPRISE_SECURITY_REVIEW.md の変更
+docs/ENTERPRISE_SECURITY.md の変更
+docs/ISSUE_ROADMAP_ENTERPRISE_SECURITY.md の変更
+scripts/sync-to-home.ps1 の変更
+scripts/sync-to-repo.ps1 の変更
+scripts/repo-secure-check.ps1 の変更
+home-template/.copilot/** の変更
 policy/guard-policy.json の変更
 policy/guard-policy.schema.json の変更
 ```
