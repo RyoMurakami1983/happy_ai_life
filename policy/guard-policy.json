@@ -178,6 +178,13 @@
       "maintenanceScope": "protectedPathEdit"
     },
     {
+      "id": "guard-policy-engine-script",
+      "path": "scripts/guard_policy.py",
+      "scope": "file",
+      "action": "ask",
+      "maintenanceScope": "protectedPathEdit"
+    },
+    {
       "id": "home-template-copilot-root",
       "path": "home-template/.copilot/**",
       "scope": "directory",

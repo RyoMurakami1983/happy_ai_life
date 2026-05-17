@@ -133,7 +133,7 @@ def _build_tool_env(
     include_git: bool = True,
     include_gitleaks: bool = True,
     include_shell: bool = True,
-    include_jq: bool = True,
+    include_python: bool = True,
     include_node: bool = True,
     include_gh: bool = True,
 ) -> dict[str, str]:
@@ -170,8 +170,8 @@ def _build_tool_env(
     if include_shell:
         _write_cmd_shim(bin_dir, "powershell")
 
-    if include_jq:
-        _write_cmd_shim(bin_dir, "jq")
+    if include_python:
+        _write_cmd_shim(bin_dir, "python")
 
     if include_node:
         _write_cmd_shim(bin_dir, "node")
@@ -283,6 +283,28 @@ def test_repo_secure_check_strict_succeeds_for_secure_repo(tmp_path: Path) -> No
     assert completed.returncode == 0, completed.stdout + completed.stderr
     report = json.loads(completed.stdout)
     assert report["missing"] == []
+
+
+def test_repo_secure_check_accepts_repo_template_githooks_for_source_root(tmp_path: Path) -> None:
+    source_root = tmp_path / "source"
+    source_root.mkdir()
+    _git(source_root, "init")
+
+    (source_root / ".github" / "hooks").mkdir(parents=True)
+    (source_root / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
+    (source_root / ".github" / "workflows").mkdir(parents=True)
+    (source_root / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    (source_root / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    (source_root / "repo-template" / ".githooks" / "lib").mkdir(parents=True)
+    _write_required_git_hooks(source_root / "repo-template")
+    _git(source_root, "config", "--local", "core.hooksPath", "repo-template/.githooks")
+
+    report = _run_check(source_root, source_root=source_root)
+
+    assert report["isGitRepo"] is True
+    assert report["missing"] == []
+    git_hooks_check = next(check for check in report["checks"] if check["key"] == "gitHooksDirectory")
+    assert git_hooks_check["path"].endswith("repo-template\\.githooks")
 
 
 def test_repo_secure_check_requires_concrete_git_hook_files(tmp_path: Path) -> None:
@@ -423,7 +445,7 @@ def test_repo_secure_check_requires_node_and_gh_for_session_continuity(tmp_path:
     assert report["toolDependencies"]["missing"] == ["node", "gh"]
 
 
-def test_repo_secure_check_does_not_require_jq_for_windows_powershell_variant(tmp_path: Path) -> None:
+def test_repo_secure_check_requires_python_for_windows_powershell_variant(tmp_path: Path) -> None:
     target_repo = tmp_path / "target"
     target_repo.mkdir()
     _git(target_repo, "init")
@@ -454,12 +476,13 @@ def test_repo_secure_check_does_not_require_jq_for_windows_powershell_variant(tm
 
     report = _run_check_with_env(
         target_repo,
-        env=_build_tool_env(target_repo, include_jq=False),
+        env=_build_tool_env(target_repo, include_python=False),
     )
 
     assert report["isGitRepo"] is True
-    assert "toolDependencies" not in report["missing"]
-    assert report["toolDependencies"]["required"] == ["git", "gitleaks", "pwsh or powershell"]
+    assert "toolDependencies" in report["missing"]
+    assert report["toolDependencies"]["required"] == ["git", "gitleaks", "pwsh or powershell", "python3 or python or py -3"]
+    assert report["toolDependencies"]["missing"] == ["python3 or python or py -3"]
 
 
 def test_repo_secure_check_reports_missing_git_dependency(tmp_path: Path) -> None:

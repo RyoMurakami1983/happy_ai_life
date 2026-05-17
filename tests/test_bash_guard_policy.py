@@ -4,6 +4,8 @@ import json
 import os
 import shutil
 import subprocess
+import sys
+import textwrap
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -14,6 +16,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 GUARD_SCRIPT_PATH = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.sh"
 GUARD_POLICY_PATH = ROOT / "policy" / "guard-policy.json"
+GUARD_ENGINE_PATH = ROOT / "scripts" / "guard_policy.py"
 
 
 @lru_cache(maxsize=1)
@@ -34,7 +37,7 @@ def _bash_executable() -> str:
             continue
         try:
             probe = subprocess.run(
-                [candidate, "-lc", "set -o pipefail >/dev/null 2>&1 && command -v jq >/dev/null 2>&1"],
+                [candidate, "-lc", "exit 0"],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -45,7 +48,25 @@ def _bash_executable() -> str:
         if probe.returncode == 0:
             return candidate
 
-    pytest.skip("bash with jq support not found")
+    pytest.skip("bash executable not found")
+
+
+def _ensure_guard_engine_for_script(script_path: Path) -> None:
+    scripts_dir = script_path.parent
+    hooks_dir = scripts_dir.parent
+    layout_root = hooks_dir.parent
+
+    if layout_root.name == ".copilot":
+        destination = layout_root / "scripts" / "guard_policy.py"
+    elif layout_root.name == ".github" and layout_root.parent is not None:
+        destination = layout_root.parent / "scripts" / "guard_policy.py"
+    else:
+        return
+
+    if destination.exists() and destination.resolve() == GUARD_ENGINE_PATH.resolve():
+        return
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(GUARD_ENGINE_PATH, destination)
 
 
 def _invoke_bash_guard_pre_tool(
@@ -63,8 +84,12 @@ def _invoke_bash_guard_pre_tool(
     effective_env = None
     if env is not None:
         effective_env = {**os.environ, **env}
+    else:
+        effective_env = dict(os.environ)
+    effective_env.setdefault("HAPPY_AI_LIFE_PYTHON", sys.executable)
 
     bash_path = _bash_executable()
+    _ensure_guard_engine_for_script(cwd / ".github" / "hooks" / "scripts" / "guard_pre_tool.sh")
     return subprocess.run(
         [bash_path, "-lc", 'exec "$0" .github/hooks/scripts/guard_pre_tool.sh', bash_path],
         cwd=cwd,
@@ -86,6 +111,7 @@ def _init_repo_with_bash_guard(repo: Path) -> None:
     hooks_dir = repo / ".github" / "hooks" / "scripts"
     hooks_dir.mkdir(parents=True)
     shutil.copy2(GUARD_SCRIPT_PATH, hooks_dir / "guard_pre_tool.sh")
+    _ensure_guard_engine_for_script(hooks_dir / "guard_pre_tool.sh")
 
 
 def _write_policy(repo: Path, policy: dict[str, object]) -> None:
@@ -233,6 +259,58 @@ def test_bash_guard_pre_tool_asks_for_home_managed_path_during_active_maintenanc
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "ask"
     assert "Home-managed Copilot files always require explicit human review" in response["permissionDecisionReason"]
+
+
+def test_bash_guard_pre_tool_denies_when_python_runtime_is_unavailable(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+        env={
+            "HAPPY_AI_LIFE_PYTHON": str(repo / "missing-python"),
+            "PATH": "",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Python 3.10+" in response["permissionDecisionReason"]
+
+
+def test_bash_guard_pre_tool_denies_when_engine_times_out(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+
+    shim = tmp_path / "slow-python.sh"
+    shim.write_text(
+        textwrap.dedent(
+            """\
+            #!/usr/bin/env bash
+            for arg in "$@"; do
+              if [[ "$arg" == "-c" ]]; then
+                exit 0
+              fi
+            done
+            sleep 20
+            """
+        ),
+        encoding="utf-8",
+    )
+    shim.chmod(0o755)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+        env={"HAPPY_AI_LIFE_PYTHON": shim.as_posix()},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Timed out while running the shared guard policy engine" in response["permissionDecisionReason"]
 
 
 def test_bash_guard_pre_tool_normalizes_backslash_directory_policy_path(tmp_path: Path) -> None:
@@ -671,7 +749,7 @@ def test_bash_guard_pre_tool_falls_back_to_issue_158_protected_paths_cross_platf
     assert result.returncode == 0, result.stdout + result.stderr
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "ask"
-    assert "home-template/.copilot/copilot-instructions.md" in response["permissionDecisionReason"]
+    assert "home-template/.copilot/**" in response["permissionDecisionReason"]
 
 
 def test_bash_guard_pre_tool_fallback_blocks_nested_shell_wrapped_rm_cross_platform(tmp_path: Path) -> None:

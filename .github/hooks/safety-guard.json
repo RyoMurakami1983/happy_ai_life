@@ -7,7 +7,7 @@
         "bash": "bash .github/hooks/scripts/guard_pre_tool.sh",
         "powershell": "if ($PSVersionTable.PSEdition -eq 'Core') { & '.github\\hooks\\scripts\\guard_pre_tool.ps1' } elseif (Get-Command pwsh -ErrorAction SilentlyContinue) { & pwsh -NoProfile -File '.github\\hooks\\scripts\\guard_pre_tool.ps1' } else { & '.github\\hooks\\scripts\\guard_pre_tool.ps1' }",
         "cwd": ".",
-        "timeoutSec": 10,
+        "timeoutSec": 15,
         "env": {
           "COPILOT_HOOK_MODE": "guard"
         }

@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 <#
 .SYNOPSIS
 Checks whether a target repository has the expected local safety valves and bootstrap assets.
@@ -302,40 +302,52 @@ function Get-ToolDependencyState {
     $missingTools = New-Object System.Collections.Generic.List[string]
     $reasonMap = [System.Collections.Specialized.OrderedDictionary]::new()
 
-    Add-RequiredTool `
-        -RequiredTools $requiredTools `
-        -MissingTools $missingTools `
-        -Reasons $reasonMap `
-        -ToolName "git" `
-        -Reason "repo-secure-check と git hooks の基盤として常に必要です。" `
-        -Available (Test-CommandAvailable -Names @("git"))
+    $gitAvailable = Test-CommandAvailable -Names @("git")
+    $gitToolParams = @{
+        RequiredTools = $requiredTools
+        MissingTools  = $missingTools
+        Reasons       = $reasonMap
+        ToolName      = "git"
+        Reason        = "repo-secure-check と git hooks の基盤として常に必要です。"
+        Available     = $gitAvailable
+    }
+    Add-RequiredTool @gitToolParams
 
-    Add-RequiredTool `
-        -RequiredTools $requiredTools `
-        -MissingTools $missingTools `
-        -Reasons $reasonMap `
-        -ToolName "gitleaks" `
-        -Reason "secret scan を実行する safety guard / git hooks に必要です。" `
-        -Available (Test-CommandAvailable -Names @("gitleaks"))
+    $gitleaksAvailable = Test-CommandAvailable -Names @("gitleaks")
+    $gitleaksToolParams = @{
+        RequiredTools = $requiredTools
+        MissingTools  = $missingTools
+        Reasons       = $reasonMap
+        ToolName      = "gitleaks"
+        Reason        = "secret scan を実行する safety guard / git hooks に必要です。"
+        Available     = $gitleaksAvailable
+    }
+    Add-RequiredTool @gitleaksToolParams
 
-    Add-RequiredTool `
-        -RequiredTools $requiredTools `
-        -MissingTools $missingTools `
-        -Reasons $reasonMap `
-        -ToolName "pwsh or powershell" `
-        -Reason "PowerShell hook variant と Windows bootstrap script 実行に必要です。" `
-        -Available (Test-CommandAvailable -Names @("pwsh", "powershell"))
+    $powershellAvailable = Test-CommandAvailable -Names @("pwsh", "powershell")
+    $powershellToolParams = @{
+        RequiredTools = $requiredTools
+        MissingTools  = $missingTools
+        Reasons       = $reasonMap
+        ToolName      = "pwsh or powershell"
+        Reason        = "PowerShell hook variant と Windows bootstrap script 実行に必要です。"
+        Available     = $powershellAvailable
+    }
+    Add-RequiredTool @powershellToolParams
 
     $safetyGuardPath = Join-Path $HooksPath "safety-guard.json"
     $safetyGuardCommand = Get-FirstHookCommandVariant -ConfigPath $safetyGuardPath -EventName "preToolUse"
-    if ($null -ne $safetyGuardCommand -and $safetyGuardCommand.runner -eq "bash" -and $safetyGuardCommand.command -match "guard_pre_tool\.sh") {
-        Add-RequiredTool `
-            -RequiredTools $requiredTools `
-            -MissingTools $missingTools `
-            -Reasons $reasonMap `
-            -ToolName "jq" `
-            -Reason "現在の host では safety-guard.json の bash variant が有効で、guard_pre_tool.sh が jq を使います。" `
-            -Available (Test-CommandAvailable -Names @("jq"))
+    if ($null -ne $safetyGuardCommand -and $safetyGuardCommand.command -match "guard_pre_tool\.(ps1|sh)") {
+        $pythonAvailable = Test-CommandAvailable -Names @("python3", "python", "py")
+        $pythonToolParams = @{
+            RequiredTools = $requiredTools
+            MissingTools  = $missingTools
+            Reasons       = $reasonMap
+            ToolName      = "python3 or python or py -3"
+            Reason        = "shared guard policy engine ('scripts/guard_policy.py') を thin wrapper から実行するために必要です。"
+            Available     = $pythonAvailable
+        }
+        Add-RequiredTool @pythonToolParams
     }
 
     $sessionContinuityPath = Join-Path $HooksPath "session-continuity.json"
@@ -348,23 +360,29 @@ function Get-ToolDependencyState {
         )
 
         if ($usesSessionNode) {
-            Add-RequiredTool `
-                -RequiredTools $requiredTools `
-                -MissingTools $missingTools `
-                -Reasons $reasonMap `
-                -ToolName "node" `
-                -Reason "session-continuity.json が有効で、session hook script は node runtime で動きます。" `
-                -Available (Test-CommandAvailable -Names @("node"))
+            $nodeAvailable = Test-CommandAvailable -Names @("node")
+            $nodeToolParams = @{
+                RequiredTools = $requiredTools
+                MissingTools  = $missingTools
+                Reasons       = $reasonMap
+                ToolName      = "node"
+                Reason        = "session-continuity.json が有効で、session hook script は node runtime で動きます。"
+                Available     = $nodeAvailable
+            }
+            Add-RequiredTool @nodeToolParams
         }
 
         if ($null -ne $sessionStartCommand -and $sessionStartCommand.command -match "session-start\.js") {
-            Add-RequiredTool `
-                -RequiredTools $requiredTools `
-                -MissingTools $missingTools `
-                -Reasons $reasonMap `
-                -ToolName "gh" `
-                -Reason "session-start hook は open issue 取得で GitHub CLI を使います。" `
-                -Available (Test-CommandAvailable -Names @("gh"))
+            $ghAvailable = Test-CommandAvailable -Names @("gh")
+            $ghToolParams = @{
+                RequiredTools = $requiredTools
+                MissingTools  = $missingTools
+                Reasons       = $reasonMap
+                ToolName      = "gh"
+                Reason        = "session-start hook は open issue 取得で GitHub CLI を使います。"
+                Available     = $ghAvailable
+            }
+            Add-RequiredTool @ghToolParams
         }
     }
 
@@ -384,6 +402,7 @@ $instructionsPath = Join-Path $targetRepoPath ".github\copilot-instructions.md"
 $copilotHooksPath = Join-Path $targetRepoPath ".github\hooks"
 $githubWorkflowsPath = Join-Path $targetRepoPath ".github\workflows"
 $gitHooksPath = Join-Path $targetRepoPath ".githooks"
+$repoTemplateGitHooksPath = Join-Path $targetRepoPath "repo-template\.githooks"
 $sourceRootPath = [System.IO.Path]::GetFullPath($SourceRoot)
 
 $isGitRepo = Test-GitRepository -Path $targetRepoPath
@@ -392,7 +411,7 @@ $coreHooksResolvedPath = ""
 $expectedGitHooksPaths = New-Object System.Collections.Generic.List[string]
 [void]$expectedGitHooksPaths.Add([System.IO.Path]::GetFullPath($gitHooksPath))
 if ($targetRepoPath -eq $sourceRootPath) {
-    [void]$expectedGitHooksPaths.Add([System.IO.Path]::GetFullPath((Join-Path $targetRepoPath "repo-template\.githooks")))
+    [void]$expectedGitHooksPaths.Add([System.IO.Path]::GetFullPath($repoTemplateGitHooksPath))
 }
 
 if ($isGitRepo) {
@@ -440,7 +459,14 @@ elseif ($hasOnlyDotNetTemplateWithoutDotNetProject) {
 else {
     $githubWorkflowsDetails = ".github/workflows に YAML workflow が存在します。repo の技術スタックと runtime に合う内容かは onboarding で確認してください。"
 }
-$gitHookIssues = @(Get-RequiredGitHookIssues -Path $gitHooksPath)
+$effectiveGitHooksPath = $gitHooksPath
+if (-not [string]::IsNullOrWhiteSpace($coreHooksResolvedPath) -and $expectedGitHooksPaths.Contains($coreHooksResolvedPath) -and (Test-Path -LiteralPath $coreHooksResolvedPath -PathType Container)) {
+    $effectiveGitHooksPath = $coreHooksResolvedPath
+}
+elseif ($targetRepoPath -eq $sourceRootPath -and -not (Test-Path -LiteralPath $effectiveGitHooksPath -PathType Container) -and (Test-Path -LiteralPath $repoTemplateGitHooksPath -PathType Container)) {
+    $effectiveGitHooksPath = $repoTemplateGitHooksPath
+}
+$gitHookIssues = @(Get-RequiredGitHookIssues -Path $effectiveGitHooksPath)
 $gitHooksOk = $gitHookIssues.Count -eq 0
 $toolDependencyState = Get-ToolDependencyState -HooksPath $copilotHooksPath
 $toolDependenciesOk = $toolDependencyState.missing.Count -eq 0
@@ -484,8 +510,8 @@ $checks = @(
         -Key "gitHooksDirectory" `
         -Label ".githooks" `
         -Ok $gitHooksOk `
-        -Path $gitHooksPath `
-        -Details ($(if ($gitHooksOk) { ".githooks に pre-commit / pre-push / secret-guard / commit-safety-guard が存在し、pre-commit / pre-push から呼び出されています。" } else { ".githooks の必須 hook が不足または未接続です: $($gitHookIssues -join ', ')" }))),
+        -Path $effectiveGitHooksPath `
+        -Details ($(if ($gitHooksOk) { "$([System.IO.Path]::GetFileName($effectiveGitHooksPath)) に pre-commit / pre-push / secret-guard / commit-safety-guard が存在し、pre-commit / pre-push から呼び出されています。" } else { "$effectiveGitHooksPath の必須 hook が不足または未接続です: $($gitHookIssues -join ', ')" }))),
     (New-CheckResult `
         -Key "githubWorkflows" `
         -Label "GitHub Actions workflows" `

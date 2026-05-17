@@ -742,6 +742,10 @@ $trackedFilePlans = @(
         Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "exit-copilot-maintenance-mode.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "exit-copilot-maintenance-mode.ps1") -PreviewPath "scripts/exit-copilot-maintenance-mode.ps1")
     },
     [pscustomobject]@{
+        Label = "scripts/guard_policy.py"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "guard_policy.py") -Destination (Join-Path (Join-Path $destinationPath "scripts") "guard_policy.py") -PreviewPath "scripts/guard_policy.py")
+    },
+    [pscustomobject]@{
         Label = "hooks/scripts/guard_pre_tool.ps1"
         Plan = (Get-TrackedFilePlan -Source (Join-Path $sourceRootPath ".github\hooks\scripts\guard_pre_tool.ps1") -Destination (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.ps1") -PreviewPath "hooks/scripts/guard_pre_tool.ps1")
     },

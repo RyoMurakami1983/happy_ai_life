@@ -19,6 +19,7 @@ SCRIPT = ROOT / "scripts" / "sync-to-home.ps1"
 MANAGED_MANIFEST_PATH = ROOT / "home-template" / ".copilot" / "managed-manifest.json"
 GUARD_POLICY_PATH = ROOT / "policy" / "guard-policy.json"
 GUARD_POLICY_SCHEMA_PATH = ROOT / "policy" / "guard-policy.schema.json"
+GUARD_ENGINE_PATH = ROOT / "scripts" / "guard_policy.py"
 SKIP_REASON = "sync-to-home.ps1 tests require Windows"
 
 
@@ -50,7 +51,7 @@ def _bash_executable() -> str:
             continue
         try:
             probe = subprocess.run(
-                [candidate, "-lc", "set -o pipefail >/dev/null 2>&1 && command -v jq >/dev/null 2>&1"],
+                [candidate, "-lc", "exit 0"],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -61,7 +62,26 @@ def _bash_executable() -> str:
         if probe.returncode == 0:
             return candidate
 
-    pytest.skip("bash with jq support not found")
+    pytest.skip("bash executable not found")
+
+
+def _ensure_guard_engine_for_script(script: Path) -> None:
+    scripts_dir = script.parent
+    hooks_dir = scripts_dir.parent
+    layout_root = hooks_dir.parent
+
+    if layout_root.name == ".copilot":
+        destination = layout_root / "scripts" / "guard_policy.py"
+    elif layout_root.name == ".github" and layout_root.parent is not None:
+        destination = layout_root.parent / "scripts" / "guard_policy.py"
+    else:
+        return
+
+    if destination.exists() and destination.resolve() == GUARD_ENGINE_PATH.resolve():
+        return
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(GUARD_ENGINE_PATH, destination)
 
 
 pytestmark = pytest.mark.skipif(
@@ -143,6 +163,7 @@ def _create_minimal_source_root(base: Path) -> Path:
     (scripts_dir / "repo-secure-check.ps1").write_text("Write-Host 'secure check'\n", encoding="utf-8")
     (scripts_dir / "enter-copilot-maintenance-mode.ps1").write_text("Write-Host 'enter maintenance'\n", encoding="utf-8")
     (scripts_dir / "exit-copilot-maintenance-mode.ps1").write_text("Write-Host 'exit maintenance'\n", encoding="utf-8")
+    (scripts_dir / "guard_policy.py").write_text("print('guard policy')\n", encoding="utf-8")
     policy_dir = base / "policy"
     policy_dir.mkdir(parents=True)
     shutil.copy2(GUARD_POLICY_PATH, policy_dir / "guard-policy.json")
@@ -283,14 +304,10 @@ def _invoke_guard_pre_tool_script(
     env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     payload_json = json.dumps(payload)
-    powershell = _powershell_executable()
-    command = (
-        "@'\n"
-        f"{payload_json}\n"
-        f"'@ | & '{powershell}' -NoProfile -ExecutionPolicy Bypass -File '{script}'"
-    )
+    _ensure_guard_engine_for_script(script)
     effective_env = os.environ.copy()
     effective_env["HAPPY_AI_LIFE_HOOK_EVENT"] = hook_event
+    effective_env.setdefault("HAPPY_AI_LIFE_PYTHON", sys.executable)
     if env is not None:
         effective_env.update(env)
     if all(key in effective_env for key in ("HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH")):
@@ -301,12 +318,13 @@ def _invoke_guard_pre_tool_script(
                 "-ExecutionPolicy",
                 "Bypass",
                 "-Command",
-                command,
+                f"& '{script}'",
             ],
             cwd=cwd,
             check=False,
             capture_output=True,
             text=True,
+            input=payload_json,
             env=effective_env,
         )
 
@@ -319,12 +337,13 @@ def _invoke_guard_pre_tool_script(
                 "-ExecutionPolicy",
                 "Bypass",
                 "-Command",
-                command,
+                f"& '{script}'",
             ],
             cwd=cwd,
             check=False,
             capture_output=True,
             text=True,
+            input=payload_json,
             env=effective_env,
         )
 
@@ -342,10 +361,12 @@ def _invoke_bash_guard_pre_tool(
         bash_payload["toolArgs"] = json.dumps(tool_args)
 
     effective_env = os.environ.copy()
+    effective_env.setdefault("HAPPY_AI_LIFE_PYTHON", sys.executable)
     if env:
         effective_env.update(env)
 
     bash_path = _bash_executable()
+    _ensure_guard_engine_for_script(cwd / ".github" / "hooks" / "scripts" / "guard_pre_tool.sh")
     return subprocess.run(
         [bash_path, "-lc", 'exec "$0" .github/hooks/scripts/guard_pre_tool.sh', bash_path],
         cwd=cwd,
@@ -379,6 +400,7 @@ def test_sync_to_home_copies_tracked_targets_and_preserves_runtime_files(tmp_pat
     assert (destination / "scripts" / "repo-secure-check.ps1").exists()
     assert (destination / "scripts" / "enter-copilot-maintenance-mode.ps1").exists()
     assert (destination / "scripts" / "exit-copilot-maintenance-mode.ps1").exists()
+    assert (destination / "scripts" / "guard_policy.py").exists()
     assert (destination / "hooks" / "scripts" / "guard_pre_tool.ps1").exists()
     assert (destination / "policy" / "guard-policy.json").exists()
     assert (destination / "policy" / "guard-policy.schema.json").exists()
@@ -797,19 +819,10 @@ def test_sync_to_home_does_not_delete_home_only_furikaeri_docs(tmp_path: Path) -
 
 def test_guard_pre_tool_blocks_remove_item_force_recurse_in_any_order(tmp_path: Path) -> None:
     script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
-    result = subprocess.run(
-        [
-            _powershell_executable(),
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            "$payload = @{ toolName = 'powershell'; toolArgs = (@{ command = 'Remove-Item -Force -Recurse tmp-review' } | ConvertTo-Json -Compress) } | ConvertTo-Json -Compress; $payload | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'" % (_powershell_executable(), script),
-        ],
+    result = _invoke_guard_pre_tool_script(
+        script,
+        {"toolName": "powershell", "toolArgs": {"command": "Remove-Item -Force -Recurse tmp-review"}},
         cwd=ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -827,6 +840,33 @@ def test_guard_pre_tool_blocks_ai_git_commit_no_verify(tmp_path: Path) -> None:
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "deny"
     assert "bypass Git hooks" in response["permissionDecisionReason"]
+
+
+def test_guard_pre_tool_denies_when_python_runtime_is_unavailable(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    hooks_dir = repo / ".github" / "hooks" / "scripts"
+    hooks_dir.mkdir(parents=True)
+    script = hooks_dir / "guard_pre_tool.ps1"
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", script)
+
+    result = _invoke_guard_pre_tool_script(
+        script,
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+        env={
+            "HAPPY_AI_LIFE_PYTHON": str(tmp_path / "missing-python.exe"),
+            "PATH": "",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Python 3.10+" in response["permissionDecisionReason"]
 
 
 def test_guard_pre_tool_blocks_ai_git_commit_combined_no_verify_short_flags(tmp_path: Path) -> None:
@@ -943,19 +983,11 @@ def test_guard_pre_tool_blocks_ai_git_commit_when_gitleaks_is_missing(tmp_path: 
     assert add.returncode == 0, add.stdout + add.stderr
 
     script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
-    result = subprocess.run(
-        [
-            _powershell_executable(),
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            "$env:GITLEAKS_BIN = 'missing-gitleaks'; $payload = @{ toolName = 'powershell'; toolArgs = (@{ command = 'git commit -m test' } | ConvertTo-Json -Compress) } | ConvertTo-Json -Compress; $payload | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'" % (_powershell_executable(), script),
-        ],
+    result = _invoke_guard_pre_tool_script(
+        script,
+        {"toolName": "powershell", "toolArgs": {"command": "git commit -m test"}},
         cwd=repo,
-        check=False,
-        capture_output=True,
-        text=True,
+        env={"GITLEAKS_BIN": "missing-gitleaks"},
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -1172,19 +1204,12 @@ def test_guard_pre_tool_short_circuits_force_push_before_secret_scan() -> None:
 
 def test_guard_permission_request_short_circuits_force_push_before_secret_scan() -> None:
     script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1"
-    result = subprocess.run(
-        [
-            _powershell_executable(),
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            "$env:HAPPY_AI_LIFE_HOOK_EVENT = 'permissionRequest'; $env:GITLEAKS_BIN = 'missing-gitleaks'; $payload = @{ toolName = 'powershell'; toolArgs = (@{ command = 'git push origin main -f' } | ConvertTo-Json -Compress) } | ConvertTo-Json -Compress; $payload | & '%s' -NoProfile -ExecutionPolicy Bypass -File '%s'" % (_powershell_executable(), script),
-        ],
+    result = _invoke_guard_pre_tool_script(
+        script,
+        {"toolName": "powershell", "toolArgs": {"command": "git push origin main -f"}},
         cwd=ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
+        hook_event="permissionRequest",
+        env={"GITLEAKS_BIN": "missing-gitleaks"},
     )
 
     assert result.returncode == 0, result.stdout + result.stderr

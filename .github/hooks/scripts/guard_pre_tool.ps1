@@ -1,30 +1,13 @@
 #requires -Version 5.1
 [CmdletBinding()]
-param()
+param(
+    [Parameter(ValueFromPipeline = $true)]
+    [AllowNull()]
+    [string]$InputObject
+)
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = "SilentlyContinue"
-$script:ProtectedPathPropertyNames = @("path", "filePath", "file_path", "targetPath", "target_path")
-$script:GuardPolicy = $null
-$script:GuardPolicyRepoRoot = $null
-
-function Get-RequiredSpecializedDenyRuleIds {
-    return @(
-        "maintenance-mode-manual-only",
-        "git-hooks-no-verify",
-        "git-hooks-path-change",
-        "git-hooks-update-index-bypass",
-        "git-push-force",
-        "git-commit-secret-scan",
-        "git-push-secret-scan",
-        "gh-pr-create-secret-scan"
-    )
-}
-
-function Write-HookResponse($obj) {
-    $json = $obj | ConvertTo-Json -Compress
-    [Console]::Out.Write($json)
-}
+$ErrorActionPreference = "Stop"
 
 function Resolve-HookEventName {
     $hookEvent = [Environment]::GetEnvironmentVariable("HAPPY_AI_LIFE_HOOK_EVENT")
@@ -35,126 +18,102 @@ function Resolve-HookEventName {
     return "preToolUse"
 }
 
-function Resolve-MaintenanceModePath {
-    return [System.IO.Path]::GetFullPath((Join-Path $HOME ".copilot\maintenance-mode.json"))
+$script:HookEvent = Resolve-HookEventName
+
+function Write-HookResponse {
+    param([Parameter(Mandatory = $true)]$Object)
+
+    [Console]::Out.Write(($Object | ConvertTo-Json -Compress))
 }
 
-function Get-MinimalGuardPolicy {
-    return [pscustomobject]@{
-        schemaVersion = 1
-        pathPropertyNames = @("path", "filePath", "file_path", "targetPath", "target_path")
-        toolNames = [pscustomobject]@{
-            shell = @("bash", "powershell")
-            fileWrite = @("create", "edit")
-            observe = @("view", "web_fetch")
-            delegation = @("task")
+function Write-FailureLog {
+    param([Parameter(Mandatory = $true)][string]$Message)
+
+    try {
+        $logPath = Join-Path $HOME ".copilot\guard-failures.log"
+        $logDirectory = Split-Path -Parent $logPath
+        if (-not (Test-Path -LiteralPath $logDirectory -PathType Container)) {
+            [void](New-Item -ItemType Directory -Path $logDirectory -Force)
         }
-        protectedPaths = @(
-            [pscustomobject]@{ id = "repo-hooks"; path = ".github/hooks/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "repo-githooks"; path = ".githooks/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "repo-workflows"; path = ".github/workflows/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "repo-instructions-dir"; path = ".github/instructions/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "repo-skills-dir"; path = ".github/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "agents-skills-dir"; path = ".agents/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "claude-skills-dir"; path = ".claude/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "repo-copilot-instructions"; path = ".github/copilot-instructions.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "repo-mcp"; path = ".github/mcp.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "root-mcp"; path = ".mcp.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "gitleaks-config"; path = ".gitleaks.toml"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "enterprise-security-doc"; path = "docs/ENTERPRISE_SECURITY.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "enterprise-security-roadmap-doc"; path = "docs/ISSUE_ROADMAP_ENTERPRISE_SECURITY.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "sync-to-home-script"; path = "scripts/sync-to-home.ps1"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "sync-to-repo-script"; path = "scripts/sync-to-repo.ps1"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "repo-secure-check-script"; path = "scripts/repo-secure-check.ps1"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "home-template-copilot-root"; path = "home-template/.copilot/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "guard-policy-json"; path = "policy/guard-policy.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "guard-policy-schema"; path = "policy/guard-policy.schema.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "maintenance-mode-state"; path = '$HOME/.copilot/maintenance-mode.json'; scope = "file"; action = "deny"; maintenanceScope = $null }
-            [pscustomobject]@{ id = "home-copilot-root"; path = '$HOME/.copilot/**'; scope = "directory"; action = "ask"; maintenanceScope = $null }
-        )
-        denyCommandRules = @(
-            [pscustomobject]@{ id = "maintenance-mode-manual-only"; kind = "specialized"; description = "AI must not enter or exit maintenance mode, or edit the maintenance state file." }
-            [pscustomobject]@{ id = "git-hooks-no-verify"; kind = "specialized"; description = "Block git commit --no-verify, git commit -n, and git push --no-verify." }
-            [pscustomobject]@{ id = "git-hooks-path-change"; kind = "specialized"; description = "Block core.hooksPath writes, unsets, and inline git -c core.hooksPath usage." }
-            [pscustomobject]@{ id = "git-hooks-update-index-bypass"; kind = "specialized"; description = "Block git update-index --skip-worktree and --assume-unchanged." }
-            [pscustomobject]@{ id = "git-push-force"; kind = "specialized"; description = "Block git push -f, --force, and --force-with-lease." }
-            [pscustomobject]@{ id = "git-commit-secret-scan"; kind = "specialized"; description = "Run staged gitleaks scan before git commit." }
-            [pscustomobject]@{ id = "git-push-secret-scan"; kind = "specialized"; description = "Run unpushed-commit gitleaks scan before git push." }
-            [pscustomobject]@{ id = "gh-pr-create-secret-scan"; kind = "specialized"; description = "Run unpushed-commit gitleaks scan before gh pr create." }
-            [pscustomobject]@{ id = "rm-rf-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced rm against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*r[a-z]*f[a-z]*[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "rm-fr-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block forced recursive rm against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*f[a-z]*r[a-z]*[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "rm-r-f-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block split recursive forced rm against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*r[a-z]*(?=\s|$|[;&|])[^;&|]*\s-[a-z]*f[a-z]*[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "rm-f-r-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block split forced recursive rm against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*f[a-z]*(?=\s|$|[;&|])[^;&|]*\s-[a-z]*r[a-z]*[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "rm-rf-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced rm against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*r[a-z]*f[a-z]*[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "rm-fr-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block forced recursive rm against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*f[a-z]*r[a-z]*[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "rm-r-f-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block split recursive forced rm against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*r[a-z]*(?=\s|$|[;&|])[^;&|]*\s-[a-z]*f[a-z]*[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "rm-f-r-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block split forced recursive rm against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*f[a-z]*(?=\s|$|[;&|])[^;&|]*\s-[a-z]*r[a-z]*[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "rm-recursive-force-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced rm with long options against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*(?:\s-[a-z]*r[a-z]*|\s--recursive)(?=\s|$|[;&|])[^;&|]*(?:\s-[a-z]*f[a-z]*|\s--force)(?=\s|$|[;&|])[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "rm-force-recursive-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block forced recursive rm with long options against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*(?:\s-[a-z]*f[a-z]*|\s--force)(?=\s|$|[;&|])[^;&|]*(?:\s-[a-z]*r[a-z]*|\s--recursive)(?=\s|$|[;&|])[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "rm-recursive-force-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced rm with long options against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*(?:\s-[a-z]*r[a-z]*|\s--recursive)(?=\s|$|[;&|])[^;&|]*(?:\s-[a-z]*f[a-z]*|\s--force)(?=\s|$|[;&|])[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "rm-force-recursive-dot"; kind = "pattern"; matchAgainst = "normalized"; description = "Block forced recursive rm with long options against current directory."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*(?:\s-[a-z]*f[a-z]*|\s--force)(?=\s|$|[;&|])[^;&|]*(?:\s-[a-z]*r[a-z]*|\s--recursive)(?=\s|$|[;&|])[^;&|]*\s+\.\/?(?=\s|$|[;&|]|["''])' }
-            [pscustomobject]@{ id = "windows-del-force-recursive"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced del regardless of flag order."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/f(?=\s|$|[;&|])[^;&|]*\s\/s(?=\s|$|[;&|])[^;&|]*\s\/q(?=\s|$|[;&|])' }
-            [pscustomobject]@{ id = "windows-del-force-quiet-recursive"; kind = "pattern"; matchAgainst = "normalized"; description = "Block forced quiet recursive del."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/f(?=\s|$|[;&|])[^;&|]*\s\/q(?=\s|$|[;&|])[^;&|]*\s\/s(?=\s|$|[;&|])' }
-            [pscustomobject]@{ id = "windows-del-recursive-force-quiet"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced quiet del."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/s(?=\s|$|[;&|])[^;&|]*\s\/f(?=\s|$|[;&|])[^;&|]*\s\/q(?=\s|$|[;&|])' }
-            [pscustomobject]@{ id = "windows-del-recursive-quiet-force"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive quiet forced del."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/s(?=\s|$|[;&|])[^;&|]*\s\/q(?=\s|$|[;&|])[^;&|]*\s\/f(?=\s|$|[;&|])' }
-            [pscustomobject]@{ id = "windows-del-quiet-force-recursive"; kind = "pattern"; matchAgainst = "normalized"; description = "Block quiet forced recursive del."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/q(?=\s|$|[;&|])[^;&|]*\s\/f(?=\s|$|[;&|])[^;&|]*\s\/s(?=\s|$|[;&|])' }
-            [pscustomobject]@{ id = "windows-del-quiet-recursive-force"; kind = "pattern"; matchAgainst = "normalized"; description = "Block quiet recursive forced del."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?del[^;&|]*\s\/q(?=\s|$|[;&|])[^;&|]*\s\/s(?=\s|$|[;&|])[^;&|]*\s\/f(?=\s|$|[;&|])' }
-            [pscustomobject]@{ id = "format-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block disk format command."; pattern = '(^|[;&|]\s*)(?:(?:cmd|cmd\.exe)\s+\/c\s+)?format(?:\.com|\.exe)?(?:\s|$)' }
-            [pscustomobject]@{ id = "mkfs-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block mkfs."; pattern = "\bmkfs\b" }
-            [pscustomobject]@{ id = "shutdown-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block shutdown."; pattern = "\bshutdown\b" }
-            [pscustomobject]@{ id = "reboot-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block reboot."; pattern = "\breboot\b" }
-            [pscustomobject]@{ id = "init-zero-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block init 0."; pattern = "\binit\s+0\b" }
-            [pscustomobject]@{ id = "poweroff-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block poweroff."; pattern = "\bpoweroff\b" }
-            [pscustomobject]@{ id = "stop-computer-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Stop-Computer."; pattern = "\bstop-computer\b" }
-            [pscustomobject]@{ id = "restart-computer-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Restart-Computer."; pattern = "\brestart-computer\b" }
-            [pscustomobject]@{ id = "remove-item-recurse-force"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Remove-Item -Recurse -Force."; pattern = "(?=.*\bremove-item\b)(?=.*(?:^|\s)-recurse(?:\s|$))(?=.*(?:^|\s)-force(?:\s|$))" }
-            [pscustomobject]@{ id = "git-reset-hard"; kind = "pattern"; matchAgainst = "normalized"; description = "Block git reset --hard."; pattern = "\bgit\s+reset\s+--hard\b" }
-            [pscustomobject]@{ id = "powershell-encoded-command"; kind = "pattern"; matchAgainst = "normalized"; description = "Block powershell/pwsh -EncodedCommand."; pattern = '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:encodedcommand|enc|ec)(?=\s|$|[;&|])' }
-            [pscustomobject]@{ id = "invoke-expression"; kind = "pattern"; matchAgainst = "normalized"; description = "Block Invoke-Expression / iex."; pattern = '(^|[;&|]\s*)(?:(?:[\w.\\]+\\)?invoke-expression|iex)(?=\s|$|[;&|])' }
-            [pscustomobject]@{ id = "powershell-command-invoke-expression"; kind = "pattern"; matchAgainst = "normalized"; description = "Block powershell -Command Invoke-Expression / iex."; pattern = '(^|[;&|]\s*)(?:powershell|pwsh)(?:\.exe)?(?:\s+[^;&|]+)*\s+-(?:command|c)\s+(?:"|'')?(?:&\s*\{\s*)?(?:(?:[\w.\\]+\\)?invoke-expression|iex)\b' }
-            [pscustomobject]@{ id = "curl-pipe-sh"; kind = "pattern"; matchAgainst = "normalized"; description = "Block curl ... | sh."; pattern = '\bcurl(?:\.exe)?\b[^;&|]*\|\s*sh\b' }
-            [pscustomobject]@{ id = "wget-pipe-sh"; kind = "pattern"; matchAgainst = "normalized"; description = "Block wget ... | sh."; pattern = '\bwget(?:\.exe)?\b[^;&|]*\|\s*sh\b' }
-        )
+        Add-Content -LiteralPath $logPath -Value ("{0} {1}" -f [DateTimeOffset]::Now.ToString("o"), $Message) -Encoding utf8
+    }
+    catch {
     }
 }
 
-function Normalize-GuardPolicyPathValue {
-    param([Parameter(Mandatory = $true)][string]$PathValue)
+function Write-DenyResponse {
+    param([Parameter(Mandatory = $true)][string]$Reason)
 
-    $normalized = $PathValue.Trim()
-    if ([string]::IsNullOrWhiteSpace($normalized)) {
-        return ""
+    Write-FailureLog -Message $Reason
+    if ($script:HookEvent -eq "permissionRequest") {
+        Write-HookResponse @{
+            behavior  = "deny"
+            message   = $Reason
+            interrupt = $true
+        }
+        return
     }
 
-    $normalized = $normalized -replace "\\", "/"
-    if ($normalized.EndsWith("/**")) {
-        return $normalized.ToLowerInvariant()
+    Write-HookResponse @{
+        permissionDecision       = "deny"
+        permissionDecisionReason = $Reason
     }
-
-    return $normalized.TrimEnd('/').ToLowerInvariant()
 }
 
-function Normalize-GuardPolicyRuntimePathText {
-    param([Parameter(Mandatory = $true)][string]$PathValue)
-
-    $normalized = $PathValue.Trim() -replace "\\", "/"
-    return $normalized
-}
-
-function Resolve-GuardPolicyPath {
-    param([string]$RepoRoot)
-
-    $scriptDirectory = Get-Item -LiteralPath $PSScriptRoot -ErrorAction SilentlyContinue
-    if ($null -eq $scriptDirectory -or $scriptDirectory.Name -ne "scripts") {
+function Resolve-LayoutRoot {
+    $scriptDirectory = Get-Item -LiteralPath $PSScriptRoot -ErrorAction Stop
+    if ($scriptDirectory.Name -ne "scripts") {
         return $null
     }
 
     $hooksDirectory = $scriptDirectory.Parent
-    if ($null -eq $hooksDirectory -or $hooksDirectory.Name -ne "hooks") {
+    if ($null -eq $hooksDirectory) {
         return $null
     }
 
-    $layoutRoot = $hooksDirectory.Parent
+    return $hooksDirectory.Parent
+}
+
+function Resolve-RepoRoot {
+    param($LayoutRoot)
+
+    if ($null -eq $LayoutRoot) {
+        return $null
+    }
+
+    if ($LayoutRoot.Name -eq ".github" -and $null -ne $LayoutRoot.Parent) {
+        return [System.IO.Path]::GetFullPath($LayoutRoot.Parent.FullName)
+    }
+
+    return $null
+}
+
+function Resolve-GuardEnginePath {
+    $layoutRoot = Resolve-LayoutRoot
+    if ($null -eq $layoutRoot) {
+        return $null
+    }
+
+    if ($layoutRoot.Name -eq ".copilot") {
+        $candidate = Join-Path $layoutRoot.FullName "scripts\guard_policy.py"
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return [System.IO.Path]::GetFullPath($candidate)
+        }
+        return $null
+    }
+
+    if ($layoutRoot.Name -eq ".github" -and $null -ne $layoutRoot.Parent) {
+        $candidate = Join-Path $layoutRoot.Parent.FullName "scripts\guard_policy.py"
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return [System.IO.Path]::GetFullPath($candidate)
+        }
+    }
+
+    return $null
+}
+
+function Resolve-GuardPolicyPath {
+    $layoutRoot = Resolve-LayoutRoot
     if ($null -eq $layoutRoot) {
         return $null
     }
@@ -177,954 +136,275 @@ function Resolve-GuardPolicyPath {
     return $null
 }
 
-function Test-GuardPolicyShape {
-    param($Policy)
+function Test-WindowsAppsPath {
+    param([string]$PathValue)
 
-    if ($null -eq $Policy -or ($Policy.schemaVersion -isnot [int] -and $Policy.schemaVersion -isnot [long]) -or $Policy.schemaVersion -ne 1) {
-        return $false
-    }
-
-    if ($Policy.pathPropertyNames -isnot [System.Array] -or $Policy.protectedPaths -isnot [System.Array] -or $Policy.denyCommandRules -isnot [System.Array]) {
-        return $false
-    }
-
-    if (@($Policy.pathPropertyNames).Count -eq 0 -or @($Policy.protectedPaths).Count -eq 0 -or @($Policy.denyCommandRules).Count -eq 0) {
-        return $false
-    }
-
-    if ($null -eq $Policy.toolNames -or $Policy.toolNames.shell -isnot [System.Array] -or $Policy.toolNames.fileWrite -isnot [System.Array]) {
-        return $false
-    }
-
-    if (@($Policy.toolNames.shell).Count -eq 0 -or @($Policy.toolNames.fileWrite).Count -eq 0) {
-        return $false
-    }
-
-    foreach ($toolName in @($Policy.toolNames.shell) + @($Policy.toolNames.fileWrite)) {
-        if ($toolName -isnot [string] -or [string]::IsNullOrWhiteSpace($toolName)) {
-            return $false
-        }
-    }
-
-    $pathPropertyNames = @{}
-    foreach ($name in @($Policy.pathPropertyNames)) {
-        if ($name -isnot [string]) {
-            return $false
-        }
-        $propertyName = [string]$name
-        if ([string]::IsNullOrWhiteSpace($propertyName) -or $pathPropertyNames.ContainsKey($propertyName)) {
-            return $false
-        }
-        $pathPropertyNames[$propertyName] = $true
-    }
-
-    $protectedIds = @{}
-    $protectedPaths = @{}
-    foreach ($entry in @($Policy.protectedPaths)) {
-        $entryId = [string]$entry.id
-        $entryPath = [string]$entry.path
-        $normalizedPath = Normalize-GuardPolicyPathValue -PathValue $entryPath
-
-        if ($entry.id -isnot [string] -or $entry.path -isnot [string] -or $entry.scope -isnot [string] -or $entry.action -isnot [string]) {
-            return $false
-        }
-        if ($null -ne $entry.maintenanceScope -and $entry.maintenanceScope -isnot [string]) {
-            return $false
-        }
-        if ([string]::IsNullOrWhiteSpace($entryId) -or [string]::IsNullOrWhiteSpace($entryPath) -or [string]::IsNullOrWhiteSpace($normalizedPath)) {
-            return $false
-        }
-        if ([string]$entry.scope -notin @("file", "directory")) {
-            return $false
-        }
-        if ([string]$entry.action -notin @("ask", "deny")) {
-            return $false
-        }
-        if ([string]$entry.scope -eq "file" -and $normalizedPath.EndsWith("/**")) {
-            return $false
-        }
-        if ([string]$entry.action -eq "deny" -and $null -ne $entry.maintenanceScope) {
-            return $false
-        }
-        if ($protectedIds.ContainsKey($entryId) -or $protectedPaths.ContainsKey($normalizedPath)) {
-            return $false
-        }
-
-        $protectedIds[$entryId] = $true
-        $protectedPaths[$normalizedPath] = $true
-    }
-
-    $denyRuleIds = @{}
-    foreach ($entry in @($Policy.denyCommandRules)) {
-        $entryId = [string]$entry.id
-        $entryKind = [string]$entry.kind
-        if ($entry.id -isnot [string] -or $entry.kind -isnot [string]) {
-            return $false
-        }
-        if ([string]::IsNullOrWhiteSpace($entryId) -or [string]::IsNullOrWhiteSpace($entryKind)) {
-            return $false
-        }
-        if ($denyRuleIds.ContainsKey($entryId)) {
-            return $false
-        }
-        $denyRuleIds[$entryId] = $true
-
-        if ($entryKind -notin @("specialized", "pattern")) {
-            return $false
-        }
-
-        if ($entryKind -eq "pattern") {
-            if ($entry.pattern -isnot [string] -or $entry.matchAgainst -isnot [string] -or [string]::IsNullOrWhiteSpace($entry.pattern) -or $entry.matchAgainst -notin @("normalized", "compact")) {
-                return $false
-            }
-
-            try {
-                [void][System.Text.RegularExpressions.Regex]::new(
-                    [string]$entry.pattern,
-                    [System.Text.RegularExpressions.RegexOptions]::IgnoreCase,
-                    [TimeSpan]::FromSeconds(1)
-                )
-            }
-            catch {
-                return $false
-            }
-        }
-        elseif ($null -ne $entry.matchAgainst -or $null -ne $entry.pattern) {
-            return $false
-        }
-    }
-
-    foreach ($requiredId in @(Get-RequiredSpecializedDenyRuleIds)) {
-        if (-not $denyRuleIds.ContainsKey($requiredId)) {
-            return $false
-        }
-    }
-
-    return $true
+    return -not [string]::IsNullOrWhiteSpace($PathValue) -and $PathValue -match "[\\/]WindowsApps[\\/]"
 }
 
-function Get-GuardPolicy {
-    param([string]$RepoRoot)
-
-    if ($null -ne $script:GuardPolicy -and $script:GuardPolicyRepoRoot -eq $RepoRoot) {
-        return $script:GuardPolicy
-    }
-
-    $policy = $null
-    $policyPath = Resolve-GuardPolicyPath -RepoRoot $RepoRoot
-    if (-not [string]::IsNullOrWhiteSpace($policyPath)) {
-        try {
-            $policy = Get-Content -LiteralPath $policyPath -Raw | ConvertFrom-Json
-        }
-        catch {
-            $policy = $null
-        }
-    }
-
-    if (-not (Test-GuardPolicyShape -Policy $policy)) {
-        $policy = Get-MinimalGuardPolicy
-    }
-
-    $script:GuardPolicy = $policy
-    $script:GuardPolicyRepoRoot = $RepoRoot
-    return $policy
-}
-
-function Test-DenyCommandRuleEnabled {
+function New-PythonCommandSpec {
     param(
-        [Parameter(Mandatory = $true)][string]$RuleId,
-        [Parameter()][object]$Policy = $script:GuardPolicy
+        [Parameter(Mandatory = $true)][string]$Executable,
+        [string[]]$PrefixArgs = @()
     )
 
-    foreach ($entry in @($Policy.denyCommandRules)) {
-        if ([string]$entry.id -eq $RuleId) {
-            return $true
-        }
+    return [pscustomobject]@{
+        Executable = $Executable
+        PrefixArgs = @($PrefixArgs)
     }
-
-    return $false
 }
 
-function Test-SamePath {
+function Test-PythonCandidate {
     param(
-        [Parameter(Mandatory = $true)][string]$Left,
-        [Parameter(Mandatory = $true)][string]$Right
+        [Parameter(Mandatory = $true)][string]$Executable,
+        [string[]]$PrefixArgs = @()
     )
 
-    $leftFull = [System.IO.Path]::GetFullPath($Left).TrimEnd('\', '/')
-    $rightFull = [System.IO.Path]::GetFullPath($Right).TrimEnd('\', '/')
-    return $leftFull.Equals($rightFull, [System.StringComparison]::OrdinalIgnoreCase)
-}
-
-function Test-MaintenanceModeScope {
-    param(
-        $State,
-        [Parameter(Mandatory = $true)][string]$Scope
-    )
-
-    $scopes = @($State.scopes)
-    foreach ($candidate in $scopes) {
-        if ([string]$candidate -eq $Scope) {
-            return $true
-        }
+    if ([string]::IsNullOrWhiteSpace($Executable) -or (Test-WindowsAppsPath -PathValue $Executable)) {
+        return $false
     }
 
-    return $false
-}
-
-function Test-MaintenanceModeActive {
-    param([Parameter(Mandatory = $true)][string]$Scope)
-
-    $statePath = Resolve-MaintenanceModePath
-    if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
+    if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) {
         return $false
     }
 
     try {
-        $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+        & $Executable @PrefixArgs -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 2)" *> $null
+        return $LASTEXITCODE -eq 0
     }
     catch {
         return $false
     }
-
-    if ($state.schemaVersion -ne 1 -or $state.enabled -ne $true) {
-        return $false
-    }
-
-    if (-not (Test-MaintenanceModeScope -State $state -Scope $Scope)) {
-        return $false
-    }
-
-    $createdAt = [DateTimeOffset]::MinValue
-    if (-not [DateTimeOffset]::TryParse([string]$state.createdAt, [ref]$createdAt)) {
-        return $false
-    }
-
-    $expiresAt = [DateTimeOffset]::MinValue
-    if (-not [DateTimeOffset]::TryParse([string]$state.expiresAt, [ref]$expiresAt)) {
-        return $false
-    }
-
-    $now = [DateTimeOffset]::Now
-    if ($createdAt -gt $now) {
-        return $false
-    }
-
-    if ($expiresAt -le $createdAt -or $expiresAt -gt $createdAt.AddMinutes(120) -or $expiresAt -gt $now.AddMinutes(120)) {
-        return $false
-    }
-
-    return $expiresAt -gt $now
 }
 
-function Write-Deny([string]$reason) {
-    if ($script:HookEvent -eq "permissionRequest") {
-        Write-HookResponse @{
-            behavior = "deny"
-            message = $reason
-            interrupt = $true
+function Resolve-PythonCommand {
+    $layoutRoot = Resolve-LayoutRoot
+    $repoRoot = Resolve-RepoRoot -LayoutRoot $layoutRoot
+    $override = [Environment]::GetEnvironmentVariable("HAPPY_AI_LIFE_PYTHON")
+    if (-not [string]::IsNullOrWhiteSpace($override) -and (Test-PythonCandidate -Executable $override)) {
+        return New-PythonCommandSpec -Executable $override
+    }
+
+    $candidatePaths = New-Object System.Collections.Generic.List[string]
+    if ($null -ne $repoRoot) {
+        [void]$candidatePaths.Add((Join-Path $repoRoot ".venv\Scripts\python.exe"))
+        [void]$candidatePaths.Add((Join-Path $repoRoot ".venv\bin\python"))
+        [void]$candidatePaths.Add((Join-Path $repoRoot ".venv\bin\python3"))
+    }
+    if ($null -ne $layoutRoot -and $layoutRoot.Name -eq ".copilot") {
+        [void]$candidatePaths.Add((Join-Path $layoutRoot.FullName ".venv\Scripts\python.exe"))
+        [void]$candidatePaths.Add((Join-Path $layoutRoot.FullName ".venv\bin\python"))
+        [void]$candidatePaths.Add((Join-Path $layoutRoot.FullName ".venv\bin\python3"))
+    }
+
+    foreach ($candidatePath in $candidatePaths) {
+        if (Test-PythonCandidate -Executable $candidatePath) {
+            return New-PythonCommandSpec -Executable $candidatePath
         }
-        return
     }
 
-    Write-HookResponse @{
-        permissionDecision = "deny"
-        permissionDecisionReason = $reason
-    }
-}
-
-function Write-Ask([string]$reason) {
-    if ($script:HookEvent -eq "permissionRequest") {
-        exit 0
-    }
-
-    Write-HookResponse @{
-        permissionDecision = "ask"
-        permissionDecisionReason = $reason
-    }
-}
-
-function Resolve-GitleaksPath {
-    $requested = [Environment]::GetEnvironmentVariable("GITLEAKS_BIN")
-    if (-not [string]::IsNullOrWhiteSpace($requested)) {
-        if (Test-Path -LiteralPath $requested -PathType Leaf) {
-            return $requested
-        }
-        $resolvedRequested = Get-Command $requested -ErrorAction SilentlyContinue
-        if ($resolvedRequested) {
-            return $resolvedRequested.Source
-        }
-        return $null
-    }
-
-    $resolved = Get-Command "gitleaks" -ErrorAction SilentlyContinue
-    if ($resolved) {
-        return $resolved.Source
-    }
-
-    return $null
-}
-
-function Get-PayloadPropertyValue {
-    param(
-        [Parameter(Mandatory = $true)]$Object,
-        [Parameter(Mandatory = $true)][string[]]$Names
-    )
-
-    foreach ($name in $Names) {
-        $property = $Object.PSObject.Properties[$name]
-        if (-not $property) {
+    foreach ($candidateName in @("python", "python3")) {
+        $candidate = Get-Command $candidateName -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -eq $candidate) {
             continue
         }
 
-        $value = $property.Value
-        if ($null -eq $value) {
-            continue
+        $candidatePath = [string]$candidate.Source
+        if (Test-PythonCandidate -Executable $candidatePath) {
+            return New-PythonCommandSpec -Executable $candidatePath
         }
+    }
 
-        if ($value -is [string] -and [string]::IsNullOrWhiteSpace($value)) {
-            continue
+    $pyLauncher = Get-Command py -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -ne $pyLauncher) {
+        $pyPath = [string]$pyLauncher.Source
+        if (Test-PythonCandidate -Executable $pyPath -PrefixArgs @("-3.10")) {
+            return New-PythonCommandSpec -Executable $pyPath -PrefixArgs @("-3.10")
         }
-
-        if ($property) {
-            return $value
+        if (Test-PythonCandidate -Executable $pyPath -PrefixArgs @("-3")) {
+            return New-PythonCommandSpec -Executable $pyPath -PrefixArgs @("-3")
         }
     }
 
     return $null
 }
 
-function ConvertTo-HookObject {
-    param(
-        $Value,
-        [switch]$ParseJsonStrings
-    )
+function Join-QuotedProcessArguments {
+    param([Parameter(Mandatory = $true)][string[]]$Arguments)
 
-    if ($null -eq $Value) {
-        return $null
+    $quoted = foreach ($argument in $Arguments) {
+        if ([string]::IsNullOrEmpty($argument)) {
+            '""'
+            continue
+        }
+
+        if ($argument -notmatch '[\s"]') {
+            $argument
+            continue
+        }
+
+        $escaped = $argument -replace '(\\*)"', '$1$1\"'
+        $escaped = $escaped -replace '(\\+)$', '$1$1'
+        '"' + $escaped + '"'
     }
 
-    if ($Value -is [string]) {
-        if ([string]::IsNullOrWhiteSpace($Value)) {
-            return $null
-        }
+    return ($quoted -join " ")
+}
 
-        if (-not $ParseJsonStrings) {
-            return $Value
-        }
+function Get-StderrSummary {
+    param([string]$StderrText)
 
-        $trimmed = $Value.Trim()
-        if (-not ($trimmed.StartsWith("{") -or $trimmed.StartsWith("["))) {
-            return $Value
-        }
+    if ([string]::IsNullOrWhiteSpace($StderrText)) {
+        return ""
+    }
 
+    $trimmed = $StderrText.Trim()
+    if ($trimmed.Length -le 500) {
+        return $trimmed
+    }
+
+    return $trimmed.Substring(0, 500)
+}
+
+function Invoke-GuardEngine {
+    param(
+        [Parameter(Mandatory = $true)][string]$Raw,
+        [Parameter(Mandatory = $true)][string]$EnginePath,
+        [string]$PolicyPath,
+        [Parameter(Mandatory = $true)]$PythonCommand,
+        [Parameter(Mandatory = $true)][string]$CurrentDirectory,
+        [Parameter(Mandatory = $true)][string]$HomeDirectory,
+        [string]$RepoRoot
+    )
+
+    $arguments = @()
+    $arguments += @($PythonCommand.PrefixArgs)
+    $arguments += @("-X", "utf8", $EnginePath, "--hook-event", $script:HookEvent, "--cwd", $CurrentDirectory, "--home", $HomeDirectory)
+    if (-not [string]::IsNullOrWhiteSpace($PolicyPath)) {
+        $arguments += @("--policy-path", $PolicyPath)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+        $arguments += @("--repo-root", $RepoRoot)
+    }
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = [string]$PythonCommand.Executable
+    $startInfo.Arguments = Join-QuotedProcessArguments -Arguments $arguments
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardInput = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8"
+    $startInfo.EnvironmentVariables["PYTHONUTF8"] = "1"
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    [void]$process.Start()
+    $process.StandardInput.Write($Raw)
+    $process.StandardInput.Close()
+    $stdout = $process.StandardOutput.ReadToEnd()
+    $stderr = $process.StandardError.ReadToEnd()
+
+    if (-not $process.WaitForExit(15000)) {
         try {
-            return $Value | ConvertFrom-Json
+            $process.Kill()
         }
         catch {
-            return $Value
+        }
+
+        return [pscustomobject]@{
+            Succeeded = $false
+            Reason    = "Timed out while running the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."
         }
     }
 
-    return $Value
-}
-
-function Get-ProtectedPathValues {
-    param(
-        $Value,
-        [int]$Depth = 0
-    )
-
-    if ($Depth -gt 64 -or $null -eq $Value) {
-        return @()
-    }
-
-    $normalizedValue = ConvertTo-HookObject -Value $Value -ParseJsonStrings:($Depth -eq 0)
-
-    if ($null -eq $normalizedValue) {
-        return @()
-    }
-
-    if ($normalizedValue -is [string]) {
-        return @()
-    }
-
-    if ($normalizedValue -is [System.Collections.IDictionary]) {
-        foreach ($key in $normalizedValue.Keys) {
-            $keyName = [string]$key
-            $propertyValue = $normalizedValue[$key]
-            if ($keyName -in $ProtectedPathPropertyNames) {
-                Get-ProtectedPathValuesFromKnownProperty -Value $propertyValue -Depth ($Depth + 1)
-                continue
-            }
-
-            Get-ProtectedPathValues -Value $propertyValue -Depth ($Depth + 1)
+    $process.WaitForExit()
+    if ($process.ExitCode -ne 0) {
+        $summary = Get-StderrSummary -StderrText $stderr
+        $reason = "Failed to run the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."
+        if (-not [string]::IsNullOrWhiteSpace($summary)) {
+            $reason = "$reason stderr: $summary"
         }
-        return
-    }
-
-    if ($normalizedValue -is [System.Collections.IEnumerable]) {
-        return @(
-            foreach ($item in $normalizedValue) {
-                Get-ProtectedPathValues -Value $item -Depth ($Depth + 1)
-            }
-        )
-    }
-
-    $properties = @($normalizedValue.PSObject.Properties)
-    if ($properties.Count -gt 0) {
-        foreach ($property in $properties) {
-            $propertyValue = $property.Value
-            if ($property.Name -in $ProtectedPathPropertyNames) {
-                Get-ProtectedPathValuesFromKnownProperty -Value $propertyValue -Depth ($Depth + 1)
-                continue
-            }
-
-            Get-ProtectedPathValues -Value $propertyValue -Depth ($Depth + 1)
-        }
-        return
-    }
-}
-
-function Get-ProtectedPathValuesFromKnownProperty {
-    param(
-        $Value,
-        [int]$Depth = 0
-    )
-
-    if ($Depth -gt 64 -or $null -eq $Value) {
-        return @()
-    }
-
-    $normalizedValue = ConvertTo-HookObject -Value $Value
-    if ($null -eq $normalizedValue) {
-        return @()
-    }
-
-    if ($normalizedValue -is [string]) {
-        if (-not [string]::IsNullOrWhiteSpace($normalizedValue)) {
-            return ,$normalizedValue
-        }
-        return @()
-    }
-
-    if ($normalizedValue -is [System.Collections.IEnumerable]) {
-        foreach ($item in $normalizedValue) {
-            $normalizedItem = ConvertTo-HookObject -Value $item
-            if ($normalizedItem -is [string]) {
-                if (-not [string]::IsNullOrWhiteSpace($normalizedItem)) {
-                    $normalizedItem
-                }
-                continue
-            }
-
-            Get-ProtectedPathValues -Value $normalizedItem -Depth ($Depth + 1)
-        }
-        return
-    }
-
-    Get-ProtectedPathValues -Value $normalizedValue -Depth ($Depth + 1)
-}
-
-function Resolve-FullPath {
-    param(
-        [Parameter(Mandatory = $true)][string]$PathValue,
-        [Parameter(Mandatory = $true)][string]$BasePath
-    )
-
-    $expanded = [Environment]::ExpandEnvironmentVariables($PathValue.Trim())
-    if ($expanded -match '^\$(?:\{HOME\}|env:HOME)([\\/].*)?$') {
-        $suffix = $Matches[1]
-        if ([string]::IsNullOrWhiteSpace($suffix)) {
-            $expanded = $HOME
-        }
-        else {
-            $expanded = Join-Path $HOME $suffix.TrimStart('\', '/')
-        }
-    }
-    elseif ($expanded -match '^\$HOME([\\/].*)?$') {
-        $suffix = $Matches[1]
-        if ([string]::IsNullOrWhiteSpace($suffix)) {
-            $expanded = $HOME
-        }
-        else {
-            $expanded = Join-Path $HOME $suffix.TrimStart('\', '/')
-        }
-    }
-    if ($expanded.StartsWith("~/") -or $expanded.StartsWith("~\")) {
-        $expanded = Join-Path $HOME $expanded.Substring(2)
-    }
-
-    if ([System.IO.Path]::IsPathRooted($expanded)) {
-        return [System.IO.Path]::GetFullPath($expanded)
-    }
-
-    return [System.IO.Path]::GetFullPath((Join-Path $BasePath $expanded))
-}
-
-function Test-PathWithinRoot {
-    param(
-        [Parameter(Mandatory = $true)][string]$CandidatePath,
-        [Parameter(Mandatory = $true)][string]$RootPath
-    )
-
-    $candidateFull = [System.IO.Path]::GetFullPath($CandidatePath).TrimEnd('\', '/')
-    $rootFull = [System.IO.Path]::GetFullPath($RootPath).TrimEnd('\', '/')
-
-    if ($candidateFull.Equals($rootFull, [System.StringComparison]::OrdinalIgnoreCase)) {
-        return $true
-    }
-
-    return $candidateFull.StartsWith($rootFull + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
-}
-
-function Get-ProtectedPathRules {
-    param([string]$RepoRoot)
-
-    $rules = @()
-    $policy = Get-GuardPolicy -RepoRoot $RepoRoot
-
-    foreach ($entry in @($policy.protectedPaths)) {
-        $pathText = Normalize-GuardPolicyRuntimePathText -PathValue ([string]$entry.path)
-        $basePath = if ($pathText.StartsWith('$HOME') -or $pathText.StartsWith('${HOME}') -or $pathText.StartsWith('$env:HOME') -or $pathText.StartsWith("~/") -or $pathText.StartsWith("~\")) {
-            $HOME
-        }
-        elseif (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-            $RepoRoot
-        }
-        else {
-            (Get-Location).Path
-        }
-
-        $resolvedPath = if ([string]$entry.scope -eq "directory" -and $pathText.EndsWith("/**")) {
-            Resolve-FullPath -PathValue $pathText.Substring(0, $pathText.Length - 3) -BasePath $basePath
-        }
-        else {
-            Resolve-FullPath -PathValue $pathText -BasePath $basePath
-        }
-
-        $rules += [pscustomobject]@{
-            Id = [string]$entry.id
-            Scope = [string]$entry.scope
-            Action = [string]$entry.action
-            MaintenanceScope = [string]$entry.maintenanceScope
-            Display = $pathText
-            FullPath = $resolvedPath
+        return [pscustomobject]@{
+            Succeeded = $false
+            Reason    = $reason
         }
     }
 
-    return $rules
-}
-
-function Find-ProtectedPathMatch {
-    param(
-        [Parameter(Mandatory = $true)][string[]]$CandidatePaths,
-        [Parameter(Mandatory = $true)][object[]]$ProtectedRules
-    )
-
-    $bestMatch = $null
-    foreach ($candidate in $CandidatePaths) {
-        foreach ($rule in $ProtectedRules) {
-            $isMatch = $false
-            if ($rule.Scope -eq "directory") {
-                if (Test-PathWithinRoot -CandidatePath $candidate -RootPath $rule.FullPath) {
-                    $isMatch = $true
-                }
-            }
-            elseif ($candidate.Equals($rule.FullPath, [System.StringComparison]::OrdinalIgnoreCase)) {
-                $isMatch = $true
-            }
-
-            if (-not $isMatch) {
-                continue
-            }
-
-            $candidateMatch = [pscustomobject]@{
-                Candidate = $candidate
-                Rule = $rule
-            }
-            if ($null -eq $bestMatch) {
-                $bestMatch = $candidateMatch
-                continue
-            }
-
-            $bestActionRank = if ($bestMatch.Rule.Action -eq "deny") { 1 } else { 0 }
-            $candidateActionRank = if ($candidateMatch.Rule.Action -eq "deny") { 1 } else { 0 }
-            if ($candidateActionRank -gt $bestActionRank) {
-                $bestMatch = $candidateMatch
-                continue
-            }
-            if ($candidateActionRank -lt $bestActionRank) {
-                continue
-            }
-
-            $bestScopeRank = if ($bestMatch.Rule.Scope -eq "file") { 1 } else { 0 }
-            $candidateScopeRank = if ($candidateMatch.Rule.Scope -eq "file") { 1 } else { 0 }
-            if ($candidateScopeRank -gt $bestScopeRank) {
-                $bestMatch = $candidateMatch
-                continue
-            }
-            if ($candidateScopeRank -lt $bestScopeRank) {
-                continue
-            }
-
-            if (([string]$candidateMatch.Rule.FullPath).Length -gt (([string]$bestMatch.Rule.FullPath).Length)) {
-                $bestMatch = $candidateMatch
-            }
+    if ([string]::IsNullOrWhiteSpace($stdout)) {
+        return [pscustomobject]@{
+            Succeeded = $true
+            Output    = ""
         }
     }
 
-    return $bestMatch
-}
-
-function Get-RepoRoot {
-    $root = (& git rev-parse --show-toplevel 2>$null | Select-Object -First 1)
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($root)) {
-        return $null
-    }
-    return [System.IO.Path]::GetFullPath($root)
-}
-
-function New-RepoScratchDirectory {
-    param([Parameter(Mandatory = $true)][string]$RepoRoot)
-
-    $gitDir = (& git -C $RepoRoot rev-parse --git-dir 2>$null | Select-Object -First 1)
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitDir)) {
-        throw "Failed to resolve .git directory."
-    }
-    if (-not [System.IO.Path]::IsPathRooted($gitDir)) {
-        $gitDir = Join-Path $RepoRoot $gitDir
-    }
-
-    $scratchParent = Join-Path $gitDir "happy-secret-scan"
-    if (-not (Test-Path -LiteralPath $scratchParent)) {
-        New-Item -ItemType Directory -Path $scratchParent -Force | Out-Null
-    }
-
-    $scratchPath = Join-Path $scratchParent ("copilot-{0}" -f [guid]::NewGuid())
-    New-Item -ItemType Directory -Path $scratchPath -Force | Out-Null
-    return $scratchPath
-}
-
-function Invoke-GitleaksDir {
-    param(
-        [Parameter(Mandatory = $true)][string]$GitleaksPath,
-        [Parameter(Mandatory = $true)][string]$RepoRoot,
-        [Parameter(Mandatory = $true)][string]$ScanPath
-    )
-
-    $arguments = @("dir", $ScanPath)
-    $configPath = Join-Path $RepoRoot ".gitleaks.toml"
-    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
-        $arguments += @("--config", $configPath)
-    }
-    $arguments += @("--no-banner", "--redact=100", "--exit-code", "1")
-
-    $output = & $GitleaksPath @arguments 2>&1 | Out-String
-    return [pscustomobject]@{
-        ExitCode = $LASTEXITCODE
-        Output = $output
-    }
-}
-
-function Invoke-GitleaksGit {
-    param(
-        [Parameter(Mandatory = $true)][string]$GitleaksPath,
-        [Parameter(Mandatory = $true)][string]$RepoRoot,
-        [Parameter(Mandatory = $true)][string]$LogOptions
-    )
-
-    $arguments = @("git", $RepoRoot, "--log-opts", $LogOptions)
-    $configPath = Join-Path $RepoRoot ".gitleaks.toml"
-    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
-        $arguments += @("--config", $configPath)
-    }
-    $arguments += @("--no-banner", "--redact=100", "--exit-code", "1")
-
-    $output = & $GitleaksPath @arguments 2>&1 | Out-String
-    return [pscustomobject]@{
-        ExitCode = $LASTEXITCODE
-        Output = $output
-    }
-}
-
-function Test-HasStagedFiles {
-    param([Parameter(Mandatory = $true)][string]$RepoRoot)
-
-    & git -C $RepoRoot diff --cached --quiet --exit-code 2>$null
-    return $LASTEXITCODE -eq 1
-}
-
-function Invoke-StagedSecretScan {
-    $repoRoot = Get-RepoRoot
-    if ([string]::IsNullOrWhiteSpace($repoRoot)) {
-        return $null
-    }
-
-    $gitleaksPath = Resolve-GitleaksPath
-    if ([string]::IsNullOrWhiteSpace($gitleaksPath)) {
-        return "gitleaks is required before AI can run git commit."
-    }
-
-    if (-not (Test-HasStagedFiles -RepoRoot $repoRoot)) {
-        return $null
-    }
-
-    $scratchDir = $null
     try {
-        $scratchDir = New-RepoScratchDirectory -RepoRoot $repoRoot
-        $snapshotDir = Join-Path $scratchDir "snapshot"
-        New-Item -ItemType Directory -Path $snapshotDir -Force | Out-Null
-
-        $stagedFiles = @(& git -C $repoRoot -c core.quotepath=false diff --cached --name-only --diff-filter=ACMR)
-        if ($stagedFiles.Count -eq 0) {
-            return $null
-        }
-
-        $checkoutInput = ($stagedFiles -join "`n") + "`n"
-        $snapshotPrefix = $snapshotDir.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
-        $checkoutInput | & git -C $repoRoot checkout-index --prefix="$snapshotPrefix" --stdin 1>$null 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            return "Failed to prepare staged content for AI pre-commit secret scan."
-        }
-
-        $scan = Invoke-GitleaksDir -GitleaksPath $gitleaksPath -RepoRoot $repoRoot -ScanPath $snapshotDir
-        if ($scan.ExitCode -ne 0) {
-            return "Potential secrets were detected in staged changes. Commit was blocked before secrets entered Git history."
-        }
+        $null = $stdout | ConvertFrom-Json -ErrorAction Stop
     }
-    finally {
-        if (-not [string]::IsNullOrWhiteSpace($scratchDir) -and (Test-Path -LiteralPath $scratchDir)) {
-            Remove-Item -LiteralPath $scratchDir -Recurse -Force
+    catch {
+        return [pscustomobject]@{
+            Succeeded = $false
+            Reason    = "The shared guard policy engine returned invalid JSON. Restore the synchronized guard runtime or sync again."
         }
     }
 
-    return $null
+    return [pscustomobject]@{
+        Succeeded = $true
+        Output    = $stdout
+    }
 }
-
-function Get-UnpushedLogOptions {
-    param([Parameter(Mandatory = $true)][string]$RepoRoot)
-
-    $upstream = (& git -C $RepoRoot rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>$null | Select-Object -First 1)
-    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($upstream)) {
-        $range = "$upstream..HEAD"
-    }
-    else {
-        $range = "HEAD --not --remotes"
-    }
-
-    $commits = @(& git -C $RepoRoot rev-list $range 2>$null)
-    if ($LASTEXITCODE -ne 0 -or $commits.Count -eq 0) {
-        return $null
-    }
-    return $range
-}
-
-function Invoke-UnpushedSecretScan {
-    param([string]$ActionName)
-
-    $repoRoot = Get-RepoRoot
-    if ([string]::IsNullOrWhiteSpace($repoRoot)) {
-        return $null
-    }
-
-    $gitleaksPath = Resolve-GitleaksPath
-    if ([string]::IsNullOrWhiteSpace($gitleaksPath)) {
-        return "gitleaks is required before AI can run $ActionName."
-    }
-
-    $logOptions = Get-UnpushedLogOptions -RepoRoot $repoRoot
-    if ([string]::IsNullOrWhiteSpace($logOptions)) {
-        return $null
-    }
-
-    $scan = Invoke-GitleaksGit -GitleaksPath $gitleaksPath -RepoRoot $repoRoot -LogOptions $logOptions
-    if ($scan.ExitCode -ne 0) {
-        return "Potential secrets were detected in commits that may be published. $ActionName was blocked."
-    }
-
-    return $null
-}
-
-$script:HookEvent = Resolve-HookEventName
 
 $raw = [Console]::In.ReadToEnd()
+if ([string]::IsNullOrWhiteSpace($raw)) {
+    $pipelineInput = New-Object System.Collections.Generic.List[string]
+    if ($null -ne $InputObject) {
+        [void]$pipelineInput.Add([string]$InputObject)
+    }
+    foreach ($item in @($input)) {
+        if ($null -ne $item) {
+            [void]$pipelineInput.Add($item.ToString())
+        }
+    }
+    if ($pipelineInput.Count -gt 0) {
+        $raw = ($pipelineInput -join [Environment]::NewLine)
+    }
+}
 if ([string]::IsNullOrWhiteSpace($raw)) {
     exit 0
 }
 
-try {
-    $payload = $raw | ConvertFrom-Json
-}
-catch {
-    # If we can't parse, do not block.
+$layoutRoot = Resolve-LayoutRoot
+$repoRoot = Resolve-RepoRoot -LayoutRoot $layoutRoot
+$enginePath = Resolve-GuardEnginePath
+if ($null -eq $enginePath) {
+    Write-DenyResponse -Reason "Failed to locate the shared guard policy engine (scripts/guard_policy.py). Restore the synchronized guard runtime or sync again."
     exit 0
 }
 
-$toolName = [string](Get-PayloadPropertyValue -Object $payload -Names @("toolName", "tool_name"))
-$toolArgsValue = Get-PayloadPropertyValue -Object $payload -Names @("toolArgs", "tool_input")
-$hookCwd = [string](Get-PayloadPropertyValue -Object $payload -Names @("cwd"))
-$toolArgs = ConvertTo-HookObject -Value $toolArgsValue -ParseJsonStrings
-
-if ([string]::IsNullOrWhiteSpace($toolName)) {
+$pythonCommand = Resolve-PythonCommand
+if ($null -eq $pythonCommand) {
+    Write-DenyResponse -Reason "Python 3.10+ is required to run the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."
     exit 0
 }
 
-$repoRoot = Get-RepoRoot
-$script:GuardPolicy = Get-GuardPolicy -RepoRoot $repoRoot
-$script:ProtectedPathPropertyNames = @($script:GuardPolicy.pathPropertyNames)
-$fileWriteToolNames = @($script:GuardPolicy.toolNames.fileWrite)
-$shellToolNames = @($script:GuardPolicy.toolNames.shell)
-$resolutionBase = if (-not [string]::IsNullOrWhiteSpace($hookCwd)) {
-    [System.IO.Path]::GetFullPath($hookCwd)
-}
-else {
-    [System.IO.Path]::GetFullPath((Get-Location).Path)
-}
+$policyPath = Resolve-GuardPolicyPath
+$result = Invoke-GuardEngine `
+    -Raw $raw `
+    -EnginePath $enginePath `
+    -PolicyPath $policyPath `
+    -PythonCommand $pythonCommand `
+    -CurrentDirectory (Get-Location).ProviderPath `
+    -HomeDirectory $HOME `
+    -RepoRoot $repoRoot
 
-if ($toolName -in $fileWriteToolNames) {
-    $pathValues = @(Get-ProtectedPathValues -Value $toolArgs)
-
-    if (@($pathValues).Count -gt 0) {
-        $candidatePaths = @(
-            foreach ($pathValue in @($pathValues | Select-Object -Unique)) {
-                if (-not [string]::IsNullOrWhiteSpace($repoRoot) -and -not [System.IO.Path]::IsPathRooted([Environment]::ExpandEnvironmentVariables($pathValue)) -and -not $pathValue.StartsWith("~/") -and -not $pathValue.StartsWith("~\") -and -not $pathValue.StartsWith('$HOME') -and -not $pathValue.StartsWith('${HOME}') -and -not $pathValue.StartsWith('$env:HOME')) {
-                    Resolve-FullPath -PathValue $pathValue -BasePath $repoRoot
-                }
-                Resolve-FullPath -PathValue $pathValue -BasePath $resolutionBase
-            }
-        )
-        $protectedMatch = Find-ProtectedPathMatch -CandidatePaths $candidatePaths -ProtectedRules (Get-ProtectedPathRules -RepoRoot $repoRoot)
-        if ($null -ne $protectedMatch) {
-            if ($protectedMatch.Rule.Action -eq "deny") {
-                $reason = "Protected path change detected for {0} via {1}. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits." -f $protectedMatch.Rule.Display, $toolName
-                Write-Deny $reason
-                exit 0
-            }
-            if ($script:HookEvent -eq "permissionRequest") {
-                # permissionRequest cannot ask, so fall through to the normal permission flow.
-                exit 0
-            }
-            if ($protectedMatch.Rule.Display -eq '$HOME/.copilot/**') {
-                $reason = "Protected path change detected for {0} via {1}. Home-managed Copilot files always require explicit human review, even during maintenance mode." -f $protectedMatch.Rule.Display, $toolName
-                Write-Ask $reason
-                exit 0
-            }
-            if (-not [string]::IsNullOrWhiteSpace($protectedMatch.Rule.MaintenanceScope) -and (Test-MaintenanceModeActive -Scope $protectedMatch.Rule.MaintenanceScope)) {
-                exit 0
-            }
-            $reason = "Protected path change detected for {0} via {1}. This path requires an atomic issue/PR and explicit human review." -f $protectedMatch.Rule.Display, $toolName
-            Write-Ask $reason
-            exit 0
-        }
-    }
-}
-
-# Guard shell command tools. Windows Copilot CLI reports PowerShell tool use as "powershell".
-if ($toolName -notin $shellToolNames) {
+if (-not $result.Succeeded) {
+    Write-DenyResponse -Reason $result.Reason
     exit 0
 }
 
-$command = ""
-if ($toolArgs -is [string]) {
-    $command = $toolArgs
-}
-elseif ($null -ne $toolArgs) {
-    try { $command = [string]$toolArgs.command } catch {}
+if (-not [string]::IsNullOrWhiteSpace($result.Output)) {
+    [Console]::Out.Write([string]$result.Output)
 }
 
-if ([string]::IsNullOrWhiteSpace($command)) {
-    exit 0
-}
-
-$normalized = $command.Trim().ToLowerInvariant()
-$compact = ($normalized -replace "\s+", " ")
-$normalizedForPath = $normalized.Replace('/', '\')
-$maintenanceStatePath = (Resolve-MaintenanceModePath).ToLowerInvariant()
-$touchesMaintenanceModeScript = $compact -match '(^|[;&|]\s*)(?:\.\s+)?(?:&\s+)?[^;&|]*?(?:enter|exit)-copilot-maintenance-mode(?:\.ps1)?(?=\s|$|[;&|])'
-$touchesMaintenanceStateFile = $normalizedForPath.Contains($maintenanceStatePath) -or ($compact -match 'maintenance-mode\.json') -or ($compact -match '(?:\$home|\$env:home|\$\{home\}|~)[\\/]\.copilot[\\/](?:[^;&|]*[\\/])?maintenance-mode\.json')
-
-if ((Test-DenyCommandRuleEnabled -RuleId "maintenance-mode-manual-only") -and ($touchesMaintenanceModeScript -or $touchesMaintenanceStateFile)) {
-    Write-Deny "AI is not allowed to enter or exit maintenance mode, or modify the maintenance state file. Ask a human to run the maintenance scripts manually."
-    exit 0
-}
-
-$isGitCommit = $compact -match "(^|[;&|]\s*)git\s+commit(\s|$)"
-$isGitPush = $compact -match "(^|[;&|]\s*)git\s+push(\s|$)"
-$isGhPrCreate = $compact -match "(^|[;&|]\s*)gh\s+pr\s+create(\s|$)"
-$isGitConfigHooksPathWrite = ($compact -match "(^|[;&|]\s*)git\s+config(\s|$)") -and ($compact -match "(^|\s)core\.hookspath(?:\s*=\s*|\s+)[^;&|]+")
-$isGitConfigHooksPathUnset = $compact -match "(^|[;&|]\s*)git\s+config(?:\s+[^;&|]+)*\s+--unset(?:-all)?(?:\s+[^;&|]+)*\s+core\.hookspath(?=\s*($|[;&|]))"
-$isGitConfigRemoveCoreSection = $compact -match "(^|[;&|]\s*)git\s+config(?:\s+[^;&|]+)*\s+--remove-section(?:\s+[^;&|]+)*\s+core(?=\s*($|[;&|]))"
-$hasInlineGitHooksPathConfig = $compact -match "(^|[;&|]\s*)git(?:\s+[^;&|]+)*\s+-c\s+core\.hookspath(?:\s*=\s*|\s+)[^;&|]+"
-$isGitUpdateIndexSkipWorktree = ($compact -match "(^|[;&|]\s*)git\s+update-index(\s|$)") -and ($compact -match "(^|\s)--skip-worktree(\s|$)")
-$isGitUpdateIndexAssumeUnchanged = ($compact -match "(^|[;&|]\s*)git\s+update-index(\s|$)") -and ($compact -match "(^|\s)--assume-unchanged(\s|$)")
-$hasGitPushForce = $compact -match '(^|[;&|]\s*)git\s+push(?:\s+[^;&|]+)*\s+(?:-f|--force(?:-with-lease(?:=[^;&|]+)?)?)(?=\s|$|[;&|])'
-$hasNoVerify = $compact -match "(^|\s)--no-verify(\s|$)"
-$hasCommitNoVerifyShort = $isGitCommit -and ($compact -match "(^|\s)-[a-z]*n[a-z]*(\s|$)")
-
-if ((Test-DenyCommandRuleEnabled -RuleId "git-hooks-no-verify") -and (($isGitCommit -and ($hasNoVerify -or $hasCommitNoVerifyShort)) -or ($isGitPush -and $hasNoVerify))) {
-    Write-Deny "AI is not allowed to bypass Git hooks with --no-verify or git commit -n."
-    exit 0
-}
-
-if ((Test-DenyCommandRuleEnabled -RuleId "git-hooks-path-change") -and ($isGitConfigHooksPathWrite -or $isGitConfigHooksPathUnset -or $isGitConfigRemoveCoreSection -or $hasInlineGitHooksPathConfig)) {
-    Write-Deny "AI is not allowed to disable or bypass Git hooks via core.hooksPath changes, git -c core.hooksPath, or git update-index skip-worktree/assume-unchanged."
-    exit 0
-}
-
-if ((Test-DenyCommandRuleEnabled -RuleId "git-hooks-update-index-bypass") -and ($isGitUpdateIndexSkipWorktree -or $isGitUpdateIndexAssumeUnchanged)) {
-    Write-Deny "AI is not allowed to disable or bypass Git hooks via core.hooksPath changes, git -c core.hooksPath, or git update-index skip-worktree/assume-unchanged."
-    exit 0
-}
-
-if ((Test-DenyCommandRuleEnabled -RuleId "git-push-force") -and $hasGitPushForce) {
-    Write-Deny ("Blocked potentially destructive command: {0}" -f $command)
-    exit 0
-}
-
-if ((Test-DenyCommandRuleEnabled -RuleId "git-commit-secret-scan") -and $isGitCommit) {
-    $secretScanReason = Invoke-StagedSecretScan
-    if (-not [string]::IsNullOrWhiteSpace($secretScanReason)) {
-        Write-Deny $secretScanReason
-        exit 0
-    }
-}
-
-if ((Test-DenyCommandRuleEnabled -RuleId "git-push-secret-scan") -and $isGitPush) {
-    $secretScanReason = Invoke-UnpushedSecretScan -ActionName "git push"
-    if (-not [string]::IsNullOrWhiteSpace($secretScanReason)) {
-        Write-Deny $secretScanReason
-        exit 0
-    }
-}
-
-if ((Test-DenyCommandRuleEnabled -RuleId "gh-pr-create-secret-scan") -and $isGhPrCreate) {
-    $secretScanReason = Invoke-UnpushedSecretScan -ActionName "gh pr create"
-    if (-not [string]::IsNullOrWhiteSpace($secretScanReason)) {
-        Write-Deny $secretScanReason
-        exit 0
-    }
-}
-
-# Block list: keep it minimal and destructive-only at first
-$denyPatterns = @(
-    foreach ($rule in @($script:GuardPolicy.denyCommandRules)) {
-        if ([string]$rule.kind -eq "pattern") {
-            [pscustomobject]@{
-                Pattern = [string]$rule.pattern
-                MatchAgainst = [string]$rule.matchAgainst
-            }
-        }
-    }
-)
-
-foreach ($rule in $denyPatterns) {
-    $candidate = if ($rule.MatchAgainst -eq "compact") { $compact } else { $normalized }
-    if ($candidate -match $rule.Pattern) {
-        Write-Deny ("Blocked potentially destructive command: {0}" -f $command)
-        exit 0
-    }
-}
-
-# Allow by default (do nothing)
 exit 0

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import scripts.guard_policy as guard_policy
 from scripts.guard_policy import EvaluationContext, HookEvent, evaluate_payload, resolve_full_path
 
 
@@ -219,6 +220,58 @@ def test_engine_denies_git_hooks_no_verify_variants(isolated_home: Path, command
     assert response == {
         "permissionDecision": "deny",
         "permissionDecisionReason": "AI is not allowed to bypass Git hooks with --no-verify or git commit -n.",
+    }
+
+
+def test_engine_denies_commit_when_staged_secret_scan_finds_secrets(
+    isolated_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(guard_policy, "_resolve_secret_scan_repo_root", lambda repo_root, resolution_base: ROOT)
+    monkeypatch.setattr(
+        guard_policy,
+        "_run_staged_secret_scan",
+        lambda repo_root: "Potential secrets were detected in staged changes. Commit was blocked before secrets entered Git history.",
+    )
+
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": "git commit -m \"test\"",
+            },
+        },
+        home=isolated_home,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": "Potential secrets were detected in staged changes. Commit was blocked before secrets entered Git history.",
+    }
+
+
+def test_engine_denies_push_when_unpushed_secret_scan_finds_secrets(
+    isolated_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(guard_policy, "_resolve_secret_scan_repo_root", lambda repo_root, resolution_base: ROOT)
+    monkeypatch.setattr(
+        guard_policy,
+        "_run_unpushed_secret_scan",
+        lambda repo_root, *, action_name: f"Potential secrets were detected in commits that may be published. {action_name} was blocked.",
+    )
+
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": "git push origin HEAD",
+            },
+        },
+        home=isolated_home,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": "Potential secrets were detected in commits that may be published. git push was blocked.",
     }
 
 

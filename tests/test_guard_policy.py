@@ -183,6 +183,7 @@ def test_guard_policy_covers_current_boundary_rules() -> None:
         "scripts/sync-to-home.ps1",
         "scripts/sync-to-repo.ps1",
         "scripts/repo-secure-check.ps1",
+        "scripts/guard_policy.py",
         "home-template/.copilot/**",
         "policy/guard-policy.json",
         "policy/guard-policy.schema.json",

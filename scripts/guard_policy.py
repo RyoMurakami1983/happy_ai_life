@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -642,6 +646,155 @@ def _rule_enabled(policy: GuardPolicy, rule_id: str) -> bool:
     return any(rule.id == rule_id for rule in policy.deny_command_rules)
 
 
+def _resolve_secret_scan_repo_root(repo_root: str | None, resolution_base: str) -> Path | None:
+    if repo_root is not None:
+        candidate = Path(repo_root)
+        if (candidate / ".git").exists():
+            return candidate
+
+    start_path = Path(resolution_base)
+    if start_path.is_file():
+        start_path = start_path.parent
+    for candidate in (start_path, *start_path.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def _resolve_gitleaks() -> str | None:
+    configured = os.environ.get("GITLEAKS_BIN", "").strip()
+    if configured:
+        configured_path = Path(configured)
+        if configured_path.is_file():
+            return str(configured_path)
+        resolved = shutil.which(configured)
+        if resolved:
+            return resolved
+        return None
+    return shutil.which("gitleaks")
+
+
+def _gitleaks_config_args(repo_root: Path) -> list[str]:
+    config_path = repo_root / ".gitleaks.toml"
+    if config_path.is_file():
+        return ["--config", str(config_path)]
+    return []
+
+
+def _run_staged_secret_scan(repo_root: Path) -> str | None:
+    gitleaks = _resolve_gitleaks()
+    if gitleaks is None:
+        return "gitleaks is required before AI can run git commit."
+
+    staged_probe = subprocess.run(
+        ["git", "-C", str(repo_root), "diff", "--cached", "--quiet", "--exit-code"],
+        check=False,
+        capture_output=True,
+    )
+    if staged_probe.returncode == 0:
+        return None
+
+    staged_files = subprocess.run(
+        ["git", "-C", str(repo_root), "-c", "core.quotepath=false", "diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"],
+        check=False,
+        capture_output=True,
+    )
+    if staged_files.returncode != 0 or not staged_files.stdout:
+        return None
+
+    with tempfile.TemporaryDirectory(prefix="copilot-secret-scan-") as scratch_dir:
+        snapshot_dir = Path(scratch_dir) / "snapshot"
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+        snapshot_prefix = f"{str(snapshot_dir).replace('\\', '/').rstrip('/')}/"
+        checkout = subprocess.run(
+            ["git", "-C", str(repo_root), "checkout-index", f"--prefix={snapshot_prefix}", "--stdin", "-z"],
+            input=staged_files.stdout,
+            check=False,
+            capture_output=True,
+        )
+        if checkout.returncode != 0:
+            return "Failed to prepare staged content for AI pre-commit secret scan."
+
+        scan = subprocess.run(
+            [
+                gitleaks,
+                "dir",
+                str(snapshot_dir),
+                *_gitleaks_config_args(repo_root),
+                "--no-banner",
+                "--redact=100",
+                "--exit-code",
+                "1",
+            ],
+            check=False,
+            capture_output=True,
+        )
+        if scan.returncode != 0:
+            return "Potential secrets were detected in staged changes. Commit was blocked before secrets entered Git history."
+    return None
+
+
+def _get_unpushed_log_options(repo_root: Path) -> tuple[list[str], str] | None:
+    upstream = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    upstream_name = upstream.stdout.strip() if upstream.returncode == 0 else ""
+    if upstream_name:
+        rev_list_args = [f"{upstream_name}..HEAD"]
+        log_opts = f"{upstream_name}..HEAD"
+    else:
+        rev_list_args = ["HEAD", "--not", "--remotes"]
+        log_opts = "HEAD --not --remotes"
+
+    commits = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-list", *rev_list_args],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if commits.returncode != 0 or not commits.stdout.strip():
+        return None
+    return rev_list_args, log_opts
+
+
+def _run_unpushed_secret_scan(repo_root: Path, *, action_name: str) -> str | None:
+    gitleaks = _resolve_gitleaks()
+    if gitleaks is None:
+        return f"gitleaks is required before AI can run {action_name}."
+
+    log_options = _get_unpushed_log_options(repo_root)
+    if log_options is None:
+        return None
+
+    _, log_opts_text = log_options
+    scan = subprocess.run(
+        [
+            gitleaks,
+            "git",
+            str(repo_root),
+            "--log-opts",
+            log_opts_text,
+            *_gitleaks_config_args(repo_root),
+            "--no-banner",
+            "--redact=100",
+            "--exit-code",
+            "1",
+        ],
+        check=False,
+        capture_output=True,
+    )
+    if scan.returncode != 0:
+        return f"Potential secrets were detected in commits that may be published. {action_name} was blocked."
+    return None
+
+
 def _evaluate_file_write(payload: HookPayload, *, policy: GuardPolicy, context: EvaluationContext) -> GuardDecision:
     home = context.home or _default_home()
     resolution_base = context.cwd or payload.cwd or str(ROOT)
@@ -756,12 +909,27 @@ def _evaluate_shell(payload: HookPayload, *, policy: GuardPolicy, context: Evalu
     if _rule_enabled(policy, "git-push-force") and has_git_push_force:
         return deny(f"Blocked potentially destructive command: {command}")
 
-    if _rule_enabled(policy, "git-commit-secret-scan") and is_git_commit and context.staged_secret_scan_reason:
-        return deny(context.staged_secret_scan_reason)
-    if _rule_enabled(policy, "git-push-secret-scan") and is_git_push and context.unpushed_secret_scan_reason_for_push:
-        return deny(context.unpushed_secret_scan_reason_for_push)
-    if _rule_enabled(policy, "gh-pr-create-secret-scan") and is_gh_pr_create and context.unpushed_secret_scan_reason_for_pr:
-        return deny(context.unpushed_secret_scan_reason_for_pr)
+    resolution_base = context.cwd or payload.cwd or str(ROOT)
+    secret_scan_repo_root = _resolve_secret_scan_repo_root(context.repo_root, resolution_base)
+
+    if _rule_enabled(policy, "git-commit-secret-scan") and is_git_commit:
+        secret_scan_reason = context.staged_secret_scan_reason
+        if secret_scan_reason is None and secret_scan_repo_root is not None:
+            secret_scan_reason = _run_staged_secret_scan(secret_scan_repo_root)
+        if secret_scan_reason is not None:
+            return deny(secret_scan_reason)
+    if _rule_enabled(policy, "git-push-secret-scan") and is_git_push:
+        secret_scan_reason = context.unpushed_secret_scan_reason_for_push
+        if secret_scan_reason is None and secret_scan_repo_root is not None:
+            secret_scan_reason = _run_unpushed_secret_scan(secret_scan_repo_root, action_name="git push")
+        if secret_scan_reason is not None:
+            return deny(secret_scan_reason)
+    if _rule_enabled(policy, "gh-pr-create-secret-scan") and is_gh_pr_create:
+        secret_scan_reason = context.unpushed_secret_scan_reason_for_pr
+        if secret_scan_reason is None and secret_scan_repo_root is not None:
+            secret_scan_reason = _run_unpushed_secret_scan(secret_scan_repo_root, action_name="gh pr create")
+        if secret_scan_reason is not None:
+            return deny(secret_scan_reason)
 
     for rule in policy.deny_command_rules:
         if rule.kind != "pattern" or rule.pattern is None:
