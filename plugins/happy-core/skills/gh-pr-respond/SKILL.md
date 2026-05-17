@@ -217,9 +217,9 @@ git commit -m "fix: パラメータ化クエリでSQLインジェクションを
 ```bash
 # まず変更範囲に対応する focused checks を実行
 # なぜ：レビュー修正は差分が小さいことが多く、最短の確認を回しやすくするため
-pytest tests/test_target.py
-npm run lint -- src/file.ts
-uv run python plugins/happy-core/skills/copilot-authoring/_skill/_eval/scripts/validate_skill.py plugins/happy-core/skills/gh-pr-respond/SKILL.md --level L1
+pytest path/to/focused_test.py
+npm run lint -- path/to/touched-file.ts
+python path/to/validator.py path/to/changed-definition --level L1
 
 # 条件に当てはまる場合のみ full quality gate を追加
 npm test        # または: pytest, dotnet test, go test ./...
@@ -228,8 +228,8 @@ npm run lint    # または: flake8, dotnet format --verify-no-changes
 
 ```powershell
 # PowerShell: まず focused checks
-uv run python -m pytest -q tests\test_target.py
-uv run python plugins\happy-core\skills\copilot-authoring\_skill\_eval\scripts\validate_skill.py plugins\happy-core\skills\gh-pr-respond\SKILL.md --level L1
+python -m pytest -q path\to\focused_test.py
+python path\to\validator.py path\to\changed-definition --level L1
 
 # 条件に当てはまる場合のみ full checks
 npm test
