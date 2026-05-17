@@ -699,7 +699,9 @@ def _run_staged_secret_scan(repo_root: Path) -> str | None:
         check=False,
         capture_output=True,
     )
-    if staged_files.returncode != 0 or not staged_files.stdout:
+    if staged_files.returncode != 0:
+        return "Failed to enumerate staged files for AI pre-commit secret scan."
+    if not staged_files.stdout:
         return None
 
     with tempfile.TemporaryDirectory(prefix="copilot-secret-scan-") as scratch_dir:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -247,6 +248,27 @@ def test_engine_denies_commit_when_staged_secret_scan_finds_secrets(
         "permissionDecision": "deny",
         "permissionDecisionReason": "Potential secrets were detected in staged changes. Commit was blocked before secrets entered Git history.",
     }
+
+
+def test_run_staged_secret_scan_denies_when_git_diff_name_only_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(guard_policy, "_resolve_gitleaks", lambda: "gitleaks")
+
+    results = iter(
+        [
+            subprocess.CompletedProcess(args=["git"], returncode=1, stdout=b"", stderr=b""),
+            subprocess.CompletedProcess(args=["git"], returncode=1, stdout=b"", stderr=b"fatal"),
+        ]
+    )
+
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        return next(results)
+
+    monkeypatch.setattr(guard_policy.subprocess, "run", fake_run)
+
+    assert (
+        guard_policy._run_staged_secret_scan(ROOT)
+        == "Failed to enumerate staged files for AI pre-commit secret scan."
+    )
 
 
 def test_engine_denies_push_when_unpushed_secret_scan_finds_secrets(

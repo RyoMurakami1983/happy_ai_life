@@ -869,6 +869,39 @@ def test_guard_pre_tool_denies_when_python_runtime_is_unavailable(tmp_path: Path
     assert "Python 3.10+" in response["permissionDecisionReason"]
 
 
+def test_guard_pre_tool_denies_when_engine_process_times_out(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    init = subprocess.run(["git", "init"], cwd=repo, check=False, capture_output=True, text=True)
+    assert init.returncode == 0, init.stdout + init.stderr
+
+    hooks_dir = repo / ".github" / "hooks" / "scripts"
+    hooks_dir.mkdir(parents=True)
+    script = hooks_dir / "guard_pre_tool.ps1"
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", script)
+
+    fake_python = tmp_path / "fake-python.cmd"
+    fake_python.write_text(
+        "@echo off\n"
+        "if /I \"%~1\"==\"-c\" exit /b 0\n"
+        ":loop\n"
+        "goto loop\n",
+        encoding="utf-8",
+    )
+
+    result = _invoke_guard_pre_tool_script(
+        script,
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+        env={"HAPPY_AI_LIFE_PYTHON": str(fake_python)},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Timed out while running the shared guard policy engine" in response["permissionDecisionReason"]
+
+
 def test_guard_pre_tool_blocks_ai_git_commit_combined_no_verify_short_flags(tmp_path: Path) -> None:
     result = _invoke_guard_pre_tool(
         {"toolName": "powershell", "toolArgs": {"command": "git commit -nam test"}},

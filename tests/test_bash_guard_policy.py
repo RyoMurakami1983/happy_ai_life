@@ -145,6 +145,12 @@ def test_bash_guard_script_avoids_mapfile_for_bash32_compatibility() -> None:
     assert "mapfile" not in content
 
 
+def test_bash_guard_script_uses_portable_mktemp_template() -> None:
+    content = GUARD_SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert 'mktemp "${TMPDIR:-/tmp}/happy-ai-life-guard.XXXXXX"' in content
+
+
 def test_bash_guard_pre_tool_uses_policy_shell_tool_names_cross_platform(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     _init_repo_with_bash_guard(repo)
@@ -278,6 +284,40 @@ def test_bash_guard_pre_tool_denies_when_python_runtime_is_unavailable(tmp_path:
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "deny"
     assert "Python 3.10+" in response["permissionDecisionReason"]
+
+
+def test_bash_guard_pre_tool_denies_when_mktemp_fails(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+    script = repo / ".github" / "hooks" / "scripts" / "guard_pre_tool.sh"
+    script.write_text(
+        script.read_text(encoding="utf-8").replace(
+            """create_temp_file() {
+  local temp_path
+  if ! temp_path="$(mktemp "${TMPDIR:-/tmp}/happy-ai-life-guard.XXXXXX")"; then
+    return 1
+  fi
+  [[ -n "${temp_path}" ]] || return 1
+  printf '%s\\n' "${temp_path}"
+}
+""",
+            """create_temp_file() {
+  return 1
+}
+""",
+        ),
+        encoding="utf-8",
+    )
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "temporary file" in response["permissionDecisionReason"]
 
 
 def test_bash_guard_pre_tool_denies_when_engine_times_out(tmp_path: Path) -> None:

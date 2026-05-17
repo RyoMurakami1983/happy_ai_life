@@ -30,6 +30,15 @@ write_failure_log() {
   printf '%s %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${message}" >> "${HOME}/.copilot/guard-failures.log" 2>/dev/null || true
 }
 
+create_temp_file() {
+  local temp_path
+  if ! temp_path="$(mktemp "${TMPDIR:-/tmp}/happy-ai-life-guard.XXXXXX")"; then
+    return 1
+  fi
+  [[ -n "${temp_path}" ]] || return 1
+  printf '%s\n' "${temp_path}"
+}
+
 deny() {
   local reason="$1"
   local escaped
@@ -195,8 +204,15 @@ if ! resolve_python_command; then
 fi
 
 policy_path="$(resolve_policy_path || true)"
-stderr_file="$(mktemp)"
-stdout_file="$(mktemp)"
+if ! stderr_file="$(create_temp_file)"; then
+  deny "Failed to create a temporary file while running the shared guard policy engine. Restore the synchronized guard runtime or sync again."
+  exit 0
+fi
+if ! stdout_file="$(create_temp_file)"; then
+  rm -f "${stderr_file}"
+  deny "Failed to create a temporary file while running the shared guard policy engine. Restore the synchronized guard runtime or sync again."
+  exit 0
+fi
 trap 'rm -f "${stderr_file}" "${stdout_file}"' EXIT
 
 declare -a engine_args=("${python_command[@]}" -X utf8 "${engine_path}" --hook-event "${hook_event}" --cwd "$(pwd -P)")

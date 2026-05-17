@@ -301,35 +301,45 @@ function Invoke-GuardEngine {
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo = $startInfo
     [void]$process.Start()
-    $process.StandardInput.Write($Raw)
-    $process.StandardInput.Close()
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $stderr = $process.StandardError.ReadToEnd()
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    try {
+        $process.StandardInput.Write($Raw)
+        $process.StandardInput.Close()
 
-    if (-not $process.WaitForExit(15000)) {
-        try {
-            $process.Kill()
-        }
-        catch {
+        if (-not $process.WaitForExit(15000)) {
+            try {
+                $process.Kill()
+            }
+            catch {
+            }
+            $process.WaitForExit()
+            [void]$stdoutTask.GetAwaiter().GetResult()
+            [void]$stderrTask.GetAwaiter().GetResult()
+
+            return [pscustomobject]@{
+                Succeeded = $false
+                Reason    = "Timed out while running the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."
+            }
         }
 
-        return [pscustomobject]@{
-            Succeeded = $false
-            Reason    = "Timed out while running the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."
+        $process.WaitForExit()
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        if ($process.ExitCode -ne 0) {
+            $summary = Get-StderrSummary -StderrText $stderr
+            $reason = "Failed to run the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."
+            if (-not [string]::IsNullOrWhiteSpace($summary)) {
+                $reason = "$reason stderr: $summary"
+            }
+            return [pscustomobject]@{
+                Succeeded = $false
+                Reason    = $reason
+            }
         }
     }
-
-    $process.WaitForExit()
-    if ($process.ExitCode -ne 0) {
-        $summary = Get-StderrSummary -StderrText $stderr
-        $reason = "Failed to run the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."
-        if (-not [string]::IsNullOrWhiteSpace($summary)) {
-            $reason = "$reason stderr: $summary"
-        }
-        return [pscustomobject]@{
-            Succeeded = $false
-            Reason    = $reason
-        }
+    finally {
+        $process.Dispose()
     }
 
     if ([string]::IsNullOrWhiteSpace($stdout)) {

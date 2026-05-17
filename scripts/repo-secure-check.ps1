@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 <#
 .SYNOPSIS
 Checks whether a target repository has the expected local safety valves and bootstrap assets.
@@ -186,6 +186,74 @@ function Test-CommandAvailable {
     return $false
 }
 
+function Test-WindowsAppsPath {
+    param([string]$PathValue)
+
+    return -not [string]::IsNullOrWhiteSpace($PathValue) -and $PathValue -match "[\\/]WindowsApps[\\/]"
+}
+
+function Test-PythonCandidate {
+    param(
+        [Parameter(Mandatory = $true)][string]$Executable,
+        [string[]]$PrefixArgs = @()
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Executable) -or (Test-WindowsAppsPath -PathValue $Executable)) {
+        return $false
+    }
+
+    if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) {
+        return $false
+    }
+
+    try {
+        & $Executable @PrefixArgs -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 2)" *> $null
+        return $LASTEXITCODE -eq 0
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-PythonRuntimeAvailable {
+    param([Parameter(Mandatory = $true)][string]$RepoRoot)
+
+    foreach ($candidatePath in @(
+        (Join-Path $RepoRoot ".venv\Scripts\python.exe"),
+        (Join-Path $RepoRoot ".venv\bin\python"),
+        (Join-Path $RepoRoot ".venv\bin\python3")
+    )) {
+        if (Test-PythonCandidate -Executable $candidatePath) {
+            return $true
+        }
+    }
+
+    foreach ($candidateName in @("python", "python3")) {
+        $candidate = Get-Command $candidateName -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -eq $candidate) {
+            continue
+        }
+
+        $candidatePath = [string]$candidate.Source
+        if (Test-PythonCandidate -Executable $candidatePath) {
+            return $true
+        }
+    }
+
+    $pyLauncher = Get-Command py -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -ne $pyLauncher) {
+        $pyPath = [string]$pyLauncher.Source
+        if (Test-PythonCandidate -Executable $pyPath -PrefixArgs @("-3.10")) {
+            return $true
+        }
+        if (Test-PythonCandidate -Executable $pyPath -PrefixArgs @("-3")) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 function Get-HookCommandVariant {
     param([Parameter(Mandatory = $true)]$HookEntry)
 
@@ -296,7 +364,10 @@ function Add-RequiredTool {
 }
 
 function Get-ToolDependencyState {
-    param([Parameter(Mandatory = $true)][string]$HooksPath)
+    param(
+        [Parameter(Mandatory = $true)][string]$HooksPath,
+        [Parameter(Mandatory = $true)][string]$TargetRepoPath
+    )
 
     $requiredTools = New-Object System.Collections.Generic.List[string]
     $missingTools = New-Object System.Collections.Generic.List[string]
@@ -338,7 +409,7 @@ function Get-ToolDependencyState {
     $safetyGuardPath = Join-Path $HooksPath "safety-guard.json"
     $safetyGuardCommand = Get-FirstHookCommandVariant -ConfigPath $safetyGuardPath -EventName "preToolUse"
     if ($null -ne $safetyGuardCommand -and $safetyGuardCommand.command -match "guard_pre_tool\.(ps1|sh)") {
-        $pythonAvailable = Test-CommandAvailable -Names @("python3", "python", "py")
+        $pythonAvailable = Test-PythonRuntimeAvailable -RepoRoot $TargetRepoPath
         $pythonToolParams = @{
             RequiredTools = $requiredTools
             MissingTools  = $missingTools
@@ -468,7 +539,7 @@ elseif ($targetRepoPath -eq $sourceRootPath -and -not (Test-Path -LiteralPath $e
 }
 $gitHookIssues = @(Get-RequiredGitHookIssues -Path $effectiveGitHooksPath)
 $gitHooksOk = $gitHookIssues.Count -eq 0
-$toolDependencyState = Get-ToolDependencyState -HooksPath $copilotHooksPath
+$toolDependencyState = Get-ToolDependencyState -HooksPath $copilotHooksPath -TargetRepoPath $targetRepoPath
 $toolDependenciesOk = $toolDependencyState.missing.Count -eq 0
 $toolDependencyDetails = if ($toolDependenciesOk) {
     "必要ツール: $($toolDependencyState.required -join ', ')。現在の host で必要な依存は利用可能です。"

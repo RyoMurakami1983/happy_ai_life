@@ -485,6 +485,47 @@ def test_repo_secure_check_requires_python_for_windows_powershell_variant(tmp_pa
     assert report["toolDependencies"]["missing"] == ["python3 or python or py -3"]
 
 
+def test_repo_secure_check_rejects_python_older_than_310(tmp_path: Path) -> None:
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    (target_repo / ".github" / "hooks").mkdir(parents=True)
+    (target_repo / ".github" / "hooks" / "safety-guard.json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "hooks": {
+                    "preToolUse": [
+                        {
+                            "type": "command",
+                            "bash": "bash .github/hooks/scripts/guard_pre_tool.sh",
+                            "powershell": "if ($PSVersionTable.PSEdition -eq 'Core') { & '.github\\hooks\\scripts\\guard_pre_tool.ps1' } elseif (Get-Command pwsh -ErrorAction SilentlyContinue) { & pwsh -NoProfile -File '.github\\hooks\\scripts\\guard_pre_tool.ps1' } else { & '.github\\hooks\\scripts\\guard_pre_tool.ps1' }",
+                        }
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (target_repo / ".github" / "workflows").mkdir(parents=True)
+    (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo)
+    _git(target_repo, "config", "--local", "core.hooksPath", ".githooks")
+
+    env = _build_tool_env(target_repo)
+    bin_dir = Path(env["PATH"])
+    _write_cmd_shim(bin_dir, "python", "if /I \"%~1\"==\"-c\" exit /b 2\n")
+
+    report = _run_check_with_env(target_repo, env=env)
+
+    assert report["isGitRepo"] is True
+    assert "toolDependencies" in report["missing"]
+    assert report["toolDependencies"]["required"] == ["git", "gitleaks", "pwsh or powershell", "python3 or python or py -3"]
+    assert report["toolDependencies"]["missing"] == ["python3 or python or py -3"]
+
+
 def test_repo_secure_check_reports_missing_git_dependency(tmp_path: Path) -> None:
     target_repo = tmp_path / "target"
     target_repo.mkdir()
