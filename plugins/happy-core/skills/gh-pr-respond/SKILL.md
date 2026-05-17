@@ -205,14 +205,14 @@ git commit -m "fix: パラメータ化クエリでSQLインジェクションを
 
 次のいずれかに当てはまる場合は、focused checks だけで止めず **full quality gate** を再実行します。
 
-- protected path（例: `.github/hooks/`、`.githooks/`、`.github/workflows/`、`.github/copilot-instructions.md`、`docs/TRUST_BOUNDARY.md`、`docs/HOOKS_GOVERNANCE.md`）、workflow、hook、policy、shared script / shared library など、配布境界や横断利用される資産を変更した
-- 品質ゲートや PR レビュー運用を定義するファイル自体（例: `.github/copilot-instructions.md`、`plugins/**/skills/*/SKILL.md`）を変更した
+- protected path（例: workflow 定義、hook 定義、repo-wide instruction file、trust-boundary 文書）、workflow、hook、policy、shared script / shared library など、配布境界や横断利用される資産を変更した
+- 品質ゲートや PR レビュー運用を定義するファイル自体（例: repo-wide instruction file、reviewer-facing skill definition）を変更した
 - 変更範囲が複数レイヤーにまたがり、影響範囲を第三者が局所差分だけでは判断しにくい
 - focused checks で拾えない結合点や代表統合ケースに影響する
 - ユーザーが full test / full lint / full gate を明示的に要求した
 - PR をマージ判断へ引き渡す直前の最終確認である
 
-この repo では、repo-wide guidance の「PR 前は full quality gate を維持する」を弱めません。ここでの既定変更は、**レビュー修正の反復では focused checks を先に回し、必要条件で full gate を足す**ための運用整理です。とくに、品質ゲートやレビュー運用の定義そのものを変えるときは、meta-stability を守るため full quality gate 側へ倒します。
+利用先 repo に「PR 前は full quality gate を維持する」等の repo-wide guidance がある場合、それを弱めません。ここでの既定変更は、**レビュー修正の反復では focused checks を先に回し、必要条件で full gate を足す**ための運用整理です。とくに、品質ゲートやレビュー運用の定義そのものを変えるときは、meta-stability を守るため full quality gate 側へ倒します。
 
 ```bash
 # まず変更範囲に対応する focused checks を実行
