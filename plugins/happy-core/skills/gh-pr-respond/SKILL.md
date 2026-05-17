@@ -205,13 +205,14 @@ git commit -m "fix: パラメータ化クエリでSQLインジェクションを
 
 次のいずれかに当てはまる場合は、focused checks だけで止めず **full quality gate** を再実行します。
 
-- protected path、workflow、hook、policy、shared script / shared library など、配布境界や横断利用される資産を変更した
+- protected path（例: `.github/hooks/`、`.githooks/`、`.github/workflows/`、`.github/copilot-instructions.md`、`docs/TRUST_BOUNDARY.md`、`docs/HOOKS_GOVERNANCE.md`）、workflow、hook、policy、shared script / shared library など、配布境界や横断利用される資産を変更した
+- 品質ゲートや PR レビュー運用を定義するファイル自体（例: `.github/copilot-instructions.md`、`plugins/**/skills/*/SKILL.md`）を変更した
 - 変更範囲が複数レイヤーにまたがり、影響範囲を第三者が局所差分だけでは判断しにくい
 - focused checks で拾えない結合点や代表統合ケースに影響する
 - ユーザーが full test / full lint / full gate を明示的に要求した
 - PR をマージ判断へ引き渡す直前の最終確認である
 
-この repo では、repo-wide guidance の「PR 前は full quality gate を維持する」を弱めません。ここでの既定変更は、**レビュー修正の反復では focused checks を先に回し、必要条件で full gate を足す**ための運用整理です。
+この repo では、repo-wide guidance の「PR 前は full quality gate を維持する」を弱めません。ここでの既定変更は、**レビュー修正の反復では focused checks を先に回し、必要条件で full gate を足す**ための運用整理です。とくに、品質ゲートやレビュー運用の定義そのものを変えるときは、meta-stability を守るため full quality gate 側へ倒します。
 
 ```bash
 # まず変更範囲に対応する focused checks を実行
@@ -383,7 +384,7 @@ Remove-Item "$env:TEMP\rereview_summary.md"
 | あいさつや受領だけで、実質更新がない | いいえ | 不要な reviewer ping を避けるため |
 | 以前の再レビュー依頼後にさらに新しいレビューが来た | まず Step 1 に戻る | 依頼を常に最新の作業に紐付けるため |
 
-すべてのレビューコメントに修正コミットまたは返信があり、今回必要な focused checks または full quality gate が通った状態で使用します。
+すべてのレビューコメントに修正コミットまたは返信があり、**今回の反復に必要な** focused checks または full quality gate が通った状態で使用します。**ただし、このまま人間のマージ判断へ引き渡す場合は、Step 8 に進む前に full quality gate を完了させます。**
 
 > **Values**: 成長の複利 / ニュートラル
 
@@ -394,7 +395,7 @@ Remove-Item "$env:TEMP\rereview_summary.md"
 ```markdown
 人間のマージ判断に引き渡せる状態:
 - レビューコメント対応済み
-- 検証を再実行しグリーン
+- full quality gate を再実行しグリーン
 - 再レビュー依頼済み
 - 次のレビューシグナル待ち、または人間のマージ判断へ引き渡し可能
 ```
@@ -432,7 +433,7 @@ Remove-Item "$env:TEMP\rereview_summary.md"
    修正方法: すべてのコメントに返信する。認識したうえでフォローアップIssueに延期する場合も。
 
 3. **差分が小さい review fix でも毎回 full checks を機械的に回す**
-   修正方法: まず focused checks を回し、protected path / workflow / hook / shared infra / 最終確認などの条件に当てはまるときだけ full quality gate を追加する。
+   修正方法: まず focused checks を回し、protected path / workflow / hook / shared infra / 品質ゲート定義ファイル / 最終確認などの条件に当てはまるときだけ full quality gate を追加する。
 
 4. **テスト実行なしで修正をプッシュする**
    修正方法: プッシュ前に、少なくとも差分に対応する focused checks を必ず実行する。full gate 条件に当てはまる場合は full quality gate まで進める。
@@ -501,7 +502,7 @@ A: いいえ。同じPRブランチに修正をプッシュしてください。
 A: コメントを認識し、`gh-issue-create` でフォローアップIssueを作成し、返信にリンクしてください。
 
 **Q: PR レビュー対応では毎回 full quality gate を回すべき？**
-A: いいえ。既定は変更範囲に対応する focused checks です。ただし、protected path / workflow / hook / shared infra / 最終確認などの条件に当てはまる場合は full quality gate を追加します。
+A: いいえ。既定は変更範囲に対応する focused checks です。ただし、protected path / workflow / hook / shared infra / 品質ゲート定義ファイル / 最終確認などの条件に当てはまる場合は full quality gate を追加します。
 
 **Q: このスキルは最初のPR作成を扱う？**
 A: いいえ。PR作成とレビュー待機には `gh-pr-create` を使ってください。標準ルートは implementation -> `gh-pr-create` -> レビューシグナル待ち -> このスキル -> 人間のマージ判断 です。
