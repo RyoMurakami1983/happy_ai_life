@@ -110,6 +110,9 @@ uv run ruff check .
 uv run ty check .
 ```
 
+`uv run pytest -q` は通常の開発ループ向けで、`slow` marker の付いた subprocess 統合テストを除外します。
+slow test は hook / sync / wrapper の境界そのものを変更したときに、対象を絞って明示実行します。
+
 ### 6. コミット
 
 Conventional Commits を使い、必要なら Co-authored-by trailer を付けます。
@@ -130,7 +133,7 @@ gh pr create
 | コマンド | 用途 |
 |----------|------|
 | `uv sync --dev` | 依存関係を入れる |
-| `uv run pytest -q` | test 実行 |
+| `uv run pytest -q` | 通常 test 実行（`slow` marker は除外） |
 | `uv run ruff check .` | lint |
 | `uv run ty check .` | 型確認 |
 | `uv run app.py` | launcher 起動 |
@@ -140,17 +143,24 @@ gh pr create
 ### test の例
 
 ```powershell
-# 全体
+# 通常の確認（slow marker は除外）
 uv run pytest -q
 
 # 単体ファイル
 uv run pytest -q tests/test_happy_env.py
+
+# slow 統合テストを明示実行
+uv run pytest -q -m slow tests/test_sync_to_home_whitelist.py
+
+# slow も含めた全収集を明示する場合
+uv run pytest -q -m "slow or not slow"
 
 # hook parity だけ確認
 uv run python -m pytest -q tests/test_git_hooks_secret_guard.py
 ```
 
 Git hooks 周りを変えた場合は、`quality.yml` の `hook-parity` job と同じく `tests/test_git_hooks_secret_guard.py` を先に流します。
+home sync / repo-scoped guard wrapper / PowerShell hook wrapper の境界を変えた場合は、関連する `slow` test を個別指定して確認します。
 
 ### 品質確認の例
 
