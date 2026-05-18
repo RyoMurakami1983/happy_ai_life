@@ -489,6 +489,68 @@ def test_run_staged_secret_scan_denies_when_git_diff_name_only_fails(monkeypatch
     )
 
 
+def test_run_staged_secret_scan_denies_when_checkout_index_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(guard_policy, "_resolve_gitleaks", lambda: "gitleaks")
+
+    results = iter(
+        [
+            subprocess.CompletedProcess(args=["git"], returncode=1, stdout=b"", stderr=b""),
+            subprocess.CompletedProcess(args=["git"], returncode=0, stdout=b"secret.txt\0", stderr=b""),
+        ]
+    )
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        if "checkout-index" in args:
+            raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS)
+        return next(results)
+
+    monkeypatch.setattr(guard_policy.subprocess, "run", fake_run)
+
+    assert (
+        guard_policy._run_staged_secret_scan(ROOT)
+        == "Timed out while preparing staged content for AI pre-commit secret scan."
+    )
+
+
+def test_run_staged_secret_scan_denies_when_gitleaks_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(guard_policy, "_resolve_gitleaks", lambda: "gitleaks")
+
+    results = iter(
+        [
+            subprocess.CompletedProcess(args=["git"], returncode=1, stdout=b"", stderr=b""),
+            subprocess.CompletedProcess(args=["git"], returncode=0, stdout=b"secret.txt\0", stderr=b""),
+            subprocess.CompletedProcess(args=["git"], returncode=0, stdout=b"", stderr=b""),
+        ]
+    )
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        if args[:2] == ["gitleaks", "dir"]:
+            raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS)
+        return next(results)
+
+    monkeypatch.setattr(guard_policy.subprocess, "run", fake_run)
+
+    assert (
+        guard_policy._run_staged_secret_scan(ROOT)
+        == "Timed out while scanning staged changes for secrets. Commit was blocked before secret scanning could complete."
+    )
+
+
+def test_run_unpushed_secret_scan_denies_when_gitleaks_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(guard_policy, "_resolve_gitleaks", lambda: "gitleaks")
+    monkeypatch.setattr(guard_policy, "_get_unpushed_log_options", lambda repo_root: (["origin/main..HEAD"], "origin/main..HEAD"))
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS)
+
+    monkeypatch.setattr(guard_policy.subprocess, "run", fake_run)
+
+    assert (
+        guard_policy._run_unpushed_secret_scan(ROOT, action_name="git push")
+        == "Timed out while scanning commits for secrets. git push was blocked before secret scanning could complete."
+    )
+
+
 def test_engine_denies_push_when_unpushed_secret_scan_finds_secrets(
     isolated_home: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

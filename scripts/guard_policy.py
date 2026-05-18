@@ -22,6 +22,7 @@ DEFAULT_POLICY_PATH = ROOT / "policy" / "guard-policy.json"
 MAX_MAINTENANCE_TTL = timedelta(minutes=120)
 HOME_PREFIXES = ("~/", "~\\", "$HOME/", "$HOME\\", "${HOME}/", "${HOME}\\", "$env:HOME/", "$env:HOME\\")
 WINDOWS_DRIVE_PATTERN = re.compile(r"^[a-zA-Z]:/")
+SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS = 12
 
 REQUIRED_SPECIALIZED_RULE_IDS = {
     "maintenance-mode-manual-only",
@@ -708,29 +709,37 @@ def _run_staged_secret_scan(repo_root: Path) -> str | None:
         snapshot_dir = Path(scratch_dir) / "snapshot"
         snapshot_dir.mkdir(parents=True, exist_ok=True)
         snapshot_prefix = f"{str(snapshot_dir).replace('\\', '/').rstrip('/')}/"
-        checkout = subprocess.run(
-            ["git", "-C", str(repo_root), "checkout-index", f"--prefix={snapshot_prefix}", "--stdin", "-z"],
-            input=staged_files.stdout,
-            check=False,
-            capture_output=True,
-        )
+        try:
+            checkout = subprocess.run(
+                ["git", "-C", str(repo_root), "checkout-index", f"--prefix={snapshot_prefix}", "--stdin", "-z"],
+                input=staged_files.stdout,
+                check=False,
+                capture_output=True,
+                timeout=SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return "Timed out while preparing staged content for AI pre-commit secret scan."
         if checkout.returncode != 0:
             return "Failed to prepare staged content for AI pre-commit secret scan."
 
-        scan = subprocess.run(
-            [
-                gitleaks,
-                "dir",
-                str(snapshot_dir),
-                *_gitleaks_config_args(repo_root),
-                "--no-banner",
-                "--redact=100",
-                "--exit-code",
-                "1",
-            ],
-            check=False,
-            capture_output=True,
-        )
+        try:
+            scan = subprocess.run(
+                [
+                    gitleaks,
+                    "dir",
+                    str(snapshot_dir),
+                    *_gitleaks_config_args(repo_root),
+                    "--no-banner",
+                    "--redact=100",
+                    "--exit-code",
+                    "1",
+                ],
+                check=False,
+                capture_output=True,
+                timeout=SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return "Timed out while scanning staged changes for secrets. Commit was blocked before secret scanning could complete."
         if scan.returncode != 0:
             return "Potential secrets were detected in staged changes. Commit was blocked before secrets entered Git history."
     return None
@@ -776,22 +785,26 @@ def _run_unpushed_secret_scan(repo_root: Path, *, action_name: str) -> str | Non
         return None
 
     _, log_opts_text = log_options
-    scan = subprocess.run(
-        [
-            gitleaks,
-            "git",
-            str(repo_root),
-            "--log-opts",
-            log_opts_text,
-            *_gitleaks_config_args(repo_root),
-            "--no-banner",
-            "--redact=100",
-            "--exit-code",
-            "1",
-        ],
-        check=False,
-        capture_output=True,
-    )
+    try:
+        scan = subprocess.run(
+            [
+                gitleaks,
+                "git",
+                str(repo_root),
+                "--log-opts",
+                log_opts_text,
+                *_gitleaks_config_args(repo_root),
+                "--no-banner",
+                "--redact=100",
+                "--exit-code",
+                "1",
+            ],
+            check=False,
+            capture_output=True,
+            timeout=SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return f"Timed out while scanning commits for secrets. {action_name} was blocked before secret scanning could complete."
     if scan.returncode != 0:
         return f"Potential secrets were detected in commits that may be published. {action_name} was blocked."
     return None

@@ -112,7 +112,7 @@ test_python_candidate() {
 
 resolve_python_override() {
   local override="$1"
-  local candidate_path
+  local candidate_path override_basename
   [[ -n "${override}" ]] || return 1
 
   case "${override}" in
@@ -129,19 +129,25 @@ resolve_python_override() {
     return 1
   fi
   candidate_path="$(command -v "${override}")"
-  if [[ "$(basename -- "${override}")" == "py" ]]; then
-    if test_python_candidate "${candidate_path}" -3.10; then
-      python_command=("${candidate_path}" "-3.10")
-      return 0
-    fi
-    if test_python_candidate "${candidate_path}" -3; then
-      python_command=("${candidate_path}" "-3")
-      return 0
-    fi
-  elif test_python_candidate "${candidate_path}"; then
-    python_command=("${candidate_path}")
-    return 0
-  fi
+  override_basename="$(basename -- "${override}")"
+  case "${override_basename}" in
+    [Pp][Yy]|[Pp][Yy].[Ee][Xx][Ee])
+      if test_python_candidate "${candidate_path}" -3.10; then
+        python_command=("${candidate_path}" "-3.10")
+        return 0
+      fi
+      if test_python_candidate "${candidate_path}" -3; then
+        python_command=("${candidate_path}" "-3")
+        return 0
+      fi
+      ;;
+    *)
+      if test_python_candidate "${candidate_path}"; then
+        python_command=("${candidate_path}")
+        return 0
+      fi
+      ;;
+  esac
 
   return 1
 }
@@ -194,6 +200,18 @@ resolve_python_command() {
   fi
 
   return 1
+}
+
+is_timeout_status() {
+  local status="$1"
+  case "${status}" in
+    124|137|143)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 run_engine_with_timeout() {
@@ -267,7 +285,7 @@ else
   engine_status=$?
 fi
 if [[ ${engine_status} -ne 0 ]]; then
-  if [[ ${engine_status} -eq 124 ]]; then
+  if is_timeout_status "${engine_status}"; then
     deny "Timed out while running the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."
     exit 0
   fi

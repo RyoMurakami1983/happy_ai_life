@@ -155,6 +155,20 @@ def test_bash_guard_script_uses_portable_mktemp_template() -> None:
     assert 'mktemp "${TMPDIR:-/tmp}/happy-ai-life-guard.XXXXXX"' in content
 
 
+def test_bash_guard_script_treats_common_timeout_exit_codes_as_timeout() -> None:
+    content = GUARD_SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert "is_timeout_status" in content
+    assert "124|137|143" in content
+
+
+def test_bash_guard_script_accepts_py_exe_override_as_launcher() -> None:
+    content = GUARD_SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert "[Pp][Yy].[Ee][Xx][Ee]" in content
+    assert 'test_python_candidate "${candidate_path}" -3.10' in content
+
+
 def test_bash_guard_pre_tool_uses_policy_shell_tool_names_cross_platform(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     _init_repo_with_bash_guard(repo)
