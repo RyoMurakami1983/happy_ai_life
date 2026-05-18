@@ -38,7 +38,9 @@ uv run ruff check .
 uv run ty check .
 ```
 
-開発中は変更範囲に合う focused test を先に実行してよい。既存 PR のレビュー対応では、まず差分に対応する focused checks を既定とし、影響範囲が広い変更、`.github/copilot-instructions.md` や reviewer-facing skill 定義のような品質ゲート/運用定義ファイルの変更、またはマージ前最終確認で full quality gate を追加します。ただし PR をマージ判断へ引き渡す前は full quality gate を維持します。品質ゲートの詳細は `.github/workflows/quality.yml` と `docs/QUALITY_GATES.md` を参照します。
+`uv run pytest -q` は既定で `slow` marker を除外します。subprocess-heavy な sync / hook / wrapper 統合テストまで含める true full gate が必要な場合は、ユーザー承認のうえで `uv run pytest -q -m "slow or not slow"` を明示実行します。
+
+開発中は変更範囲に合う focused test を先に実行してよい。既存 PR のレビュー対応では、まず差分に対応する focused checks を既定とし、影響範囲が広い変更、`.github/copilot-instructions.md` や reviewer-facing skill 定義のような品質ゲート/運用定義ファイルの変更、またはマージ前最終確認で必要な品質ゲートを追加します。ただし PR をマージ判断へ引き渡す前は、`slow` を含む true full gate が必要かを差分に応じて明示判断します。品質ゲートの詳細は `.github/workflows/quality.yml` と `docs/QUALITY_GATES.md` を参照します。
 
 ### guard 変更時のテスト方針
 

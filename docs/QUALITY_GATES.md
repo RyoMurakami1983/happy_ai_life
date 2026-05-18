@@ -12,6 +12,28 @@
 
 merge 前にすべて通す前提です。
 
+## pytest の slow marker
+
+`uv run pytest -q` は既定で `slow` marker を除外します。これは通常の開発ループと PR レビュー対応を速く回すための既定で、必要な確認を削除する意味ではありません。
+
+slow test は subprocess-heavy な sync / hook / wrapper 統合テストです。次のような変更では、関連する slow test を個別指定して実行します。
+
+1. home sync の配布境界を変えたとき
+2. repo-scoped hook wrapper の接続・環境変数・応答形式を変えたとき
+3. PowerShell / Bash の wrapper 自体の fail-closed 境界を変えたとき
+
+[Windows: PowerShell]
+```powershell
+# 既定: slow は除外
+uv run pytest -q
+
+# 関連 slow test を明示実行
+uv run pytest -q -m slow tests/test_sync_to_home_whitelist.py
+
+# true full gate が必要な場合（ユーザー承認後）
+uv run pytest -q -m "slow or not slow"
+```
+
 ## gitleaks
 
 ### 何を検査するか
