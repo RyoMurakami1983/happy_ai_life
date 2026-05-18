@@ -145,6 +145,12 @@ def test_bash_guard_script_avoids_mapfile_for_bash32_compatibility() -> None:
     assert "mapfile" not in content
 
 
+def test_bash_guard_script_avoids_bash4_lowercase_expansion_for_bash32_compatibility() -> None:
+    content = GUARD_SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert ",," not in content
+
+
 def test_bash_guard_script_uses_portable_mktemp_template() -> None:
     content = GUARD_SCRIPT_PATH.read_text(encoding="utf-8")
 

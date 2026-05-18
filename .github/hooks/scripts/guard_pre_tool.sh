@@ -97,8 +97,8 @@ resolve_policy_path() {
 }
 
 is_windows_apps_path() {
-  local lowered="${1,,}"
-  [[ "${lowered}" == *windowsapps* ]]
+  local candidate="${1:-}"
+  [[ "${candidate}" == *[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]* ]]
 }
 
 test_python_candidate() {
