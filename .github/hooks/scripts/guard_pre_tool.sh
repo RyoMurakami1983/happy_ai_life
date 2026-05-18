@@ -110,13 +110,48 @@ test_python_candidate() {
   "${executable}" "$@" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 2)' >/dev/null 2>&1
 }
 
+resolve_python_override() {
+  local override="$1"
+  local candidate_path
+  [[ -n "${override}" ]] || return 1
+
+  case "${override}" in
+    */*|*\\*)
+      if test_python_candidate "${override}"; then
+        python_command=("${override}")
+        return 0
+      fi
+      return 1
+      ;;
+  esac
+
+  if ! command -v "${override}" >/dev/null 2>&1; then
+    return 1
+  fi
+  candidate_path="$(command -v "${override}")"
+  if [[ "$(basename -- "${override}")" == "py" ]]; then
+    if test_python_candidate "${candidate_path}" -3.10; then
+      python_command=("${candidate_path}" "-3.10")
+      return 0
+    fi
+    if test_python_candidate "${candidate_path}" -3; then
+      python_command=("${candidate_path}" "-3")
+      return 0
+    fi
+  elif test_python_candidate "${candidate_path}"; then
+    python_command=("${candidate_path}")
+    return 0
+  fi
+
+  return 1
+}
+
 declare -a python_command=()
 
 resolve_python_command() {
   local override candidate_path py_path
   override="${HAPPY_AI_LIFE_PYTHON:-}"
-  if [[ -n "${override}" ]] && test_python_candidate "${override}"; then
-    python_command=("${override}")
+  if [[ -n "${override}" ]] && resolve_python_override "${override}"; then
     return 0
   fi
 

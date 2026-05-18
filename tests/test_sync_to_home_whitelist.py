@@ -862,6 +862,30 @@ def test_guard_pre_tool_denies_when_python_runtime_is_unavailable(tmp_path: Path
     assert "Python 3.10+" in response["permissionDecisionReason"]
 
 
+def test_guard_pre_tool_accepts_python_override_command_name(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    hooks_dir = repo / ".github" / "hooks" / "scripts"
+    hooks_dir.mkdir(parents=True)
+    script = hooks_dir / "guard_pre_tool.ps1"
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", script)
+    python_path = Path(sys.executable)
+
+    result = _invoke_guard_pre_tool_script(
+        script,
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+        env={
+            "HAPPY_AI_LIFE_PYTHON": python_path.name,
+            "PATH": f"{python_path.parent}{os.pathsep}{os.environ.get('PATH', '')}",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+    assert result.stderr == ""
+
+
 def test_guard_pre_tool_timeout_branch_is_fail_closed_without_real_wait() -> None:
     content = (ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1").read_text(encoding="utf-8")
 

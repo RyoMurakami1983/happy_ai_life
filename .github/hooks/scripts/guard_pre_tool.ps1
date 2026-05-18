@@ -177,12 +177,54 @@ function Test-PythonCandidate {
     }
 }
 
+function Resolve-PythonOverride {
+    param(
+        [Parameter(Mandatory = $true)][string]$Override
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Override)) {
+        return $null
+    }
+
+    if ($Override -match '[\\/]') {
+        if (Test-PythonCandidate -Executable $Override) {
+            return New-PythonCommandSpec -Executable $Override
+        }
+        return $null
+    }
+
+    $candidate = Get-Command $Override -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -eq $candidate) {
+        return $null
+    }
+
+    $candidatePath = [string]$candidate.Source
+    if ([System.IO.Path]::GetFileNameWithoutExtension($Override) -eq "py") {
+        if (Test-PythonCandidate -Executable $candidatePath -PrefixArgs @("-3.10")) {
+            return New-PythonCommandSpec -Executable $candidatePath -PrefixArgs @("-3.10")
+        }
+        if (Test-PythonCandidate -Executable $candidatePath -PrefixArgs @("-3")) {
+            return New-PythonCommandSpec -Executable $candidatePath -PrefixArgs @("-3")
+        }
+        return $null
+    }
+
+    if (Test-PythonCandidate -Executable $candidatePath) {
+        return New-PythonCommandSpec -Executable $candidatePath
+    }
+
+    return $null
+}
+
 function Resolve-PythonCommand {
     $layoutRoot = Resolve-LayoutRoot
     $repoRoot = Resolve-RepoRoot -LayoutRoot $layoutRoot
     $override = [Environment]::GetEnvironmentVariable("HAPPY_AI_LIFE_PYTHON")
-    if (-not [string]::IsNullOrWhiteSpace($override) -and (Test-PythonCandidate -Executable $override)) {
-        return New-PythonCommandSpec -Executable $override
+    if (-not [string]::IsNullOrWhiteSpace($override)) {
+        $overrideCommand = Resolve-PythonOverride -Override $override
+        if ($null -ne $overrideCommand) {
+            return $overrideCommand
+        }
     }
 
     $candidatePaths = New-Object System.Collections.Generic.List[string]

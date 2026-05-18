@@ -218,6 +218,25 @@ def test_bash_guard_pre_tool_denies_when_python_runtime_is_unavailable(tmp_path:
     assert "Python 3.10+" in response["permissionDecisionReason"]
 
 
+def test_bash_guard_pre_tool_accepts_python_override_command_name(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo_with_bash_guard(repo)
+    python_path = Path(sys.executable)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+        env={
+            "HAPPY_AI_LIFE_PYTHON": python_path.name,
+            "PATH": f"{python_path.parent}{os.pathsep}{os.environ.get('PATH', '')}",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == ""
+    assert result.stderr == ""
+
+
 def test_bash_guard_pre_tool_denies_when_mktemp_fails(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     _init_repo_with_bash_guard(repo)
