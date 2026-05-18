@@ -31,4 +31,8 @@ extra-paths = [
 exclude = ["plugins/**"]
 
 [tool.pytest.ini_options]
+addopts = ["-m", "not slow"]
+markers = [
+    "slow: subprocess-heavy integration checks that must be run explicitly",
+]
 norecursedirs = ["archive"]

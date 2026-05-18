@@ -4,6 +4,7 @@ import json
 import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -58,6 +59,14 @@ def _write_maintenance_state(home_root: Path, *, created_at: datetime | None = N
         encoding="utf-8",
     )
     return state_path
+
+
+def _write_policy(policy_path: Path, policy: dict[str, Any]) -> None:
+    policy_path.write_text(json.dumps(policy), encoding="utf-8")
+
+
+def _default_policy() -> dict[str, Any]:
+    return cast(dict[str, Any], json.loads((ROOT / "policy" / "guard-policy.json").read_text(encoding="utf-8")))
 
 
 def test_engine_asks_for_protected_edit_path_from_stringified_json(isolated_home: Path) -> None:
@@ -182,6 +191,147 @@ def test_engine_denies_git_reset_hard(isolated_home: Path) -> None:
     }
 
 
+def test_engine_uses_policy_shell_tool_names(isolated_home: Path, tmp_path: Path) -> None:
+    policy = _default_policy()
+    policy["toolNames"]["shell"] = ["terminal"]
+    policy_path = tmp_path / "guard-policy.json"
+    _write_policy(policy_path, policy)
+
+    response = _evaluate(
+        {
+            "toolName": "terminal",
+            "toolArgs": {
+                "command": "git reset --hard HEAD",
+            },
+        },
+        home=isolated_home,
+        policy_path=policy_path,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": "Blocked potentially destructive command: git reset --hard HEAD",
+    }
+
+
+def test_engine_uses_policy_deny_rule_patterns(isolated_home: Path, tmp_path: Path) -> None:
+    policy = _default_policy()
+    for rule in policy["denyCommandRules"]:
+        if rule["id"] == "git-reset-hard":
+            rule["pattern"] = r"\bcustom-danger\b"
+            break
+    policy_path = tmp_path / "guard-policy.json"
+    _write_policy(policy_path, policy)
+
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": "custom-danger",
+            },
+        },
+        home=isolated_home,
+        policy_path=policy_path,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": "Blocked potentially destructive command: custom-danger",
+    }
+
+
+def test_engine_uses_policy_file_write_tool_names_and_path_properties(isolated_home: Path, tmp_path: Path) -> None:
+    policy = _default_policy()
+    policy["toolNames"]["fileWrite"] = ["rewrite"]
+    policy["pathPropertyNames"] = ["destination"]
+    policy_path = tmp_path / "guard-policy.json"
+    _write_policy(policy_path, policy)
+
+    response = _evaluate(
+        {
+            "toolName": "rewrite",
+            "toolArgs": {
+                "destination": "policy/guard-policy.json",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        home=isolated_home,
+        policy_path=policy_path,
+    )
+
+    assert response == {
+        "permissionDecision": "ask",
+        "permissionDecisionReason": "Protected path change detected for policy/guard-policy.json via rewrite. This path requires an atomic issue/PR and explicit human review.",
+    }
+
+
+def test_engine_normalizes_backslash_directory_policy_path(isolated_home: Path, tmp_path: Path) -> None:
+    policy = _default_policy()
+    policy["protectedPaths"].append(
+        {
+            "id": "backslash-hooks-directory",
+            "path": ".github\\hooks\\**",
+            "scope": "directory",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+    policy_path = tmp_path / "guard-policy.json"
+    _write_policy(policy_path, policy)
+
+    response = _evaluate(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": ".github/hooks/test.json",
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        home=isolated_home,
+        policy_path=policy_path,
+    )
+
+    assert response == {
+        "permissionDecision": "ask",
+        "permissionDecisionReason": "Protected path change detected for .github/hooks/** via edit. This path requires an atomic issue/PR and explicit human review.",
+    }
+
+
+def test_engine_normalizes_home_backslash_directory_policy_path(isolated_home: Path, tmp_path: Path) -> None:
+    policy = _default_policy()
+    policy["protectedPaths"].append(
+        {
+            "id": "home-backslash-hooks-directory",
+            "path": "$HOME\\.copilot\\hooks\\**",
+            "scope": "directory",
+            "action": "ask",
+            "maintenanceScope": "protectedPathEdit",
+        }
+    )
+    policy_path = tmp_path / "guard-policy.json"
+    _write_policy(policy_path, policy)
+
+    response = _evaluate(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": str(isolated_home / ".copilot" / "hooks" / "test.json"),
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        home=isolated_home,
+        policy_path=policy_path,
+    )
+
+    assert response == {
+        "permissionDecision": "ask",
+        "permissionDecisionReason": "Protected path change detected for $HOME/.copilot/hooks/** via edit. This path requires an atomic issue/PR and explicit human review.",
+    }
+
+
 def test_engine_denies_shell_maintenance_mode_command(isolated_home: Path) -> None:
     response = _evaluate(
         {
@@ -221,6 +371,74 @@ def test_engine_denies_git_hooks_no_verify_variants(isolated_home: Path, command
     assert response == {
         "permissionDecision": "deny",
         "permissionDecisionReason": "AI is not allowed to bypass Git hooks with --no-verify or git commit -n.",
+    }
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "ruff format .",
+        "git log --format=%H",
+        "rm -rf /tmp/build",
+        "sudo rm -rf /tmp/build",
+        "rm --recursive --force /tmp/build",
+    ],
+)
+def test_engine_allows_safe_command_neighbors(isolated_home: Path, command: str) -> None:
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": command,
+            },
+        },
+        home=isolated_home,
+    )
+
+    assert response is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cmd /c format c:",
+        "cmd.exe /c format c:",
+        "format c:",
+        "cmd /c del /s /q /f temp",
+        "cmd.exe /c del /q /f /s temp",
+        "cmd /c rm -fr /",
+        "cmd.exe /c rm -r -f .",
+        "sudo rm -fr /",
+        "doas rm -r -f .",
+        "cmd /c sudo rm -fr /",
+        "rm --recursive --force /",
+        "rm --force --recursive .",
+        "rm -r --force ./",
+        "cmd /c rm --recursive --force /",
+        'bash -c "rm -rf /"',
+        "sh -c 'rm --recursive --force /'",
+        'powershell -Command "rm -rf /"',
+        "del /s /q /f temp",
+        "del /q /f /s temp",
+        "rm -fr /",
+        "rm -r -f .",
+        "Remove-Item temp.txt -Recurse -Force",
+    ],
+)
+def test_engine_blocks_destructive_command_variants(isolated_home: Path, command: str) -> None:
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": command,
+            },
+        },
+        home=isolated_home,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": f"Blocked potentially destructive command: {command}",
     }
 
 
@@ -435,6 +653,41 @@ def test_engine_prefers_specific_deny_over_broad_ask_policy_order(tmp_path: Path
     }
 
 
+def test_engine_prefers_deny_across_all_candidate_paths(tmp_path: Path, isolated_home: Path) -> None:
+    policy = _default_policy()
+    deny_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/maintenance-mode.json")
+    broad_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/**")
+    remaining_entries = [
+        entry
+        for entry in policy["protectedPaths"]
+        if entry["path"] not in {"$HOME/.copilot/maintenance-mode.json", "$HOME/.copilot/**"}
+    ]
+    policy["protectedPaths"] = [broad_entry, deny_entry, *remaining_entries]
+    policy["pathPropertyNames"] = ["path", "destination"]
+    policy_path = tmp_path / "guard-policy.json"
+    _write_policy(policy_path, policy)
+
+    state_path = _write_maintenance_state(isolated_home)
+    response = _evaluate(
+        {
+            "toolName": "edit",
+            "toolArgs": {
+                "path": str(isolated_home / ".copilot" / "copilot-instructions.md"),
+                "destination": str(state_path),
+                "oldString": "old",
+                "newString": "new",
+            },
+        },
+        home=isolated_home,
+        policy_path=policy_path,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": "Protected path change detected for $HOME/.copilot/maintenance-mode.json via edit. Maintenance state changes must go through the maintenance scripts and are denied from Copilot tool edits.",
+    }
+
+
 def test_engine_denies_git_hooks_path_change_with_specific_reason(isolated_home: Path) -> None:
     response = _evaluate(
         {
@@ -489,6 +742,54 @@ def test_engine_invalid_policy_falls_back_to_protected_rule(tmp_path: Path, isol
     assert response == {
         "permissionDecision": "ask",
         "permissionDecisionReason": "Protected path change detected for home-template/.copilot/** via edit. This path requires an atomic issue/PR and explicit human review.",
+    }
+
+
+def test_engine_invalid_policy_uniqueness_falls_back_to_minimal_deny_rules(tmp_path: Path, isolated_home: Path) -> None:
+    policy = _default_policy()
+    policy["denyCommandRules"].append(dict(policy["denyCommandRules"][0]))
+    policy_path = tmp_path / "guard-policy.json"
+    _write_policy(policy_path, policy)
+
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": "git push origin main -f",
+            },
+        },
+        home=isolated_home,
+        policy_path=policy_path,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": "Blocked potentially destructive command: git push origin main -f",
+    }
+
+
+def test_engine_missing_required_specialized_rule_falls_back_to_minimal_deny_rules(
+    tmp_path: Path, isolated_home: Path
+) -> None:
+    policy = _default_policy()
+    policy["denyCommandRules"] = [rule for rule in policy["denyCommandRules"] if rule["id"] != "git-push-force"]
+    policy_path = tmp_path / "guard-policy.json"
+    _write_policy(policy_path, policy)
+
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": 'bash -c "rm -rf /"',
+            },
+        },
+        home=isolated_home,
+        policy_path=policy_path,
+    )
+
+    assert response == {
+        "permissionDecision": "deny",
+        "permissionDecisionReason": 'Blocked potentially destructive command: bash -c "rm -rf /"',
     }
 
 
