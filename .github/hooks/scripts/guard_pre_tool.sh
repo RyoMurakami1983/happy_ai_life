@@ -286,7 +286,7 @@ else
 fi
 if [[ ${engine_status} -ne 0 ]]; then
   if is_timeout_status "${engine_status}"; then
-    deny "Timed out while running the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."
+    deny "Timed out while running the shared guard policy engine (scripts/guard_policy.py). Secret scanning or repository operations may be slow; retry the focused operation and review hook timeoutSec if this persists. Do not bypass the secret scan."
     exit 0
   fi
 

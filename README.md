@@ -49,7 +49,7 @@ uv run ty check .
 ```
 
 `uv run pytest -q` は既定で時間のかかる subprocess 統合テスト（`slow` marker）を除外します。
-hook / sync / wrapper の境界そのものを変更した場合だけ、対象を絞って `uv run pytest -q -m slow tests\\test_sync_to_home_whitelist.py` のように明示実行します。
+hook / sync / wrapper の境界そのものを変更した場合だけ、対象を絞って `uv run pytest -q -m slow tests/test_sync_to_home_whitelist.py` のように明示実行します。
 
 詳しくは [開発ガイド](docs/DEVELOPMENT.md) を参照してください。
 

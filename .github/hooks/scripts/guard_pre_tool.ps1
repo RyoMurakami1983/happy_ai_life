@@ -361,7 +361,7 @@ function Invoke-GuardEngine {
 
             return [pscustomobject]@{
                 Succeeded = $false
-                Reason    = "Timed out while running the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."
+                Reason    = "Timed out while running the shared guard policy engine (scripts/guard_policy.py). Secret scanning or repository operations may be slow; retry the focused operation and review hook timeoutSec if this persists. Do not bypass the secret scan."
             }
         }
 
