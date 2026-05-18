@@ -22,7 +22,9 @@ DEFAULT_POLICY_PATH = ROOT / "policy" / "guard-policy.json"
 MAX_MAINTENANCE_TTL = timedelta(minutes=120)
 HOME_PREFIXES = ("~/", "~\\", "$HOME/", "$HOME\\", "${HOME}/", "${HOME}\\", "$env:HOME/", "$env:HOME\\")
 WINDOWS_DRIVE_PATTERN = re.compile(r"^[a-zA-Z]:/")
-SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS = 12
+SECRET_SCAN_WRAPPER_TIMEOUT_SECONDS = 15
+SECRET_SCAN_CHECKOUT_TIMEOUT_SECONDS = 4
+SECRET_SCAN_GITLEAKS_TIMEOUT_SECONDS = 8
 
 REQUIRED_SPECIALIZED_RULE_IDS = {
     "maintenance-mode-manual-only",
@@ -715,7 +717,7 @@ def _run_staged_secret_scan(repo_root: Path) -> str | None:
                 input=staged_files.stdout,
                 check=False,
                 capture_output=True,
-                timeout=SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS,
+                timeout=SECRET_SCAN_CHECKOUT_TIMEOUT_SECONDS,
             )
         except subprocess.TimeoutExpired:
             return "Timed out while preparing staged content for AI pre-commit secret scan."
@@ -736,7 +738,7 @@ def _run_staged_secret_scan(repo_root: Path) -> str | None:
                 ],
                 check=False,
                 capture_output=True,
-                timeout=SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS,
+                timeout=SECRET_SCAN_GITLEAKS_TIMEOUT_SECONDS,
             )
         except subprocess.TimeoutExpired:
             return "Timed out while scanning staged changes for secrets. Commit was blocked before secret scanning could complete."
@@ -801,7 +803,7 @@ def _run_unpushed_secret_scan(repo_root: Path, *, action_name: str) -> str | Non
             ],
             check=False,
             capture_output=True,
-            timeout=SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS,
+            timeout=SECRET_SCAN_GITLEAKS_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
         return f"Timed out while scanning commits for secrets. {action_name} was blocked before secret scanning could complete."

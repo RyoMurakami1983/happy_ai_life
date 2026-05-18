@@ -501,7 +501,7 @@ def test_run_staged_secret_scan_denies_when_checkout_index_times_out(monkeypatch
 
     def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
         if "checkout-index" in args:
-            raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS)
+            raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_CHECKOUT_TIMEOUT_SECONDS)
         return next(results)
 
     monkeypatch.setattr(guard_policy.subprocess, "run", fake_run)
@@ -525,7 +525,7 @@ def test_run_staged_secret_scan_denies_when_gitleaks_times_out(monkeypatch: pyte
 
     def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
         if args[:2] == ["gitleaks", "dir"]:
-            raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS)
+            raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_GITLEAKS_TIMEOUT_SECONDS)
         return next(results)
 
     monkeypatch.setattr(guard_policy.subprocess, "run", fake_run)
@@ -541,13 +541,20 @@ def test_run_unpushed_secret_scan_denies_when_gitleaks_times_out(monkeypatch: py
     monkeypatch.setattr(guard_policy, "_get_unpushed_log_options", lambda repo_root: (["origin/main..HEAD"], "origin/main..HEAD"))
 
     def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
-        raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_SUBPROCESS_TIMEOUT_SECONDS)
+        raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_GITLEAKS_TIMEOUT_SECONDS)
 
     monkeypatch.setattr(guard_policy.subprocess, "run", fake_run)
 
     assert (
         guard_policy._run_unpushed_secret_scan(ROOT, action_name="git push")
         == "Timed out while scanning commits for secrets. git push was blocked before secret scanning could complete."
+    )
+
+
+def test_secret_scan_subprocess_timeouts_fit_within_wrapper_budget() -> None:
+    assert (
+        guard_policy.SECRET_SCAN_CHECKOUT_TIMEOUT_SECONDS + guard_policy.SECRET_SCAN_GITLEAKS_TIMEOUT_SECONDS
+        < guard_policy.SECRET_SCAN_WRAPPER_TIMEOUT_SECONDS
     )
 
 
