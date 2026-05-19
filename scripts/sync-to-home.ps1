@@ -378,7 +378,7 @@ function Invoke-FileAction {
 }
 
 function ConvertTo-NormalizedJsonValue {
-    param([AllowNull()]$Value)
+    param([Parameter(Mandatory = $true)][AllowNull()]$Value)
 
     if ($null -eq $Value) {
         return $null
