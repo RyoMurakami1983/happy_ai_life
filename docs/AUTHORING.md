@@ -1,157 +1,53 @@
 # 作成ガイド
 
-この文書は Copilot CLI 向けの skill、agent、instructions を作るときの入口です。
+この repo は Copilot CLI 向けの skill、agent、repository instructions を扱います。
 
-## まず用語を整理
+## 使い分け
 
-### skill
+| 種類 | 使う場面 |
+|---|---|
+| skill | 手順や判断基準を再利用したい |
+| agent | 特定の役割で独立して調査・実装させたい |
+| instructions | repo 全体または path ごとの常時ルールを置きたい |
 
-skill は再利用できる単機能の入口です。
+## 最小方針
 
-- **責務**: 1 つの作業をうまく進める
-- **配布**: plugin にまとめる
-- **呼び出し**: `/skill run <skill-name>`
-- **例**: `gh-pr-create`、`sdd`、`furikaeri`
+- まず既存例を探す
+- 1つの目的に絞る
+- trigger は短く具体的に書く
+- secret、hook bypass、破壊的操作を許可しない
+- 作ったら focused test または手動確認を残す
 
-**向いている場面:** 繰り返し使う手順を他の人にも再利用してほしいとき。
+## skill の最小構成
 
-### agent
-
-agent は複数手順をまたいで動く実行者です。
-
-- **責務**: 複数段の判断や実行を進める
-- **呼び出し**: background / sync の task
-- **特徴**: 文脈を持ちながら進められる
-- **例**: `explore`、`code-review`、`tdd-coder`
-
-**向いている場面:** 1 回の skill では収まらない作業を任せたいとき。
-
-### instructions
-
-instructions は Copilot へ常時渡す guidance です。
-
-- **repo 単位**: `.github/copilot-instructions.md`
-- **path 単位**: `.github/instructions/<language>.instructions.md`
-- **個人環境**: `$HOME/.copilot/config.json`
-
-**向いている場面:** 命名、境界、文体、運用などの常時ルールを固定したいとき。
-
-## 作成の流れ
-
-### 1. 設計
-
-まず `/design-workshop` で整理します。
-
-```powershell
-copilot /design-workshop
+```text
+plugins/<plugin>/skills/<skill-name>/SKILL.md
 ```
 
-確認したいこと:
+`SKILL.md` には次を入れます。
 
-- 何を解決したいか
-- skill にするか agent にするか
-- 既存資産を再利用できるか
-
-### 2. 計画
-
-PLAN mode で作業を分解します。
-
-```powershell
-copilot /plan
-```
-
-最低限、次を固定します。
-
-- 問題
-- アプローチ
+- 何をする skill か
+- こんなときに使う
+- 実行手順
 - 成功条件
-- 確認手段
 
-### 3. 実装
-
-複雑な処理なら specialist を使います。
-
-```powershell
-copilot /skill run tdd-coder
-```
-
-### 4. 検証
-
-`copilot-authoring` を使って整合を見ます。
-
-```powershell
-copilot /skill run copilot-authoring
-```
-
-主に次を確認します。
-
-- `SKILL.md` の構造
-- 設定の整合
-- README や関連 docs との導線
-
-### 5. 提出
-
-```powershell
-git add .
-git commit -m "feat: 新しい skill を追加"
-gh pr create
-```
-
-## 作るときの基本
-
-### skill
-
-- 1 skill 1 役割に寄せる
-- `こんなときに使う` を明確に書く
-- `_eval/tests/` に確認材料を置く
-- 名前は短い kebab-case にする
-
-### agent
-
-- 広すぎる万能 agent を作らない
-- 文脈量を意識する
-- 失敗時の扱いを決める
-- 判断の痕跡を残す
-
-### instructions
-
-- 誰向けの rule か明示する
-- 抽象論より具体例を優先する
-- 境界変更時は README や周辺 docs も揃える
-- 長い手順は instructions に詰め込まず skill や docs に逃がす
-
-## ひな形
-
-### skill の例
+## agent の最小構成
 
 ```text
-skills/your-skill/
-├── SKILL.md
-├── manifest.json
-├── scripts/
-│   └── main.py
-├── _eval/
-│   ├── scripts/
-│   │   └── validator.py
-│   └── tests/
-│       └── test_*.py
+plugins/<plugin>/agents/<agent-name>.md
 ```
 
-### agent の例
+agent には役割、入力、完了条件、使ってよい tool の範囲を書きます。
 
-```text
-agents/your-agent/
-├── AGENT.md
-├── manifest.json
-├── scripts/
-│   └── main.py
-├── requirements.txt
-└── tests/
-    └── test_*.py
+## instructions
+
+repo-wide instructions は `.github/copilot-instructions.md` に置きます。path 固有の補足は `.github/instructions/` に置きます。
+
+## 確認
+
+```powershell
+uv run python -m pytest -q tests/test_repo_local_skill_policy.py
+uv run ruff check .
 ```
 
-## 関連
-
-- [開発ガイド](DEVELOPMENT.md)
-- [リファレンス](REFERENCE.md)
-- [品質ゲート](QUALITY_GATES.md)
+迷った場合は小さく作り、README の日常導線を増やしすぎないようにします。

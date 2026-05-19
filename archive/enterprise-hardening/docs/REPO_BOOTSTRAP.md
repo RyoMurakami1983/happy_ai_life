@@ -50,8 +50,11 @@ bootstrap を実行すると、主に次が入ります。
 # 反映
 & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath C:\your-repo
 
-# enterprise 向け profile を使う場合
-& $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath C:\your-repo -PolicyProfile Enterprise
+# 既定は HappyDefault
+& $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath C:\your-repo -PolicyProfile HappyDefault
+
+# 重い enterprise governance を opt-in する場合
+& $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath C:\your-repo -PolicyProfile EnterpriseStrict
 ```
 
 `$HOME/.copilot/repo-template/` の内容に加えて、guard の source of truth である `policy/guard-policy.json` と `policy/guard-policy.schema.json` も対象 repo に同期します。
@@ -60,11 +63,14 @@ bootstrap を実行すると、主に次が入ります。
 
 | profile | 既定値 | 主な同期対象 | 意図 |
 |------|------|--------------|------|
-| `Default` | はい | 通常の repo bootstrap 一式。enterprise 固有の instructions は含めない | 一般的な repo bootstrap を最小構成で入れる |
-| `Enterprise` | いいえ | `Default` に加えて `.github/instructions/enterprise.instructions.md` を同期 | enterprise 向けの追加 guidance を明示 opt-in で入れる |
+| `HappyDefault` | はい | 通常の repo bootstrap 一式。enterprise 固有の instructions は含めない | AI 再現性と軽さを優先する日常開発の既定 |
+| `Secure` | いいえ | `HappyDefault` と同じ同期対象 | security baseline を明示したい repo 向け。重い governance は含めない |
+| `EnterpriseStrict` | いいえ | `HappyDefault` に加えて `.github/instructions/enterprise.instructions.md` を同期 | enterprise 向けの追加 guidance を明示 opt-in で入れる |
+| `WindowsDesktop` | いいえ | `HappyDefault` と同じ同期対象 | Windows desktop / Tauri / proxy 前提を意識する repo 向け。EnterpriseStrict governance は含めない |
 
-`-PolicyProfile Enterprise` は repo 内 asset の同期範囲を切り替えるだけで、organization policy や GitHub Rulesets を自動設定するものではありません。
-`Default` で再実行した場合は、以前 `Enterprise` で配った `.github/instructions/enterprise.instructions.md` も取り除かれます。
+`Default` は `HappyDefault`、`Enterprise` は `EnterpriseStrict` の互換 alias として扱います。
+`-PolicyProfile EnterpriseStrict` は repo 内 asset の同期範囲を切り替えるだけで、organization policy や GitHub Rulesets を自動設定するものではありません。
+`HappyDefault` / `Secure` / `WindowsDesktop` で再実行した場合は、以前 `EnterpriseStrict` で配った `.github/instructions/enterprise.instructions.md` も取り除かれます。
 
 ### Step 3: Git hooks を有効化
 
@@ -121,7 +127,7 @@ hooks を使う全員に `gitleaks` が必要です。未導入だと commit や
 
 `.github/copilot-instructions.md` をチーム向けに編集します。
 
-enterprise profile を使った repo では、`.github/instructions/enterprise.instructions.md` も対象になります。
+EnterpriseStrict profile を使った repo では、`.github/instructions/enterprise.instructions.md` も対象になります。
 
 ### gitleaks ルールを調整
 

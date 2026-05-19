@@ -91,7 +91,7 @@ uv run app.py home --dry-run
 uv run app.py home
 ```
 
-これで `copilot-instructions.md`、repo bootstrap 用 script、managed な user-level safety hook entry（enterprise/global guard）を `$HOME/.copilot/` に同期できます。
+これで `copilot-instructions.md`、repo bootstrap 用 script、managed な user-level safety hook entry を `$HOME/.copilot/` に同期できます。
 
 ### 確認
 
@@ -103,7 +103,7 @@ cat $HOME/.copilot/copilot-instructions.md
 ### 開発の流れ
 
 - `/design-workshop` と PLAN mode で整理する
-- `uv run pytest -q`、`uv run ruff check .`、`uv run ty check .` を流す
+- 変更範囲に合う focused test と `uv run ruff check .` を流す
 - PR を作って review を受ける
 
 詳しくは [開発ガイド](DEVELOPMENT.md) を参照してください。
@@ -130,7 +130,7 @@ cat $HOME/.copilot/copilot-instructions.md
 2. repo に bootstrap を入れます。
 
    ```powershell
-   & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath <your-repo-path>
+   & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath <your-repo-path> -PolicyProfile HappyDefault
    ```
 
 3. Git hooks を有効化します。
@@ -154,7 +154,7 @@ cat $HOME/.copilot/copilot-instructions.md
 - チーム全員が同じ instructions を使う前提です
 - `gitleaks` により commit 時に secret を検査します
 
-詳しくは [Repo Bootstrap（repo 初期導入）](REPO_BOOTSTRAP.md) を参照してください。
+通常は上の手順だけで十分です。重い governance や追加 profile は既定導線から外しています。
 
 ## 困ったとき
 

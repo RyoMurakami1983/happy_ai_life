@@ -53,24 +53,12 @@ function Get-MinimalGuardPolicy {
             [pscustomobject]@{ id = "repo-hooks"; path = ".github/hooks/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "repo-githooks"; path = ".githooks/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "repo-workflows"; path = ".github/workflows/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "repo-instructions-dir"; path = ".github/instructions/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "repo-skills-dir"; path = ".github/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "agents-skills-dir"; path = ".agents/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "claude-skills-dir"; path = ".claude/skills/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "repo-copilot-instructions"; path = ".github/copilot-instructions.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "repo-mcp"; path = ".github/mcp.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "root-mcp"; path = ".mcp.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "gitleaks-config"; path = ".gitleaks.toml"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "enterprise-security-doc"; path = "docs/ENTERPRISE_SECURITY.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "enterprise-security-roadmap-doc"; path = "docs/ISSUE_ROADMAP_ENTERPRISE_SECURITY.md"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "sync-to-home-script"; path = "scripts/sync-to-home.ps1"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "sync-to-repo-script"; path = "scripts/sync-to-repo.ps1"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "repo-secure-check-script"; path = "scripts/repo-secure-check.ps1"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
-            [pscustomobject]@{ id = "home-template-copilot-root"; path = "home-template/.copilot/**"; scope = "directory"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "guard-policy-json"; path = "policy/guard-policy.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "guard-policy-schema"; path = "policy/guard-policy.schema.json"; scope = "file"; action = "ask"; maintenanceScope = "protectedPathEdit" }
             [pscustomobject]@{ id = "maintenance-mode-state"; path = '$HOME/.copilot/maintenance-mode.json'; scope = "file"; action = "deny"; maintenanceScope = $null }
-            [pscustomobject]@{ id = "home-copilot-root"; path = '$HOME/.copilot/**'; scope = "directory"; action = "ask"; maintenanceScope = $null }
         )
         denyCommandRules = @(
             [pscustomobject]@{ id = "maintenance-mode-manual-only"; kind = "specialized"; description = "AI must not enter or exit maintenance mode, or edit the maintenance state file." }

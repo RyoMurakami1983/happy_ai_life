@@ -105,7 +105,5 @@ secret がどこまで露出したかを確認します。
 
 ## 関連
 
-- [品質ゲート](docs/QUALITY_GATES.md)
-- [Enterprise Security](docs/ENTERPRISE_SECURITY.md)
-- [Trust Boundary](docs/TRUST_BOUNDARY.md)
-- [Hooks Governance](docs/HOOKS_GOVERNANCE.md)
+- [README](README.md)
+- [トラブルシューティング](docs/TROUBLESHOOTING.md)

@@ -83,7 +83,7 @@ Copilot CLI hooks では `bash` / `powershell` だけでなく、`create` / `edi
 ### P2: 保守性・運用性の強化
 
 - `managed-manifest.json` を追加し、home sync の管理対象を明示する。
-- `sync-to-repo.ps1` に `-PolicyProfile Enterprise` を追加する。
+- `sync-to-repo.ps1` に `HappyDefault` / `Secure` / `EnterpriseStrict` / `WindowsDesktop` profile を追加する。
 - session-continuity hook 由来の prompt injection 対策を強化する。
 - Windows / macOS / Linux の hook parity を確認するテストを追加する。
 - enterprise 向け導入手順を `docs/ENTERPRISE_SECURITY.md` にまとめる。

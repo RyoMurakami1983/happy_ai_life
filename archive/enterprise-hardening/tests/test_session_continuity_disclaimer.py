@@ -20,7 +20,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SESSION_START_JS = ROOT / ".github" / "hooks" / "scripts" / "session-start.js"
 VALIDATE_SESSION_HOOKS_JS = ROOT / "scripts" / "validate-session-hooks.js"
-HOOKS_GOVERNANCE_PATH = ROOT / "docs" / "HOOKS_GOVERNANCE.md"
+HOOKS_GOVERNANCE_PATH = ROOT / "archive" / "enterprise-hardening" / "docs" / "HOOKS_GOVERNANCE.md"
 SESSION_CONTINUITY_RETIREMENT_ADR = ROOT / "docs" / "adr" / "session-continuity-retirement.md"
 
 _node_available = shutil.which("node") is not None

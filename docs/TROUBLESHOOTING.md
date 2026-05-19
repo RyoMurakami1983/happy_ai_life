@@ -193,6 +193,6 @@ copilot plugin list
 
 ## 困ったときの参照先
 
-- [FAQ](FAQ.md)
-- [リファレンス](REFERENCE.md)
+- [はじめに](GETTING_STARTED.md)
+- [開発ガイド](DEVELOPMENT.md)
 - GitHub の Issue

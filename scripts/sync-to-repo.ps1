@@ -13,8 +13,8 @@ param(
     # Copilot hooks の配布範囲。sessionStart/sessionEnd は既定では封印し、明示時のみ配布する。
     [ValidateSet("SafetyOnly", "All", "None")]
     [string]$HooksMode = "SafetyOnly",
-    [ValidateSet("Default", "Enterprise")]
-    [string]$PolicyProfile = "Default",
+    [ValidateSet("HappyDefault", "Secure", "EnterpriseStrict", "WindowsDesktop", "Default", "Enterprise")]
+    [string]$PolicyProfile = "HappyDefault",
     # Git client hooks のテンプレート。target repo の .githooks に同期する。
     [string]$GitHooksRelativePath = "repo-template\.githooks",
     # guard policy の source of truth。target repo の policy に同期する。
@@ -49,6 +49,16 @@ function Test-RobocopyResult {
 
     if ($ExitCode -ge 8) {
         throw "robocopy failed. ExitCode=$ExitCode"
+    }
+}
+
+function Resolve-PolicyProfile {
+    param([Parameter(Mandatory = $true)][string]$Profile)
+
+    switch ($Profile) {
+        "Default" { return "HappyDefault" }
+        "Enterprise" { return "EnterpriseStrict" }
+        default { return $Profile }
     }
 }
 
@@ -255,7 +265,7 @@ function Remove-ExcludedPolicyProfileArtifacts {
         [switch]$WhatIfMode
     )
 
-    if ($PolicyProfile -ne "Default") {
+    if ($PolicyProfile -eq "EnterpriseStrict") {
         return
     }
 
@@ -419,7 +429,9 @@ $excludeFiles = @(
     ".gitignore"
 )
 
-if ($PolicyProfile -eq "Default") {
+$effectivePolicyProfile = Resolve-PolicyProfile -Profile $PolicyProfile
+
+if ($effectivePolicyProfile -ne "EnterpriseStrict") {
     $excludeFiles += "enterprise.instructions.md"
 }
 
@@ -433,13 +445,22 @@ Write-Host "Destination : $destinationPath"
 Write-Host "Mirror      : $Mirror"
 Write-Host "DryRun      : $DryRun"
 Write-Host "HooksMode   : $HooksMode"
-Write-Host "PolicyProfile : $PolicyProfile"
+Write-Host "PolicyProfile : $effectivePolicyProfile"
+if ($PolicyProfile -ne $effectivePolicyProfile) {
+    Write-Host "ProfileAlias : $PolicyProfile -> $effectivePolicyProfile" -ForegroundColor Yellow
+}
 
-if ($PolicyProfile -eq "Enterprise") {
-    Write-Host "Note        : enterprise.instructions.md を含む enterprise 向け guidance を同期します。" -ForegroundColor Yellow
+if ($effectivePolicyProfile -eq "EnterpriseStrict") {
+    Write-Host "Note        : EnterpriseStrict は enterprise.instructions.md を含む重い governance guidance を opt-in で同期します。" -ForegroundColor Yellow
+}
+elseif ($effectivePolicyProfile -eq "Secure") {
+    Write-Host "Note        : Secure は安全弁を維持しつつ、enterprise 固有 instructions は同期しません。" -ForegroundColor Yellow
+}
+elseif ($effectivePolicyProfile -eq "WindowsDesktop") {
+    Write-Host "Note        : WindowsDesktop は Windows desktop / Tauri / proxy 前提の profile ですが、EnterpriseStrict governance は同期しません。" -ForegroundColor Yellow
 }
 else {
-    Write-Host "Note        : 既定 profile では enterprise 固有 instructions を同期しません。" -ForegroundColor Yellow
+    Write-Host "Note        : HappyDefault では enterprise 固有 instructions を同期しません。" -ForegroundColor Yellow
 }
 
 $duplicateHooksPath = Join-Path $sourcePath "hooks"
@@ -466,7 +487,7 @@ Merge-AppendOnlyFile `
 
 Remove-ExcludedPolicyProfileArtifacts `
     -TargetRepoRoot $targetRepoPath `
-    -PolicyProfile $PolicyProfile `
+    -PolicyProfile $effectivePolicyProfile `
     -WhatIfMode:$DryRun
 
 # --- 2. .github/hooks/ → 配布先 .github/hooks/ （$HooksRelativePath が空、または HooksMode=None ならスキップ）---

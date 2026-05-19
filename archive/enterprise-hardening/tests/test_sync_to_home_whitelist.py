@@ -1701,7 +1701,7 @@ def test_guard_pre_tool_asks_for_protected_edit_path() -> None:
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -1712,7 +1712,7 @@ def test_guard_pre_tool_asks_for_protected_edit_path() -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "ask"
-    assert "docs/HOOKS_GOVERNANCE.md" in response["permissionDecisionReason"]
+    assert ".gitleaks.toml" in response["permissionDecisionReason"]
     assert "explicit human review" in response["permissionDecisionReason"]
 
 
@@ -2242,7 +2242,7 @@ def test_guard_pre_tool_allows_protected_edit_path_during_active_maintenance_mod
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -2321,11 +2321,17 @@ def test_guard_permission_request_prefers_specific_deny_over_broad_ask_policy_or
     policy_dir.mkdir()
     policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
     deny_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/maintenance-mode.json")
-    broad_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/**")
+    broad_entry = {
+        "id": "home-copilot-root",
+        "path": "$HOME/.copilot/**",
+        "scope": "directory",
+        "action": "ask",
+        "maintenanceScope": None,
+    }
     remaining_entries = [
         entry
         for entry in policy["protectedPaths"]
-        if entry["path"] not in {"$HOME/.copilot/maintenance-mode.json", "$HOME/.copilot/**"}
+        if entry["path"] != "$HOME/.copilot/maintenance-mode.json"
     ]
     policy["protectedPaths"] = [broad_entry, deny_entry, *remaining_entries]
     (policy_dir / "guard-policy.json").write_text(json.dumps(policy), encoding="utf-8")
@@ -2372,7 +2378,7 @@ def test_guard_pre_tool_ignores_maintenance_mode_file_env_override(tmp_path: Pat
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -2395,7 +2401,7 @@ def test_guard_pre_tool_ignores_relative_maintenance_mode_override(tmp_path: Pat
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -2424,7 +2430,7 @@ def test_guard_pre_tool_asks_for_protected_edit_path_after_maintenance_mode_expi
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -2451,7 +2457,7 @@ def test_guard_pre_tool_asks_for_protected_edit_path_when_maintenance_mode_excee
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -2478,7 +2484,7 @@ def test_guard_pre_tool_asks_for_protected_edit_path_with_future_created_at(tmp_
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -2516,7 +2522,7 @@ def test_guard_pre_tool_asks_for_protected_edit_path_with_invalid_maintenance_ex
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -2603,7 +2609,7 @@ def test_guard_pre_tool_asks_for_protected_edit_path_from_stringified_json() -> 
             "toolName": "edit",
             "toolArgs": json.dumps(
                 {
-                    "filePath": "docs/HOOKS_GOVERNANCE.md",
+                    "filePath": ".gitleaks.toml",
                     "oldString": "old",
                     "newString": "new",
                 }
@@ -2615,7 +2621,7 @@ def test_guard_pre_tool_asks_for_protected_edit_path_from_stringified_json() -> 
     assert result.returncode == 0, result.stdout + result.stderr
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "ask"
-    assert "docs/HOOKS_GOVERNANCE.md" in response["permissionDecisionReason"]
+    assert ".gitleaks.toml" in response["permissionDecisionReason"]
 
 
 def test_guard_permission_request_falls_back_for_protected_edit_path() -> None:
@@ -2623,7 +2629,7 @@ def test_guard_permission_request_falls_back_for_protected_edit_path() -> None:
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -2644,7 +2650,7 @@ def test_guard_permission_request_ignores_active_maintenance_mode_for_protected_
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -2807,7 +2813,7 @@ def test_guard_pre_tool_allows_nested_non_protected_create_path() -> None:
     assert result.stdout == ""
 
 
-def test_guard_pre_tool_asks_for_home_managed_path_with_home_prefix() -> None:
+def test_guard_pre_tool_allows_home_config_with_home_prefix() -> None:
     result = _invoke_guard_pre_tool(
         {
             "toolName": "edit",
@@ -2821,12 +2827,10 @@ def test_guard_pre_tool_asks_for_home_managed_path_with_home_prefix() -> None:
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    response = json.loads(result.stdout)
-    assert response["permissionDecision"] == "ask"
-    assert "$HOME/.copilot/**" in response["permissionDecisionReason"]
+    assert result.stdout == ""
 
 
-def test_guard_pre_tool_asks_for_home_managed_path_during_active_maintenance_mode(tmp_path: Path) -> None:
+def test_guard_pre_tool_allows_home_config_during_active_maintenance_mode(tmp_path: Path) -> None:
     home_root = tmp_path / "home"
     _write_maintenance_state(home_root)
 
@@ -2844,9 +2848,7 @@ def test_guard_pre_tool_asks_for_home_managed_path_during_active_maintenance_mod
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    response = json.loads(result.stdout)
-    assert response["permissionDecision"] == "ask"
-    assert "$HOME/.copilot/**" in response["permissionDecisionReason"]
+    assert result.stdout == ""
 
 
 def test_invoke_guard_pre_tool_uses_provided_home_without_creating_temp_dir(
@@ -2865,7 +2867,7 @@ def test_invoke_guard_pre_tool_uses_provided_home_without_creating_temp_dir(
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },

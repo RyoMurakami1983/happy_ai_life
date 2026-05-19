@@ -303,11 +303,17 @@ def test_bash_guard_permission_request_prefers_specific_deny_over_broad_ask_poli
 
     policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
     deny_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/maintenance-mode.json")
-    broad_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/**")
+    broad_entry = {
+        "id": "home-copilot-root",
+        "path": "$HOME/.copilot/**",
+        "scope": "directory",
+        "action": "ask",
+        "maintenanceScope": None,
+    }
     remaining_entries = [
         entry
         for entry in policy["protectedPaths"]
-        if entry["path"] not in {"$HOME/.copilot/maintenance-mode.json", "$HOME/.copilot/**"}
+        if entry["path"] != "$HOME/.copilot/maintenance-mode.json"
     ]
     policy["protectedPaths"] = [broad_entry, deny_entry, *remaining_entries]
     _write_policy(repo, policy)
@@ -340,11 +346,17 @@ def test_bash_guard_permission_request_prefers_deny_across_all_candidate_paths(t
 
     policy = json.loads(GUARD_POLICY_PATH.read_text(encoding="utf-8"))
     deny_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/maintenance-mode.json")
-    broad_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/**")
+    broad_entry = {
+        "id": "home-copilot-root",
+        "path": "$HOME/.copilot/**",
+        "scope": "directory",
+        "action": "ask",
+        "maintenanceScope": None,
+    }
     remaining_entries = [
         entry
         for entry in policy["protectedPaths"]
-        if entry["path"] not in {"$HOME/.copilot/maintenance-mode.json", "$HOME/.copilot/**"}
+        if entry["path"] != "$HOME/.copilot/maintenance-mode.json"
     ]
     policy["protectedPaths"] = [broad_entry, deny_entry, *remaining_entries]
     policy["pathPropertyNames"] = ["path", "destination"]
@@ -660,7 +672,7 @@ def test_bash_guard_pre_tool_falls_back_to_issue_158_protected_paths_cross_platf
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "home-template/.copilot/copilot-instructions.md",
+                "path": ".gitleaks.toml",
                 "oldString": "before",
                 "newString": "after",
             },
@@ -671,7 +683,7 @@ def test_bash_guard_pre_tool_falls_back_to_issue_158_protected_paths_cross_platf
     assert result.returncode == 0, result.stdout + result.stderr
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "ask"
-    assert "home-template/.copilot/copilot-instructions.md" in response["permissionDecisionReason"]
+    assert ".gitleaks.toml" in response["permissionDecisionReason"]
 
 
 def test_bash_guard_pre_tool_fallback_blocks_nested_shell_wrapped_rm_cross_platform(tmp_path: Path) -> None:
@@ -691,3 +703,4 @@ def test_bash_guard_pre_tool_fallback_blocks_nested_shell_wrapped_rm_cross_platf
     response = json.loads(result.stdout)
     assert response["permissionDecision"] == "deny"
     assert "Blocked potentially destructive command" in response["permissionDecisionReason"]
+
