@@ -19,6 +19,7 @@ function Resolve-HookEventName {
 }
 
 $script:HookEvent = Resolve-HookEventName
+$script:EngineTimeoutMilliseconds = 13000
 
 function Write-HookResponse {
     param([Parameter(Mandatory = $true)]$Object)
@@ -412,16 +413,20 @@ function Invoke-GuardEngine {
     $startInfo.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8"
     $startInfo.EnvironmentVariables["PYTHONUTF8"] = "1"
 
-    $process = New-Object System.Diagnostics.Process
-    $process.StartInfo = $startInfo
-    [void]$process.Start()
-    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-    $stderrTask = $process.StandardError.ReadToEndAsync()
+    $process = $null
+    $stdoutTask = $null
+    $stderrTask = $null
     try {
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
+        [void]$process.Start()
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+
         $process.StandardInput.Write($Raw)
         $process.StandardInput.Close()
 
-        if (-not $process.WaitForExit(15000)) {
+        if (-not $process.WaitForExit($script:EngineTimeoutMilliseconds)) {
             $terminated = $false
             try {
                 $process.Kill()
@@ -466,8 +471,16 @@ function Invoke-GuardEngine {
             }
         }
     }
+    catch {
+        return [pscustomobject]@{
+            Succeeded = $false
+            Reason    = "Failed to start the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."
+        }
+    }
     finally {
-        $process.Dispose()
+        if ($null -ne $process) {
+            $process.Dispose()
+        }
     }
 
     if ([string]::IsNullOrWhiteSpace($stdout)) {

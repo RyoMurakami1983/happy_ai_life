@@ -872,11 +872,41 @@ def test_guard_pre_tool_accepts_python_override_command_name(tmp_path: Path) -> 
 def test_guard_pre_tool_timeout_branch_is_fail_closed_without_real_wait() -> None:
     content = (ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1").read_text(encoding="utf-8")
 
-    assert "WaitForExit(15000)" in content
+    assert "WaitForExit($script:EngineTimeoutMilliseconds)" in content
     assert "$process.Kill()" in content
     assert "WaitForExit(1000)" in content
     assert "Receive-TaskText" in content
     assert "Timed out while running the shared guard policy engine" in content
+
+
+def test_guard_pre_tool_start_failure_is_fail_closed(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home_root = tmp_path / "home"
+    repo.mkdir()
+    hooks_dir = repo / ".github" / "hooks" / "scripts"
+    hooks_dir.mkdir(parents=True)
+    script = hooks_dir / "guard_pre_tool.ps1"
+    script.write_text(
+        (ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1")
+        .read_text(encoding="utf-8")
+        .replace("[void]$process.Start()", 'throw "simulated start failure"'),
+        encoding="utf-8",
+    )
+
+    result = _invoke_guard_pre_tool_script(
+        script,
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+        env={
+            "HOME": str(home_root),
+            "HAPPY_AI_LIFE_PYTHON": sys.executable,
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    response = json.loads(result.stdout)
+    assert response["permissionDecision"] == "deny"
+    assert "Failed to start the shared guard policy engine" in response["permissionDecisionReason"]
 
 
 def test_guard_pre_tool_does_not_log_failures_by_default(tmp_path: Path) -> None:

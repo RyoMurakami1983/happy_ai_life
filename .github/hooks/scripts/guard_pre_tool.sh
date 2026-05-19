@@ -5,6 +5,8 @@ hook_event="${HAPPY_AI_LIFE_HOOK_EVENT:-preToolUse}"
 if [[ "${hook_event}" != "preToolUse" && "${hook_event}" != "permissionRequest" ]]; then
   hook_event="preToolUse"
 fi
+engine_timeout_seconds=13
+engine_timeout_ticks=$((engine_timeout_seconds * 10))
 
 raw="$(cat || true)"
 if [[ -z "${raw//[[:space:]]/}" ]]; then
@@ -260,13 +262,13 @@ run_engine_with_timeout() {
   shift
 
   if command -v timeout >/dev/null 2>&1; then
-    PYTHONIOENCODING=utf-8 PYTHONUTF8=1 timeout 15s "$@" <<<"${raw}" >"${stdout_file}" 2>"${stderr_file}"
+    PYTHONIOENCODING=utf-8 PYTHONUTF8=1 timeout "${engine_timeout_seconds}s" "$@" <<<"${raw}" >"${stdout_file}" 2>"${stderr_file}"
     return $?
   fi
 
   PYTHONIOENCODING=utf-8 PYTHONUTF8=1 "$@" <<<"${raw}" >"${stdout_file}" 2>"${stderr_file}" &
   local engine_pid=$!
-  local remaining_ticks=150
+  local remaining_ticks=$engine_timeout_ticks
 
   while kill -0 "${engine_pid}" 2>/dev/null; do
     if (( remaining_ticks <= 0 )); then

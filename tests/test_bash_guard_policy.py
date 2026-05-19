@@ -275,7 +275,7 @@ def test_bash_guard_pre_tool_denies_when_engine_times_out(tmp_path: Path) -> Non
     script.write_text(
         script.read_text(encoding="utf-8")
         .replace("if command -v timeout >/dev/null 2>&1; then", "if false; then")
-        .replace("local remaining_ticks=150", "local remaining_ticks=2")
+        .replace("local remaining_ticks=$engine_timeout_ticks", "local remaining_ticks=2")
         .replace("sleep 0.1", "sleep 0.01"),
         encoding="utf-8",
     )
