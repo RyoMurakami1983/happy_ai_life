@@ -373,7 +373,16 @@ def suggest_error_resolution(stderr: str) -> str:
         return "✗ 同期失敗 — 詳細はログを確認してください"
 
 
-def format_command_result_improved(result: CommandResult, dry_run: bool = False) -> str:
+def format_failure_details(result: CommandResult) -> str:
+    lines: list[str] = []
+    if result.stdout:
+        lines.extend(("", "標準出力:", result.stdout))
+    if result.stderr:
+        lines.extend(("", "標準エラー:", result.stderr))
+    return "\n".join(lines)
+
+
+def format_command_result_improved(result: CommandResult, dry_run: bool = False, verbose_log: bool = False) -> str:
     """
     改善版: robocopy 生ログを人間が読める形に変換
     
@@ -381,7 +390,10 @@ def format_command_result_improved(result: CommandResult, dry_run: bool = False)
     ドライラン時はファイル詳細を追加表示
     """
     if not result.succeeded:
-        return suggest_error_resolution(result.stderr)
+        message = suggest_error_resolution(f"{result.stdout}\n{result.stderr}")
+        if verbose_log:
+            message += format_failure_details(result)
+        return message
     
     stats = parse_sync_stats(result.stdout)
     message = format_sync_summary(stats, dry_run=dry_run, success=True)
@@ -561,7 +573,7 @@ def run_cli_interactive(namespace: argparse.Namespace, *, has_explicit_flags: bo
             dry_run=dry_run,
             verbose_log=verbose_log,
         )
-        message = format_command_result_improved(result, dry_run=dry_run)
+        message = format_command_result_improved(result, dry_run=dry_run, verbose_log=verbose_log)
     else:
         raise ValueError(f"未対応の CLI コマンドです: {namespace.command}")
 
