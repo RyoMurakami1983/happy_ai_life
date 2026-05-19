@@ -20,13 +20,13 @@ Error: gitleaks is required for the pre-commit secret scan, but it was not found
 
 **Step 1: gitleaks の場所を確認**
 
-Windows PowerShell:
+[Windows: PowerShell]
 
 ```powershell
 where gitleaks
 ```
 
-macOS / Linux:
+[macOS / Linux: bash]
 
 ```bash
 which gitleaks
@@ -37,6 +37,8 @@ https://github.com/gitleaks/gitleaks
 
 **Step 2: 再実行**
 
+[Windows: PowerShell]
+
 ```powershell
 cd <your-repo>
 git commit -m "test message"
@@ -46,14 +48,14 @@ git commit -m "test message"
 
 標準パス以外に入れた場合は `GITLEAKS_BIN` を設定します。
 
-Windows PowerShell（一時）:
+[Windows: PowerShell] 一時設定
 
 ```powershell
 $env:GITLEAKS_BIN = "C:\path\to\gitleaks.exe"
 git commit -m "test message"
 ```
 
-Windows PowerShell（恒久）:
+[Windows: PowerShell] 恒久設定
 
 ```powershell
 notepad $PROFILE
@@ -61,30 +63,32 @@ notepad $PROFILE
 
 次を追記します。
 
+[Windows: PowerShell]
+
 ```powershell
 $env:GITLEAKS_BIN = "C:\path\to\gitleaks.exe"
 ```
 
-読み直し:
+[Windows: PowerShell] 読み直し
 
 ```powershell
 . $PROFILE
 ```
 
-macOS / Linux（一時）:
+[macOS / Linux: bash] 一時設定
 
 ```bash
 export GITLEAKS_BIN=/usr/local/bin/gitleaks
 git commit -m "test message"
 ```
 
-macOS / Linux（恒久）:
+[macOS / Linux: bash] 恒久設定
 
 ```bash
 export GITLEAKS_BIN=/usr/local/bin/gitleaks
 ```
 
-その後:
+[macOS / Linux: bash] 読み直し
 
 ```bash
 source ~/.bashrc
@@ -135,11 +139,15 @@ Error: File already exists: .github/copilot-instructions.md
 
 必要なら先に退避します。
 
+[Windows: PowerShell]
+
 ```powershell
 mv .github/copilot-instructions.md .github/copilot-instructions.md.bak
 ```
 
 その後、再実行します。
+
+[Windows: PowerShell]
 
 ```powershell
 & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath .
@@ -152,6 +160,8 @@ mv .github/copilot-instructions.md .github/copilot-instructions.md.bak
 - `sync-to-repo.ps1` は通ったのに最初の commit が失敗する
 
 **対処**
+
+[Windows: PowerShell]
 
 ```powershell
 & $HOME/.copilot/scripts/install-git-hooks.ps1 -TargetRepoPath .
@@ -172,6 +182,8 @@ Error: marketplace "happy-ai-life-marketplace" not found
 
 **対処**
 
+[Windows: PowerShell]
+
 ```powershell
 copilot plugin marketplace add RyoMurakami1983/happy_ai_life
 copilot plugin install happy-core@happy-ai-life-marketplace
@@ -185,6 +197,8 @@ copilot plugin install happy-coding@happy-ai-life-marketplace
 - 旧 direct install 版と marketplace 版が両方見える
 
 **対処**
+
+[Windows: PowerShell]
 
 ```powershell
 copilot plugin uninstall happy-ai-life
