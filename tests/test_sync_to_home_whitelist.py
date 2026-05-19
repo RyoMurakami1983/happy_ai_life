@@ -874,7 +874,60 @@ def test_guard_pre_tool_timeout_branch_is_fail_closed_without_real_wait() -> Non
 
     assert "WaitForExit(15000)" in content
     assert "$process.Kill()" in content
+    assert "WaitForExit(1000)" in content
+    assert "Receive-TaskText" in content
     assert "Timed out while running the shared guard policy engine" in content
+
+
+def test_guard_pre_tool_does_not_log_failures_by_default(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home_root = tmp_path / "home"
+    repo.mkdir()
+    hooks_dir = repo / ".github" / "hooks" / "scripts"
+    hooks_dir.mkdir(parents=True)
+    script = hooks_dir / "guard_pre_tool.ps1"
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", script)
+
+    result = _invoke_guard_pre_tool_script(
+        script,
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+        env={
+            "HOME": str(home_root),
+            "HAPPY_AI_LIFE_PYTHON": str(tmp_path / "missing-python.exe"),
+            "PATH": "",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (home_root / ".copilot" / "guard-failures.log").exists()
+
+
+def test_guard_pre_tool_logs_failures_when_enabled(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home_root = tmp_path / "home"
+    repo.mkdir()
+    hooks_dir = repo / ".github" / "hooks" / "scripts"
+    hooks_dir.mkdir(parents=True)
+    script = hooks_dir / "guard_pre_tool.ps1"
+    shutil.copy2(ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1", script)
+
+    result = _invoke_guard_pre_tool_script(
+        script,
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+        env={
+            "HOME": str(home_root),
+            "HAPPY_AI_LIFE_GUARD_FAILURE_LOG": "1",
+            "HAPPY_AI_LIFE_PYTHON": str(tmp_path / "missing-python.exe"),
+            "PATH": "",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    log_path = home_root / ".copilot" / "guard-failures.log"
+    assert log_path.exists()
+    assert "Python 3.10+" in log_path.read_text(encoding="utf-8")
 
 
 # Git hook bypass and other command variant tests moved to test_guard_policy_engine.py

@@ -309,6 +309,66 @@ def test_bash_guard_pre_tool_denies_when_engine_times_out(tmp_path: Path) -> Non
     assert "Timed out while running the shared guard policy engine" in response["permissionDecisionReason"]
 
 
+def test_bash_guard_pre_tool_does_not_log_failures_by_default(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home_root = tmp_path / "home"
+    _init_repo_with_bash_guard(repo)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+        env={
+            "HOME": str(home_root),
+            "HAPPY_AI_LIFE_PYTHON": str(repo / "missing-python"),
+            "PATH": "",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (home_root / ".copilot" / "guard-failures.log").exists()
+
+
+def test_bash_guard_pre_tool_logs_sanitized_failures_when_enabled(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    home_root = tmp_path / "home"
+    _init_repo_with_bash_guard(repo)
+
+    shim = tmp_path / "bad-python.sh"
+    shim.write_text(
+        textwrap.dedent(
+            """\
+            #!/usr/bin/env bash
+            for arg in "$@"; do
+              if [[ "$arg" == "-c" ]]; then
+                exit 0
+              fi
+            done
+            echo "token=super-secret-value" >&2
+            exit 1
+            """
+        ),
+        encoding="utf-8",
+    )
+    shim.chmod(0o755)
+
+    result = _invoke_bash_guard_pre_tool(
+        {"toolName": "powershell", "toolArgs": {"command": "git status"}},
+        cwd=repo,
+        env={
+            "HOME": str(home_root),
+            "HAPPY_AI_LIFE_GUARD_FAILURE_LOG": "1",
+            "HAPPY_AI_LIFE_PYTHON": shim.as_posix(),
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    log_path = home_root / ".copilot" / "guard-failures.log"
+    assert log_path.exists()
+    log_text = log_path.read_text(encoding="utf-8")
+    assert "Failed to run the shared guard policy engine" in log_text
+    assert "token=super-secret-value" not in log_text
+
+
 def test_bash_guard_permission_request_denies_maintenance_state_edit(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     home_root = tmp_path / "home"

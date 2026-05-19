@@ -26,16 +26,54 @@ function Write-HookResponse {
     [Console]::Out.Write(($Object | ConvertTo-Json -Compress))
 }
 
+function Test-FailureLogEnabled {
+    $value = [Environment]::GetEnvironmentVariable("HAPPY_AI_LIFE_GUARD_FAILURE_LOG")
+    return -not [string]::IsNullOrWhiteSpace($value) -and $value -match '^(?i:1|true|yes|on)$'
+}
+
+function Sanitize-FailureLogMessage {
+    param([Parameter(Mandatory = $true)][string]$Message)
+
+    if ([string]::IsNullOrWhiteSpace($Message)) {
+        return ""
+    }
+
+    $sanitized = $Message -replace "\s*stderr:.*$", ""
+    $sanitized = $sanitized -replace "\s+", " "
+    $sanitized = $sanitized.Trim()
+    if ($sanitized.Length -gt 240) {
+        return $sanitized.Substring(0, 240) + "..."
+    }
+
+    return $sanitized
+}
+
 function Write-FailureLog {
     param([Parameter(Mandatory = $true)][string]$Message)
 
     try {
+        if (-not (Test-FailureLogEnabled)) {
+            return
+        }
+
+        $sanitized = Sanitize-FailureLogMessage -Message $Message
+        if ([string]::IsNullOrWhiteSpace($sanitized)) {
+            return
+        }
+
         $logPath = Join-Path $HOME ".copilot\guard-failures.log"
         $logDirectory = Split-Path -Parent $logPath
         if (-not (Test-Path -LiteralPath $logDirectory -PathType Container)) {
             [void](New-Item -ItemType Directory -Path $logDirectory -Force)
         }
-        Add-Content -LiteralPath $logPath -Value ("{0} {1}" -f [DateTimeOffset]::Now.ToString("o"), $Message) -Encoding utf8
+        if (Test-Path -LiteralPath $logPath -PathType Leaf) {
+            $existingLog = Get-Item -LiteralPath $logPath -ErrorAction SilentlyContinue
+            if ($null -ne $existingLog -and $existingLog.Length -gt 64KB) {
+                $recentLines = @(Get-Content -LiteralPath $logPath -Tail 199 -ErrorAction SilentlyContinue)
+                Set-Content -LiteralPath $logPath -Value $recentLines -Encoding utf8
+            }
+        }
+        Add-Content -LiteralPath $logPath -Value ("{0} {1}" -f [DateTimeOffset]::Now.ToString("o"), $sanitized) -Encoding utf8
     }
     catch {
     }
@@ -308,6 +346,40 @@ function Get-StderrSummary {
     return $trimmed.Substring(0, 500)
 }
 
+function Receive-TaskText {
+    param(
+        [Parameter(Mandatory = $true)]$Task,
+        [int]$TimeoutMilliseconds = 1000
+    )
+
+    if ($null -eq $Task) {
+        return [pscustomobject]@{
+            Completed = $true
+            Text      = ""
+        }
+    }
+
+    try {
+        if (-not $Task.Wait($TimeoutMilliseconds)) {
+            return [pscustomobject]@{
+                Completed = $false
+                Text      = ""
+            }
+        }
+
+        return [pscustomobject]@{
+            Completed = $true
+            Text      = $Task.GetAwaiter().GetResult()
+        }
+    }
+    catch {
+        return [pscustomobject]@{
+            Completed = $false
+            Text      = ""
+        }
+    }
+}
+
 function Invoke-GuardEngine {
     param(
         [Parameter(Mandatory = $true)][string]$Raw,
@@ -350,24 +422,38 @@ function Invoke-GuardEngine {
         $process.StandardInput.Close()
 
         if (-not $process.WaitForExit(15000)) {
+            $terminated = $false
             try {
                 $process.Kill()
+                $terminated = $process.WaitForExit(1000)
             }
             catch {
             }
-            $process.WaitForExit()
-            [void]$stdoutTask.GetAwaiter().GetResult()
-            [void]$stderrTask.GetAwaiter().GetResult()
+
+            [void](Receive-TaskText -Task $stdoutTask -TimeoutMilliseconds 200)
+            [void](Receive-TaskText -Task $stderrTask -TimeoutMilliseconds 200)
+
+            $reason = "Timed out while running the shared guard policy engine (scripts/guard_policy.py). Secret scanning or repository operations may be slow; retry the focused operation and review hook timeoutSec if this persists. Do not bypass the secret scan."
+            if (-not $terminated) {
+                $reason = "$reason The engine did not exit promptly after termination."
+            }
 
             return [pscustomobject]@{
                 Succeeded = $false
-                Reason    = "Timed out while running the shared guard policy engine (scripts/guard_policy.py). Secret scanning or repository operations may be slow; retry the focused operation and review hook timeoutSec if this persists. Do not bypass the secret scan."
+                Reason    = $reason
             }
         }
 
-        $process.WaitForExit()
-        $stdout = $stdoutTask.GetAwaiter().GetResult()
-        $stderr = $stderrTask.GetAwaiter().GetResult()
+        $stdoutRead = Receive-TaskText -Task $stdoutTask
+        $stderrRead = Receive-TaskText -Task $stderrTask
+        if (-not $stdoutRead.Completed -or -not $stderrRead.Completed) {
+            return [pscustomobject]@{
+                Succeeded = $false
+                Reason    = "Failed to read the shared guard policy engine output before the hook timeout budget elapsed. Retry the focused operation and review hook timeoutSec if this persists."
+            }
+        }
+        $stdout = [string]$stdoutRead.Text
+        $stderr = [string]$stderrRead.Text
         if ($process.ExitCode -ne 0) {
             $summary = Get-StderrSummary -StderrText $stderr
             $reason = "Failed to run the shared guard policy engine (scripts/guard_policy.py). Install Python 3.10+ or set HAPPY_AI_LIFE_PYTHON to a valid interpreter."

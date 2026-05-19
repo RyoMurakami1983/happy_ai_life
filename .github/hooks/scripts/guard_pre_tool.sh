@@ -21,13 +21,54 @@ json_escape() {
   printf '%s' "${value}"
 }
 
+guard_failure_log_enabled() {
+  case "${HAPPY_AI_LIFE_GUARD_FAILURE_LOG:-}" in
+    1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Oo][Nn])
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+sanitize_failure_log_message() {
+  local message="${1:-}"
+  local sanitized
+  sanitized="${message%% stderr:*}"
+  sanitized="$(printf '%s' "${sanitized}" | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')"
+  if [[ ${#sanitized} -gt 240 ]]; then
+    sanitized="${sanitized:0:240}..."
+  fi
+  printf '%s' "${sanitized}"
+}
+
 write_failure_log() {
   local message="$1"
-  if [[ -z "${HOME:-}" ]]; then
+  local log_path log_directory line_count recent_log temp_path sanitized
+  if ! guard_failure_log_enabled || [[ -z "${HOME:-}" ]]; then
     return
   fi
-  mkdir -p "${HOME}/.copilot" 2>/dev/null || return
-  printf '%s %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${message}" >> "${HOME}/.copilot/guard-failures.log" 2>/dev/null || true
+  sanitized="$(sanitize_failure_log_message "${message}")"
+  if [[ -z "${sanitized}" ]]; then
+    return
+  fi
+
+  log_path="${HOME}/.copilot/guard-failures.log"
+  log_directory="${HOME}/.copilot"
+  mkdir -p "${log_directory}" 2>/dev/null || return
+  if [[ -f "${log_path}" ]]; then
+    if ! line_count="$(wc -l <"${log_path}" 2>/dev/null)"; then
+      line_count=0
+    fi
+    if [[ "${line_count}" =~ ^[0-9]+$ ]] && (( line_count >= 200 )); then
+      if temp_path="$(create_temp_file 2>/dev/null)"; then
+        tail -n 199 "${log_path}" >"${temp_path}" 2>/dev/null && mv "${temp_path}" "${log_path}" 2>/dev/null || rm -f "${temp_path}"
+      fi
+    fi
+  fi
+
+  printf '%s %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${sanitized}" >> "${log_path}" 2>/dev/null || true
 }
 
 create_temp_file() {

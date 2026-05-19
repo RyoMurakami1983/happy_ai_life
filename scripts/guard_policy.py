@@ -23,8 +23,12 @@ MAX_MAINTENANCE_TTL = timedelta(minutes=120)
 HOME_PREFIXES = ("~/", "~\\", "$HOME/", "$HOME\\", "${HOME}/", "${HOME}\\", "$env:HOME/", "$env:HOME\\")
 WINDOWS_DRIVE_PATTERN = re.compile(r"^[a-zA-Z]:/")
 SECRET_SCAN_WRAPPER_TIMEOUT_SECONDS = 15
+SECRET_SCAN_STAGED_PROBE_TIMEOUT_SECONDS = 1
+SECRET_SCAN_STAGED_LIST_TIMEOUT_SECONDS = 1
 SECRET_SCAN_CHECKOUT_TIMEOUT_SECONDS = 4
 SECRET_SCAN_GITLEAKS_TIMEOUT_SECONDS = 8
+SECRET_SCAN_UPSTREAM_TIMEOUT_SECONDS = 1
+SECRET_SCAN_REV_LIST_TIMEOUT_SECONDS = 2
 
 REQUIRED_SPECIALIZED_RULE_IDS = {
     "maintenance-mode-manual-only",
@@ -689,19 +693,27 @@ def _run_staged_secret_scan(repo_root: Path) -> str | None:
     if gitleaks is None:
         return "gitleaks is required before AI can run git commit."
 
-    staged_probe = subprocess.run(
-        ["git", "-C", str(repo_root), "diff", "--cached", "--quiet", "--exit-code"],
-        check=False,
-        capture_output=True,
-    )
+    try:
+        staged_probe = subprocess.run(
+            ["git", "-C", str(repo_root), "diff", "--cached", "--quiet", "--exit-code"],
+            check=False,
+            capture_output=True,
+            timeout=SECRET_SCAN_STAGED_PROBE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return "Timed out while checking whether staged changes require an AI pre-commit secret scan."
     if staged_probe.returncode == 0:
         return None
 
-    staged_files = subprocess.run(
-        ["git", "-C", str(repo_root), "-c", "core.quotepath=false", "diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"],
-        check=False,
-        capture_output=True,
-    )
+    try:
+        staged_files = subprocess.run(
+            ["git", "-C", str(repo_root), "-c", "core.quotepath=false", "diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"],
+            check=False,
+            capture_output=True,
+            timeout=SECRET_SCAN_STAGED_LIST_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return "Timed out while enumerating staged files for AI pre-commit secret scan."
     if staged_files.returncode != 0:
         return "Failed to enumerate staged files for AI pre-commit secret scan."
     if not staged_files.stdout:
@@ -748,14 +760,18 @@ def _run_staged_secret_scan(repo_root: Path) -> str | None:
 
 
 def _get_unpushed_log_options(repo_root: Path) -> tuple[list[str], str] | None:
-    upstream = subprocess.run(
-        ["git", "-C", str(repo_root), "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
-        check=False,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    try:
+        upstream = subprocess.run(
+            ["git", "-C", str(repo_root), "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=SECRET_SCAN_UPSTREAM_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("Timed out while determining the upstream branch for AI secret scan.") from exc
     upstream_name = upstream.stdout.strip() if upstream.returncode == 0 else ""
     if upstream_name:
         rev_list_args = [f"{upstream_name}..HEAD"]
@@ -764,14 +780,18 @@ def _get_unpushed_log_options(repo_root: Path) -> tuple[list[str], str] | None:
         rev_list_args = ["HEAD", "--not", "--remotes"]
         log_opts = "HEAD --not --remotes"
 
-    commits = subprocess.run(
-        ["git", "-C", str(repo_root), "rev-list", *rev_list_args],
-        check=False,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    try:
+        commits = subprocess.run(
+            ["git", "-C", str(repo_root), "rev-list", *rev_list_args],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=SECRET_SCAN_REV_LIST_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("Timed out while enumerating commits for AI secret scan.") from exc
     if commits.returncode != 0 or not commits.stdout.strip():
         return None
     return rev_list_args, log_opts
@@ -782,7 +802,10 @@ def _run_unpushed_secret_scan(repo_root: Path, *, action_name: str) -> str | Non
     if gitleaks is None:
         return f"gitleaks is required before AI can run {action_name}."
 
-    log_options = _get_unpushed_log_options(repo_root)
+    try:
+        log_options = _get_unpushed_log_options(repo_root)
+    except RuntimeError as exc:
+        return str(exc)
     if log_options is None:
         return None
 

@@ -489,6 +489,43 @@ def test_run_staged_secret_scan_denies_when_git_diff_name_only_fails(monkeypatch
     )
 
 
+def test_run_staged_secret_scan_denies_when_git_diff_probe_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(guard_policy, "_resolve_gitleaks", lambda: "gitleaks")
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_STAGED_PROBE_TIMEOUT_SECONDS)
+
+    monkeypatch.setattr(guard_policy.subprocess, "run", fake_run)
+
+    assert (
+        guard_policy._run_staged_secret_scan(ROOT)
+        == "Timed out while checking whether staged changes require an AI pre-commit secret scan."
+    )
+
+
+def test_run_staged_secret_scan_denies_when_git_diff_name_only_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(guard_policy, "_resolve_gitleaks", lambda: "gitleaks")
+
+    results = iter(
+        [
+            subprocess.CompletedProcess(args=["git"], returncode=1, stdout=b"", stderr=b""),
+        ]
+    )
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        completed = next(results, None)
+        if completed is not None:
+            return completed
+        raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_STAGED_LIST_TIMEOUT_SECONDS)
+
+    monkeypatch.setattr(guard_policy.subprocess, "run", fake_run)
+
+    assert (
+        guard_policy._run_staged_secret_scan(ROOT)
+        == "Timed out while enumerating staged files for AI pre-commit secret scan."
+    )
+
+
 def test_run_staged_secret_scan_denies_when_checkout_index_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(guard_policy, "_resolve_gitleaks", lambda: "gitleaks")
 
@@ -551,9 +588,55 @@ def test_run_unpushed_secret_scan_denies_when_gitleaks_times_out(monkeypatch: py
     )
 
 
+def test_run_unpushed_secret_scan_denies_when_upstream_probe_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(guard_policy, "_resolve_gitleaks", lambda: "gitleaks")
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_UPSTREAM_TIMEOUT_SECONDS)
+
+    monkeypatch.setattr(guard_policy.subprocess, "run", fake_run)
+
+    assert (
+        guard_policy._run_unpushed_secret_scan(ROOT, action_name="git push")
+        == "Timed out while determining the upstream branch for AI secret scan."
+    )
+
+
+def test_run_unpushed_secret_scan_denies_when_rev_list_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(guard_policy, "_resolve_gitleaks", lambda: "gitleaks")
+
+    results = iter(
+        [
+            subprocess.CompletedProcess(args=["git"], returncode=0, stdout="origin/main\n", stderr=""),
+        ]
+    )
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        completed = next(results, None)
+        if completed is not None:
+            return completed
+        raise subprocess.TimeoutExpired(args, timeout=guard_policy.SECRET_SCAN_REV_LIST_TIMEOUT_SECONDS)
+
+    monkeypatch.setattr(guard_policy.subprocess, "run", fake_run)
+
+    assert (
+        guard_policy._run_unpushed_secret_scan(ROOT, action_name="git push")
+        == "Timed out while enumerating commits for AI secret scan."
+    )
+
+
 def test_secret_scan_subprocess_timeouts_fit_within_wrapper_budget() -> None:
     assert (
-        guard_policy.SECRET_SCAN_CHECKOUT_TIMEOUT_SECONDS + guard_policy.SECRET_SCAN_GITLEAKS_TIMEOUT_SECONDS
+        guard_policy.SECRET_SCAN_STAGED_PROBE_TIMEOUT_SECONDS
+        + guard_policy.SECRET_SCAN_STAGED_LIST_TIMEOUT_SECONDS
+        + guard_policy.SECRET_SCAN_CHECKOUT_TIMEOUT_SECONDS
+        + guard_policy.SECRET_SCAN_GITLEAKS_TIMEOUT_SECONDS
+        < guard_policy.SECRET_SCAN_WRAPPER_TIMEOUT_SECONDS
+    )
+    assert (
+        guard_policy.SECRET_SCAN_UPSTREAM_TIMEOUT_SECONDS
+        + guard_policy.SECRET_SCAN_REV_LIST_TIMEOUT_SECONDS
+        + guard_policy.SECRET_SCAN_GITLEAKS_TIMEOUT_SECONDS
         < guard_policy.SECRET_SCAN_WRAPPER_TIMEOUT_SECONDS
     )
 
