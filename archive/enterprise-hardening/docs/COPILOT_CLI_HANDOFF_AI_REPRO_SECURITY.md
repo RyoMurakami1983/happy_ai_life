@@ -136,7 +136,7 @@ Python dependencies は `uv.lock` で固定されているが、`git`、`gitleak
 
 目標:
 
-- `EnterpriseSecurity` と `EnterpriseWindowsDesktop` などに分ける。
+- `HappyDefault`、`Secure`、`EnterpriseStrict`、`WindowsDesktop` に分ける。
 - AI が enterprise = Windows desktop と誤解しないようにする。
 
 ## 目標アーキテクチャ
@@ -232,9 +232,6 @@ security boundary に触るが、正当な変更もあり得るものは ask。
 - `SECURITY.md`
 - `docs/TRUST_BOUNDARY.md`
 - `docs/HOOKS_GOVERNANCE.md`
-- `docs/ENTERPRISE_SECURITY_REVIEW.md`
-- `docs/ENTERPRISE_SECURITY.md`
-- `docs/ISSUE_ROADMAP_ENTERPRISE_SECURITY.md`
 - `scripts/sync-to-home.ps1`
 - `scripts/sync-to-repo.ps1`
 - `scripts/repo-secure-check.ps1`

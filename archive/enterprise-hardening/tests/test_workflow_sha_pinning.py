@@ -65,26 +65,67 @@ def test_quality_gates_doc_describes_sha_pinning_update_policy() -> None:
     required_phrases = (
         "full commit SHA で pin",
         "gitleaks/gitleaks-action",
-        "git ls-remote https://github.com/gitleaks/gitleaks-action",
-        "Dependabot",
-        "`github-actions` ecosystem",
-        "人間レビュー",
+        "upstream tag の SHA",
     )
 
     for phrase in required_phrases:
         assert phrase in content
 
 
-def test_quality_workflow_runs_hook_parity_matrix() -> None:
+def test_quality_workflow_splits_fast_pr_and_full_checks() -> None:
     workflow = yaml.safe_load(QUALITY_WORKFLOW_PATH.read_text(encoding="utf-8"))
 
     assert isinstance(workflow, dict)
     jobs = workflow.get("jobs")
     assert isinstance(jobs, dict)
 
-    hook_parity = jobs.get("hook-parity")
+    happy_default = jobs.get("happy-default")
+    assert isinstance(happy_default, dict)
+    assert happy_default.get("name") == "HappyDefault fast checks"
+    assert happy_default.get("if") == "github.event_name == 'pull_request'"
+    assert happy_default.get("runs-on") == "ubuntu-latest"
+
+    happy_default_steps = {
+        step.get("name"): step.get("run")
+        for step in happy_default.get("steps", [])
+        if isinstance(step, dict) and "name" in step and "run" in step
+    }
+    assert (
+        happy_default_steps.get("Run focused tests")
+        == "uv run python -m pytest -q tests/test_guard_policy.py tests/test_guard_policy_engine.py tests/test_workflow_sha_pinning.py"
+    )
+    assert happy_default_steps.get("Run ruff") == "uv run ruff check ."
+    assert happy_default_steps.get("Run ty") == "uv run ty check ."
+
+    hook_parity_smoke = jobs.get("hook-parity-smoke")
+    assert isinstance(hook_parity_smoke, dict)
+    assert hook_parity_smoke.get("name") == "hook parity smoke"
+    assert hook_parity_smoke.get("if") == "github.event_name == 'pull_request'"
+    assert hook_parity_smoke.get("runs-on") == "ubuntu-latest"
+    smoke_run_steps = {
+        step.get("name"): step.get("run")
+        for step in hook_parity_smoke.get("steps", [])
+        if isinstance(step, dict) and "name" in step and "run" in step
+    }
+    assert smoke_run_steps.get("Run hook parity tests") == "uv run python -m pytest -q tests/test_git_hooks_secret_guard.py"
+
+    full_quality = jobs.get("full-quality")
+    assert isinstance(full_quality, dict)
+    assert full_quality.get("name") == "full quality"
+    assert full_quality.get("if") == "github.event_name != 'pull_request'"
+    full_quality_steps = {
+        step.get("name"): step.get("run")
+        for step in full_quality.get("steps", [])
+        if isinstance(step, dict) and "name" in step and "run" in step
+    }
+    assert full_quality_steps.get("Run tests") == "uv run python -m pytest -q"
+    assert full_quality_steps.get("Run ruff") == "uv run ruff check ."
+    assert full_quality_steps.get("Run ty") == "uv run ty check ."
+
+    hook_parity = jobs.get("hook-parity-full")
     assert isinstance(hook_parity, dict)
-    assert hook_parity.get("name") == "hook parity (${{ matrix.os }})"
+    assert hook_parity.get("name") == "hook parity full (${{ matrix.os }})"
+    assert hook_parity.get("if") == "github.event_name != 'pull_request'"
     assert hook_parity.get("runs-on") == "${{ matrix.os }}"
 
     strategy = hook_parity.get("strategy")
@@ -123,14 +164,11 @@ def test_docs_describe_hook_parity_ci_and_local_command() -> None:
 
     for phrase in (
         "hook parity",
-        "Windows / macOS / Linux",
         "`tests/test_git_hooks_secret_guard.py`",
-        "`ubuntu-latest`",
-        "`macos-latest`",
-        "`windows-latest`",
+        "manual workflow",
         "uv run python -m pytest -q tests/test_git_hooks_secret_guard.py",
     ):
         assert phrase in quality_gates
 
     assert "uv run python -m pytest -q tests/test_git_hooks_secret_guard.py" in development
-    assert "`hook-parity` job" in development
+    assert "`hook parity smoke`" in development

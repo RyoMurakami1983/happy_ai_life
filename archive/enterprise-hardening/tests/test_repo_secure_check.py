@@ -505,6 +505,56 @@ def test_repo_secure_check_accepts_repo_template_hooks_for_source_repo(tmp_path:
     assert report["missing"] == []
 
 
+def test_repo_secure_check_source_repo_uses_repo_template_hooks_as_canonical(tmp_path: Path) -> None:
+    target_repo = tmp_path / "source-root"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    (target_repo / ".github" / "hooks").mkdir(parents=True)
+    (target_repo / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
+    (target_repo / ".github" / "workflows").mkdir(parents=True)
+    (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo, "repo-template/.githooks")
+    _git(target_repo, "config", "--local", "core.hooksPath", "repo-template/.githooks")
+
+    completed = _run_check_process(
+        target_repo,
+        source_root=target_repo,
+        env=_build_tool_env(target_repo),
+        strict=True,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["missing"] == []
+    git_hooks_check = next(check for check in report["checks"] if check["key"] == "gitHooksDirectory")
+    assert git_hooks_check["label"] == "repo-template/.githooks"
+    assert git_hooks_check["path"].endswith("repo-template\\.githooks")
+
+
+def test_repo_secure_check_rejects_repo_template_hooks_for_target_repo(tmp_path: Path) -> None:
+    source_root = tmp_path / "source"
+    source_root.mkdir()
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    (target_repo / ".github" / "hooks").mkdir(parents=True)
+    (target_repo / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
+    (target_repo / ".github" / "workflows").mkdir(parents=True)
+    (target_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    (target_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    _write_required_git_hooks(target_repo, "repo-template/.githooks")
+    _git(target_repo, "config", "--local", "core.hooksPath", "repo-template/.githooks")
+
+    report = _run_check(target_repo, source_root=source_root)
+
+    assert report["missing"] == ["gitHooksDirectory", "coreHooksPath"]
+    git_hooks_check = next(check for check in report["checks"] if check["key"] == "gitHooksDirectory")
+    assert git_hooks_check["label"] == ".githooks"
+
+
 def test_repo_secure_check_reports_missing_github_workflows(tmp_path: Path) -> None:
     target_repo = tmp_path / "target"
     target_repo.mkdir()

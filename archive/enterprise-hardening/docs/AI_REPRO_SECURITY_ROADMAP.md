@@ -59,8 +59,8 @@ Copilot CLI に `happy_ai_life` の改善を依頼するための atomic issue r
 
 完了条件:
 
-- [ ] `docs/ENTERPRISE_SECURITY.md` が protected path に含まれる。
-- [ ] `docs/ISSUE_ROADMAP_ENTERPRISE_SECURITY.md` が protected path に含まれる。
+- [ ] `docs/TRUST_BOUNDARY.md` が protected path に含まれる。
+- [ ] `docs/HOOKS_GOVERNANCE.md` が protected path に含まれる。
 - [ ] `scripts/sync-to-home.ps1` が protected path に含まれる。
 - [ ] `scripts/sync-to-repo.ps1` が protected path に含まれる。
 - [ ] `scripts/repo-secure-check.ps1` が protected path に含まれる。
@@ -303,6 +303,7 @@ Copilot CLI に `happy_ai_life` の改善を依頼するための atomic issue r
 
 - [ ] security general profile と Windows desktop profile が分かれている。
 - [ ] 既存 profile との migration note がある。
+- [ ] 既定 profile は `HappyDefault` で、`EnterpriseStrict` は opt-in になっている。
 - [ ] AI が enterprise = Windows desktop と誤解しない説明になっている。
 
 ## Phase 6: remote governance を補助する

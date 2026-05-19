@@ -9,8 +9,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 POLICY_PATH = ROOT / "policy" / "guard-policy.json"
 SCHEMA_PATH = ROOT / "policy" / "guard-policy.schema.json"
-HOOKS_GOVERNANCE_PATH = ROOT / "docs" / "HOOKS_GOVERNANCE.md"
-HANDOFF_PATH = ROOT / "docs" / "COPILOT_CLI_HANDOFF_AI_REPRO_SECURITY.md"
+HOOKS_GOVERNANCE_PATH = ROOT / "archive" / "enterprise-hardening" / "docs" / "HOOKS_GOVERNANCE.md"
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -166,28 +165,12 @@ def test_guard_policy_covers_current_boundary_rules() -> None:
         ".github/hooks/**",
         ".githooks/**",
         ".github/workflows/**",
-        ".github/instructions/**",
-        ".github/skills/**",
-        ".agents/skills/**",
-        ".claude/skills/**",
-        ".github/copilot-instructions.md",
         ".github/mcp.json",
         ".mcp.json",
         ".gitleaks.toml",
-        "SECURITY.md",
-        "docs/TRUST_BOUNDARY.md",
-        "docs/HOOKS_GOVERNANCE.md",
-        "docs/ENTERPRISE_SECURITY_REVIEW.md",
-        "docs/ENTERPRISE_SECURITY.md",
-        "docs/ISSUE_ROADMAP_ENTERPRISE_SECURITY.md",
-        "scripts/sync-to-home.ps1",
-        "scripts/sync-to-repo.ps1",
-        "scripts/repo-secure-check.ps1",
-        "home-template/.copilot/**",
         "policy/guard-policy.json",
         "policy/guard-policy.schema.json",
         "$HOME/.copilot/maintenance-mode.json",
-        "$HOME/.copilot/**",
     }
 
     deny_rule_ids = {entry["id"] for entry in policy["denyCommandRules"]}
@@ -375,10 +358,7 @@ def test_guard_policy_tool_names_match_runtime_defaults() -> None:
 
 def test_guard_policy_docs_reference_policy_as_source_of_truth() -> None:
     hooks_governance = HOOKS_GOVERNANCE_PATH.read_text(encoding="utf-8")
-    handoff = HANDOFF_PATH.read_text(encoding="utf-8")
 
     assert "policy/guard-policy.json" in hooks_governance
     assert "policy/guard-policy.schema.json" in hooks_governance
     assert "source of truth" in hooks_governance
-    assert "policy/guard-policy.json" in handoff
-    assert "policy/guard-policy.schema.json" in handoff

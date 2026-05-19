@@ -32,3 +32,6 @@ exclude = ["plugins/**"]
 
 [tool.pytest.ini_options]
 norecursedirs = ["archive"]
+
+[tool.ruff]
+exclude = ["archive"]

@@ -274,7 +274,7 @@ def test_sync_to_repo_allows_explicit_policy_sync_opt_out(tmp_path: Path) -> Non
     assert not (target_repo / "policy").exists()
 
 
-def test_sync_to_repo_default_profile_excludes_enterprise_instruction(tmp_path: Path) -> None:
+def test_sync_to_repo_happy_default_profile_excludes_enterprise_instruction(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     target_repo = tmp_path / "target"
     (target_repo / ".github").mkdir(parents=True)
@@ -285,7 +285,7 @@ def test_sync_to_repo_default_profile_excludes_enterprise_instruction(tmp_path: 
     assert not (target_repo / ".github" / "instructions" / "enterprise.instructions.md").exists()
 
 
-def test_sync_to_repo_default_profile_removes_existing_enterprise_instruction(tmp_path: Path) -> None:
+def test_sync_to_repo_happy_default_profile_removes_existing_enterprise_instruction(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     target_repo = tmp_path / "target"
     instructions_dir = target_repo / ".github" / "instructions"
@@ -293,14 +293,14 @@ def test_sync_to_repo_default_profile_removes_existing_enterprise_instruction(tm
     stale_instruction = instructions_dir / "enterprise.instructions.md"
     stale_instruction.write_text("# stale enterprise instructions\n", encoding="utf-8")
 
-    result = _run_sync(source_root, target_repo, dry_run=False, policy_profile="Default")
+    result = _run_sync(source_root, target_repo, dry_run=False, policy_profile="HappyDefault")
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert not stale_instruction.exists()
     assert "Removed excluded policy profile artifact" in result.stdout
 
 
-def test_sync_to_repo_default_profile_dry_run_preserves_existing_enterprise_instruction(tmp_path: Path) -> None:
+def test_sync_to_repo_happy_default_profile_dry_run_preserves_existing_enterprise_instruction(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     target_repo = tmp_path / "target"
     instructions_dir = target_repo / ".github" / "instructions"
@@ -308,14 +308,40 @@ def test_sync_to_repo_default_profile_dry_run_preserves_existing_enterprise_inst
     stale_instruction = instructions_dir / "enterprise.instructions.md"
     stale_instruction.write_text("# stale enterprise instructions\n", encoding="utf-8")
 
-    result = _run_sync(source_root, target_repo, dry_run=True, policy_profile="Default")
+    result = _run_sync(source_root, target_repo, dry_run=True, policy_profile="HappyDefault")
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert stale_instruction.exists()
     assert "Would remove excluded policy profile artifact" in result.stdout
 
 
-def test_sync_to_repo_enterprise_profile_includes_enterprise_instruction(tmp_path: Path) -> None:
+def test_sync_to_repo_enterprise_strict_profile_includes_enterprise_instruction(tmp_path: Path) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    (target_repo / ".github").mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False, policy_profile="EnterpriseStrict")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (target_repo / ".github" / "instructions" / "enterprise.instructions.md").exists()
+
+
+@pytest.mark.parametrize("policy_profile", ["Secure", "WindowsDesktop", "Default"])
+def test_sync_to_repo_lightweight_profiles_exclude_enterprise_instruction(
+    tmp_path: Path,
+    policy_profile: str,
+) -> None:
+    source_root = _create_minimal_source_root(tmp_path / "source")
+    target_repo = tmp_path / "target"
+    (target_repo / ".github").mkdir(parents=True)
+
+    result = _run_sync(source_root, target_repo, dry_run=False, policy_profile=policy_profile)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (target_repo / ".github" / "instructions" / "enterprise.instructions.md").exists()
+
+
+def test_sync_to_repo_enterprise_alias_maps_to_enterprise_strict(tmp_path: Path) -> None:
     source_root = _create_minimal_source_root(tmp_path / "source")
     target_repo = tmp_path / "target"
     (target_repo / ".github").mkdir(parents=True)
@@ -323,6 +349,7 @@ def test_sync_to_repo_enterprise_profile_includes_enterprise_instruction(tmp_pat
     result = _run_sync(source_root, target_repo, dry_run=False, policy_profile="Enterprise")
 
     assert result.returncode == 0, result.stdout + result.stderr
+    assert "ProfileAlias : Enterprise -> EnterpriseStrict" in result.stdout
     assert (target_repo / ".github" / "instructions" / "enterprise.instructions.md").exists()
 
 

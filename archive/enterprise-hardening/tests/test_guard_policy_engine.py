@@ -64,7 +64,7 @@ def test_engine_asks_for_protected_edit_path_from_stringified_json(isolated_home
             "toolName": "edit",
             "toolArgs": json.dumps(
                 {
-                    "filePath": "docs/HOOKS_GOVERNANCE.md",
+                    "filePath": ".gitleaks.toml",
                     "oldString": "old",
                     "newString": "new",
                 }
@@ -75,7 +75,7 @@ def test_engine_asks_for_protected_edit_path_from_stringified_json(isolated_home
 
     assert response == {
         "permissionDecision": "ask",
-        "permissionDecisionReason": "Protected path change detected for docs/HOOKS_GOVERNANCE.md via edit. This path requires an atomic issue/PR and explicit human review.",
+        "permissionDecisionReason": "Protected path change detected for .gitleaks.toml via edit. This path requires an atomic issue/PR and explicit human review.",
     }
 
 
@@ -84,7 +84,7 @@ def test_engine_permission_request_falls_through_for_protected_path(isolated_hom
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -240,7 +240,7 @@ def test_engine_allows_protected_edit_path_during_active_maintenance_mode(tmp_pa
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -260,7 +260,7 @@ def test_engine_treats_mixed_timezone_maintenance_state_as_inactive(isolated_hom
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -270,11 +270,11 @@ def test_engine_treats_mixed_timezone_maintenance_state_as_inactive(isolated_hom
 
     assert response == {
         "permissionDecision": "ask",
-        "permissionDecisionReason": "Protected path change detected for docs/HOOKS_GOVERNANCE.md via edit. This path requires an atomic issue/PR and explicit human review.",
+        "permissionDecisionReason": "Protected path change detected for .gitleaks.toml via edit. This path requires an atomic issue/PR and explicit human review.",
     }
 
 
-def test_engine_keeps_home_copilot_under_ask_during_maintenance_mode(tmp_path: Path) -> None:
+def test_engine_allows_unprotected_home_copilot_during_maintenance_mode(tmp_path: Path) -> None:
     home_root = tmp_path / "home"
     _write_maintenance_state(home_root)
 
@@ -290,21 +290,18 @@ def test_engine_keeps_home_copilot_under_ask_during_maintenance_mode(tmp_path: P
         home=home_root,
     )
 
-    assert response == {
-        "permissionDecision": "ask",
-        "permissionDecisionReason": "Protected path change detected for $HOME/.copilot/** via edit. Home-managed Copilot files always require explicit human review, even during maintenance mode.",
-    }
+    assert response is None
 
 
 def test_engine_uses_generic_deny_reason_for_non_maintenance_protected_path(tmp_path: Path, isolated_home: Path) -> None:
     policy = json.loads((ROOT / "policy" / "guard-policy.json").read_text(encoding="utf-8"))
     for entry in policy["protectedPaths"]:
-        if entry["path"] == "docs/HOOKS_GOVERNANCE.md":
+        if entry["path"] == ".gitleaks.toml":
             entry["action"] = "deny"
             entry["maintenanceScope"] = None
             break
     else:
-        raise AssertionError("docs/HOOKS_GOVERNANCE.md protected path not found")
+        raise AssertionError(".gitleaks.toml protected path not found")
     policy_path = tmp_path / "guard-policy.json"
     policy_path.write_text(json.dumps(policy), encoding="utf-8")
 
@@ -312,7 +309,7 @@ def test_engine_uses_generic_deny_reason_for_non_maintenance_protected_path(tmp_
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/HOOKS_GOVERNANCE.md",
+                "path": ".gitleaks.toml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -323,18 +320,24 @@ def test_engine_uses_generic_deny_reason_for_non_maintenance_protected_path(tmp_
 
     assert response == {
         "permissionDecision": "deny",
-        "permissionDecisionReason": "Protected path change detected for docs/HOOKS_GOVERNANCE.md via edit. This protected path is denied from Copilot tool edits.",
+        "permissionDecisionReason": "Protected path change detected for .gitleaks.toml via edit. This protected path is denied from Copilot tool edits.",
     }
 
 
 def test_engine_prefers_specific_deny_over_broad_ask_policy_order(tmp_path: Path, isolated_home: Path) -> None:
     policy = json.loads((ROOT / "policy" / "guard-policy.json").read_text(encoding="utf-8"))
     deny_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/maintenance-mode.json")
-    broad_entry = next(entry for entry in policy["protectedPaths"] if entry["path"] == "$HOME/.copilot/**")
+    broad_entry = {
+        "id": "home-copilot-root",
+        "path": "$HOME/.copilot/**",
+        "scope": "directory",
+        "action": "ask",
+        "maintenanceScope": None,
+    }
     remaining_entries = [
         entry
         for entry in policy["protectedPaths"]
-        if entry["path"] not in {"$HOME/.copilot/maintenance-mode.json", "$HOME/.copilot/**"}
+        if entry["path"] != "$HOME/.copilot/maintenance-mode.json"
     ]
     policy["protectedPaths"] = [broad_entry, deny_entry, *remaining_entries]
     policy_path = tmp_path / "guard-policy.json"
@@ -402,7 +405,7 @@ def test_engine_invalid_policy_falls_back_to_protected_rule(tmp_path: Path, isol
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "home-template/.copilot/config.json",
+                "path": ".gitleaks.toml",
                 "oldString": "{}",
                 "newString": '{"hooks":{}}',
             },
@@ -413,11 +416,11 @@ def test_engine_invalid_policy_falls_back_to_protected_rule(tmp_path: Path, isol
 
     assert response == {
         "permissionDecision": "ask",
-        "permissionDecisionReason": "Protected path change detected for home-template/.copilot/** via edit. This path requires an atomic issue/PR and explicit human review.",
+        "permissionDecisionReason": "Protected path change detected for .gitleaks.toml via edit. This path requires an atomic issue/PR and explicit human review.",
     }
 
 
-def test_engine_invalid_policy_falls_back_to_trust_boundary_protection(tmp_path: Path, isolated_home: Path) -> None:
+def test_engine_invalid_policy_falls_back_to_workflow_protection(tmp_path: Path, isolated_home: Path) -> None:
     policy_path = tmp_path / "guard-policy.json"
     policy_path.write_text("{invalid json", encoding="utf-8")
 
@@ -425,7 +428,7 @@ def test_engine_invalid_policy_falls_back_to_trust_boundary_protection(tmp_path:
         {
             "toolName": "edit",
             "toolArgs": {
-                "path": "docs/TRUST_BOUNDARY.md",
+                "path": ".github/workflows/quality.yml",
                 "oldString": "old",
                 "newString": "new",
             },
@@ -436,5 +439,5 @@ def test_engine_invalid_policy_falls_back_to_trust_boundary_protection(tmp_path:
 
     assert response == {
         "permissionDecision": "ask",
-        "permissionDecisionReason": "Protected path change detected for docs/TRUST_BOUNDARY.md via edit. This path requires an atomic issue/PR and explicit human review.",
+        "permissionDecisionReason": "Protected path change detected for .github/workflows/** via edit. This path requires an atomic issue/PR and explicit human review.",
     }

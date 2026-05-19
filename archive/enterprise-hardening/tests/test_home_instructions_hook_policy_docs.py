@@ -26,8 +26,8 @@ def test_home_instructions_prioritize_user_level_guard() -> None:
 def test_home_sync_doc_matches_user_level_guard_policy() -> None:
     content = read_text(HOME_SYNC_DOC_PATH)
 
-    assert "managed な user-level safety hook entry" in content
-    assert "ローカルで運用する安全弁の範囲では user-level guard を最上位" in content
-    assert "enterprise managed policy / device policy を上書きするものではなく" in content
-    assert "policy/guard-policy.json" in content
-    assert "policy/guard-policy.schema.json" in content
+    assert "Home Sync は" in content
+    assert "この repo 自体を育てる人向け" in content
+    assert "uv run app.py home --dry-run" in content
+    assert "secret や live な `mcp-config.json` は同期しません" in content
+    assert "user-owned config は壊さない" in content

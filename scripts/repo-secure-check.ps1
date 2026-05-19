@@ -166,6 +166,32 @@ function Test-GitRepository {
     }
 }
 
+function Get-ComparablePath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    try {
+        $resolved = (Resolve-Path -LiteralPath $Path -ErrorAction Stop).Path
+    }
+    catch {
+        $resolved = [System.IO.Path]::GetFullPath($Path)
+    }
+
+    return [System.IO.Path]::GetFullPath($resolved).TrimEnd('\', '/')
+}
+
+function Test-SamePath {
+    param(
+        [Parameter(Mandatory = $true)][string]$Left,
+        [Parameter(Mandatory = $true)][string]$Right
+    )
+
+    return [string]::Equals(
+        (Get-ComparablePath -Path $Left),
+        (Get-ComparablePath -Path $Right),
+        [System.StringComparison]::OrdinalIgnoreCase
+    )
+}
+
 function Test-WindowsHost {
     return $env:OS -eq "Windows_NT"
 }
@@ -383,17 +409,18 @@ if (-not (Test-Path -LiteralPath $targetRepoPath)) {
 $instructionsPath = Join-Path $targetRepoPath ".github\copilot-instructions.md"
 $copilotHooksPath = Join-Path $targetRepoPath ".github\hooks"
 $githubWorkflowsPath = Join-Path $targetRepoPath ".github\workflows"
-$gitHooksPath = Join-Path $targetRepoPath ".githooks"
 $sourceRootPath = [System.IO.Path]::GetFullPath($SourceRoot)
+$isSourceRepository = Test-SamePath -Left $targetRepoPath -Right $sourceRootPath
+$targetGitHooksPath = Join-Path $targetRepoPath ".githooks"
+$sourceGitHooksPath = Join-Path $targetRepoPath "repo-template\.githooks"
+$gitHooksPath = if ($isSourceRepository) { $sourceGitHooksPath } else { $targetGitHooksPath }
+$gitHooksLabel = if ($isSourceRepository) { "repo-template/.githooks" } else { ".githooks" }
 
 $isGitRepo = Test-GitRepository -Path $targetRepoPath
 $coreHooksConfigured = ""
 $coreHooksResolvedPath = ""
 $expectedGitHooksPaths = New-Object System.Collections.Generic.List[string]
 [void]$expectedGitHooksPaths.Add([System.IO.Path]::GetFullPath($gitHooksPath))
-if ($targetRepoPath -eq $sourceRootPath) {
-    [void]$expectedGitHooksPaths.Add([System.IO.Path]::GetFullPath((Join-Path $targetRepoPath "repo-template\.githooks")))
-}
 
 if ($isGitRepo) {
     try {
@@ -482,10 +509,10 @@ $checks = @(
         -Details ($(if ($copilotHooksOk) { "Copilot safety hook safety-guard.json が存在します。session continuity hooks は標準運用から封印済みで、必要な repo だけ明示 opt-in します。" } else { "Copilot safety hook safety-guard.json がありません。" }))),
     (New-CheckResult `
         -Key "gitHooksDirectory" `
-        -Label ".githooks" `
+        -Label $gitHooksLabel `
         -Ok $gitHooksOk `
         -Path $gitHooksPath `
-        -Details ($(if ($gitHooksOk) { ".githooks に pre-commit / pre-push / secret-guard / commit-safety-guard が存在し、pre-commit / pre-push から呼び出されています。" } else { ".githooks の必須 hook が不足または未接続です: $($gitHookIssues -join ', ')" }))),
+        -Details ($(if ($gitHooksOk) { "$gitHooksLabel に pre-commit / pre-push / secret-guard / commit-safety-guard が存在し、pre-commit / pre-push から呼び出されています。" } else { "$gitHooksLabel の必須 hook が不足または未接続です: $($gitHookIssues -join ', ')" }))),
     (New-CheckResult `
         -Key "githubWorkflows" `
         -Label "GitHub Actions workflows" `
