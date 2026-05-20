@@ -60,6 +60,8 @@ skill では `_skill` の雛形 / 検証資産、agent では `_agent` の雛形
 
 新規作成でも改善でも、最後は検証に戻します。authoring 資産は prose が中心なので、書けたかどうかより「発見できるか」「境界が明確か」「次の利用者が迷わないか」を確かめることが重要です。
 
+`plugins/*` 配下で plugin 配布中の skill / agent を改善した場合だけ、**利用者体験が変わる改善か**を最後に確認します。変わるなら、その plugin の `plugin.json` と marketplace entry の version 更新が必要かを判断します。詳細は `references/plugin-versioning.md` を参照してください。
+
 ### ステップ 4 — その場で閉じるか Issue 化するかを決める
 
 - その場で閉じる: 抽象化と review の時点で、既存資産の書き換えだけで済む
@@ -75,6 +77,7 @@ skill では `_skill` の雛形 / 検証資産、agent では `_agent` の雛形
 - `./_eval/scripts/validate_agent.py` — agent markdown の構造 validator
 - `./sub_skills/instructions-authoring/` — repo-wide / path-specific instructions の authoring ルート
 - `./sub_skills/improve-existing/` — 既存資産の改善ルート
+- `./references/plugin-versioning.md` — plugin 配布中 skill / agent を更新したときの version 判断
 
 ## 注意点
 

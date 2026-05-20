@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Curated Copilot CLI plugins for Happy AI Life core and coding workflows.",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "plugins": [
     {
       "name": "happy-core",
       "source": "plugins/happy-core",
       "description": "Copilot CLI reusable workflows, authoring tools, Git/GitHub operations, and knowledge capture for Happy AI Life.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "repository": "https://github.com/RyoMurakami1983/happy_ai_life",
       "keywords": [
         "copilot-cli",
@@ -26,7 +26,7 @@
       "name": "happy-coding",
       "source": "plugins/happy-coding",
       "description": "Copilot CLI reusable coding workflows, developer setup skills, and narrow agents for Happy AI Life.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "repository": "https://github.com/RyoMurakami1983/happy_ai_life",
       "keywords": [
         "copilot-cli",
