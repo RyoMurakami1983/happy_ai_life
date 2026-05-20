@@ -449,6 +449,85 @@ function Get-ManagedPowerShellHookCommand {
     return ('if ($PSVersionTable.PSEdition -eq ''Core'') {{ & "{0}" }} elseif (Get-Command pwsh -ErrorAction SilentlyContinue) {{ & pwsh -NoProfile -File "{0}" }} else {{ & "{0}" }}' -f $ScriptPath)
 }
 
+function Get-ManagedBashHookCommand {
+    param([Parameter(Mandatory = $true)][string]$ScriptPath)
+
+    return ('bash "{0}"' -f $ScriptPath.Replace('\', '/'))
+}
+
+function Read-CommentPrefixedConfigJson {
+    param([Parameter(Mandatory = $true)][string]$ConfigPath)
+
+    $raw = Get-Content -LiteralPath $ConfigPath -Raw
+    if ([string]::IsNullOrWhiteSpace($raw)) {
+        return [pscustomobject]@{
+            Preamble = ""
+            Content = [pscustomobject]@{}
+        }
+    }
+
+    $lines = $raw -split "(?<=`r`n|`n|`r)"
+    $preambleLines = New-Object System.Collections.Generic.List[string]
+    $bodyStartIndex = -1
+    for ($index = 0; $index -lt $lines.Length; $index += 1) {
+        $line = $lines[$index]
+        $trimmedStart = $line.TrimStart()
+        if ($trimmedStart.StartsWith("//") -or [string]::IsNullOrWhiteSpace($trimmedStart)) {
+            [void]$preambleLines.Add($line)
+            continue
+        }
+
+        $bodyStartIndex = $index
+        break
+    }
+
+    if ($bodyStartIndex -lt 0) {
+        return [pscustomobject]@{
+            Preamble = $raw
+            Content = [pscustomobject]@{}
+        }
+    }
+
+    $body = ($lines[$bodyStartIndex..($lines.Length - 1)] -join "")
+    try {
+        $content = $body | ConvertFrom-Json
+    }
+    catch {
+        throw "Unsupported JSON content. $($_.Exception.Message)"
+    }
+
+    if ($null -eq $content -or $content -isnot [psobject]) {
+        throw "Top-level JSON value must be an object."
+    }
+
+    return [pscustomobject]@{
+        Preamble = ($preambleLines -join "")
+        Content = $content
+    }
+}
+
+function ConvertTo-CommentPrefixedConfigJson {
+    param(
+        [Parameter(Mandatory = $true)][string]$Preamble,
+        [Parameter(Mandatory = $true)]$Content
+    )
+
+    $renderedBody = $Content | ConvertTo-Json -Depth 20
+    if (-not $renderedBody.EndsWith("`n")) {
+        $renderedBody = "$renderedBody`n"
+    }
+
+    if ([string]::IsNullOrEmpty($Preamble)) {
+        return $renderedBody
+    }
+
+    if ($Preamble.EndsWith("`n") -or $Preamble.EndsWith("`r")) {
+        return "$Preamble$renderedBody"
+    }
+
+    return "$Preamble`n$renderedBody"
+}
+
 function Get-ManagedHookEntryId {
     param($Entry)
 
@@ -462,13 +541,15 @@ function Get-ManagedHookEntryId {
 
 function New-ManagedHomeHookEntry {
     param(
-        [Parameter(Mandatory = $true)][string]$ScriptPath,
+        [Parameter(Mandatory = $true)][string]$PowerShellScriptPath,
+        [Parameter(Mandatory = $true)][string]$BashScriptPath,
         [Parameter(Mandatory = $true)][string]$HookEventName
     )
 
     return [pscustomobject][ordered]@{
         type = "command"
-        powershell = (Get-ManagedPowerShellHookCommand -ScriptPath $ScriptPath)
+        bash = (Get-ManagedBashHookCommand -ScriptPath $BashScriptPath)
+        powershell = (Get-ManagedPowerShellHookCommand -ScriptPath $PowerShellScriptPath)
         cwd = "."
         timeoutSec = 10
         env = [pscustomobject][ordered]@{
@@ -482,7 +563,8 @@ function Update-ManagedHookArray {
     param(
         [Parameter(Mandatory = $true)]$Hooks,
         [Parameter(Mandatory = $true)][string]$EventName,
-        [Parameter(Mandatory = $true)][string]$ScriptPath
+        [Parameter(Mandatory = $true)][string]$PowerShellScriptPath,
+        [Parameter(Mandatory = $true)][string]$BashScriptPath
     )
 
     $eventProperty = $Hooks.PSObject.Properties[$EventName]
@@ -499,40 +581,42 @@ function Update-ManagedHookArray {
         }
     )
 
-    $managedEntry = New-ManagedHomeHookEntry -ScriptPath $ScriptPath -HookEventName $EventName
+    $managedEntry = New-ManagedHomeHookEntry `
+        -PowerShellScriptPath $PowerShellScriptPath `
+        -BashScriptPath $BashScriptPath `
+        -HookEventName $EventName
     Set-JsonProperty -Object $Hooks -Name $EventName -Value @($preservedEntries + $managedEntry)
 }
 
 function Get-HomeConfigHookPlan {
     param(
         [Parameter(Mandatory = $true)][string]$ConfigPath,
-        [Parameter(Mandatory = $true)][string]$ScriptPath
+        [Parameter(Mandatory = $true)][string]$PowerShellScriptPath,
+        [Parameter(Mandatory = $true)][string]$BashScriptPath
     )
 
     $configExists = Test-Path -LiteralPath $ConfigPath -PathType Leaf
     $originalStableJson = $null
+    $configPreamble = ""
     if ($configExists) {
-        $raw = Get-Content -LiteralPath $ConfigPath -Raw
-        if ([string]::IsNullOrWhiteSpace($raw)) {
-            $config = [pscustomobject]@{}
+        try {
+            $parsedDocument = Read-CommentPrefixedConfigJson -ConfigPath $ConfigPath
         }
-        else {
-            try {
-                $config = $raw | ConvertFrom-Json
-            }
-            catch {
-                Write-Warning ("Skipping managed enterprise/global guard update in config.json because the existing file contains invalid JSON: {0}. Error: {1}" -f $ConfigPath, $_.Exception.Message)
-                return [pscustomobject]@{
-                    Label = $ManagedHomeHookLabel
-                    Actions = @()
-                    Added = @()
-                    Updated = @()
-                    Deleted = @()
-                    MirrorMode = $false
-                    DestinationRoot = Split-Path -Path $ConfigPath -Parent
-                }
+        catch {
+            Write-Warning ("Skipping managed enterprise/global guard update in config.json because the existing file contains unsupported JSON content: {0}. Error: {1}" -f $ConfigPath, $_.Exception.Message)
+            return [pscustomobject]@{
+                Label = $ManagedHomeHookLabel
+                Actions = @()
+                Added = @()
+                Updated = @()
+                Deleted = @()
+                MirrorMode = $false
+                DestinationRoot = Split-Path -Path $ConfigPath -Parent
             }
         }
+
+        $configPreamble = [string]$parsedDocument.Preamble
+        $config = $parsedDocument.Content
         $originalStableJson = Get-StableJson -Value $config
     }
     else {
@@ -550,13 +634,14 @@ function Get-HomeConfigHookPlan {
     }
 
     foreach ($eventName in $ManagedHomeHookEvents) {
-        Update-ManagedHookArray -Hooks $hooks -EventName $eventName -ScriptPath $ScriptPath
+        Update-ManagedHookArray `
+            -Hooks $hooks `
+            -EventName $eventName `
+            -PowerShellScriptPath $PowerShellScriptPath `
+            -BashScriptPath $BashScriptPath
     }
 
-    $desiredContent = ($config | ConvertTo-Json -Depth 20)
-    if (-not $desiredContent.EndsWith("`n")) {
-        $desiredContent = "$desiredContent`n"
-    }
+    $desiredContent = ConvertTo-CommentPrefixedConfigJson -Preamble $configPreamble -Content $config
     $desiredStableJson = Get-StableJson -Value $config
 
     $added = @()
@@ -709,6 +794,10 @@ $directoryPlans = @(
     [pscustomobject]@{
         Label = "repo-template/ (managed)"
         Plan = (Get-DirectorySyncPlan -Source (Join-Path $sourceRootPath "repo-template") -Destination (Join-Path $destinationPath "repo-template") -PreviewRoot "repo-template" -MirrorMode)
+    },
+    [pscustomobject]@{
+        Label = "hooks/ (managed)"
+        Plan = (Get-DirectorySyncPlan -Source (Join-Path $sourceRootPath ".github\hooks") -Destination (Join-Path $destinationPath "hooks") -PreviewRoot "hooks" -MirrorMode)
     }
 )
 
@@ -726,12 +815,24 @@ $trackedFilePlans = @(
         Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "sync-to-repo.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "sync-to-repo.ps1") -PreviewPath "scripts/sync-to-repo.ps1")
     },
     [pscustomobject]@{
+        Label = "scripts/sync-to-repo.sh"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "sync-to-repo.sh") -Destination (Join-Path (Join-Path $destinationPath "scripts") "sync-to-repo.sh") -PreviewPath "scripts/sync-to-repo.sh")
+    },
+    [pscustomobject]@{
         Label = "scripts/install-git-hooks.ps1"
         Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "install-git-hooks.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "install-git-hooks.ps1") -PreviewPath "scripts/install-git-hooks.ps1")
     },
     [pscustomobject]@{
+        Label = "scripts/install-git-hooks.sh"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "install-git-hooks.sh") -Destination (Join-Path (Join-Path $destinationPath "scripts") "install-git-hooks.sh") -PreviewPath "scripts/install-git-hooks.sh")
+    },
+    [pscustomobject]@{
         Label = "scripts/repo-secure-check.ps1"
         Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "repo-secure-check.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "repo-secure-check.ps1") -PreviewPath "scripts/repo-secure-check.ps1")
+    },
+    [pscustomobject]@{
+        Label = "scripts/repo-secure-check.sh"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "repo-secure-check.sh") -Destination (Join-Path (Join-Path $destinationPath "scripts") "repo-secure-check.sh") -PreviewPath "scripts/repo-secure-check.sh")
     },
     [pscustomobject]@{
         Label = "scripts/enter-copilot-maintenance-mode.ps1"
@@ -740,10 +841,6 @@ $trackedFilePlans = @(
     [pscustomobject]@{
         Label = "scripts/exit-copilot-maintenance-mode.ps1"
         Plan = (Get-TrackedFilePlan -Source (Join-Path (Join-Path $sourceRootPath "scripts") "exit-copilot-maintenance-mode.ps1") -Destination (Join-Path (Join-Path $destinationPath "scripts") "exit-copilot-maintenance-mode.ps1") -PreviewPath "scripts/exit-copilot-maintenance-mode.ps1")
-    },
-    [pscustomobject]@{
-        Label = "hooks/scripts/guard_pre_tool.ps1"
-        Plan = (Get-TrackedFilePlan -Source (Join-Path $sourceRootPath ".github\hooks\scripts\guard_pre_tool.ps1") -Destination (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.ps1") -PreviewPath "hooks/scripts/guard_pre_tool.ps1")
     },
     [pscustomobject]@{
         Label = "policy/guard-policy.json"
@@ -757,7 +854,8 @@ $trackedFilePlans = @(
 
 $configHookPlan = Get-HomeConfigHookPlan `
     -ConfigPath (Join-Path $destinationPath "config.json") `
-    -ScriptPath (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.ps1")
+    -PowerShellScriptPath (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.ps1") `
+    -BashScriptPath (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.sh")
 
 foreach ($entry in $directoryPlans) {
     Write-Host ""

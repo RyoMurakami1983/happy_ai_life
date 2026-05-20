@@ -41,10 +41,38 @@ def resolve_powershell_executable() -> str:
     raise RuntimeError("PowerShell が見つかりません。インストール後に再実行してください。")
 
 
-def build_script_command(script_name: str, arguments: Sequence[str]) -> tuple[str, ...]:
-    script_path = SCRIPTS_DIR / script_name
-    if not script_path.exists():
+def resolve_bash_executable() -> str:
+    resolved = shutil.which("bash")
+    if resolved is not None:
+        return resolved
+
+    raise RuntimeError("bash が見つかりません。インストール後に再実行してください。")
+
+
+def resolve_script_path(script_name: str) -> Path:
+    if script_name.endswith((".ps1", ".sh")):
+        script_path = SCRIPTS_DIR / script_name
+        if script_path.exists():
+            return script_path
         raise FileNotFoundError(f"Script not found: {script_path}")
+
+    preferred_suffixes = (".ps1",) if os.name == "nt" else (".sh", ".ps1")
+    for suffix in preferred_suffixes:
+        candidate = SCRIPTS_DIR / f"{script_name}{suffix}"
+        if candidate.exists():
+            return candidate
+
+    raise FileNotFoundError(f"Script not found for stem: {script_name}")
+
+
+def build_script_command(script_name: str, arguments: Sequence[str]) -> tuple[str, ...]:
+    script_path = resolve_script_path(script_name)
+    if script_path.suffix == ".sh":
+        normalized_arguments = tuple(
+            f"--{argument[1:]}" if argument.startswith("-") and not argument.startswith("--") else argument
+            for argument in arguments
+        )
+        return (resolve_bash_executable(), str(script_path), *normalized_arguments, "--SourceRoot", str(ROOT_DIR))
 
     command = [resolve_powershell_executable(), "-NoProfile"]
     if os.getenv(ALLOW_POLICY_BYPASS_ENV) == "1":
@@ -78,7 +106,7 @@ def decode_process_output(data: bytes) -> str:
 
 
 def run_script(script_name: str, arguments: Sequence[str], *, label: str, notes: Sequence[str] = ()) -> CommandResult:
-    command = build_script_command(script_name, (*arguments, "-SourceRoot", str(ROOT_DIR)))
+    command = build_script_command(script_name, (*arguments, "-SourceRoot", str(ROOT_DIR)) if os.name == "nt" else arguments)
     completed = subprocess.run(
         command,
         cwd=ROOT_DIR,
@@ -98,11 +126,11 @@ def run_script(script_name: str, arguments: Sequence[str], *, label: str, notes:
 
 def run_home_sync(*, mirror: bool = False, dry_run: bool = False, verbose_log: bool = False) -> CommandResult:
     arguments = list(build_home_sync_arguments(mirror=mirror, dry_run=dry_run, verbose_log=verbose_log))
-    if sys.executable:
+    if sys.executable and resolve_script_path("sync-to-home").suffix == ".ps1":
         arguments.extend(["-PythonExecutable", sys.executable])
 
     return run_script(
-        "sync-to-home.ps1",
+        "sync-to-home",
         tuple(arguments),
         label="ホーム同期",
     )
@@ -503,7 +531,7 @@ def prompt_sync_options() -> tuple[bool, bool]:
     Returns:
         (dry_run, verbose_log) のタプル
     """
-    dry_run = True
+    dry_run = False
     verbose_log = False
     
     write_console_line("")
@@ -562,10 +590,10 @@ def run_cli_interactive(namespace: argparse.Namespace, *, has_explicit_flags: bo
             try:
                 dry_run, verbose_log = prompt_sync_options()
             except EOFError:
-                dry_run = True
+                dry_run = False
                 verbose_log = False
         else:
-            dry_run = True
+            dry_run = False
             verbose_log = False
 
         result = run_home_sync(
@@ -597,7 +625,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if namespace.command is None:
         namespace.command = "home"
         namespace.mirror = False
-        namespace.dry_run = True  # デフォルトはドライランモード
+        namespace.dry_run = False
         namespace.verbose_log = False
 
     return run_cli_interactive(namespace, has_explicit_flags=has_explicit_flags)

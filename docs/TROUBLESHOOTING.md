@@ -111,6 +111,46 @@ Error: Access denied when writing to $HOME/.copilot/
 - `$HOME/.copilot/` に書き込み権限があるか確認
 - その配下を開いている editor や terminal を閉じる
 - 先に `uv run app.py home --dry-run` で差分確認する
+- hook の反映先は `settings.json` ではなく `config.json` の `hooks` を確認する
+- `config.json` 先頭の `//` コメントは保持されるので、その下の JSON 本体が壊れていないかを見る
+
+### 問題: WSL2 / Linux で bootstrap script が見つからない
+
+**症状**
+
+```text
+bash: .../sync-to-repo.sh: No such file or directory
+```
+
+**対処**
+
+- 先に `uv run app.py home --no-interactive` で `$HOME/.copilot/scripts/` を更新
+- `test -f "$HOME/.copilot/scripts/sync-to-repo.sh"` で配置を確認
+
+### 問題: WSL2 / Linux で rsync または jq が見つからない
+
+**症状**
+
+```text
+rsync is required for sync-to-repo.sh on Linux/WSL2.
+```
+
+または
+
+```text
+必要な依存の一部が不足しています。
+```
+
+**対処**
+
+[Ubuntu / WSL2: bash]
+```bash
+sudo apt update
+sudo apt install -y rsync jq
+```
+
+`rsync` は `sync-to-repo.sh` / `install-git-hooks.sh` に必要です。
+`jq` は bash variant の `guard_pre_tool.sh` が有効な host で必要です。
 
 ### 問題: 古いファイルが残る
 

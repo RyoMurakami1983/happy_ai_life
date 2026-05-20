@@ -136,7 +136,7 @@ gh pr create
 | `uv run pytest -q` | test 実行 |
 | `uv run ruff check .` | lint |
 | `uv run ty check .` | 型確認（必要時） |
-| `uv run app.py` | launcher 起動 |
+| `uv run app.py` | home sync をそのまま反映する既定入口 |
 | `uv run app.py home --dry-run` | home sync の差分確認 |
 | `uv run app.py home` | home sync 実行 |
 
@@ -236,5 +236,6 @@ copilot /furikaeri
 
 ## 関連
 
+- [WSL2 開発調査](WSL2_DEVELOPMENT.md)
 - [トラブルシューティング](TROUBLESHOOTING.md)
 - [README](../README.md)

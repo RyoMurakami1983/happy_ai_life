@@ -83,21 +83,42 @@ uv sync --dev
 
 ### 個人環境へ反映
 
+最短では `uv run app.py` だけで home sync を実行できます。まず差分確認したい場合だけ `home --dry-run` を使います。
+
+[Windows: PowerShell]
 ```powershell
 # 何が変わるか確認
 uv run app.py home --dry-run
 
 # 反映
+uv run app.py
 uv run app.py home
 ```
 
-これで `copilot-instructions.md`、repo bootstrap 用 script、managed な user-level safety hook entry を `$HOME/.copilot/` に同期できます。
+[Linux / WSL2: bash]
+```bash
+# 何が変わるか確認
+uv run app.py home --dry-run --no-interactive
+
+# 反映
+uv run app.py --no-interactive
+uv run app.py home --no-interactive
+```
+
+これで `copilot-instructions.md`、repo bootstrap 用 script、managed な user-level safety hook entry を `$HOME/.copilot/` に同期できます。hook entry は `settings.json` ではなく `config.json` に入ります。
 
 ### 確認
 
+[Windows: PowerShell]
 ```powershell
 copilot status
 cat $HOME/.copilot/copilot-instructions.md
+```
+
+[Linux / WSL2: bash]
+```bash
+copilot status
+cat "$HOME/.copilot/copilot-instructions.md"
 ```
 
 ### 開発の流れ
@@ -123,20 +144,38 @@ cat $HOME/.copilot/copilot-instructions.md
 
 1. まず現在の状態を確認します。
 
+   [Windows: PowerShell]
    ```powershell
    & $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath <your-repo-path>
    ```
 
+   [Linux / WSL2: bash]
+   ```bash
+   bash "$HOME/.copilot/scripts/repo-secure-check.sh" -TargetRepoPath <your-repo-path>
+   ```
+
 2. repo に bootstrap を入れます。
 
+   [Windows: PowerShell]
    ```powershell
    & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath <your-repo-path> -PolicyProfile HappyDefault
    ```
 
+   [Linux / WSL2: bash]
+   ```bash
+   bash "$HOME/.copilot/scripts/sync-to-repo.sh" -TargetRepoPath <your-repo-path> -PolicyProfile HappyDefault
+   ```
+
 3. Git hooks を有効化します。
 
+   [Windows: PowerShell]
    ```powershell
    & $HOME/.copilot/scripts/install-git-hooks.ps1 -TargetRepoPath <your-repo-path>
+   ```
+
+   [Linux / WSL2: bash]
+   ```bash
+   bash "$HOME/.copilot/scripts/install-git-hooks.sh" -TargetRepoPath <your-repo-path>
    ```
 
 4. 反映を確認します。
@@ -153,6 +192,7 @@ cat $HOME/.copilot/copilot-instructions.md
 - これらの変更は repo にコミットされます
 - チーム全員が同じ instructions を使う前提です
 - `gitleaks` により commit 時に secret を検査します
+- Linux / WSL2 では `bash`、`git`、`rsync` が必要です。bash variant の safety guard を使う host では `jq` も必要です
 
 通常は上の手順だけで十分です。重い governance や追加 profile は既定導線から外しています。
 

@@ -11,7 +11,7 @@
 - 公開配布の正本は `plugins/happy-core/` と `plugins/happy-coding/` の Copilot CLI plugin。
 - `home-template/.copilot/` は trusted local author bootstrap の最小構成だけを持ち、skills / agents / docs は配布しない。
 - `repo-template/` は downstream repo へ同期する `.github/` と hook 雛形の正本。
-- 同期ロジックの正本は `scripts/sync-to-home.ps1` と `scripts/sync-to-repo.ps1`。`app.py` は launcher として扱う。
+- 同期ロジックの正本は `scripts/sync-to-home.ps1` / `scripts/sync-to-home.sh` と `scripts/sync-to-repo.ps1` / `scripts/sync-to-repo.sh`。`app.py` は launcher として扱う。
 - repo-scoped Copilot hooks の正本は `.github/hooks/*.json` と `.github/hooks/scripts/`。標準配布は safety guard に絞り、session continuity hooks は legacy opt-in。
 - Git client hooks の正本は `repo-template/.githooks/`。target repo では `.githooks/` に同期し、`core.hooksPath` で有効化する。
 - `mcp-config.json` は user-owned live file として扱い、home sync で上書きしない。

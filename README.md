@@ -22,6 +22,7 @@ copilot plugin install happy-coding@happy-ai-life-marketplace
 |------|--------------|
 | 最短で使い始める | [はじめに](docs/GETTING_STARTED.md) |
 | この repo を変更する | [開発ガイド](docs/DEVELOPMENT.md) |
+| WSL2 での現状を確認する | [WSL2 開発調査](docs/WSL2_DEVELOPMENT.md) |
 | 確認方針を見る | [品質ゲート](docs/QUALITY_GATES.md) |
 | skill / agent / instructions を作る | [作成ガイド](docs/AUTHORING.md) |
 | よくある質問を見る | [FAQ](docs/FAQ.md) |
