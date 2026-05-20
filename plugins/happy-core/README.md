@@ -42,14 +42,14 @@ When plugin metadata changes, update both this package's `plugin.json` and the m
 
 ### Version update policy
 
-- typo や maintainer-only の補足だけなら version を上げなくてもよい
-- skill 本文だけの変更でも、**利用者体験が変わる改善**なら plugin version を上げる
-- version を上げるときは、この package の `plugin.json` と `..\..\.github\plugin\marketplace.json` の両方をそろえる
-- 例: `0.1.0 -> 0.1.1` は、skill-only の後方互換な改善に使う
+- You can usually skip a version bump for typo fixes or maintainer-only clarifications.
+- Even for skill-only changes, bump the plugin version when the improvement changes the user experience.
+- When bumping the version, keep this package's `plugin.json` and `..\..\.github\plugin\marketplace.json` in sync.
+- For example, `0.1.0 -> 0.1.1` fits backward-compatible skill-only improvements.
 
 ### How users notice updates
 
-公式 docs 上、利用者が新しい plugin 配布を取り込む正規導線は `copilot plugin update` です。更新通知の自動配信は前提にせず、次を案内します。
+The official user path for picking up a newer plugin distribution is `copilot plugin update`. Do not assume automatic update notifications; instead, point users to:
 
 ```powershell
 copilot plugin list

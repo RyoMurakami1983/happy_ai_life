@@ -1,4 +1,4 @@
-# Plugin versioning for authoring
+# Plugin versioning for authoring / authoring向け plugin version管理
 
 `copilot-authoring` で version 判断を行うのは、**対象の skill / agent が `plugins/*` 配下で plugin 配布されている場合だけ**です。
 
