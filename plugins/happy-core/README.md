@@ -39,3 +39,19 @@ Generic safety hooks are managed by the trusted home sync path through `%USERPRO
 This plugin package is the current authoring source of truth for reusable core skills. `home-template\.copilot\` is intentionally limited to trusted local home bootstrap and does not carry `skills\`, `agents\`, or `docs\`.
 
 When plugin metadata changes, update both this package's `plugin.json` and the marketplace entry in `..\..\.github\plugin\marketplace.json`.
+
+### Version update policy
+
+- You can usually skip a version bump for typo fixes or maintainer-only clarifications.
+- Even for skill-only changes, bump the plugin version when the improvement changes the user experience.
+- When bumping the version, keep this package's `plugin.json` and `..\..\.github\plugin\marketplace.json` in sync.
+- For example, `0.1.0 -> 0.1.1` fits backward-compatible skill-only improvements.
+
+### How users notice updates
+
+The official user path for picking up a newer plugin distribution is `copilot plugin update`. Do not assume automatic update notifications; instead, point users to:
+
+```powershell
+copilot plugin list
+copilot plugin update happy-core@happy-ai-life-marketplace
+```

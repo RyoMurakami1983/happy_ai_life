@@ -16,6 +16,17 @@ copilot plugin install happy-coding@happy-ai-life-marketplace
 
 日常利用は [はじめに](docs/GETTING_STARTED.md) だけ読めば始められます。
 
+### Plug-in の更新
+
+```powershell
+copilot plugin list
+copilot plugin update happy-core@happy-ai-life-marketplace
+copilot plugin update happy-coding@happy-ai-life-marketplace
+```
+
+公式 docs 上、installed plugin の更新取得は `copilot plugin update` が正規の導線です。更新通知の自動配信は前提にせず、`copilot plugin list` で version を見て、必要に応じて `copilot plugin update` を実行してください。
+この repo では、利用者が見る個別 plugin version の正本は `plugins/*/plugin.json`、`.github/plugin/marketplace.json` はその配布メタ情報をそろえる mirror として扱います。
+
 ## 📚 ドキュメント
 
 | 目的 | ドキュメント |
