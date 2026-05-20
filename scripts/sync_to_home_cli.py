@@ -204,6 +204,43 @@ def render_comment_prefixed_config_json(*, preamble: str, content: dict[str, Any
     return f"{preamble}\n{rendered_body}"
 
 
+def normalize_hooks_map(config: dict[str, Any], *, config_path: Path) -> dict[str, Any]:
+    hooks = config.get("hooks")
+    if hooks is None:
+        hooks = {}
+        config["hooks"] = hooks
+        return hooks
+
+    if isinstance(hooks, dict):
+        return hooks
+
+    warn(
+        "Replacing unsupported hooks value in config.json with an empty object before updating managed "
+        f"home guard entries: {config_path}"
+    )
+    hooks = {}
+    config["hooks"] = hooks
+    return hooks
+
+
+def backup_existing_path(existing_path: Path, *, destination_root: Path, archive_root: Path) -> None:
+    if not existing_path.exists():
+        return
+
+    archive_path = archive_root / existing_path.relative_to(destination_root)
+    if archive_path.exists():
+        if archive_path.is_dir():
+            shutil.rmtree(archive_path)
+        else:
+            archive_path.unlink()
+
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    if existing_path.is_dir():
+        shutil.copytree(existing_path, archive_path)
+    else:
+        shutil.copy2(existing_path, archive_path)
+
+
 def managed_powershell_hook_command(script_path: str) -> str:
     if os.getenv(ALLOW_POLICY_BYPASS_ENV) == "1":
         return f'powershell -NoProfile -ExecutionPolicy Bypass -File "{script_path}"'
@@ -247,7 +284,7 @@ def get_home_config_hook_plan(config_path: Path, *, powershell_script_path: str,
     else:
         config = {}
 
-    hooks = config.setdefault("hooks", {})
+    hooks = normalize_hooks_map(config, config_path=config_path)
     for event_name in MANAGED_HOME_HOOK_EVENTS:
         existing_entries = hooks.get(event_name, [])
         if not isinstance(existing_entries, list):
@@ -375,6 +412,7 @@ def main(argv: list[str] | None = None) -> int:
 
     source_root = Path(args.SourceRoot).resolve()
     destination_path = Path(args.DestinationPath).resolve()
+    archive_root = Path(args.ArchiveRoot).resolve()
     template_root = resolve_home_template_root(source_root, args.TemplateRelativePath)
 
     write_line("")
@@ -465,6 +503,12 @@ def main(argv: list[str] | None = None) -> int:
     if not args.DryRun:
         for _label, plan in directory_plans + tracked_file_plans + [("config.json", config_hook_plan)]:
             for action in plan.actions:
+                if action.kind in {"copy-file", "write-text", "delete-path"}:
+                    backup_existing_path(
+                        action.destination,
+                        destination_root=destination_path,
+                        archive_root=archive_root,
+                    )
                 invoke_file_action(action)
             if plan.mirror_mode and plan.destination_root is not None:
                 remove_empty_directories(plan.destination_root)

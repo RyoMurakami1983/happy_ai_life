@@ -118,6 +118,48 @@ def test_sync_to_home_sh_preserves_comment_prefixed_config_json(tmp_path: Path) 
     assert config["hooks"]["preToolUse"][-1]["bash"] == 'bash "hooks/scripts/guard_pre_tool.sh"'
 
 
+def test_sync_to_home_sh_replaces_invalid_hooks_value(tmp_path: Path) -> None:
+    _require_linux_bootstrap_tools()
+    destination = tmp_path / ".copilot"
+    destination.mkdir()
+    (destination / "config.json").write_text(
+        json.dumps({"permissions": {"allow": None}, "hooks": "invalid"}),
+        encoding="utf-8",
+    )
+
+    completed = _bash(
+        ROOT / "scripts" / "sync-to-home.sh",
+        "--DestinationPath",
+        str(destination),
+        "--ArchiveRoot",
+        str(tmp_path / "archives"),
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    config = json.loads((destination / "config.json").read_text(encoding="utf-8"))
+    assert isinstance(config["hooks"], dict)
+    assert config["hooks"]["preToolUse"][-1]["env"]["HAPPY_AI_LIFE_HOOK_ID"] == "happy-ai-life-safety-guard"
+
+
+def test_sync_to_home_sh_archives_replaced_managed_file(tmp_path: Path) -> None:
+    _require_linux_bootstrap_tools()
+    destination = tmp_path / ".copilot"
+    archive_root = tmp_path / "archives"
+    destination.mkdir()
+    (destination / "copilot-instructions.md").write_text("old instructions\n", encoding="utf-8")
+
+    completed = _bash(
+        ROOT / "scripts" / "sync-to-home.sh",
+        "--DestinationPath",
+        str(destination),
+        "--ArchiveRoot",
+        str(archive_root),
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert (archive_root / "copilot-instructions.md").read_text(encoding="utf-8") == "old instructions\n"
+
+
 def test_install_git_hooks_sh_configures_source_repo_hooks_path(tmp_path: Path) -> None:
     _require_linux_bootstrap_tools()
     source_repo = tmp_path / "source"
