@@ -143,7 +143,26 @@ ask() {
 }
 
 resolve_policy_path() {
-  local candidate
+  local hooks_dir layout_root candidate
+  hooks_dir="$(dirname "${script_dir}")"
+  layout_root="$(dirname "${hooks_dir}")"
+
+  if [[ "$(basename "${layout_root}")" == ".copilot" ]]; then
+    candidate="${layout_root}/policy/guard-policy.json"
+    if [[ -f "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+    fi
+    return
+  fi
+
+  if [[ "$(basename "${layout_root}")" == ".github" ]]; then
+    candidate="$(dirname "${layout_root}")/policy/guard-policy.json"
+    if [[ -f "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+    fi
+    return
+  fi
+
   candidate="${script_dir}/../../../policy/guard-policy.json"
   if [[ -f "${candidate}" ]]; then
     printf '%s\n' "${candidate}"

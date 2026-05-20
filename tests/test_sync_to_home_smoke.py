@@ -50,3 +50,46 @@ def test_sync_to_home_dry_run_accepts_null_values_in_existing_config(tmp_path: P
 
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert "SYNC_STATS:" in completed.stdout
+
+
+@pytest.mark.skipif(os.name != "nt", reason="sync-to-home.ps1 smoke test runs through PowerShell on Windows")
+def test_sync_to_home_preserves_comment_prefixed_config_json(tmp_path: Path) -> None:
+    destination = tmp_path / ".copilot"
+    destination.mkdir()
+    (destination / "config.json").write_text(
+        "// User settings belong in settings.json.\n"
+        "// This file is managed automatically.\n"
+        "{\n"
+        '  "permissions": {"allow": null},\n'
+        '  "hooks": {\n'
+        '    "preToolUse": [\n'
+        '      {"type": "command", "bash": "echo keep", "env": {"OTHER": "1"}}\n'
+        "    ]\n"
+        "  }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    command = [
+        _powershell_executable(),
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(SCRIPT),
+        "-SourceRoot",
+        str(ROOT),
+        "-DestinationPath",
+        str(destination),
+        "-ArchiveRoot",
+        str(tmp_path / "archives"),
+    ]
+
+    completed = subprocess.run(command, check=False, capture_output=True, text=True)
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    rendered = (destination / "config.json").read_text(encoding="utf-8")
+    assert rendered.startswith("// User settings belong in settings.json.\n// This file is managed automatically.\n")
+    config = json.loads("\n".join(rendered.splitlines()[2:]))
+    assert config["hooks"]["preToolUse"][0]["bash"] == "echo keep"
+    assert config["hooks"]["preToolUse"][-1]["env"]["HAPPY_AI_LIFE_HOOK_ID"] == "happy-ai-life-safety-guard"

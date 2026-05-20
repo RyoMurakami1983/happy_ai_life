@@ -62,6 +62,25 @@ function Resolve-PolicyProfile {
     }
 }
 
+function Resolve-HooksSourcePath {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceRootPath,
+        [Parameter(Mandatory = $true)][string]$HooksPath
+    )
+
+    $primaryPath = [System.IO.Path]::GetFullPath((Join-Path $SourceRootPath $HooksPath))
+    if (Test-Path -LiteralPath $primaryPath -PathType Container) {
+        return $primaryPath
+    }
+
+    $fallbackPath = [System.IO.Path]::GetFullPath((Join-Path $SourceRootPath "hooks"))
+    if ($HooksPath -eq ".github\hooks" -and (Test-Path -LiteralPath $fallbackPath -PathType Container)) {
+        return $fallbackPath
+    }
+
+    return $primaryPath
+}
+
 function Get-TextFileContent {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -495,7 +514,7 @@ $shouldSyncHooks = (-not [string]::IsNullOrWhiteSpace($HooksRelativePath)) -and 
 if ($shouldSyncHooks) {
     Write-Section "Sync hooks to target repository (.github/hooks)"
 
-    $hooksSourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $HooksRelativePath))
+    $hooksSourcePath = Resolve-HooksSourcePath -SourceRootPath $SourceRoot -HooksPath $HooksRelativePath
     $hooksDestinationPath = Join-Path $targetRepoPath ".github\hooks"
     $hooksExcludeFiles = @($excludeFiles)
     if ($HooksMode -eq "SafetyOnly") {

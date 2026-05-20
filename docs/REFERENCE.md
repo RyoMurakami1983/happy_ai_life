@@ -13,17 +13,35 @@ copilot plugin list
 
 ## home sync
 
+[Windows: PowerShell]
 ```powershell
 uv run app.py home --dry-run
+uv run app.py
 uv run app.py home
+```
+
+[Linux / WSL2: bash]
+```bash
+uv run app.py home --dry-run --no-interactive
+uv run app.py --no-interactive
+uv run app.py home --no-interactive
 ```
 
 ## team repo setup
 
+[Windows: PowerShell]
 ```powershell
 & $HOME\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath <path> -PolicyProfile HappyDefault -DryRun
 & $HOME\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath <path> -PolicyProfile HappyDefault
 & $HOME\.copilot\scripts\install-git-hooks.ps1 -TargetRepoPath <path>
+```
+
+[Linux / WSL2: bash]
+```bash
+bash "$HOME/.copilot/scripts/repo-secure-check.sh" -TargetRepoPath <path>
+bash "$HOME/.copilot/scripts/sync-to-repo.sh" -TargetRepoPath <path> -PolicyProfile HappyDefault -DryRun
+bash "$HOME/.copilot/scripts/sync-to-repo.sh" -TargetRepoPath <path> -PolicyProfile HappyDefault
+bash "$HOME/.copilot/scripts/install-git-hooks.sh" -TargetRepoPath <path>
 ```
 
 ## check
