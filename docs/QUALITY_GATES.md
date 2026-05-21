@@ -10,6 +10,8 @@ uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py
 uv run ruff check .
 ```
 
+GitHub Actions の `quality.yml` でも同じく、PR / main push ではこの軽量確認だけを自動実行します。
+
 ## 必須で守ること
 
 - secret を混ぜない: gitleaks を使う
@@ -24,6 +26,8 @@ uv run ruff check .
 uv run python -m pytest -q
 uv run ty check .
 ```
+
+GitHub Actions では `quality-full-manual.yml` を `workflow_dispatch` 専用の別 workflow として分離しています。PR 画面には manual 専用 job を出さず、必要なときだけ Actions 画面から full quality を手動実行します。
 
 PR と main push では gitleaks、smoke test、ruff を実行します。full test と type check は必要なときだけ manual workflow または手元で実行します。旧 Enterprise hardening 用の重い契約テストは `archive/enterprise-hardening/tests/` に退避しています。
 
