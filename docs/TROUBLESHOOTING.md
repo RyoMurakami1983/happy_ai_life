@@ -210,6 +210,54 @@ git config core.hooksPath
 
 `.githooks` と表示されるか確認してください。
 
+### 問題: `repo-secure-check.sh` で `core.hooksPath` が不足と出る
+
+**症状**
+
+```text
+[MISSING] core.hooksPath
+```
+
+**原因**
+
+これは、Git に「どの hook を使うか」という置き場所メモがまだ入っていない状態です。  
+家のドアはあるのに、どの鍵を使うか札が付いていないイメージです。
+
+**対処**
+
+[Linux / WSL2: bash]
+
+```bash
+bash "$HOME/.copilot/scripts/install-git-hooks.sh" -TargetRepoPath .
+git config --local --get core.hooksPath
+```
+
+母艦 repo では `repo-template/.githooks`、target repo では `.githooks` と表示されれば正常です。
+
+### 問題: `repo-secure-check.sh` で `hook tool dependencies` が不足と出る
+
+**症状**
+
+```text
+[MISSING] hook tool dependencies
+```
+
+**原因**
+
+hook を動かすための道具が、この PC にまだ足りない状態です。  
+たとえば Linux / WSL2 では `jq` がないと、bash 版の safety guard が設定ファイルを読めません。
+
+**対処**
+
+[Linux / WSL2: bash]
+
+```bash
+sudo apt update
+sudo apt install -y jq
+```
+
+`repo-secure-check.sh` の詳細欄に、どの道具が不足しているか表示されます。
+
 ## Plugin の問題
 
 ### 問題: marketplace が見つからない

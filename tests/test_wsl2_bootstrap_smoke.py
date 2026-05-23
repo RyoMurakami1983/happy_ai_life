@@ -41,18 +41,58 @@ def _git(repo: Path, *args: str) -> str:
 
 def _write_shell_shim(bin_dir: Path, name: str) -> None:
     shim = bin_dir / name
-    shim.write_text("#!/usr/bin/env sh\nexit 0\n", encoding="utf-8")
+    shim.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     shim.chmod(0o755)
+
+
+def _write_passthrough_shim(bin_dir: Path, name: str) -> None:
+    resolved = shutil.which(name)
+    assert resolved is not None, f"{name} is required for this test"
+    shim = bin_dir / name
+    shim.write_text(f'#!/bin/sh\nexec "{resolved}" "$@"\n', encoding="utf-8")
+    shim.chmod(0o755)
+
+
+def _write_required_git_hooks(repo: Path, relative: str) -> None:
+    hooks = repo / relative
+    (hooks / "lib").mkdir(parents=True)
+    (hooks / "pre-commit").write_text(
+        '#!/usr/bin/env sh\nsh "$(dirname "$0")/lib/commit-safety-guard.sh"\nsh "$(dirname "$0")/lib/secret-guard.sh"\n',
+        encoding="utf-8",
+    )
+    (hooks / "pre-push").write_text(
+        '#!/usr/bin/env sh\nsh "$(dirname "$0")/lib/secret-guard.sh" --range "$remote_sha..$local_sha"\n',
+        encoding="utf-8",
+    )
+    (hooks / "lib" / "secret-guard.sh").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    (hooks / "lib" / "commit-safety-guard.sh").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
 
 
 def _tool_env(tmp_path: Path) -> dict[str, str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
+    for tool in ("sh", "bash", "git", "rsync", "dirname", "basename", "find", "grep", "sort", "mkdir"):
+        _write_passthrough_shim(bin_dir, tool)
     for tool in ("gitleaks", "jq", "node", "gh"):
         _write_shell_shim(bin_dir, tool)
 
     env = dict(os.environ)
-    env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
+    env["PATH"] = str(bin_dir)
+    return env
+
+
+def _tool_env_with_missing(tmp_path: Path, *missing_tools: str) -> dict[str, str]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for tool in ("sh", "bash", "git", "rsync", "dirname", "basename", "find", "grep", "sort", "mkdir"):
+        _write_passthrough_shim(bin_dir, tool)
+    for tool in ("gitleaks", "jq", "node", "gh"):
+        if tool in missing_tools:
+            continue
+        _write_shell_shim(bin_dir, tool)
+
+    env = dict(os.environ)
+    env["PATH"] = str(bin_dir)
     return env
 
 
@@ -224,6 +264,43 @@ def test_sync_to_repo_and_repo_secure_check_sh_work_on_linux(tmp_path: Path) -> 
     assert report_completed.returncode == 0, report_completed.stdout + report_completed.stderr
     report = json.loads(report_completed.stdout)
     assert report["missing"] == []
+
+
+def test_repo_secure_check_sh_reports_actionable_core_hooks_and_tool_dependency_details(tmp_path: Path) -> None:
+    _require_linux_bootstrap_tools()
+    source_repo = tmp_path / "source"
+    source_repo.mkdir()
+    _git(source_repo, "init")
+
+    (source_repo / ".github" / "copilot-instructions.md").parent.mkdir(parents=True)
+    (source_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    (source_repo / ".github" / "hooks").mkdir()
+    (source_repo / ".github" / "hooks" / "safety-guard.json").write_text(
+        '{"bash":"hooks/scripts/guard_pre_tool.sh"}\n',
+        encoding="utf-8",
+    )
+    (source_repo / ".github" / "workflows").mkdir()
+    (source_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    _write_required_git_hooks(source_repo, "repo-template/.githooks")
+
+    report_completed = _bash(
+        ROOT / "scripts" / "repo-secure-check.sh",
+        "-TargetRepoPath",
+        str(source_repo),
+        "-SourceRoot",
+        str(source_repo),
+        "-AsJson",
+        env=_tool_env_with_missing(tmp_path, "jq"),
+    )
+
+    assert report_completed.returncode == 0, report_completed.stdout + report_completed.stderr
+    report = json.loads(report_completed.stdout)
+    assert set(report["missing"]) == {"coreHooksPath", "toolDependencies"}
+    core_hooks = next(check for check in report["checks"] if check["key"] == "coreHooksPath")
+    assert "install-git-hooks.sh" in core_hooks["details"]
+    tool_dependencies = next(check for check in report["checks"] if check["key"] == "toolDependencies")
+    assert "jq" in tool_dependencies["details"]
+    assert "PATH に追加するかインストール" in tool_dependencies["details"]
 
 
 def test_home_synced_shell_script_can_generate_repo_assets(tmp_path: Path) -> None:

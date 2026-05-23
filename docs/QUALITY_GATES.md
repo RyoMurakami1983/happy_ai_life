@@ -35,4 +35,4 @@ PR と main push では gitleaks、smoke test、ruff を実行します。full t
 
 secret が見つかった場合は、値を削除するだけでなく revoke / rotation まで行います。対応手順は [Security Policy](../SECURITY.md) を参照してください。
 
-GitHub Actions の `gitleaks/gitleaks-action` は third-party action なので full commit SHA で pin します。更新時は upstream tag の SHA を確認してから置き換えます。
+GitHub Actions では `gitleaks` の公式 release tarball を workflow 内で取得して実行します。PR で GitHub API 認証に依存しすぎず、repo 履歴をそのまま走査できる形を優先します。
