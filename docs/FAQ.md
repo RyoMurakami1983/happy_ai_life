@@ -18,6 +18,21 @@ copilot plugin install happy-coding@happy-ai-life-marketplace
 
 別 repo に HappyDefault の guidance、Git hooks、品質ゲートを入れたい場合だけ使います。日常導線ではありません。
 
+## skill が多くて迷ったら何を使えばよいですか？
+
+まずは [README](../README.md) の「迷ったらこれだけ」を見てください。詳細は [はじめに](GETTING_STARTED.md) の 3 パスで選べます。
+
+- 通常利用なら **パス 1: 通常利用**
+- この repo を改善するなら **パス 2: この repo を改善する**
+- 既存 repo に導入するなら **パス 3: 既存 repo に導入する**
+
+skill 名で探したい場合だけ次を使ってください。
+
+```text
+/skill list happy-core
+/skill list happy-coding
+```
+
 ## Git hooks が commit を止めます。回避してよいですか？
 
 原則として回避しません。`git commit --no-verify` や `git push --no-verify` は使わないでください。
