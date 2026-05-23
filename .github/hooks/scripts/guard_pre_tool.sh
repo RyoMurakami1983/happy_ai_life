@@ -654,6 +654,7 @@ scratch_dir() {
 }
 
 gitleaks_config_args=()
+gitleaks_mode=""
 set_gitleaks_config_args() {
   local root="$1"
   gitleaks_config_args=()
@@ -662,8 +663,58 @@ set_gitleaks_config_args() {
   fi
 }
 
+resolve_gitleaks_mode() {
+  local gitleaks="$1"
+  if [[ -n "${gitleaks_mode}" ]]; then
+    printf '%s\n' "${gitleaks_mode}"
+    return 0
+  fi
+
+  if "${gitleaks}" detect --help >/dev/null 2>&1; then
+    gitleaks_mode="detect"
+  elif "${gitleaks}" dir --help >/dev/null 2>&1 && "${gitleaks}" git --help >/dev/null 2>&1; then
+    gitleaks_mode="legacy"
+  else
+    return 2
+  fi
+
+  printf '%s\n' "${gitleaks_mode}"
+}
+
+invoke_gitleaks_dir_scan() {
+  local gitleaks="$1"
+  local root="$2"
+  local snapshot="$3"
+  local current_mode
+  current_mode="$(resolve_gitleaks_mode "${gitleaks}")" || return $?
+  set_gitleaks_config_args "${root}"
+
+  if [[ "${current_mode}" == "detect" ]]; then
+    "${gitleaks}" detect --source "${snapshot}" --no-git "${gitleaks_config_args[@]}" --no-banner --redact=100 --exit-code 1 >/dev/null 2>&1
+    return $?
+  fi
+
+  "${gitleaks}" dir "${snapshot}" "${gitleaks_config_args[@]}" --no-banner --redact=100 --exit-code 1 >/dev/null 2>&1
+}
+
+invoke_gitleaks_git_scan() {
+  local gitleaks="$1"
+  local root="$2"
+  local log_opts="$3"
+  local current_mode
+  current_mode="$(resolve_gitleaks_mode "${gitleaks}")" || return $?
+  set_gitleaks_config_args "${root}"
+
+  if [[ "${current_mode}" == "detect" ]]; then
+    "${gitleaks}" detect --source "${root}" --log-opts "${log_opts}" "${gitleaks_config_args[@]}" --no-banner --redact=100 --exit-code 1 >/dev/null 2>&1
+    return $?
+  fi
+
+  "${gitleaks}" git "${root}" --log-opts "${log_opts}" "${gitleaks_config_args[@]}" --no-banner --redact=100 --exit-code 1 >/dev/null 2>&1
+}
+
 scan_staged_for_secrets() {
-  local root gitleaks scratch snapshot
+  local root gitleaks scratch snapshot scan_status
   root="$(repo_root)"
   if [[ -z "${root}" ]]; then
     return 0
@@ -690,11 +741,16 @@ scan_staged_for_secrets() {
       return 1
     }
 
-  set_gitleaks_config_args "${root}"
-  if ! "${gitleaks}" dir "${snapshot}" "${gitleaks_config_args[@]}" --no-banner --redact=100 --exit-code 1 >/dev/null 2>&1; then
-    deny "Potential secrets were detected in staged changes. Commit was blocked before secrets entered Git history."
-    return 1
+  if invoke_gitleaks_dir_scan "${gitleaks}" "${root}" "${snapshot}"; then
+    return 0
   fi
+  scan_status=$?
+  if [[ "${scan_status}" -eq 1 ]]; then
+    deny "Potential secrets were detected in staged changes. Commit was blocked before secrets entered Git history."
+  else
+    deny "Failed to run gitleaks before AI can run git commit."
+  fi
+  return 1
 }
 
 unpushed_log_opts() {
@@ -718,7 +774,7 @@ unpushed_log_opts() {
 
 scan_unpushed_for_secrets() {
   local action_name="$1"
-  local root gitleaks log_opts
+  local root gitleaks log_opts scan_status
   root="$(repo_root)"
   if [[ -z "${root}" ]]; then
     return 0
@@ -731,11 +787,16 @@ scan_unpushed_for_secrets() {
     return 0
   fi
 
-  set_gitleaks_config_args "${root}"
-  if ! "${gitleaks}" git "${root}" --log-opts "${log_opts}" "${gitleaks_config_args[@]}" --no-banner --redact=100 --exit-code 1 >/dev/null 2>&1; then
-    deny "Potential secrets were detected in commits that may be published. ${action_name} was blocked."
-    return 1
+  if invoke_gitleaks_git_scan "${gitleaks}" "${root}" "${log_opts}"; then
+    return 0
   fi
+  scan_status=$?
+  if [[ "${scan_status}" -eq 1 ]]; then
+    deny "Potential secrets were detected in commits that may be published. ${action_name} was blocked."
+  else
+    deny "Failed to run gitleaks before AI can run ${action_name}."
+  fi
+  return 1
 }
 
 # toolName を取得（例: "bash", "powershell"）

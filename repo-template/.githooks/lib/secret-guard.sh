@@ -25,6 +25,7 @@ fi
 config_path="$repo_root/.gitleaks.toml"
 has_config=0
 [ -f "$config_path" ] && has_config=1
+gitleaks_mode=""
 
 git_dir=$(git rev-parse --git-dir 2>/dev/null || true)
 if [ -z "$git_dir" ]; then
@@ -39,9 +40,45 @@ esac
 scratch_parent="$git_dir/happy-secret-scan"
 mkdir -p "$scratch_parent"
 
+detect_mode_supported() {
+  "$gitleaks_bin" detect --help >/dev/null 2>&1
+}
+
+legacy_mode_supported() {
+  "$gitleaks_bin" dir --help >/dev/null 2>&1 && "$gitleaks_bin" git --help >/dev/null 2>&1
+}
+
+resolve_gitleaks_mode() {
+  if [ -n "$gitleaks_mode" ]; then
+    printf '%s\n' "$gitleaks_mode"
+    return 0
+  fi
+
+  if detect_mode_supported; then
+    gitleaks_mode="detect"
+  elif legacy_mode_supported; then
+    gitleaks_mode="legacy"
+  else
+    return 2
+  fi
+
+  printf '%s\n' "$gitleaks_mode"
+}
+
 run_gitleaks_dir() {
   snapshot_dir="$1"
   scan_output="$2"
+  current_mode=$(resolve_gitleaks_mode) || return 2
+
+  if [ "$current_mode" = "detect" ]; then
+    if [ "$has_config" -eq 1 ]; then
+      "$gitleaks_bin" detect --source "$snapshot_dir" --no-git --config "$config_path" --no-banner --redact=100 --exit-code 1 > "$scan_output" 2>&1
+      return $?
+    fi
+
+    "$gitleaks_bin" detect --source "$snapshot_dir" --no-git --no-banner --redact=100 --exit-code 1 > "$scan_output" 2>&1
+    return $?
+  fi
 
   if [ "$has_config" -eq 1 ]; then
     "$gitleaks_bin" dir "$snapshot_dir" --config "$config_path" --no-banner --redact=100 --exit-code 1 > "$scan_output" 2>&1
@@ -54,6 +91,17 @@ run_gitleaks_dir() {
 run_gitleaks_git_range() {
   log_opts="$1"
   scan_output="$2"
+  current_mode=$(resolve_gitleaks_mode) || return 2
+
+  if [ "$current_mode" = "detect" ]; then
+    if [ "$has_config" -eq 1 ]; then
+      "$gitleaks_bin" detect --source "$repo_root" --log-opts "$log_opts" --config "$config_path" --no-banner --redact=100 --exit-code 1 > "$scan_output" 2>&1
+      return $?
+    fi
+
+    "$gitleaks_bin" detect --source "$repo_root" --log-opts "$log_opts" --no-banner --redact=100 --exit-code 1 > "$scan_output" 2>&1
+    return $?
+  fi
 
   if [ "$has_config" -eq 1 ]; then
     "$gitleaks_bin" git "$repo_root" --log-opts "$log_opts" --config "$config_path" --no-banner --redact=100 --exit-code 1 > "$scan_output" 2>&1
@@ -86,9 +134,18 @@ scan_staged() {
     exit 1
   fi
 
-  if ! run_gitleaks_dir "$snapshot_dir" "$scan_output"; then
-    printf '%s\n' "Potential secrets were detected in staged changes. Update the staged content or adjust .gitleaks.toml allowlist only for approved placeholders." >&2
-    cat "$scan_output" >&2
+  if run_gitleaks_dir "$snapshot_dir" "$scan_output"; then
+    :
+  else
+    scan_status=$?
+    if [ "$scan_status" -eq 1 ]; then
+      printf '%s\n' "Potential secrets were detected in staged changes. Update the staged content or adjust .gitleaks.toml allowlist only for approved placeholders." >&2
+    else
+      printf '%s\n' "Failed to run gitleaks for the staged secret scan." >&2
+    fi
+    if [ -s "$scan_output" ]; then
+      cat "$scan_output" >&2
+    fi
     exit 1
   fi
 }
@@ -107,9 +164,18 @@ scan_range() {
   }
   trap cleanup EXIT HUP INT TERM
 
-  if ! run_gitleaks_git_range "$range" "$scan_output"; then
-    printf '%s\n' "Potential secrets were detected in commits being pushed. Remove the secret from history or adjust .gitleaks.toml allowlist only for approved placeholders." >&2
-    cat "$scan_output" >&2
+  if run_gitleaks_git_range "$range" "$scan_output"; then
+    :
+  else
+    scan_status=$?
+    if [ "$scan_status" -eq 1 ]; then
+      printf '%s\n' "Potential secrets were detected in commits being pushed. Remove the secret from history or adjust .gitleaks.toml allowlist only for approved placeholders." >&2
+    else
+      printf '%s\n' "Failed to run gitleaks for the pre-push secret scan." >&2
+    fi
+    if [ -s "$scan_output" ]; then
+      cat "$scan_output" >&2
+    fi
     exit 1
   fi
 }

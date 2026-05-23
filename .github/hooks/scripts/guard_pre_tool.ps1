@@ -453,6 +453,43 @@ function Resolve-GitleaksPath {
     return $null
 }
 
+$script:GitleaksMode = $null
+
+function Get-GitleaksCompatMode {
+    param([Parameter(Mandatory = $true)][string]$GitleaksPath)
+
+    if (-not [string]::IsNullOrWhiteSpace($script:GitleaksMode)) {
+        return $script:GitleaksMode
+    }
+
+    & $GitleaksPath detect --help 1>$null 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        $script:GitleaksMode = "detect"
+        return $script:GitleaksMode
+    }
+
+    & $GitleaksPath dir --help 1>$null 2>$null
+    $dirExitCode = $LASTEXITCODE
+    & $GitleaksPath git --help 1>$null 2>$null
+    if ($dirExitCode -eq 0 -and $LASTEXITCODE -eq 0) {
+        $script:GitleaksMode = "legacy"
+        return $script:GitleaksMode
+    }
+
+    return $null
+}
+
+function Get-GitleaksConfigArguments {
+    param([Parameter(Mandatory = $true)][string]$RepoRoot)
+
+    $configPath = Join-Path $RepoRoot ".gitleaks.toml"
+    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+        return @("--config", $configPath)
+    }
+
+    return @()
+}
+
 function Get-PayloadPropertyValue {
     param(
         [Parameter(Mandatory = $true)]$Object,
@@ -801,11 +838,21 @@ function Invoke-GitleaksDir {
         [Parameter(Mandatory = $true)][string]$ScanPath
     )
 
-    $arguments = @("dir", $ScanPath)
-    $configPath = Join-Path $RepoRoot ".gitleaks.toml"
-    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
-        $arguments += @("--config", $configPath)
+    $mode = Get-GitleaksCompatMode -GitleaksPath $GitleaksPath
+    if ([string]::IsNullOrWhiteSpace($mode)) {
+        return [pscustomobject]@{
+            ExitCode = 2
+            Output = ""
+        }
     }
+
+    if ($mode -eq "detect") {
+        $arguments = @("detect", "--source", $ScanPath, "--no-git")
+    }
+    else {
+        $arguments = @("dir", $ScanPath)
+    }
+    $arguments += Get-GitleaksConfigArguments -RepoRoot $RepoRoot
     $arguments += @("--no-banner", "--redact=100", "--exit-code", "1")
 
     $output = & $GitleaksPath @arguments 2>&1 | Out-String
@@ -822,11 +869,21 @@ function Invoke-GitleaksGit {
         [Parameter(Mandatory = $true)][string]$LogOptions
     )
 
-    $arguments = @("git", $RepoRoot, "--log-opts", $LogOptions)
-    $configPath = Join-Path $RepoRoot ".gitleaks.toml"
-    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
-        $arguments += @("--config", $configPath)
+    $mode = Get-GitleaksCompatMode -GitleaksPath $GitleaksPath
+    if ([string]::IsNullOrWhiteSpace($mode)) {
+        return [pscustomobject]@{
+            ExitCode = 2
+            Output = ""
+        }
     }
+
+    if ($mode -eq "detect") {
+        $arguments = @("detect", "--source", $RepoRoot, "--log-opts", $LogOptions)
+    }
+    else {
+        $arguments = @("git", $RepoRoot, "--log-opts", $LogOptions)
+    }
+    $arguments += Get-GitleaksConfigArguments -RepoRoot $RepoRoot
     $arguments += @("--no-banner", "--redact=100", "--exit-code", "1")
 
     $output = & $GitleaksPath @arguments 2>&1 | Out-String
@@ -877,8 +934,11 @@ function Invoke-StagedSecretScan {
         }
 
         $scan = Invoke-GitleaksDir -GitleaksPath $gitleaksPath -RepoRoot $repoRoot -ScanPath $snapshotDir
-        if ($scan.ExitCode -ne 0) {
+        if ($scan.ExitCode -eq 1) {
             return "Potential secrets were detected in staged changes. Commit was blocked before secrets entered Git history."
+        }
+        if ($scan.ExitCode -ne 0) {
+            return "Failed to run gitleaks before AI can run git commit."
         }
     }
     finally {
@@ -927,8 +987,11 @@ function Invoke-UnpushedSecretScan {
     }
 
     $scan = Invoke-GitleaksGit -GitleaksPath $gitleaksPath -RepoRoot $repoRoot -LogOptions $logOptions
-    if ($scan.ExitCode -ne 0) {
+    if ($scan.ExitCode -eq 1) {
         return "Potential secrets were detected in commits that may be published. $ActionName was blocked."
+    }
+    if ($scan.ExitCode -ne 0) {
+        return "Failed to run gitleaks before AI can run $ActionName."
     }
 
     return $null
