@@ -1,8 +1,9 @@
 # はじめに
 
 用途に合わせて導入方法を選んでください。
+迷ったら、README の「迷ったらこれだけ」から次の 3 パスを選んでください。
 
-## パス 1: Marketplace Plugin（通常はこちら）
+## パス 1: 通常利用（Marketplace Plugin）
 
 **向いている人:** この repo を編集せずに、happy-core と happy-coding を自分の作業で使いたい人。
 
@@ -61,7 +62,7 @@ copilot plugin uninstall happy-coding@happy-ai-life-marketplace
 copilot plugin marketplace remove happy-ai-life-marketplace
 ```
 
-## パス 2: ローカル開発（この repo に手を入れる人向け）
+## パス 2: この repo を改善する（ローカル開発）
 
 **向いている人:** この repo 自体を改善したい人、repo bootstrap script や instructions をローカルで確認したい人。
 
@@ -129,7 +130,7 @@ cat "$HOME/.copilot/copilot-instructions.md"
 
 詳しくは [開発ガイド](DEVELOPMENT.md) を参照してください。
 
-## パス 3: 既存 repo に Copilot を入れる
+## パス 3: 既存 repo に導入する（Team Repo Setup）
 
 **向いている人:** チームの repo に instructions、hooks、品質ゲートを入れたい人。
 

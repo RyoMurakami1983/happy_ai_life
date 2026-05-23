@@ -4,6 +4,12 @@
 
 Copilot CLI の reusable skills、agents、repo bootstrap 資産を管理する母艦リポジトリです。
 
+## 🌱 迷ったらこれだけ
+
+- **通常利用:** [はじめに](docs/GETTING_STARTED.md#パス-1-通常利用marketplace-plugin) から plugin を入れる
+- **この repo を改善:** [開発ガイド](docs/DEVELOPMENT.md) を開き、`grill-with-docs` → `design-workshop` → 実装へ進む
+- **既存 repo に導入:** [はじめに](docs/GETTING_STARTED.md#パス-3-既存-repo-に導入するteam-repo-setup) の Team Repo Setup を使う
+
 ## 🚀 クイックスタート
 
 ### インストール
@@ -58,6 +64,7 @@ uv run ruff check .
 ## ✅ 品質ゲート
 
 この repo では `HappyDefault` を既定にし、PR は smoke test と ruff を優先します。full quality は必要なときに manual workflow で実行します。
+`HappyDefault` は「毎回ちゃんとする」ためではなく、「毎回つらくならない最低限」を守るための既定です。
 
 | チェック | ツール |
 |----------|--------|
