@@ -38,11 +38,11 @@
 
 - 調査・一次情報確認・現状のベストプラクティス把握 → built-in 機能または自分で実施する。
 - .NET / C# / WPF / XAML / desktop app が見えたら、実装前にまず `dotnet` を入口として思い出し、leaf skill の要否を確認する。
-- 仕様作成・要件定義・前提条件の整理 → `spec-workshop` を使う。仕様の骨子づくりに集中する。
-- 設計・構造検証 → `design-workshop` を使う。仕様書を受け取り、標準設計と Balanced Coupling レンズ設計を振り分け、planning handoff を作る。
-- 実装計画・フェーズ分割・段取り整理 → PLAN mode を使う。目的、制約、段階、Why、検証、リスク、今決めなくてよいことを残す。
+- 要求整理・用語・前提・判断の確認 → `grill-with-docs` を使う。repo 内 docs / ADR / 既存コードと照合する。
+- 実装前の小さな試作 → `prototype` を使う。技術・UI・境界の不確実性を短時間で検証する。
+- 設計・構造検証 → `design-workshop` を使う。要求や仕様を受け取り、標準設計と Balanced Coupling レンズ設計を振り分け、implementation handoff を作る。
+- 実装契約が固まった後の実装・検証・PR 準備 → `impl-and-ship` を使う。
 - 既存コードの結合構造分析・モジュール境界の見直し → `modularity-review` を使う。3 次元（統合強度・距離・変動性）で不均衡を検出する。
-- 仕様駆動開発（ゼロから / 途中再開）→ `sdd` を使う。内部で spec-workshop / design-workshop / PLAN mode 等につなぐ。
 
 ## Build and Test
 <!-- TODO: install / build / test / lint コマンドを記述する。エージェントが自動実行に利用する。
