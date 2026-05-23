@@ -5,6 +5,7 @@
 - Executive Summary
 - Session Story
 - Reflection
+- Improvement Candidates
 - Session Notes
 - Next Steps
 
@@ -12,13 +13,14 @@
 
 - YWT を選んだら `Y / W / T / SMART`
 - KPT を選んだら `Keep / Problem / Try / 5つのなぜ / SMART`
-- skill 改善提案は KPT で必要性が見えた場合だけ追加する
+- Improvement Candidates は KPT で Issue 化の必要性が見えた場合だけ追加する
 
 ## 書き方
 
 - Executive Summary は 2〜4 文で要点をまとめる
 - Session Story は流れと使った skill / 出戻りを短く置く
 - Reflection は事実と解釈を混ぜすぎない
+- Improvement Candidates は `references/issue-discovery.md` の型に寄せ、起票しない候補も理由を残す
 - Next Steps は次回の入口にする
 
 ## 既存の良い型

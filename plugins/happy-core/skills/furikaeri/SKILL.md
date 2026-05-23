@@ -1,32 +1,35 @@
 ---
 name: furikaeri
 description: >
-  セッションまたは 1 日のふりかえりを対話で進め、セッションストーリーから YWT / KPT を選び、SMART 目標まで整えて home の `.copilot/docs/furikaeri/` を主保存先に残す。必要に応じて repo の `docs/furikaeri/` にも共有保存する。KPT では必要に応じて skill 改善提案まで出す。Use when: 作業の学びを整理したいとき、改善アクションを決めたいとき、「ふりかえり」と入力されたとき、1 日の終わりに複数 repo の作業をまとめたいとき。
+  セッションまたは 1 日のふりかえりを対話で進め、人間向けの作業報告・記録・KPT・改善 Issue 候補へ整理する。Use when: 作業の学びを整理したいとき、日次レビューを作りたいとき、改善アクションを決めたいとき、「ふりかえり」と入力されたとき。
 license: Personal
 ---
 
 # ふりかえりプラクティス
 
-セッションまたは 1 日の学びを次の行動と共有可能な記録に変える single-entry skill。まずセッションストーリーを対話でほどき、使った skill、出戻り、詰まりを確認してから YWT か KPT を選びます。軽い終了だけを Quick にし、複雑な流れや改善余地が見えるときは KPT に寄せます。
+セッションまたは 1 日の学びを、人間向けの作業報告・記録・KPT・改善 Issue 候補に変える single-entry skill。次の AI に作業を渡す圧縮メモは `session-handoff` に分け、この skill では「人が読んで次の改善へ動ける記録」を作ります。
+まずセッションストーリーを対話でほどき、使った skill、出戻り、詰まりを確認してから YWT か KPT を選びます。軽い終了だけを Quick にし、日次レビュー、複雑な流れ、改善余地が見えるときは KPT に寄せます。
 ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
 
 
 ## こんなときに使う
 
 - セッション終了前に学びを残したい（「ふりかえり」と入力）
-- 1 日の終わりに、複数 repo / 複数 session の作業を 1 つの日次ふりかえりへまとめたい
-- コーディングセッションや複数ターンの会話を閉じたい
+- 1 日の終わりに、複数 repo / 複数 session の作業を 1 つの日次レビューへまとめたい
+- 人間向けの作業報告、判断理由、学び、次アクションを残したい
 - 詰まり・出戻り・再発があり、原因と対策を残したい
+- KPT から改善 Issue 候補を発掘し、必要なら `gh-issue-create` へ渡したい
 - 対話しながら home のふりかえり記録と、必要な repo への共有記録まで保存したい
 
 ## 判断表
 
 | 状況 | 進め方 | 目的 |
 | --- | --- | --- |
-| 作業が素直に進み、skill 利用も単純 | YWT | 事実と学びを素早く整理して SMART に繋ぐ |
-| skill 利用が複雑 / 出戻りあり / 再発あり | KPT | Problem を分け、Try と SMART を明確にする |
-| 1 日の終わりに複数 repo をまとめる | Daily KPT / YWT | `~/.copilot/docs/furikaeri/` に横断記録を残す |
-| KPT で改善余地が見えた | KPT + 改善提案 | skill / hook / docs のカイゼン候補まで残す |
+| 作業が素直に進み、skill 利用も単純 | Quick YWT | 事実と学びを素早く整理して SMART に繋ぐ |
+| 日次レビュー / 複数 repo / 複数 session | Daily KPT 優先 | 人間向けに横断の Keep / Problem / Try を残す |
+| skill 利用が複雑 / 出戻りあり / 再発あり | Deep KPT | Problem を分け、Try と SMART を明確にする |
+| KPT で再発しそうな摩擦が見えた | Issue 候補抽出 | `gh-issue-create` に渡せる改善候補へ整える |
+| 次の AI に続きを渡したい | `session-handoff` | ふりかえりではなく AI 向け引き継ぎに分ける |
 
 ## ワークフロー
 
@@ -49,13 +52,25 @@ license: Personal
 - KPT は「複雑」「出戻りあり」「改善余地が大きい」のいずれかで優先する
 - 対話中に問題が見えたら、その場で KPT に切り替えてよい
 
-### Step 3 — ふりかえりを組み立てる
+### Step 3 — 人間向けのふりかえりを組み立てる
 
 - YWT は **Y / W / T / SMART** を作る
 - KPT は **Keep / Problem / Try / 5つのなぜ / SMART** を作る
 - ユーザーが Keep / Problem / Try を出したあと、アシスタント側でも補助候補を 1〜3 件だけ提示してよい
 - 補助候補は「観測した摩擦」「言語化すると次回に効く良い動き」「未整理の改善種」を優先する
-- skill 改善提案は KPT のときだけ候補にし、強化やカイゼンが望ましい場合にだけ書く
+- skill / hook / docs 改善提案は KPT のときだけ候補にし、強化やカイゼンが望ましい場合にだけ書く
+
+### Step 3.5 — 改善 Issue 候補を抽出する
+
+KPT の Problem / Try から、Issue 化すべき候補だけを分けます。すべての Problem を Issue にしません。
+
+Issue 候補にする条件:
+
+- 再発しそう、または複数 repo / 複数 session に効く
+- owner、対象 file / skill / hook / docs、受け入れ条件を置ける
+- 今すぐこの場で直すより、追跡した方がよい
+
+候補は `references/issue-discovery.md` の型にそろえ、実際に起票する場合は `gh-issue-create` に渡します。
 
 ### Step 4 — 保存する
 
@@ -73,12 +88,18 @@ license: Personal
 - `references/output-shape.md`
 - `references/naming.md`
 - `references/session-loop.md`
-- `../knowledge-capture/`
+- `references/issue-discovery.md`
+- `../knowledge-capture/` — 公開されうる記録の匿名化
+- `../gh-issue-create/` — 改善候補を GitHub Issue に起こすとき
+- `../session-handoff/` — 次の AI に作業を引き継ぐとき
 
 ## 注意点
 
 - ふりかえりは報告書ではなく、次の改善に繋ぐ道具。
+- 次の AI へ作業を再開させる圧縮メモは `session-handoff` に分ける。
 - YWT を既定にしすぎない。複雑な session に Quick を当てると学びが痩せる。
+- 日次レビューは KPT を優先し、Issue 候補まで見る。
+- すべてを Issue 化しない。追跡価値がある改善だけに絞る。
 - Problem は人ではなく、プロセス・道具・条件に向ける。
 - 保存前に、モード・タイトル・公開配慮を対話で確認する。
 - `/chronicle` は experimental なので、使えない場合の fallback を必ず用意する。

@@ -23,6 +23,7 @@ description: >
 - **`gh-pr-create`** - PR運用とマージ方針
 - **`skill`** - 変更管理と履歴・ドキュメント品質の整理
 - **`knowledge-capture`** - 公開リポジトリ向けコンテンツの匿名化ゲート
+- **`references/origin.md`** - vertical-slice Issue 分割の出典メモ
 
 ---
 
@@ -121,6 +122,21 @@ optimizer_project の internal_function_name バグ修正時に実践。
 - **Acceptance Criteria**: Issue が「期待した挙動や運用結果を満たした」と判断するための条件。実装詳細ではなく、外から観測できる結果を書く。
 - **Definition of Done**: 実装や運用完了に伴う付帯作業。ドキュメント更新、関連リンク、運用手順更新などを置く。
 - **必須ルール**: **挙動変更や運用変更を含むIssueでは `## Acceptance Criteria` を必須**にする。純粋な文言修正や軽微な docs-only Issue だけは DoD のみでもよい。
+
+#### 推奨: vertical slice でIssueを切る
+
+機能Issueは、層ではなくユーザー行動や受け入れ条件で切ります。最初のIssueは tracer bullet として、UI / API / domain / persistence / test など必要な経路を薄く縦断できる粒度にします。
+
+| 分割 | 例 | 判断 |
+|------|----|------|
+| ✅ vertical slice | 「CSVを1件アップロードし、成功結果が画面に表示される」 | 受け入れ条件でcloseできる |
+| ❌ horizontal slice | 「DB schemaだけ作る」「UIだけ作る」 | 単体では価値と完了条件が曖昧 |
+
+Issue本文には、必要なら次を分けて書きます。
+
+- **HITL**: 人間判断や仕様確認が必要な作業
+- **AFK**: 受け入れ条件が明確で、エージェントに任せやすい作業
+- **Non-goals**: 今回の slice ではやらない層・ケース
 
 #### 厳密な Acceptance Criteria のチェックリスト
 

@@ -18,12 +18,12 @@
 
 ## Skill dispatch
 
-- 仕様作成・要件整理: `spec-workshop`
+- 要求整理・用語・前提・判断の確認: `grill-with-docs`
+- 実装前の小さな試作: `prototype`
 - 設計・構造検証: `design-workshop`
-- 仕様駆動開発の前半工程: `sdd`
 - custom skill / agent / instructions の作成・改善: `copilot-authoring`
 - 既存コードのモジュール境界分析: `modularity-review`
-- TDD 実装 specialist が必要で、仕様・設計・計画がそろっている: `tdd-coder`
+- TDD 実装 specialist が必要で、仕様・設計・実装契約がそろっている: `tdd-coder`
 - ふりかえり: `furikaeri`
 
 詳細手順を repo-wide instructions に増やさず、各 skill と関連 docs を正本にします。

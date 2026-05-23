@@ -43,9 +43,10 @@ copilot plugin update happy-coding@happy-ai-life-marketplace
 
 この repo には Copilot CLI plugin、bootstrap script、品質確認用ツールが入っています。
 
-1. **設計** — `/design-workshop` または design-workshop skill を使う
-2. **計画** — PLAN mode で実装を分解する
-3. **確認** — 変更範囲に合う focused check を流す
+1. **前提整理** — `grill-with-docs` で用語・既存 docs・判断を確認する
+2. **試作** — 不確実性が高い場合だけ `prototype` で小さく検証する
+3. **設計** — 必要に応じて `design-workshop` で構造判断を固める
+4. **確認** — 変更範囲に合う focused check を流す
 
 ```powershell
 uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py

@@ -155,5 +155,5 @@ description: >
 - `plugins/happy-coding/skills/design-workshop/SKILL.md` — 設計の入口
 - `plugins/happy-coding/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — 用語集
 - `plugins/happy-coding/skills/design-workshop/SKILL.md` — 是正策の構造判断
-- `plugins/happy-coding/skills/sdd/SKILL.md` — 是正策を仕様駆動の次段へ接続するとき
+- `plugins/happy-coding/skills/grill-with-docs/SKILL.md` — 是正策を用語・前提・ADR と照合するとき
 - `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド

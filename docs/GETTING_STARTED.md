@@ -123,7 +123,7 @@ cat "$HOME/.copilot/copilot-instructions.md"
 
 ### 開発の流れ
 
-- `/design-workshop` と PLAN mode で整理する
+- `grill-with-docs`、必要に応じた `prototype` / `design-workshop` で整理する
 - 変更範囲に合う focused test と `uv run ruff check .` を流す
 - PR を作って review を受ける
 

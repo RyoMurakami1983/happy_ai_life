@@ -32,7 +32,7 @@ compatibility: GitHub Copilot
 - `_foundation/` — 仕様作成時の共通論点、確認順、共有メモを置く
 - `sub_skills/` — ゼロ開始とドラフト開始の分岐を置く
 - `plugins/happy-coding/skills/design-workshop/SKILL.md` — 仕様完成後の設計入口
-- `plugins/happy-coding/skills/sdd/SKILL.md` — 仕様駆動開発の全工程を通すとき
+- `plugins/happy-coding/skills/grill-with-docs/SKILL.md` — 仕様後に用語・前提・ADR と照合するとき
 
 ## ルーティングメモ
 
