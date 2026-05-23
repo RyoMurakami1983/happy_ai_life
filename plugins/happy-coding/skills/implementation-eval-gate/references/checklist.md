@@ -4,7 +4,7 @@
 
 ## 1. 入力 artifact
 
-- plan artifact または planning handoff を読んだか
+- implementation handoff または実装契約を読んだか
 - 今回の slice contract があり、done の定義と非対象が見えるか
 - generator handoff と test / build / lint の証拠があるか
 - generator handoff に test artifact path / test command / runtime launch command があるか

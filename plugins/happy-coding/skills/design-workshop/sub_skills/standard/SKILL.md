@@ -2,13 +2,13 @@
 name: standard
 description: >
   仕様書から技術設計書を組み立て、構造判断と設計レビューを行ってから
-  planning に渡す標準設計ワークフロー。
+  implementation handoff に渡す標準設計ワークフロー。
   Use when: 仕様が固まり構造判断と検証を経て設計書を作りたいとき。
 ---
 
 # Standard Design Workflow
 
-仕様書を技術設計書に落とし込み、構造・MVP 技術選定・実装適合・セキュリティ境界を順に確認するワークフローです。spec-workshop の後段、PLAN mode の前段に位置します。設計と計画を分離する理由は、設計の再検証や部分的なやり直しが計画に波及しないようにするためです。
+要求や仕様を技術設計書に落とし込み、構造・MVP 技術選定・実装適合・セキュリティ境界を順に確認するワークフローです。grill-with-docs の後段に位置します。設計と実装契約を分離する理由は、設計の再検証や部分的なやり直しが実装中の手戻りに直結しないようにするためです。
 ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
 
 
@@ -25,7 +25,7 @@ description: >
 
 ### ステップ 1 — 仕様の受け取りと前提確認
 
-spec-workshop の成果物（仕様書）を受け取り、設計に進める状態かを確認する。
+grill-with-docs で整理した要求・仕様・用語・前提を受け取り、設計に進める状態かを確認する。
 
 確認すること:
 - 仕様書が存在し、主要な要件が記述されているか
@@ -33,7 +33,7 @@ spec-workshop の成果物（仕様書）を受け取り、設計に進める状
 - 非機能要件（性能、安全性、可用性）の言及があるか
 - 未確定事項が残っている場合は、設計に影響するかを判断する
 
-仕様の不足が設計を阻む場合は、spec-workshop に戻ることを提案する。
+仕様の不足が設計を阻む場合は、grill-with-docs に戻ることを提案する。
 
 ### ステップ 2 — 構造判断
 
@@ -100,9 +100,9 @@ spec-workshop の成果物（仕様書）を受け取り、設計に進める状
 
 セキュリティ上の指摘があれば、設計に反映する。
 
-### ステップ 6 — planning handoff サマリ生成
+### ステップ 6 — implementation handoff サマリ生成
 
-設計判断と検証結果を、PLAN mode や通常の planning ステップが実装計画を作れる形にまとめる。
+設計判断と検証結果を、`impl-and-ship` が実装契約として扱える形にまとめる。
 
 handoff サマリに含めるもの:
 - **設計判断の要約**: コンポーネント構成、責務境界、データフロー
@@ -145,10 +145,10 @@ handoff サマリに含めるもの:
 [今は決めなくてよいこと、将来の拡張で検討すべきこと]
 ```
 
-### planning handoff サマリ
+### implementation handoff サマリ
 
 ```markdown
-# Planning Handoff: [プロジェクト/機能名]
+# Implementation Handoff: [プロジェクト/機能名]
 
 ## 設計判断の要約
 [コンポーネント、責務、データフロー — 箇条書き]
@@ -171,12 +171,13 @@ handoff サマリに含めるもの:
 
 ## 注意点
 
-- **planning をここで完結させない**: 実行計画、フェーズ分割、実装順序はこの skill の範囲外です。handoff サマリを作ったら PLAN mode または planning ステップへ進みます。
+- **実装をここで始めない**: 実装作業はこの skill の範囲外です。handoff サマリを作ったら `impl-and-ship` へ進みます。
 - **コードレビューをここで完結させない**: コード差分が存在しない段階なので、品質レビューは実装後に行います。
 - **設計レビューを広げすぎない**: 実装可能性と trust boundary の確認に絞り、細かなコード論は実装フェーズへ残します。
-- **仕様の穴を設計で埋めない**: 仕様レベルの未確定事項を見つけたら、spec-workshop に戻ることを提案します。
+- **仕様の穴を設計で埋めない**: 仕様レベルの未確定事項を見つけたら、grill-with-docs に戻ることを提案します。
 
 ## 関連リソース
 
-- `plugins/happy-coding/skills/spec-workshop/SKILL.md` — 前段: 仕様書作成
+- `plugins/happy-coding/skills/grill-with-docs/SKILL.md` — 前段: 要求・仕様・用語・前提の整理
+- `plugins/happy-coding/skills/prototype/SKILL.md` — 設計判断前の小さな試作
 - `plugins/happy-coding/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — DDD 用語集
