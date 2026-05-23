@@ -228,7 +228,7 @@ git config core.hooksPath
 [Linux / WSL2: bash]
 
 ```bash
-bash ./scripts/install-git-hooks.sh -TargetRepoPath .
+bash "$HOME/.copilot/scripts/install-git-hooks.sh" -TargetRepoPath .
 git config --local --get core.hooksPath
 ```
 

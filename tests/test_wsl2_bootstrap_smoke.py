@@ -41,7 +41,15 @@ def _git(repo: Path, *args: str) -> str:
 
 def _write_shell_shim(bin_dir: Path, name: str) -> None:
     shim = bin_dir / name
-    shim.write_text("#!/usr/bin/env sh\nexit 0\n", encoding="utf-8")
+    shim.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    shim.chmod(0o755)
+
+
+def _write_passthrough_shim(bin_dir: Path, name: str) -> None:
+    resolved = shutil.which(name)
+    assert resolved is not None, f"{name} is required for this test"
+    shim = bin_dir / name
+    shim.write_text(f'#!/bin/sh\nexec "{resolved}" "$@"\n', encoding="utf-8")
     shim.chmod(0o755)
 
 
@@ -63,24 +71,28 @@ def _write_required_git_hooks(repo: Path, relative: str) -> None:
 def _tool_env(tmp_path: Path) -> dict[str, str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
+    for tool in ("sh", "bash", "git", "rsync", "dirname", "basename", "find", "grep", "sort", "mkdir"):
+        _write_passthrough_shim(bin_dir, tool)
     for tool in ("gitleaks", "jq", "node", "gh"):
         _write_shell_shim(bin_dir, tool)
 
     env = dict(os.environ)
-    env["PATH"] = f"{bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
+    env["PATH"] = str(bin_dir)
     return env
 
 
 def _tool_env_with_missing(tmp_path: Path, *missing_tools: str) -> dict[str, str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
+    for tool in ("sh", "bash", "git", "rsync", "dirname", "basename", "find", "grep", "sort", "mkdir"):
+        _write_passthrough_shim(bin_dir, tool)
     for tool in ("gitleaks", "jq", "node", "gh"):
         if tool in missing_tools:
             continue
         _write_shell_shim(bin_dir, tool)
 
     env = dict(os.environ)
-    env["PATH"] = f"{bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
+    env["PATH"] = str(bin_dir)
     return env
 
 

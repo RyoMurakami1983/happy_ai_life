@@ -377,7 +377,6 @@ if [[ "${is_git_repo}" -eq 0 ]]; then
   warnings+=("Git repository として初期化されていないため、core.hooksPath は不足として扱います。")
 fi
 
-tool_dependency_details="必要ツールは report を参照してください。"
 tool_dependency_details="$(tool_dependency_details_text "${copilot_hooks_path}")"
 
 if [[ "${as_json}" -eq 1 ]]; then
