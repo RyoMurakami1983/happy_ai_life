@@ -119,50 +119,19 @@ available_int() {
 
 tool_dependency_state_json() {
   local hooks_path="$1"
-  local safety_guard_path="${hooks_path}/safety-guard.json"
-  local session_continuity_path="${hooks_path}/session-continuity.json"
   local -a required=()
   local -a missing=()
   local -a reasons=()
+  local tool_name available reason
 
-  add_required_tool() {
-    local tool_name="$1"
-    local reason="$2"
-    local available="$3"
-    local existing
-    for existing in "${required[@]}"; do
-      if [[ "${existing}" == "${tool_name}" ]]; then
-        if [[ "${available}" -eq 0 ]]; then
-          local missing_name
-          for missing_name in "${missing[@]}"; do
-            [[ "${missing_name}" == "${tool_name}" ]] && return
-          done
-          missing+=("${tool_name}")
-        fi
-        return
-      fi
-    done
+  while IFS=$'\t' read -r tool_name available reason; do
+    [[ -n "${tool_name}" ]] || continue
     required+=("${tool_name}")
     reasons+=("${tool_name}"$'\t'"${reason}")
     if [[ "${available}" -eq 0 ]]; then
       missing+=("${tool_name}")
     fi
-  }
-
-  add_required_tool "git" "repo-secure-check と git hooks の基盤として常に必要です。" "$(available_int git)"
-  add_required_tool "gitleaks" "secret scan を実行する safety guard / git hooks に必要です。" "$(available_int gitleaks)"
-  add_required_tool "rsync" "Linux/WSL2 の bootstrap script は rsync で template を同期します。" "$(available_int rsync)"
-
-  if [[ -f "${safety_guard_path}" ]] && grep -q '"bash"' "${safety_guard_path}" && grep -q 'guard_pre_tool\.sh' "${safety_guard_path}"; then
-    add_required_tool "jq" "現在の host では safety-guard.json の bash variant が有効で、guard_pre_tool.sh が jq を使います。" "$(available_int jq)"
-  fi
-
-  if [[ -f "${session_continuity_path}" ]] && grep -q 'session-start\.js\|session-end\.js' "${session_continuity_path}"; then
-    add_required_tool "node" "session-continuity.json が有効で、session hook script は node runtime で動きます。" "$(available_int node)"
-    if grep -q 'session-start\.js' "${session_continuity_path}"; then
-      add_required_tool "gh" "session-start hook は open issue 取得で GitHub CLI を使います。" "$(available_int gh)"
-    fi
-  fi
+  done < <(collect_tool_dependencies "${hooks_path}")
 
   printf '{"required":['
   local first=1 value
@@ -180,7 +149,7 @@ tool_dependency_state_json() {
   done
   printf '],"reasons":{'
   first=1
-  local entry key reason
+  local entry key
   for entry in "${reasons[@]}"; do
     key="${entry%%$'\t'*}"
     reason="${entry#*$'\t'}"
@@ -191,6 +160,74 @@ tool_dependency_state_json() {
     first=0
   done
   printf '}}'
+}
+
+collect_tool_dependencies() {
+  local hooks_path="$1"
+  local safety_guard_path="${hooks_path}/safety-guard.json"
+  local session_continuity_path="${hooks_path}/session-continuity.json"
+  local -a required=()
+  local -a reasons=()
+  local -a available_values=()
+
+  add_required_tool() {
+    local tool_name="$1"
+    local reason="$2"
+    local available="$3"
+    local index
+    for index in "${!required[@]}"; do
+      if [[ "${required[$index]}" == "${tool_name}" ]]; then
+        if [[ "${available}" -eq 0 ]]; then
+          available_values[$index]=0
+        fi
+        return
+      fi
+    done
+    required+=("${tool_name}")
+    reasons+=("${tool_name}"$'\t'"${reason}")
+    available_values+=("${available}")
+  }
+
+  add_required_tool "git" "repo-secure-check と git hooks の基盤として常に必要です。" "$(available_int git)"
+  add_required_tool "gitleaks" "secret scan を実行する safety guard / git hooks に必要です。" "$(available_int gitleaks)"
+  add_required_tool "rsync" "Linux/WSL2 の bootstrap script は rsync で template を同期します。" "$(available_int rsync)"
+
+  if [[ -f "${safety_guard_path}" ]] && grep -q '"bash"' "${safety_guard_path}" && grep -q 'guard_pre_tool\.sh' "${safety_guard_path}"; then
+    add_required_tool "jq" "現在の host では safety-guard.json の bash variant が有効で、guard_pre_tool.sh が jq を使います。" "$(available_int jq)"
+  fi
+
+  if [[ -f "${session_continuity_path}" ]] && grep -q 'session-start\.js\|session-end\.js' "${session_continuity_path}"; then
+    add_required_tool "node" "session-continuity.json が有効で、session hook script は node runtime で動きます。" "$(available_int node)"
+    if grep -q 'session-start\.js' "${session_continuity_path}"; then
+      add_required_tool "gh" "session-start hook は open issue 取得で GitHub CLI を使います。" "$(available_int gh)"
+    fi
+  fi
+
+  local index
+  for index in "${!required[@]}"; do
+    printf '%s\t%s\t%s\n' "${required[$index]}" "${available_values[$index]}" "${reasons[$index]#*$'\t'}"
+  done
+}
+
+tool_dependency_details_text() {
+  local hooks_path="$1"
+  local -a missing_details=()
+  local tool_name available reason
+
+  while IFS=$'\t' read -r tool_name available reason; do
+    [[ -n "${tool_name}" ]] || continue
+    if [[ "${available}" -eq 0 ]]; then
+      missing_details+=("${tool_name}（${reason}）")
+    fi
+  done < <(collect_tool_dependencies "${hooks_path}")
+
+  if ((${#missing_details[@]} == 0)); then
+    printf '必要な依存は現在の host で利用可能です。'
+    return
+  fi
+
+  printf '不足しているツール: %s PATH に追加するかインストールしてから、repo-secure-check を再実行してください。' \
+    "$(IFS=' / '; printf '%s' "${missing_details[*]}")"
 }
 
 target_repo_path=""
@@ -315,15 +352,16 @@ fi
 
 core_hooks_ok=0
 core_hooks_details=""
+install_hooks_command="bash \"${source_root}/scripts/install-git-hooks.sh\" -TargetRepoPath \"${target_repo_path}\""
 if [[ "${is_git_repo}" -eq 0 ]]; then
   core_hooks_details="Git repository として初期化されていません。"
 elif [[ -z "${core_hooks_configured}" ]]; then
-  core_hooks_details="core.hooksPath が設定されていません。"
+  core_hooks_details="core.hooksPath が設定されていません。${install_hooks_command} を実行して git hooks を有効化してください。"
 elif [[ -n "${core_hooks_resolved_path}" && "${core_hooks_resolved_path}" == "$(full_path "${git_hooks_path}")" ]]; then
   core_hooks_ok=1
   core_hooks_details="core.hooksPath は許可された git hooks path を指しています。"
 else
-  core_hooks_details="core.hooksPath は '${core_hooks_configured}' を指しており、許可された git hooks path と一致しません。"
+  core_hooks_details="core.hooksPath は '${core_hooks_configured}' を指しており、許可された git hooks path と一致しません。${install_hooks_command} を実行して修正してください。"
 fi
 
 missing=()
@@ -340,11 +378,7 @@ if [[ "${is_git_repo}" -eq 0 ]]; then
 fi
 
 tool_dependency_details="必要ツールは report を参照してください。"
-if [[ "${tool_dependencies_ok}" -eq 1 ]]; then
-  tool_dependency_details="必要な依存は現在の host で利用可能です。"
-else
-  tool_dependency_details="必要な依存の一部が不足しています。"
-fi
+tool_dependency_details="$(tool_dependency_details_text "${copilot_hooks_path}")"
 
 if [[ "${as_json}" -eq 1 ]]; then
   printf '{'
