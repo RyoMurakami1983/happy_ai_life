@@ -68,40 +68,73 @@ function Invoke-VersionCommand {
     if ($SkipWindowsAppAlias -and $resolved.Source -like '*\Microsoft\WindowsApps\*') { return $null }
 
     try {
-        $value = & $Command @Arguments 2>$null | Select-Object -First 1
+        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = $resolved.Source
+        foreach ($argument in $Arguments) {
+            [void]$startInfo.ArgumentList.Add($argument)
+        }
+        $startInfo.UseShellExecute = $false
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $startInfo.CreateNoWindow = $true
+
+        $process = [System.Diagnostics.Process]::new()
+        $process.StartInfo = $startInfo
+        [void]$process.Start()
+
+        if (-not $process.WaitForExit(1500)) {
+            try { $process.Kill($true) } catch {}
+            return $null
+        }
+
+        $value = $process.StandardOutput.ReadLine()
         if ([string]::IsNullOrWhiteSpace($value)) { return $null }
         return [string]$value
     } catch {
         return $null
+    } finally {
+        if ($null -ne $process) {
+            $process.Dispose()
+        }
     }
+}
+
+function Test-SkipToolVersions {
+    $value = $env:COPILOT_STATUS_SKIP_TOOL_VERSIONS
+    if ([string]::IsNullOrWhiteSpace($value)) { return $false }
+    return @('1', 'true', 'yes', 'on') -contains $value.ToLowerInvariant()
 }
 
 function Get-ToolingStatus {
     param([string]$Path)
 
     $items = [System.Collections.Generic.List[string]]::new()
+    $skipVersions = Test-SkipToolVersions
 
     if (Find-ProjectMarker $Path -Names @('global.json', 'Directory.Build.props') -Patterns @('*.csproj', '*.fsproj', '*.sln')) {
-        $version = Invoke-VersionCommand 'dotnet' @('--version')
+        $version = if ($skipVersions) { $null } else { Invoke-VersionCommand 'dotnet' @('--version') }
         $items.Add($(if ($version) { ".NET $version" } else { '.NET' }))
     }
 
     if (Find-ProjectMarker $Path -Names @('tsconfig.json', 'package.json', 'pnpm-lock.yaml', 'yarn.lock', 'package-lock.json')) {
-        $version = Invoke-VersionCommand 'node' @('--version')
+        $version = if ($skipVersions) { $null } else { Invoke-VersionCommand 'node' @('--version') }
         if ($version) { $version = $version.TrimStart('v') }
         $items.Add($(if ($version) { "TS/Node $version" } else { 'TS/Node' }))
     }
 
     if (Find-ProjectMarker $Path -Names @('pyproject.toml', 'requirements.txt', 'uv.lock', '.python-version', 'Pipfile')) {
-        $uvVersion = Invoke-VersionCommand 'uv' @('--version')
+        $uvVersion = if ($skipVersions) { $null } else { Invoke-VersionCommand 'uv' @('--version') }
         if ($uvVersion) {
             $uvVersion = $uvVersion -replace '^uv\s+', ''
             $uvVersion = ($uvVersion -split '\s+')[0]
             $items.Add("Python/uv $uvVersion")
         } else {
-            $version = Invoke-VersionCommand 'python3' @('--version') -SkipWindowsAppAlias
-            if (-not $version) {
-                $version = Invoke-VersionCommand 'python' @('--version') -SkipWindowsAppAlias
+            $version = $null
+            if (-not $skipVersions) {
+                $version = Invoke-VersionCommand 'python3' @('--version') -SkipWindowsAppAlias
+                if (-not $version) {
+                    $version = Invoke-VersionCommand 'python' @('--version') -SkipWindowsAppAlias
+                }
             }
             if ($version) {
                 $version = $version -replace '^Python\s+', ''
@@ -113,7 +146,7 @@ function Get-ToolingStatus {
     }
 
     if (Find-ProjectMarker $Path -Names @('Cargo.toml', 'Cargo.lock')) {
-        $version = Invoke-VersionCommand 'rustc' @('--version')
+        $version = if ($skipVersions) { $null } else { Invoke-VersionCommand 'rustc' @('--version') }
         if ($version) {
             $version = $version -replace '^rustc\s+', ''
             $version = ($version -split '\s+')[0]

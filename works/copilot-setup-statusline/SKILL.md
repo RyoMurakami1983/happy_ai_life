@@ -4,7 +4,7 @@ description: >
   GitHub Copilot CLI の実験的 statusline を Oh My Posh で導入・調整する。
   こんなときに使う: .copilot に statusline.cmd / statusline.ps1 / statusline.sh / statusline.omp.json を作りたいとき、
   STATUS_LINE feature flag を安全に有効化したいとき、Python / TypeScript / Rust などの表示を追加したいとき。
-compatibility: "Windows, WSL/Linux, PowerShell 7, bash, Python 3, Oh My Posh, GitHub Copilot CLI STATUS_LINE"
+compatibility: "Windows, WSL/Linux, PowerShell 7, bash, Python 3.10+, Oh My Posh, GitHub Copilot CLI STATUS_LINE"
 ---
 
 # Copilot CLI statusline を Oh My Posh で導入する
@@ -59,7 +59,7 @@ WSL/Linux の成功条件は次のように置きます。
 ### ステップ 2 — 前提条件と既存設定を確認する
 
 Windows では `pwsh`、`oh-my-posh`、既存の `.copilot\settings.json` を確認します。
-WSL/Linux では `bash`、`python3`、`oh-my-posh`、既存の `.copilot/settings.json` を確認します。
+WSL/Linux では `bash`、`python3` 3.10 以上、`oh-my-posh`、既存の `.copilot/settings.json` を確認します。
 既存設定は置き換えず、必ずマージ対象として読むようにします。
 
 確認例:
@@ -79,7 +79,7 @@ python3 -m json.tool "$HOME/.copilot/settings.json" >/dev/null
 
 なぜ: statusline は Copilot CLI の起動中に何度も呼ばれるため、前提の欠落や壊れた JSON があると表示が消えやすくなります。
 
-### ステップ 3 — 小さな 3 ファイルを作る
+### ステップ 3 — 小さな 4 ファイルを作る
 
 作成先はユーザー領域の `.copilot` です。リポジトリへは入れません。
 この skill は gist や外部ページを見なくても再実装できるように、`assets/` に標準テンプレートを同梱しています。
@@ -128,6 +128,8 @@ copilot-setup-statusline/
 | line changes | 追加・削除行数の大きさを見る |
 
 なぜ: statusline は広くすると便利に見えますが、長すぎると肝心の会話領域を圧迫します。
+
+表示速度を優先したい場合は、`COPILOT_STATUS_SKIP_TOOL_VERSIONS=1` を設定すると `.NET` / `TS/Node` / `Python/uv` / `Rust` のバージョン取得を省略し、外部コマンド起動回数を減らせます。
 
 ### ステップ 4 — 言語表示は軽く検出する
 

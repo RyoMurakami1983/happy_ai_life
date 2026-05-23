@@ -13,6 +13,11 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 0
 fi
 
+if ! python3 -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1; then
+  printf '%s' 'Copilot status unavailable'
+  exit 0
+fi
+
 python3 - "$theme" "$payload_file" <<'PY'
 from __future__ import annotations
 
@@ -23,6 +28,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from typing import Optional
 
 
 def format_token_count(value: object) -> str:
@@ -89,7 +95,11 @@ def find_project_marker(
     return False
 
 
-def invoke_version_command(command: str, *arguments: str) -> str | None:
+def should_skip_tool_versions() -> bool:
+    return os.environ.get("COPILOT_STATUS_SKIP_TOOL_VERSIONS", "").lower() in {"1", "true", "yes", "on"}
+
+
+def invoke_version_command(command: str, *arguments: str) -> Optional[str]:
     if shutil.which(command) is None:
         return None
     try:
@@ -108,20 +118,21 @@ def invoke_version_command(command: str, *arguments: str) -> str | None:
 
 def get_tooling_status(path: str) -> str:
     items: list[str] = []
+    skip_versions = should_skip_tool_versions()
 
     if find_project_marker(
         path,
         names=("global.json", "Directory.Build.props"),
         patterns=("*.csproj", "*.fsproj", "*.sln"),
     ):
-        version = invoke_version_command("dotnet", "--version")
+        version = None if skip_versions else invoke_version_command("dotnet", "--version")
         items.append(f".NET {version}" if version else ".NET")
 
     if find_project_marker(
         path,
         names=("tsconfig.json", "package.json", "pnpm-lock.yaml", "yarn.lock", "package-lock.json"),
     ):
-        version = invoke_version_command("node", "--version")
+        version = None if skip_versions else invoke_version_command("node", "--version")
         if version:
             version = version.removeprefix("v")
         items.append(f"TS/Node {version}" if version else "TS/Node")
@@ -130,19 +141,21 @@ def get_tooling_status(path: str) -> str:
         path,
         names=("pyproject.toml", "requirements.txt", "uv.lock", ".python-version", "Pipfile"),
     ):
-        uv_version = invoke_version_command("uv", "--version")
+        uv_version = None if skip_versions else invoke_version_command("uv", "--version")
         if uv_version:
             parts = uv_version.removeprefix("uv ").split()
             items.append(f"Python/uv {parts[0]}")
         else:
-            version = invoke_version_command("python3", "--version") or invoke_version_command("python", "--version")
+            version = None
+            if not skip_versions:
+                version = invoke_version_command("python3", "--version") or invoke_version_command("python", "--version")
             if version:
                 items.append(f"Python {version.removeprefix('Python ')}")
             else:
                 items.append("Python")
 
     if find_project_marker(path, names=("Cargo.toml", "Cargo.lock")):
-        version = invoke_version_command("rustc", "--version")
+        version = None if skip_versions else invoke_version_command("rustc", "--version")
         if version:
             parts = version.removeprefix("rustc ").split()
             items.append(f"Rust {parts[0]}")
