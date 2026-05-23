@@ -2,7 +2,7 @@
 name: low-cost-mode
 description: >
   応答を短く正確に保ち、不要な前置き・再掲・過剰説明を削る低燃費モード。
-  Use when: user asks for low-cost mode, 低燃費モード, 省エネ, 短く, brief, fewer tokens, or従量課金を意識したいとき。
+  Use when: user asks for low-cost mode, 低燃費モード, 省エネ, 短く, brief, fewer tokens, or 従量課金を意識したいとき。
 license: MIT-derived
 ---
 
