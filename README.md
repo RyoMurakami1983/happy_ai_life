@@ -33,6 +33,13 @@ copilot plugin update happy-coding@happy-ai-life-marketplace
 公式 docs 上、installed plugin の更新取得は `copilot plugin update` が正規の導線です。更新通知の自動配信は前提にせず、`copilot plugin list` で version を見て、必要に応じて `copilot plugin update` を実行してください。
 この repo では、利用者が見る個別 plugin version の正本は `plugins/*/plugin.json`、`.github/plugin/marketplace.json` はその配布メタ情報をそろえる mirror として扱います。
 
+### 配布対象と `works/` の違い
+
+- marketplace / installed plugin として配布される正本は `plugins/happy-core/` と `plugins/happy-coding/` です
+- `works/` は常用前の試作、単発寄りの作業物、配布前の実験置き場です
+- そのため `works/` 配下の skill は `~/.copilot/installed-plugins/...` には自動で現れません
+- `works/` で育てたものを常用・再利用したくなった段階で、`happy-core` または `happy-coding` へ昇格させます
+
 ## 📚 ドキュメント
 
 | 目的 | ドキュメント |
