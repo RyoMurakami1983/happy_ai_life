@@ -97,40 +97,40 @@ function Invoke-VersionCommand {
             $process.Dispose()
         }
     }
+}
 
-    function Invoke-CommandWithTimeout {
-        param(
-            [string]$CommandPath,
-            [string[]]$Arguments = @(),
-            [int]$TimeoutMilliseconds = 1500
-        )
+function Invoke-CommandWithTimeout {
+    param(
+        [string]$CommandPath,
+        [string[]]$Arguments = @(),
+        [int]$TimeoutMilliseconds = 1500
+    )
 
-        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-        $startInfo.FileName = $CommandPath
-        foreach ($argument in $Arguments) {
-            [void]$startInfo.ArgumentList.Add($argument)
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $CommandPath
+    foreach ($argument in $Arguments) {
+        [void]$startInfo.ArgumentList.Add($argument)
+    }
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+
+    try {
+        [void]$process.Start()
+        $outputTask = $process.StandardOutput.ReadToEndAsync()
+
+        if (-not $process.WaitForExit($TimeoutMilliseconds)) {
+            try { $process.Kill($true) } catch {}
+            return $null
         }
-        $startInfo.UseShellExecute = $false
-        $startInfo.RedirectStandardOutput = $true
-        $startInfo.RedirectStandardError = $true
-        $startInfo.CreateNoWindow = $true
 
-        $process = [System.Diagnostics.Process]::new()
-        $process.StartInfo = $startInfo
-
-        try {
-            [void]$process.Start()
-            $outputTask = $process.StandardOutput.ReadToEndAsync()
-
-            if (-not $process.WaitForExit($TimeoutMilliseconds)) {
-                try { $process.Kill($true) } catch {}
-                return $null
-            }
-
-            return $outputTask.GetAwaiter().GetResult()
-        } finally {
-            $process.Dispose()
-        }
+        return $outputTask.GetAwaiter().GetResult()
+    } finally {
+        $process.Dispose()
     }
 }
 

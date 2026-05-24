@@ -18,9 +18,10 @@ compatibility: "Windows, WSL/Linux, PowerShell 7, bash, Python 3.10+, Oh My Posh
 - Oh My Posh を使って Copilot CLI 専用の statusline を作りたいとき
 - 既存の `settings.json` を壊さず `STATUS_LINE` を有効化したいとき
 - `.NET` に加えて Python、TypeScript / Node、Rust などの開発環境表示を足したいとき
-- `/usage` で見るプレミアムリクエスト情報を、将来 statusline へ出せるか判断したいとき
 
 ## ワークフロー: Statusline 導入と調整
+
+最初は最小構成で 1 行表示を作り、表示速度と安全性を崩さない範囲で必要な情報だけを足していきます。
 
 ## クイックリファレンス
 
@@ -33,7 +34,6 @@ compatibility: "Windows, WSL/Linux, PowerShell 7, bash, Python 3.10+, Oh My Posh
 | 設定更新 | `settings.json` をバックアップしてマージ |
 | 雛形 | この skill の `assets/` をコピーする |
 | 自動導入 | Windows: `scripts\install_statusline.ps1` / WSL/Linux: `scripts/install_statusline.sh` |
-| usage 表示 | 安定した payload field が出るまでは `/usage` を使う |
 
 ### ステップ 1 — ゴール、成功条件、確認手段を固定する
 
@@ -226,13 +226,6 @@ printf '%s' "$sample" | "$HOME/.copilot/statusline.sh"
 空でない 1 行が返れば、Copilot CLI からも表示できる可能性が高いです。
 Copilot CLI を既に開いている場合は `/restart` します。
 
-## プレミアムリクエスト表示の扱い
-
-プレミアムリクエストの使用量は、現時点では `/usage` で見る運用を優先します。
-statusline は stdin の Copilot payload に含まれる値を出すのが安全で、未公開の保存場所や画面出力を scraping して表示するのは避けます。
-
-将来 payload に安定した usage field が入ったら、`statusline.ps1` で `COPILOT_STATUS_USAGE` のような環境変数へ写し、`statusline.omp.json` に text segment を足します。
-
 ## おすすめの追加表示
 
 最初から増やしすぎず、次の優先順にします。
@@ -243,14 +236,12 @@ statusline は stdin の Copilot payload に含まれる値を出すのが安全
 | 高 | Git branch | 作業場所の取り違えを減らす |
 | 中 | Tooling | .NET / Python / TypeScript / Rust の文脈をすぐ確認できる |
 | 中 | line changes | セッションの変更規模を見積もれる |
-| 低 | model / usage | payload が安定してから出す方が壊れにくい |
 
 ## 注意点
 
 - **秘密情報を出さない**: statusline はスクリーンショット、録画、ログに残る可能性があります。
 - **重い処理を入れない**: network access、巨大 directory scan、credential prompt が起きる segment は避けます。
 - **既存設定を上書きしない**: `settings.json` はバックアップしてから object / array をマージします。
-- **寿命の短い表示を固定しない**: `/usage` 由来の課金表示など、仕様が変わりやすいものは payload が安定してから追加します。
 
 ## 関連スキル
 
