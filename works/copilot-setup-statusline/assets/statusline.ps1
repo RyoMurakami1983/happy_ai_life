@@ -75,7 +75,6 @@ function Invoke-VersionCommand {
         }
         $startInfo.UseShellExecute = $false
         $startInfo.RedirectStandardOutput = $true
-        $startInfo.RedirectStandardError = $true
         $startInfo.CreateNoWindow = $true
 
         $process = [System.Diagnostics.Process]::new()
@@ -113,7 +112,6 @@ function Invoke-CommandWithTimeout {
     }
     $startInfo.UseShellExecute = $false
     $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
     $startInfo.CreateNoWindow = $true
 
     $process = [System.Diagnostics.Process]::new()
