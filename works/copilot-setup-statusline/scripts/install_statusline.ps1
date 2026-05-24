@@ -22,6 +22,10 @@ if (Test-Path -LiteralPath $settingsPath) {
     $settings = [pscustomobject]@{}
 }
 
+if ($settings -isnot [pscustomobject] -and $settings -isnot [hashtable]) {
+    throw "$settingsPath must contain a JSON object."
+}
+
 if ($null -eq $settings.statusLine) {
     $settings | Add-Member -NotePropertyName statusLine -NotePropertyValue ([pscustomobject]@{}) -Force
 }

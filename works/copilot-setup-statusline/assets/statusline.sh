@@ -187,7 +187,9 @@ context = payload.get("context_window") or {}
 cost = payload.get("cost") or {}
 current_tokens = context.get("current_context_tokens")
 context_limit = context.get("displayed_context_limit")
-context_percent = context.get("current_context_used_percentage", context.get("used_percentage"))
+context_percent = context.get("current_context_used_percentage")
+if context_percent is None:
+    context_percent = context.get("used_percentage")
 lines_added = int(cost.get("total_lines_added") or 0)
 lines_removed = int(cost.get("total_lines_removed") or 0)
 cwd = str(payload.get("cwd") or os.getcwd())

@@ -7,6 +7,16 @@ skill_dir="$(CDPATH= cd -- "$script_dir/.." && pwd)"
 assets_dir="$skill_dir/assets"
 settings_path="$copilot_dir/settings.json"
 
+if ! command -v python3 >/dev/null 2>&1; then
+  printf '%s\n' 'python3 3.10+ is required to install Copilot statusline.' >&2
+  exit 1
+fi
+
+if ! python3 -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1; then
+  printf '%s\n' 'python3 3.10+ is required to install Copilot statusline.' >&2
+  exit 1
+fi
+
 mkdir -p "$copilot_dir"
 
 cp -f "$assets_dir/statusline.sh" "$copilot_dir/statusline.sh"
@@ -22,6 +32,7 @@ python3 - "$settings_path" "$copilot_dir/statusline.sh" <<'PY'
 from __future__ import annotations
 
 import json
+from json import JSONDecodeError
 from pathlib import Path
 import sys
 
@@ -30,7 +41,10 @@ settings_path = Path(sys.argv[1])
 command_path = sys.argv[2]
 
 if settings_path.exists():
-    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    try:
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    except JSONDecodeError as exc:
+        raise SystemExit(f"{settings_path} is not valid JSON. Fix or restore it before re-running.") from exc
 else:
     settings = {}
 
