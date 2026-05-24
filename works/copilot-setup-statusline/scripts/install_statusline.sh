@@ -53,8 +53,7 @@ if not isinstance(settings, dict):
 
 status_line = settings.setdefault("statusLine", {})
 if not isinstance(status_line, dict):
-    status_line = {}
-    settings["statusLine"] = status_line
+    raise SystemExit(f"{settings_path} statusLine must be a JSON object.")
 
 status_line["type"] = "command"
 status_line["command"] = command_path
@@ -62,13 +61,11 @@ status_line["padding"] = 1
 
 feature_flags = settings.setdefault("feature_flags", {})
 if not isinstance(feature_flags, dict):
-    feature_flags = {}
-    settings["feature_flags"] = feature_flags
+    raise SystemExit(f"{settings_path} feature_flags must be a JSON object.")
 
 enabled = feature_flags.setdefault("enabled", [])
 if not isinstance(enabled, list):
-    enabled = []
-    feature_flags["enabled"] = enabled
+    raise SystemExit(f"{settings_path} feature_flags.enabled must be a JSON array.")
 
 if "STATUS_LINE" not in enabled:
     enabled.append("STATUS_LINE")
