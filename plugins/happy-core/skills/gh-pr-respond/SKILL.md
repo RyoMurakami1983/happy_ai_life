@@ -137,12 +137,12 @@ PR が open なだけでは開始しません。**新しい review signal が来
 PR のコメントを、**コメント種類**と**対象資産の厳しさ**の 2 軸で整理します。
 
 ```bash
-gh pr view --json reviews,reviewRequests --jq '.reviews'
-gh pr view --json reviewThreads --jq '.reviewThreads[] | {path: .path, body: .comments[0].body, isResolved: .isResolved}'
+gh pr view --json reviews,reviewRequests --jq '{reviews: .reviews, reviewRequests: .reviewRequests}'
+gh api repos/OWNER/REPO/pulls/NUMBER/comments --paginate | jq '[.[] | {path, line, body, in_reply_to_id}]'
 ```
 
 ```powershell
-gh pr view --json reviews,reviewRequests --jq '.reviews'
+gh pr view --json reviews,reviewRequests --jq '{reviews: .reviews, reviewRequests: .reviewRequests}'
 ```
 
 分類メモの例:
@@ -230,7 +230,7 @@ uv run python path\to\validator.py path\to\changed-skill --level L2
 uv run python -m pytest -q path\to\focused_test.py
 ```
 
-artifact-sensitive テーブルは**返信判断**のためのものです。  
+asset-sensitive テーブルは**返信判断**のためのものです。  
 check の範囲は、この Step 4 のルールで別に決めます。
 
 > **Values**: 継続は力 / 基礎と型
