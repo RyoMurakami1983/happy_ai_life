@@ -337,6 +337,7 @@ Remove-Item $reReviewBodyPath
 人間のマージ判断に引き渡せる状態:
 - blocking なレビュー対応は完了
 - 今回の反復に必要な checks は完了
+- 最新コミット時点で full quality gate が green
 - non-blocking は返信で整理済み
 - 新しいコミットがない場合、再レビュー依頼は送っていない
 ```
