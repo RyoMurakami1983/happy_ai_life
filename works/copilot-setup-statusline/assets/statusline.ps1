@@ -97,6 +97,41 @@ function Invoke-VersionCommand {
             $process.Dispose()
         }
     }
+
+    function Invoke-CommandWithTimeout {
+        param(
+            [string]$CommandPath,
+            [string[]]$Arguments = @(),
+            [int]$TimeoutMilliseconds = 1500
+        )
+
+        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = $CommandPath
+        foreach ($argument in $Arguments) {
+            [void]$startInfo.ArgumentList.Add($argument)
+        }
+        $startInfo.UseShellExecute = $false
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $startInfo.CreateNoWindow = $true
+
+        $process = [System.Diagnostics.Process]::new()
+        $process.StartInfo = $startInfo
+
+        try {
+            [void]$process.Start()
+            $outputTask = $process.StandardOutput.ReadToEndAsync()
+
+            if (-not $process.WaitForExit($TimeoutMilliseconds)) {
+                try { $process.Kill($true) } catch {}
+                return $null
+            }
+
+            return $outputTask.GetAwaiter().GetResult()
+        } finally {
+            $process.Dispose()
+        }
+    }
 }
 
 function Test-SkipToolVersions {
@@ -204,8 +239,9 @@ $cwd = if ($json.cwd) { [string]$json.cwd } else { (Get-Location).Path }
 $env:COPILOT_STATUS_TOOLING = Get-ToolingStatus $cwd
 
 try {
-    if ((Get-Command 'oh-my-posh' -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $theme)) {
-        $output = & oh-my-posh print primary --config $theme --pwd $cwd --force --escape=false 2>$null
+    $ohMyPosh = Get-Command 'oh-my-posh' -ErrorAction SilentlyContinue
+    if ($null -ne $ohMyPosh -and (Test-Path -LiteralPath $theme)) {
+        $output = Invoke-CommandWithTimeout $ohMyPosh.Source @('print', 'primary', '--config', $theme, '--pwd', $cwd, '--force', '--escape=false')
         if ([string]::IsNullOrWhiteSpace($output)) {
             throw 'Oh My Posh returned no output.'
         }

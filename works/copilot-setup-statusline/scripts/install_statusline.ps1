@@ -8,6 +8,18 @@ $skillDir = Split-Path -Parent $PSScriptRoot
 $assetsDir = Join-Path $skillDir 'assets'
 $settingsPath = Join-Path $CopilotDir 'settings.json'
 
+function Test-JsonObjectLike {
+    param([object]$Value)
+
+    return $Value -is [pscustomobject] -or $Value -is [hashtable]
+}
+
+function Test-JsonArrayLike {
+    param([object]$Value)
+
+    return $Value -is [System.Collections.IList] -and $Value -isnot [string]
+}
+
 New-Item -ItemType Directory -Force -Path $CopilotDir | Out-Null
 
 foreach ($fileName in @('statusline.cmd', 'statusline.ps1', 'statusline.omp.json')) {
@@ -28,6 +40,8 @@ if ($settings -isnot [pscustomobject] -and $settings -isnot [hashtable]) {
 
 if ($null -eq $settings.statusLine) {
     $settings | Add-Member -NotePropertyName statusLine -NotePropertyValue ([pscustomobject]@{}) -Force
+} elseif (-not (Test-JsonObjectLike $settings.statusLine)) {
+    throw "$settingsPath statusLine must be a JSON object."
 }
 
 $settings.statusLine | Add-Member -NotePropertyName type -NotePropertyValue 'command' -Force
@@ -36,10 +50,14 @@ $settings.statusLine | Add-Member -NotePropertyName padding -NotePropertyValue 1
 
 if ($null -eq $settings.feature_flags) {
     $settings | Add-Member -NotePropertyName feature_flags -NotePropertyValue ([pscustomobject]@{ enabled = @() }) -Force
+} elseif (-not (Test-JsonObjectLike $settings.feature_flags)) {
+    throw "$settingsPath feature_flags must be a JSON object."
 }
 
 if ($null -eq $settings.feature_flags.enabled) {
     $settings.feature_flags | Add-Member -NotePropertyName enabled -NotePropertyValue @() -Force
+} elseif (-not (Test-JsonArrayLike $settings.feature_flags.enabled)) {
+    throw "$settingsPath feature_flags.enabled must be a JSON array."
 }
 
 $enabled = @($settings.feature_flags.enabled)
