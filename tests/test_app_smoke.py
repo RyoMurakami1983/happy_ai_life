@@ -58,7 +58,7 @@ def test_build_script_command_prefers_shell_script_on_linux(monkeypatch) -> None
     command = happy_env.build_script_command("sync-to-home", ("--DryRun",))
 
     assert command[0] == "/usr/bin/bash"
-    assert command[1].endswith("scripts/sync-to-home.sh")
+    assert command[1].replace("\\", "/").endswith("scripts/sync-to-home.sh")
     assert command[2] == "--DryRun"
     assert command[3] == "--SourceRoot"
     assert command[4].endswith("happy_ai_life")
@@ -109,8 +109,30 @@ def test_run_home_sync_omits_python_executable_for_shell_script(monkeypatch) -> 
     monkeypatch.setattr(happy_env, "resolve_script_path", lambda _: happy_env.SCRIPTS_DIR / "sync-to-home.sh")
     monkeypatch.setattr(happy_env, "resolve_bash_executable", lambda: "/usr/bin/bash")
 
-    def fake_run(command: tuple[str, ...], **_: object) -> object:
+    def fake_run(command: tuple[str, ...], **kwargs: object) -> object:
         assert "-PythonExecutable" not in command
+        assert kwargs["stdin"] is happy_env.subprocess.DEVNULL
+
+        class Completed:
+            returncode = 0
+            stdout = b"SYNC_STATS:ADDED=0,UPDATED=0,DELETED=0"
+            stderr = b""
+
+        return Completed()
+
+    monkeypatch.setattr(happy_env.subprocess, "run", fake_run)
+
+    result = happy_env.run_home_sync()
+
+    assert result.succeeded
+
+
+def test_run_home_sync_closes_child_stdin(monkeypatch) -> None:
+    monkeypatch.setattr(happy_env, "resolve_script_path", lambda _: happy_env.SCRIPTS_DIR / "sync-to-home.ps1")
+    monkeypatch.setattr(happy_env, "resolve_powershell_executable", lambda: "powershell")
+
+    def fake_run(command: tuple[str, ...], **kwargs: object) -> object:
+        assert kwargs["stdin"] is happy_env.subprocess.DEVNULL
 
         class Completed:
             returncode = 0
