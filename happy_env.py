@@ -110,6 +110,7 @@ def run_script(script_name: str, arguments: Sequence[str], *, label: str, notes:
     completed = subprocess.run(
         command,
         cwd=ROOT_DIR,
+        stdin=subprocess.DEVNULL,
         capture_output=True,
         text=False,
         check=False,
