@@ -101,12 +101,18 @@ PS
 resolve_windows_font_dirs() {
   if [[ -n "${COPILOT_STATUSLINE_WINDOWS_FONT_DIRS:-}" ]]; then
     local raw_path converted_path
+    local separated_paths
+    if [[ "${COPILOT_STATUSLINE_WINDOWS_FONT_DIRS}" == *$'\n'* ]]; then
+      separated_paths="${COPILOT_STATUSLINE_WINDOWS_FONT_DIRS}"
+    else
+      separated_paths="$(tr ';' '\n' <<<"${COPILOT_STATUSLINE_WINDOWS_FONT_DIRS}")"
+    fi
     while IFS= read -r raw_path; do
       converted_path="$(normalize_wsl_path "$raw_path" || true)"
       if [[ -n "$converted_path" && -d "$converted_path" ]]; then
         printf '%s\n' "$converted_path"
       fi
-    done < <(tr ':' '\n' <<<"${COPILOT_STATUSLINE_WINDOWS_FONT_DIRS}")
+    done <<<"$separated_paths"
     return 0
   fi
 
@@ -153,7 +159,7 @@ show_wsl_host_font_status() {
   fi
 
   local font_dirs
-  font_dirs="$(resolve_windows_font_dirs | paste -sd: - || true)"
+  font_dirs="$(resolve_windows_font_dirs || true)"
 
   COPILOT_STATUSLINE_WINDOWS_FONT_DIRS="${font_dirs}" python3 - "$settings_file" "${WSL_DISTRO_NAME:-}" <<'PY'
 from __future__ import annotations
@@ -212,7 +218,7 @@ def detect_installed_faces(font_dirs: list[str]) -> list[str]:
 
 settings_path = Path(sys.argv[1])
 distro_name = sys.argv[2]
-font_dirs = [entry for entry in os.environ.get("COPILOT_STATUSLINE_WINDOWS_FONT_DIRS", "").split(":") if entry]
+font_dirs = [entry for entry in os.environ.get("COPILOT_STATUSLINE_WINDOWS_FONT_DIRS", "").splitlines() if entry]
 
 try:
     settings = json.loads(settings_path.read_text(encoding="utf-8"))

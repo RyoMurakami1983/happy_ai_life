@@ -132,6 +132,27 @@ function Write-WindowsTerminalFontStatus {
     }
 
     $profileList = @($terminalSettings.profiles.list)
+    $defaultProfileGuid = if (-not [string]::IsNullOrWhiteSpace($terminalSettings.defaultProfile)) {
+        [string]$terminalSettings.defaultProfile
+    } else {
+        ''
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($defaultProfileGuid)) {
+        $defaultProfile = $profileList | Where-Object {
+            (Test-JsonObjectLike $_) -and $_.guid -eq $defaultProfileGuid
+        } | Select-Object -First 1
+        if ($null -ne $defaultProfile) {
+            $defaultProfileFontFace = $defaultProfile.font.face
+            if (-not [string]::IsNullOrWhiteSpace($defaultProfileFontFace)) {
+                $faces.Add([pscustomobject]@{
+                    Origin = "defaultProfile $($defaultProfile.name)"
+                    Face = [string]$defaultProfileFontFace
+                })
+            }
+        }
+    }
+
     foreach ($profile in $profileList) {
         if (-not (Test-JsonObjectLike $profile)) {
             continue
@@ -157,9 +178,9 @@ function Write-WindowsTerminalFontStatus {
 
     $installedFaces = @(Get-InstalledNerdFontFaces)
     if ($installedFaces.Count -gt 0) {
-        Write-Warning 'Host Nerd Fonts were detected, but the Windows Terminal defaults/PowerShell profile do not appear to use one.'
+        Write-Warning 'Host Nerd Fonts were detected, but the Windows Terminal defaults/default profile/current PowerShell profile do not appear to use one.'
         Write-Host ("Detected host Nerd Fonts: {0}" -f (($installedFaces | Select-Object -First 3) -join ', '))
-        Write-Host "Set profiles.defaults.font.face or the current profile font.face in $ResolvedSettingsPath."
+        Write-Host "Set profiles.defaults.font.face, defaultProfile font.face, or the current profile font.face in $ResolvedSettingsPath."
         return
     }
 

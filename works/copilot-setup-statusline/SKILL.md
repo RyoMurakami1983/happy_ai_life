@@ -114,7 +114,7 @@ WSL/Linux へ手早く導入する場合:
 bash "$HOME/.copilot/skills/copilot-setup-statusline/scripts/install_statusline.sh"
 ```
 
-どちらの script も `.copilot` 配下のファイルを更新したあと、`oh-my-posh` の有無と host terminal font の状況を表示します。
+Windows script と WSL 上の Linux script は `.copilot` 配下のファイルを更新したあと、`oh-my-posh` の有無と host terminal font の状況を表示します。
 ただし **Windows Terminal や VS Code の設定は自動では書き換えません**。想定外の terminal-wide 変更を避けるためです。
 
 手作業で導入する場合、Windows では `statusline.cmd`、`statusline.ps1`、`statusline.omp.json` を `%USERPROFILE%\.copilot` にコピーします。
