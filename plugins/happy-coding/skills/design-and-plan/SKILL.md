@@ -41,6 +41,7 @@ description: >
 - `_foundation/IMPLEMENTATION_HEURISTICS.md` — サブドメイン分類から実装パターンを導く判断ツリー
 - `_foundation/TECH_SELECTION_HARNESS.md` — モックの仮選定と MVP の本選定を分ける技術選定ハーネス
 - `references/WORK_ARTIFACTS.md` — `docs/grill_results/`, `docs/design/`, `docs/plan/`, `docs/adr/` の成果物規約とテンプレート
+- `assets/NNN_PLAN_TEMPLATE.md` — `docs/plan/NNN_PLAN.md` を checklist 主体で作るときの正本テンプレート
 - `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド（repo 内ローカル参照。`~/.copilot` 同期環境では開けない）
 
 ## ルーティングメモ
