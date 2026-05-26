@@ -166,7 +166,7 @@ def resolve_dependency_order(repos: dict[str, dict]) -> list[str]:
     return result
 
 
-def orchestrate_multi_repo_impl_and_ship(
+def orchestrate_multi_repo_implement(
     repo_plans: dict[str, dict],
     polling_interval_sec: int = 30,
     timeout_sec: int = 3600,
@@ -322,4 +322,22 @@ def orchestrate_multi_repo_impl_and_ship(
         repos_failed=repos_failed,
         repos_blocked=repos_blocked,
         status_log=status_log,
+    )
+
+
+def orchestrate_multi_repo_impl_and_ship(
+    repo_plans: dict[str, dict],
+    polling_interval_sec: int = 30,
+    timeout_sec: int = 3600,
+    mock_mode: bool = False,
+    mock_failures: list[str] | None = None,
+) -> OrchestratorResult:
+    """Backward-compatible alias for the previous orchestrator name."""
+
+    return orchestrate_multi_repo_implement(
+        repo_plans=repo_plans,
+        polling_interval_sec=polling_interval_sec,
+        timeout_sec=timeout_sec,
+        mock_mode=mock_mode,
+        mock_failures=mock_failures,
     )

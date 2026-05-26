@@ -4,7 +4,8 @@ Contract Verification Checkpoint for implement.
 Validates that all required artifacts from dependent repos are present
 and verifies checksums match between upstream provides and local requires.
 
-This checkpoint runs after eval checkpoint in the implement workflow.
+This checkpoint runs during contract verification in the implement workflow,
+before execution starts for repos that depend on upstream artifacts.
 
 On first run (checksum is null in plan_dict), calculates and updates the checksum.
 On subsequent runs, verifies checksum matches.
@@ -216,5 +217,4 @@ def save_plan_with_updated_checksums(plan_path: Path, plan_dict: dict[str, Any])
 
     # Write back
     plan_path.write_text(updated_content, encoding="utf-8")
-
 
