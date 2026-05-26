@@ -166,12 +166,44 @@ def get_tooling_status(path: str) -> str:
 
 
 def fallback(env: dict[str, str]) -> str:
+    git = f"{env['COPILOT_STATUS_GIT']} " if env.get("COPILOT_STATUS_GIT") else ""
     tooling = f"{env['COPILOT_STATUS_TOOLING']} " if env.get("COPILOT_STATUS_TOOLING") else ""
     changes = f" {env['COPILOT_STATUS_CHANGES']}" if env.get("COPILOT_STATUS_CHANGES") else ""
     return (
-        f"{tooling}ctx {env['COPILOT_STATUS_CONTEXT']} "
+        f"{git}{tooling}ctx {env['COPILOT_STATUS_CONTEXT']} "
         f"{env['COPILOT_STATUS_GAUGE']} time {env['COPILOT_STATUS_DURATION']}{changes}"
     )
+
+
+def invoke_git_command(path: str, *arguments: str) -> Optional[str]:
+    if shutil.which("git") is None:
+        return None
+    try:
+        result = subprocess.run(
+            ["git", "-C", path, *arguments],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=1.0,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def get_git_branch_status(path: str) -> str:
+    inside = invoke_git_command(path, "rev-parse", "--is-inside-work-tree")
+    if inside != "true":
+        return ""
+    branch = invoke_git_command(path, "symbolic-ref", "--quiet", "--short", "HEAD")
+    if not branch:
+        branch = invoke_git_command(path, "rev-parse", "--short", "HEAD")
+    if not branch:
+        return ""
+    dirty = invoke_git_command(path, "status", "--porcelain", "--ignore-submodules=dirty")
+    return f"{branch} *" if dirty else branch
 
 
 theme = sys.argv[1]
@@ -199,6 +231,7 @@ env["COPILOT_STATUS_CONTEXT"] = f"{format_token_count(current_tokens)}/{format_t
 env["COPILOT_STATUS_GAUGE"] = new_gauge(context_percent)
 env["COPILOT_STATUS_DURATION"] = format_duration(cost.get("total_duration_ms"))
 env["COPILOT_STATUS_CHANGES"] = f"+{lines_added}/-{lines_removed}" if lines_added or lines_removed else ""
+env["COPILOT_STATUS_GIT"] = get_git_branch_status(cwd)
 env["COPILOT_STATUS_TOOLING"] = get_tooling_status(cwd)
 
 if shutil.which("oh-my-posh") and Path(theme).exists():

@@ -3,8 +3,8 @@ name: copilot-setup-statusline
 description: >
   GitHub Copilot CLI の実験的 statusline を Oh My Posh で導入・調整する。
   こんなときに使う: .copilot に statusline.cmd / statusline.ps1 / statusline.sh / statusline.omp.json を作りたいとき、
-  STATUS_LINE feature flag を安全に有効化したいとき、Python / TypeScript / Rust などの表示を追加したいとき。
-compatibility: "Windows, WSL/Linux, PowerShell 7, bash, Python 3.10+, Oh My Posh, GitHub Copilot CLI STATUS_LINE"
+  STATUS_LINE feature flag を安全に有効化したいとき、host terminal の Nerd Font / Windows Terminal font.face まで切り分けたいとき。
+compatibility: "Windows, WSL/Linux, PowerShell 7, bash, Python 3.10+, Oh My Posh, Nerd Font, GitHub Copilot CLI STATUS_LINE"
 ---
 
 # Copilot CLI statusline を Oh My Posh で導入する
@@ -32,6 +32,7 @@ compatibility: "Windows, WSL/Linux, PowerShell 7, bash, Python 3.10+, Oh My Posh
 | 表示ロジック | Windows: `statusline.ps1` / WSL/Linux: `statusline.sh` |
 | 見た目 | `statusline.omp.json` |
 | 設定更新 | `settings.json` をバックアップしてマージ |
+| アイコン描画の前提 | host terminal で Nerd Font を使う |
 | 雛形 | この skill の `assets/` をコピーする |
 | 自動導入 | Windows: `scripts\install_statusline.ps1` / WSL/Linux: `scripts/install_statusline.sh` |
 
@@ -79,6 +80,18 @@ python3 -m json.tool "$HOME/.copilot/settings.json" >/dev/null
 
 なぜ: statusline は Copilot CLI の起動中に何度も呼ばれるため、前提の欠落や壊れた JSON があると表示が消えやすくなります。
 
+### ステップ 2.5 — host terminal のフォントを先に切り分ける
+
+Oh My Posh のアイコンは **statusline を動かしている OS ではなく、表示している terminal 側** で描画されます。
+特に WSL では、Linux 側にフォントを足しても足りず、**Windows Terminal など host 側の `font.face`** が Nerd Font になっている必要があります。
+
+- Windows: 今使っている terminal の profile または `profiles.defaults.font.face` を Nerd Font にする
+- WSL: Windows host の terminal 設定を確認する。WSL 内にフォントを置いても glyph 崩れは直らない
+- Oh My Posh 推奨フォント: `MesloLGM Nerd Font`
+
+インストーラーはこの点を preflight し、`oh-my-posh` の有無と Windows Terminal の font 設定状況を表示します。
+詳しい切り分けと設定例は `references/host-terminal-fonts.md` を参照します。
+
 ### ステップ 3 — 小さな 4 ファイルを作る
 
 作成先はユーザー領域の `.copilot` です。リポジトリへは入れません。
@@ -100,6 +113,9 @@ WSL/Linux へ手早く導入する場合:
 ```bash
 bash "$HOME/.copilot/skills/copilot-setup-statusline/scripts/install_statusline.sh"
 ```
+
+どちらの script も `.copilot` 配下のファイルを更新したあと、`oh-my-posh` の有無と host terminal font の状況を表示します。
+ただし **Windows Terminal や VS Code の設定は自動では書き換えません**。想定外の terminal-wide 変更を避けるためです。
 
 手作業で導入する場合、Windows では `statusline.cmd`、`statusline.ps1`、`statusline.omp.json` を `%USERPROFILE%\.copilot` にコピーします。
 WSL/Linux では `statusline.sh` と `statusline.omp.json` を `$HOME/.copilot` にコピーし、`statusline.sh` に実行権限を付けます。
@@ -242,6 +258,7 @@ Copilot CLI を既に開いている場合は `/restart` します。
 - **秘密情報を出さない**: statusline はスクリーンショット、録画、ログに残る可能性があります。
 - **重い処理を入れない**: network access、巨大 directory scan、credential prompt が起きる segment は避けます。
 - **既存設定を上書きしない**: `settings.json` はバックアップしてから object / array をマージします。
+- **WSL の glyph 崩れは host 側を疑う**: WSL 内のフォント追加ではなく、Windows Terminal など host terminal の `font.face` を確認します。
 
 ## 関連スキル
 
@@ -254,5 +271,6 @@ Copilot CLI を既に開いている場合は `/restart` します。
 - `assets/statusline.ps1`: Windows で Copilot payload を statusline 表示へ変換する renderer template
 - `assets/statusline.sh`: WSL/Linux で Copilot payload を statusline 表示へ変換する renderer template
 - `assets/statusline.omp.json`: Oh My Posh の mini theme template
-- `scripts/install_statusline.ps1`: Windows で assets を `.copilot` へコピーし、`settings.json` をバックアップしてマージする helper
-- `scripts/install_statusline.sh`: WSL/Linux で assets を `.copilot` へコピーし、`settings.json` をバックアップしてマージする helper
+- `scripts/install_statusline.ps1`: Windows で assets を `.copilot` へコピーし、`settings.json` をバックアップしてマージし、terminal font の preflight を表示する helper
+- `scripts/install_statusline.sh`: WSL/Linux で assets を `.copilot` へコピーし、`settings.json` をバックアップしてマージし、WSL host font の preflight を表示する helper
+- `references/host-terminal-fonts.md`: Windows / WSL で icon glyph を崩さないための host terminal font 設定メモ
