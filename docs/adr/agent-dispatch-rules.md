@@ -152,7 +152,7 @@ Phase 1 以降、copilot-instructions.md のディスパッチルールは以下
 
 Phase 2 では、`architect` / `planner` も削除し、skill-first の明示 workflow へ完全移行する選択肢を検討します。その際、以下の skill の handoff 先を置換する必要があります:
 
-- `design-workshop` → `grill-with-docs` / `impl-and-ship` / prose workflow
+- `design-and-plan` → `grill-with-docs` / `implement` / prose workflow
 - `sdd` → archive
 - `spec-workshop` → archive
 - `deep-research-preflight` → archive
@@ -169,15 +169,15 @@ Phase 2 で `architect` / `planner` も削除し、`home-template/.copilot/agent
 
 ### 新しいディスパッチ
 
-- 構造判断・設計 handoff → `design-workshop`
+- 構造判断・設計 handoff → `design-and-plan`
 - 実装前の前提・用語・判断整理 → `grill-with-docs`
-- 実装契約が揃った後の実行 → `impl-and-ship`
+- 実装契約が揃った後の実行 → `implement`
 - 調査・review・実装 → built-in 機能またはオーケストレーター
 
 ### ねらい
 
 - skills を入口として残し、instructions を dispatch の正本に保つ
-- planning を専用 skill に再実装せず、`grill-with-docs` で合意を固定して `impl-and-ship` へ渡す
+- planning を専用 skill に再実装せず、`grill-with-docs` で合意を固定して `implement` へ渡す
 - custom agent を再び増やす場合も、狭い責務の specialist だけに限定しやすくする
 
 ---

@@ -7,7 +7,7 @@ description: >
 
 # From Scratch
 
-仕様がまだ存在しない状態から、仕様 → 設計 → 計画 → impl-and-ship handoff を順に進める sub-skill です。各フェーズの成果物が次のフェーズの入力になり、plan が完成したら `impl-and-ship` へ引き継ぎます。
+仕様がまだ存在しない状態から、仕様 → 設計 → 計画 → implement handoff を順に進める sub-skill です。各フェーズの成果物が次のフェーズの入力になり、plan が完成したら `implement` へ引き継ぎます。
 ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
 
 
@@ -28,7 +28,7 @@ description: >
 - 「このプロジェクトに関連するリポは複数か」を質問。関連リポ（フロントエンド、バックエンド、モバイル、SDK など）を列挙する。
 
 **判定結果の受け渡し**:
-複数リポが判定された場合、以下のように **明示的に design-workshop へ handoff** してください：
+複数リポが判定された場合、以下のように **明示的に design-and-plan へ handoff** してください：
 
 ```
 【multirepository handoff】
@@ -45,7 +45,7 @@ description: >
 **deep-research-preflight との関係**:
 - `deep-research-preflight` skill でも multirepository 判定を行う場合があります
 - preflight で判定済みの場合は、「既に preflight で multirepository = Yes と判定済み」と明示してください
-- preflight と異なる判定が出た場合は、その旨をメモ（「preflight では single-repo、ここで multirepository 判定」）として design-workshop へ引き継ぎます
+- preflight と異なる判定が出た場合は、その旨をメモ（「preflight では single-repo、ここで multirepository 判定」）として design-and-plan へ引き継ぎます
 
 ### ステップ 1 — 仕様を固める（spec-workshop）
 
@@ -53,9 +53,9 @@ description: >
 
 成果物: 仕様書（要件、制約、受け入れ条件）
 
-### ステップ 2 — 設計を検証する（design-workshop）
+### ステップ 2 — 設計を検証する（design-and-plan）
 
-必要ならここでモックを作成し、仮選定した技術で要求や操作感を早く確認します。その後、仕様書を `design-workshop` に渡します。design-workshop の判断表に従い、standard（構造判断 → MVP 技術選定 → 実装適合レビュー → セキュリティ設計確認）または balanced-coupling-design（サブドメイン分類 → 3次元結合評価 → モジュール別技術方式の選定）を選びます。DDD 戦略パターンはこのステップで扱います。
+必要ならここでモックを作成し、仮選定した技術で要求や操作感を早く確認します。その後、仕様書を `design-and-plan` に渡します。design-and-plan の判断表に従い、standard（構造判断 → MVP 技術選定 → 実装適合レビュー → セキュリティ設計確認）または balanced-coupling-design（サブドメイン分類 → 3次元結合評価 → モジュール別技術方式の選定）を選びます。DDD 戦略パターンはこのステップで扱います。
 
 成果物: 技術設計書 + planning handoff サマリ
 
@@ -78,9 +78,9 @@ description: >
 
 成果物: 実装計画（フェーズ分割、依存関係、実行順序）
 
-### ステップ 4 — impl-and-ship へ handoff する
+### ステップ 4 — implement へ handoff する
 
-plan artifact が揃ったら `impl-and-ship` に引き継ぎます。`impl-and-ship` が bootstrap 確認、contract checkpoint、実装、eval gate、review、furikaeri、PR サイクルを担います。
+plan artifact が揃ったら `implement` に引き継ぎます。`implement` が bootstrap 確認、contract checkpoint、実装、eval gate、review、furikaeri、PR サイクルを担います。
 
 interactive app の場合は `sdd/references/interactive-app-bootstrap-checklist.md` と `sdd/references/interactive-app-comparable-harness-contract.md` を handoff に添付します。
 

@@ -30,9 +30,9 @@ compatibility: GitHub Copilot Agent, Claude Code, Codex
 
 1. **複数リポの存在確認**: 「このタスクに関連するリポは複数か」と質問。関連リポ（UI、backend、CLI など）を列挙する。
 2. **リポの役割特定**: 複数リポがある場合、「このタスクはどのリポが主か / 複数にまたがるか」を明確にする。
-3. **制約の事前確認**: 複数リポの場合、各リポの設計パターン・命名規約・依存関係に矛盾がないか事前に確認する。矛盾が検出された場合、その事実を `grill-with-docs` または `design-workshop` へ受け渡してください。ステップ 0 では解決を試みません。
+3. **制約の事前確認**: 複数リポの場合、各リポの設計パターン・命名規約・依存関係に矛盾がないか事前に確認する。矛盾が検出された場合、その事実を `grill-with-docs` または `design-and-plan` へ受け渡してください。ステップ 0 では解決を試みません。
 
-**複数リポ判定後のフロー**: 複数リポ判定 → ステップ 1-4 で調査を進行 → 結果を `design-workshop` へ受け渡す。
+**複数リポ判定後のフロー**: 複数リポ判定 → ステップ 1-4 で調査を進行 → 結果を `design-and-plan` へ受け渡す。
 
 ---
 
@@ -59,8 +59,8 @@ compatibility: GitHub Copilot Agent, Claude Code, Codex
 | --- | --- |
 | 調査を始めたい | 問いを一文で固定して、内部と外部の source of truth を分ける |
 | 調査結果を使いたい | 事実、推論、未確認事項を分けて整理する |
-| 構造判断に進みたい | `design-workshop` に証拠つきで渡す |
-| 実行順序や段取りを決めたい | `grill-with-docs` で前提を揃えてから `impl-and-ship` に渡す |
+| 構造判断に進みたい | `design-and-plan` に証拠つきで渡す |
+| 実行順序や段取りを決めたい | `grill-with-docs` で前提を揃えてから `implement` に渡す |
 
 ## 注意点
 
@@ -69,5 +69,5 @@ compatibility: GitHub Copilot Agent, Claude Code, Codex
 
 ## 関連スキル
 
-- `design-workshop` — 調査結果をもとに構造判断とトレードオフを整理する
+- `design-and-plan` — 調査結果をもとに構造判断とトレードオフを整理する
 - `grill-with-docs` — 調査結果を用語・前提・ADR と照合するとき

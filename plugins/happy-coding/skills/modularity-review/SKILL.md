@@ -8,7 +8,7 @@ description: >
 
 # Modularity Review
 
-既存コードのモジュール間結合を構造的に分析し、不均衡を検出するワークフロー skill です。design-workshop（balanced-coupling-design）が「これから作るもの」の設計に使うのに対し、この skill は「すでにあるもの」の構造診断に使います。
+既存コードのモジュール間結合を構造的に分析し、不均衡を検出するワークフロー skill です。design-and-plan（balanced-coupling-design）が「これから作るもの」の設計に使うのに対し、この skill は「すでにあるもの」の構造診断に使います。
 ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
 
 
@@ -18,7 +18,7 @@ description: >
 - 分散モノリス化の兆候（高強度 + 高距離の統合が増えている）を調査したいとき
 - 泥団子化の兆候（低凝集、責務の不明瞭な大きなモジュール）を調査したいとき
 - リファクタリング前に、どの結合を優先的に改善すべきかを特定したいとき
-- design-workshop の設計レビューで検出した構造的課題を深掘りしたいとき
+- design-and-plan の設計レビューで検出した構造的課題を深掘りしたいとき
 
 ## ワークフロー: 結合構造分析
 
@@ -141,7 +141,7 @@ description: >
 | 既存コードの結合構造を分析したい | ステップ 1 から順に進める |
 | 特定モジュール群だけ分析したい | ステップ 1 で対象範囲を限定する |
 | 不均衡の是正策を提案してほしい | ステップ 3 の結果を基にステップ 4 で具体案を作る |
-| design-workshop で検出した課題を深掘りしたい | 該当モジュールを対象にステップ 1 から分析する |
+| design-and-plan で検出した課題を深掘りしたい | 該当モジュールを対象にステップ 1 から分析する |
 
 ## 注意点
 
@@ -152,8 +152,8 @@ description: >
 
 ## 関連リソース
 
-- `plugins/happy-coding/skills/design-workshop/SKILL.md` — 設計の入口
-- `plugins/happy-coding/skills/design-workshop/_foundation/DDD_GLOSSARY.md` — 用語集
-- `plugins/happy-coding/skills/design-workshop/SKILL.md` — 是正策の構造判断
+- `plugins/happy-coding/skills/design-and-plan/SKILL.md` — 設計の入口
+- `plugins/happy-coding/skills/design-and-plan/_foundation/DDD_GLOSSARY.md` — 用語集
+- `plugins/happy-coding/skills/design-and-plan/SKILL.md` — 是正策の構造判断
 - `plugins/happy-coding/skills/grill-with-docs/SKILL.md` — 是正策を用語・前提・ADR と照合するとき
 - `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド

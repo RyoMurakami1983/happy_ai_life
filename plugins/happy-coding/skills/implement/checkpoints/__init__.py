@@ -1,8 +1,8 @@
 """
-Checkpoints for impl-and-ship workflow.
+Checkpoints for implement workflow.
 
 This package contains checkpoint modules that validate conditions
-during the impl-and-ship execution flow.
+during the implement execution flow.
 """
 
 from __future__ import annotations

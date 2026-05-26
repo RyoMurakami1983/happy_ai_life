@@ -1,7 +1,7 @@
 ---
 name: split_multi_repo_plan
 description: >
-  複数リポ環境で、design-workshop のアーキテクチャ文書から
+  複数リポ環境で、design-and-plan のアーキテクチャ文書から
   repo ごと に独立した plan.md を生成。
   DAG validation + cycle detection + contract matching を含む。
   Use when:
@@ -303,7 +303,7 @@ Narrative セクション:
 - Phase breakdown
 - 依存関係と提供アーティファクト
 - Acceptance criteria
-- 注記（「Checksums are calculated on first impl-and-ship execution」）
+- 注記（「Checksums are calculated on first implement execution」）
 
 ## 注意点
 
@@ -332,9 +332,9 @@ pytest tests/test_split_multi_repo_plan.py -v
 
 ## 関連リソース
 
-- `plugins/happy-coding/skills/design-workshop/SKILL.md` — 前段：アーキテクチャ設計
+- `plugins/happy-coding/skills/design-and-plan/SKILL.md` — 前段：アーキテクチャ設計
 - `plugins/happy-coding/skills/sdd/sub_skills/from-design/SKILL.md` — 後段：design から plan 生成
-- `plugins/happy-coding/skills/sdd/sub_skills/from-plan/SKILL.md` — 次段：plan から impl-and-ship
+- `plugins/happy-coding/skills/sdd/sub_skills/from-plan/SKILL.md` — 次段：plan から implement
 
 ## Version History
 

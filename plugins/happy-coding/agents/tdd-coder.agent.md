@@ -143,6 +143,6 @@ Green 後に重複や命名のゆがみを最小限で整えます。
 ## 関連スキル
 
 - `grill-with-docs`
-- `design-workshop`
+- `design-and-plan`
 - `prototype`
 - `copilot-authoring`

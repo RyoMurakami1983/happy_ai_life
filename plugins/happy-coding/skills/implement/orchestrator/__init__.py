@@ -1,4 +1,4 @@
-"""Fleet orchestrator module for multi-repo impl-and-ship coordination."""
+"""Fleet orchestrator module for multi-repo implement coordination."""
 
 from .fleet_orchestrator import (
     CircularDependencyError,

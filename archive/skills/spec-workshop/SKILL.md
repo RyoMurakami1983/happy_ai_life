@@ -31,7 +31,7 @@ compatibility: GitHub Copilot
 
 - `_foundation/` — 仕様作成時の共通論点、確認順、共有メモを置く
 - `sub_skills/` — ゼロ開始とドラフト開始の分岐を置く
-- `plugins/happy-coding/skills/design-workshop/SKILL.md` — 仕様完成後の設計入口
+- `plugins/happy-coding/skills/design-and-plan/SKILL.md` — 仕様完成後の設計入口
 - `plugins/happy-coding/skills/grill-with-docs/SKILL.md` — 仕様後に用語・前提・ADR と照合するとき
 
 ## ルーティングメモ
@@ -42,6 +42,6 @@ compatibility: GitHub Copilot
 
 ## 注意点
 
-- **planner の前に終わらせる**: ここは実行計画を作る場所ではなく、仕様を固める入口です。仕様が固まったら `design-workshop` で設計を検証してから planner へ進みます。
+- **planner の前に終わらせる**: ここは実行計画を作る場所ではなく、仕様を固める入口です。仕様が固まったら `design-and-plan` で設計を検証してから planner へ進みます。
 - **architect の代わりにしない**: 構造判断やトレードオフは後段に渡します。
 - **調査を抱え込まない**: 根拠確認は built-in 機能または自分で対応します。

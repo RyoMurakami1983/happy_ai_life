@@ -1,5 +1,5 @@
 """
-Fleet orchestrator for multi-repo impl-and-ship execution.
+Fleet orchestrator for multi-repo implement execution.
 
 Coordinates multi-repo implementation execution with:
 - Input validation (unknown repo references)
@@ -25,7 +25,7 @@ class CircularDependencyError(Exception):
 
 @dataclass
 class OrchestratorResult:
-    """Result of orchestrated multi-repo impl-and-ship execution."""
+    """Result of orchestrated multi-repo implement execution."""
 
     overall_status: str  # 'SUCCESS' or 'FAILURE'
     repos_passed: list[str] = field(default_factory=list)
@@ -174,7 +174,7 @@ def orchestrate_multi_repo_impl_and_ship(
     mock_failures: list[str] | None = None,
 ) -> OrchestratorResult:
     """
-    Orchestrate multi-repo impl-and-ship execution.
+    Orchestrate multi-repo implement execution.
 
     Args:
         repo_plans: Dictionary of {repo_name: plan_dict} with dependencies

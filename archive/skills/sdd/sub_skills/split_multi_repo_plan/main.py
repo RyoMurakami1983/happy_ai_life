@@ -308,7 +308,7 @@ dependencies:
 
     narrative += "## Notes\n\n"
     narrative += "This plan was auto-generated from the unified architecture.\n"
-    narrative += "Checksums are calculated on first impl-and-ship execution (contract_verify checkpoint).\n"
+    narrative += "Checksums are calculated on first implement execution (contract_verify checkpoint).\n"
 
     return yaml_fm + narrative
 

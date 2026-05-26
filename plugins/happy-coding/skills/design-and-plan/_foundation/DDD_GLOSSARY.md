@@ -1,6 +1,6 @@
 # DDD & Balanced Coupling 用語集
 
-design-workshop の sub_skill で使う共通用語です。原語を添えつつ、日本語で統一した呼び方を定めます。
+design-and-plan の sub_skill で使う共通用語です。原語を添えつつ、日本語で統一した呼び方を定めます。
 
 ## DDD 戦略パターンの用語
 
