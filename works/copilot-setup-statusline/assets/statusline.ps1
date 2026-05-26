@@ -192,51 +192,6 @@ function Get-ToolingStatus {
     return ($items -join ' ')
 }
 
-function Get-GitBranchStatus {
-    param([string]$Path)
-
-    $git = Get-Command 'git' -ErrorAction SilentlyContinue
-    if ($null -eq $git) { return '' }
-
-    $status = Invoke-CommandWithTimeout $git.Source @('-C', $Path, 'status', '--porcelain=2', '--branch', '--ignore-submodules=dirty')
-    if ([string]::IsNullOrWhiteSpace($status)) { return '' }
-
-    $branch = ''
-    $oid = ''
-    $dirty = $false
-    $lines = $status -split "`r?`n"
-    foreach ($line in $lines) {
-        if ($line.StartsWith('# branch.head ')) {
-            $branch = $line.Substring(14).Trim()
-            continue
-        }
-        if ($line.StartsWith('# branch.oid ')) {
-            $oid = $line.Substring(13).Trim()
-            continue
-        }
-        if (-not [string]::IsNullOrWhiteSpace($line) -and -not $line.StartsWith('# ')) {
-            $dirty = $true
-        }
-    }
-
-    if ([string]::IsNullOrWhiteSpace($branch) -or $branch -eq '(unknown)') { return '' }
-    if ($branch -eq '(detached)') {
-        $branch = if (-not [string]::IsNullOrWhiteSpace($oid) -and $oid -ne '(initial)' -and $oid.Length -ge 7) {
-            $oid.Substring(0, 7)
-        } else {
-            'detached'
-        }
-    } elseif ($branch -eq '(initial)') {
-        $branch = 'initial'
-    }
-
-    if ($dirty) {
-        return "$branch *"
-    }
-
-    return $branch
-}
-
 $payload = [Console]::In.ReadToEnd()
 
 try {
@@ -279,7 +234,6 @@ $env:COPILOT_STATUS_CHANGES = if ($linesAdded -or $linesRemoved) { "+$linesAdded
 
 $theme = Join-Path $PSScriptRoot 'statusline.omp.json'
 $cwd = if ($json.cwd) { [string]$json.cwd } else { (Get-Location).Path }
-$env:COPILOT_STATUS_GIT = Get-GitBranchStatus $cwd
 $env:COPILOT_STATUS_TOOLING = Get-ToolingStatus $cwd
 
 try {
@@ -294,14 +248,12 @@ try {
         exit 0
     }
 } catch {
-    $git = if ($env:COPILOT_STATUS_GIT) { "$($env:COPILOT_STATUS_GIT) " } else { '' }
     $tooling = if ($env:COPILOT_STATUS_TOOLING) { "$($env:COPILOT_STATUS_TOOLING) " } else { '' }
     $changes = if ($env:COPILOT_STATUS_CHANGES) { " $($env:COPILOT_STATUS_CHANGES)" } else { '' }
-    Write-Host -NoNewline "$($git)$($tooling)ctx $($env:COPILOT_STATUS_CONTEXT) $($env:COPILOT_STATUS_GAUGE) time $($env:COPILOT_STATUS_DURATION)$changes"
+    Write-Host -NoNewline "$($tooling)ctx $($env:COPILOT_STATUS_CONTEXT) $($env:COPILOT_STATUS_GAUGE) time $($env:COPILOT_STATUS_DURATION)$changes"
     exit 0
 }
 
-$git = if ($env:COPILOT_STATUS_GIT) { "$($env:COPILOT_STATUS_GIT) " } else { '' }
 $tooling = if ($env:COPILOT_STATUS_TOOLING) { "$($env:COPILOT_STATUS_TOOLING) " } else { '' }
 $changes = if ($env:COPILOT_STATUS_CHANGES) { " $($env:COPILOT_STATUS_CHANGES)" } else { '' }
-Write-Host -NoNewline "$($git)$($tooling)ctx $($env:COPILOT_STATUS_CONTEXT) $($env:COPILOT_STATUS_GAUGE) time $($env:COPILOT_STATUS_DURATION)$changes"
+Write-Host -NoNewline "$($tooling)ctx $($env:COPILOT_STATUS_CONTEXT) $($env:COPILOT_STATUS_GAUGE) time $($env:COPILOT_STATUS_DURATION)$changes"
