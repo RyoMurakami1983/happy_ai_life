@@ -8,7 +8,9 @@ assets_dir="$skill_dir/assets"
 settings_path="$copilot_dir/settings.json"
 
 is_truthy() {
-  case "${1,,}" in
+  local normalized
+  normalized="$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')"
+  case "$normalized" in
     1|true|yes|on) return 0 ;;
     *) return 1 ;;
   esac
@@ -46,6 +48,7 @@ normalize_wsl_path() {
 
 show_oh_my_posh_status() {
   if command -v oh-my-posh >/dev/null 2>&1; then
+    local version
     version="$(oh-my-posh version 2>/dev/null | head -n 1 || true)"
     printf 'Found oh-my-posh %s\n' "${version:-unknown version}"
     return
@@ -99,6 +102,7 @@ PS
 }
 
 resolve_windows_font_dirs() {
+  local found_any=1
   if [[ -n "${COPILOT_STATUSLINE_WINDOWS_FONT_DIRS:-}" ]]; then
     local raw_path converted_path
     local separated_paths
@@ -111,9 +115,10 @@ resolve_windows_font_dirs() {
       converted_path="$(normalize_wsl_path "$raw_path" || true)"
       if [[ -n "$converted_path" && -d "$converted_path" ]]; then
         printf '%s\n' "$converted_path"
+        found_any=0
       fi
     done <<<"$separated_paths"
-    return 0
+    return "$found_any"
   fi
 
   if ! command -v powershell.exe >/dev/null 2>&1; then
@@ -140,8 +145,10 @@ PS
     converted_path="$(normalize_wsl_path "$raw_path" || true)"
     if [[ -n "$converted_path" && -d "$converted_path" ]]; then
       printf '%s\n' "$converted_path"
+      found_any=0
     fi
   done < <(powershell.exe -NoProfile -Command "$ps_script" | tr -d '\r')
+  return "$found_any"
 }
 
 show_wsl_host_font_status() {
@@ -160,6 +167,10 @@ show_wsl_host_font_status() {
 
   local font_dirs
   font_dirs="$(resolve_windows_font_dirs || true)"
+  if [[ -z "$font_dirs" ]]; then
+    printf '%s\n' 'Warning: Windows font directories could not be inspected from WSL. Check the host terminal font manually.' >&2
+    return
+  fi
 
   COPILOT_STATUSLINE_WINDOWS_FONT_DIRS="${font_dirs}" python3 - "$settings_file" "${WSL_DISTRO_NAME:-}" <<'PY'
 from __future__ import annotations
@@ -257,6 +268,10 @@ if installed_faces:
     print("Warning: host Nerd Fonts were detected, but the Windows Terminal defaults/WSL profile do not appear to use one.", file=sys.stderr)
     print(f"Detected host Nerd Fonts: {', '.join(installed_faces[:3])}", file=sys.stderr)
     print(f"Set profiles.defaults.font.face or the WSL profile font.face in {settings_path}.", file=sys.stderr)
+    raise SystemExit(0)
+
+if not font_dirs:
+    print("Warning: Windows font directories could not be inspected from WSL. Check the host terminal font manually.", file=sys.stderr)
     raise SystemExit(0)
 
 print("Warning: no host Nerd Font was detected in the Windows font directories that were inspected.", file=sys.stderr)
