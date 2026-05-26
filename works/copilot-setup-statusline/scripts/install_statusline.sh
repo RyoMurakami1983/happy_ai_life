@@ -204,15 +204,12 @@ def detect_installed_faces(font_dirs: list[str]) -> list[str]:
         directory = Path(raw_dir)
         if not directory.is_dir():
             continue
-        try:
-            files = list(directory.glob("*.ttf"))
-        except OSError:
-            continue
-        for file in files:
-            stem = file.stem
-            for marker, face in known_patterns.items():
-                if stem.startswith(marker):
+        for marker, face in known_patterns.items():
+            try:
+                if next(directory.glob(f"{marker}*.ttf"), None) is not None:
                     faces.add(face)
+            except OSError:
+                continue
     return sorted(faces)
 
 
