@@ -198,21 +198,43 @@ function Get-GitBranchStatus {
     $git = Get-Command 'git' -ErrorAction SilentlyContinue
     if ($null -eq $git) { return '' }
 
-    $inside = Invoke-CommandWithTimeout $git.Source @('-C', $Path, 'rev-parse', '--is-inside-work-tree')
-    if ($inside.Trim() -ne 'true') { return '' }
+    $status = Invoke-CommandWithTimeout $git.Source @('-C', $Path, 'status', '--porcelain=2', '--branch', '--ignore-submodules=dirty')
+    if ([string]::IsNullOrWhiteSpace($status)) { return '' }
 
-    $branch = Invoke-CommandWithTimeout $git.Source @('-C', $Path, 'symbolic-ref', '--quiet', '--short', 'HEAD')
-    if ([string]::IsNullOrWhiteSpace($branch)) {
-        $branch = Invoke-CommandWithTimeout $git.Source @('-C', $Path, 'rev-parse', '--short', 'HEAD')
+    $branch = ''
+    $oid = ''
+    $dirty = $false
+    $lines = $status -split "`r?`n"
+    foreach ($line in $lines) {
+        if ($line.StartsWith('# branch.head ')) {
+            $branch = $line.Substring(14).Trim()
+            continue
+        }
+        if ($line.StartsWith('# branch.oid ')) {
+            $oid = $line.Substring(13).Trim()
+            continue
+        }
+        if (-not [string]::IsNullOrWhiteSpace($line) -and -not $line.StartsWith('# ')) {
+            $dirty = $true
+        }
     }
-    if ([string]::IsNullOrWhiteSpace($branch)) { return '' }
 
-    $dirty = Invoke-CommandWithTimeout $git.Source @('-C', $Path, 'status', '--porcelain', '--ignore-submodules=dirty')
-    if ([string]::IsNullOrWhiteSpace($dirty)) {
-        return $branch.Trim()
+    if ([string]::IsNullOrWhiteSpace($branch) -or $branch -eq '(unknown)') { return '' }
+    if ($branch -eq '(detached)') {
+        $branch = if (-not [string]::IsNullOrWhiteSpace($oid) -and $oid -ne '(initial)' -and $oid.Length -ge 7) {
+            $oid.Substring(0, 7)
+        } else {
+            'detached'
+        }
+    } elseif ($branch -eq '(initial)') {
+        $branch = 'initial'
     }
 
-    return "$($branch.Trim()) *"
+    if ($dirty) {
+        return "$branch *"
+    }
+
+    return $branch
 }
 
 $payload = [Console]::In.ReadToEnd()

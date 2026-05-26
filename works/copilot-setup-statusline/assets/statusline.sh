@@ -194,15 +194,30 @@ def invoke_git_command(path: str, *arguments: str) -> Optional[str]:
 
 
 def get_git_branch_status(path: str) -> str:
-    inside = invoke_git_command(path, "rev-parse", "--is-inside-work-tree")
-    if inside != "true":
+    status = invoke_git_command(path, "status", "--porcelain=2", "--branch", "--ignore-submodules=dirty")
+    if not status:
         return ""
-    branch = invoke_git_command(path, "symbolic-ref", "--quiet", "--short", "HEAD")
-    if not branch:
-        branch = invoke_git_command(path, "rev-parse", "--short", "HEAD")
-    if not branch:
+
+    branch = ""
+    oid = ""
+    dirty = False
+    for line in status.splitlines():
+        if line.startswith("# branch.head "):
+            branch = line.removeprefix("# branch.head ").strip()
+            continue
+        if line.startswith("# branch.oid "):
+            oid = line.removeprefix("# branch.oid ").strip()
+            continue
+        if line and not line.startswith("# "):
+            dirty = True
+
+    if branch in {"", "(unknown)"}:
         return ""
-    dirty = invoke_git_command(path, "status", "--porcelain", "--ignore-submodules=dirty")
+    if branch == "(detached)":
+        branch = oid[:7] if oid and oid != "(initial)" else "detached"
+    elif branch == "(initial)":
+        branch = "initial"
+
     return f"{branch} *" if dirty else branch
 
 

@@ -24,6 +24,26 @@ is_wsl() {
   grep -qi microsoft /proc/version 2>/dev/null
 }
 
+normalize_wsl_path() {
+  local raw_path="$1"
+  if [[ -z "$raw_path" ]]; then
+    return 1
+  fi
+  if [[ -e "$raw_path" ]]; then
+    printf '%s\n' "$raw_path"
+    return 0
+  fi
+  if command -v wslpath >/dev/null 2>&1; then
+    local converted
+    converted="$(wslpath -u "$raw_path" 2>/dev/null || true)"
+    if [[ -n "$converted" ]]; then
+      printf '%s\n' "$converted"
+      return 0
+    fi
+  fi
+  return 1
+}
+
 show_oh_my_posh_status() {
   if command -v oh-my-posh >/dev/null 2>&1; then
     version="$(oh-my-posh version 2>/dev/null | head -n 1 || true)"
@@ -38,8 +58,10 @@ show_oh_my_posh_status() {
 
 resolve_windows_terminal_settings_path() {
   if [[ -n "${COPILOT_STATUSLINE_WINDOWS_TERMINAL_SETTINGS:-}" ]]; then
-    if [[ -f "${COPILOT_STATUSLINE_WINDOWS_TERMINAL_SETTINGS}" ]]; then
-      printf '%s\n' "${COPILOT_STATUSLINE_WINDOWS_TERMINAL_SETTINGS}"
+    local converted_override
+    converted_override="$(normalize_wsl_path "${COPILOT_STATUSLINE_WINDOWS_TERMINAL_SETTINGS}" || true)"
+    if [[ -n "$converted_override" && -f "$converted_override" ]]; then
+      printf '%s\n' "$converted_override"
       return 0
     fi
     return 1
@@ -64,12 +86,27 @@ if ($match) {
 PS
 )"
 
-  powershell.exe -NoProfile -Command "$ps_script" | tr -d '\r'
+  local raw_path converted_path
+  while IFS= read -r raw_path; do
+    converted_path="$(normalize_wsl_path "$raw_path" || true)"
+    if [[ -n "$converted_path" && -f "$converted_path" ]]; then
+      printf '%s\n' "$converted_path"
+      return 0
+    fi
+  done < <(powershell.exe -NoProfile -Command "$ps_script" | tr -d '\r')
+
+  return 1
 }
 
 resolve_windows_font_dirs() {
   if [[ -n "${COPILOT_STATUSLINE_WINDOWS_FONT_DIRS:-}" ]]; then
-    tr ':' '\n' <<<"${COPILOT_STATUSLINE_WINDOWS_FONT_DIRS}"
+    local raw_path converted_path
+    while IFS= read -r raw_path; do
+      converted_path="$(normalize_wsl_path "$raw_path" || true)"
+      if [[ -n "$converted_path" && -d "$converted_path" ]]; then
+        printf '%s\n' "$converted_path"
+      fi
+    done < <(tr ':' '\n' <<<"${COPILOT_STATUSLINE_WINDOWS_FONT_DIRS}")
     return 0
   fi
 
@@ -92,7 +129,13 @@ foreach ($dir in $dirs) {
 PS
 )"
 
-  powershell.exe -NoProfile -Command "$ps_script" | tr -d '\r'
+  local raw_path converted_path
+  while IFS= read -r raw_path; do
+    converted_path="$(normalize_wsl_path "$raw_path" || true)"
+    if [[ -n "$converted_path" && -d "$converted_path" ]]; then
+      printf '%s\n' "$converted_path"
+    fi
+  done < <(powershell.exe -NoProfile -Command "$ps_script" | tr -d '\r')
 }
 
 show_wsl_host_font_status() {
