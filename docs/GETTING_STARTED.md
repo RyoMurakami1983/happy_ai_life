@@ -124,7 +124,7 @@ cat "$HOME/.copilot/copilot-instructions.md"
 
 ### 開発の流れ
 
-- `grill-with-docs`、必要に応じた `prototype` / `design-workshop` で整理する
+- `grill-with-docs`、必要に応じた `prototype` / `design-and-plan` で整理し、実装は `implement` で進める
 - 変更範囲に合う focused test と `uv run ruff check .` を流す
 - PR を作って review を受ける
 

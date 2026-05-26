@@ -20,8 +20,8 @@
 ## Skill dispatch
 - 要求整理・用語・前提・判断の確認: `grill-with-docs`
 - 不確実性の高い小さな試作: `prototype`
-- 設計・構造検証: `design-workshop`
-- 実装契約が固まった後の実装・検証・PR 準備: `impl-and-ship`
+- 設計・構造検証: `design-and-plan`
+- 実装契約が固まった後の実装・検証・PR 準備: `implement`
 - 既存コードの結合構造分析: `modularity-review`
 - .NET / C# / WPF が見えたら: `dotnet`
 - ふりかえり: `furikaeri`

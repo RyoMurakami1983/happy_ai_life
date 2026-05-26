@@ -7,7 +7,7 @@ description: >
 
 # From Design
 
-技術設計書が手元にある状態から、計画 → impl-and-ship handoff を進める sub-skill です。design-workshop を経由せず、PLAN mode から開始します。
+技術設計書が手元にある状態から、計画 → implement handoff を進める sub-skill です。design-and-plan を経由せず、PLAN mode から開始します。
 ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
 
 
@@ -15,7 +15,7 @@ description: >
 
 このスキルは次のようなときに使います:
 - 設計書が既に存在し、実装計画に入りたいとき
-- design-workshop で設計を完了した後に中断し、再開するとき
+- design-and-plan で設計を完了した後に中断し、再開するとき
 - 外部で設計された仕様を計画フェーズから進めるとき
 
 ## ワークフロー: 設計から plan handoff まで通す
@@ -27,7 +27,7 @@ description: >
 - データフロー
 - セキュリティ設計の確認結果
 
-不足があれば `design-workshop` に戻ることを提案します。
+不足があれば `design-and-plan` に戻ることを提案します。
 
 ### ステップ 2 — 実装計画を立てる（PLAN mode）
 
@@ -64,13 +64,13 @@ description: >
 - 詳細フォーマットは `sdd/SKILL.md` の「multirepository 環境での handoff」セクションを参照
 - **推奨**: 小規模（2 リポ）なら統合 plan、中規模以上（3+ リポ）なら分割 plan artifact（plan-backend.md など）を検討
 
-### ステップ 3 — impl-and-ship へ handoff する
+### ステップ 3 — implement へ handoff する
 
-plan artifact が揃ったら `impl-and-ship` に引き継ぎます。`impl-and-ship` が bootstrap 確認、contract checkpoint、実装、eval gate、review、furikaeri、PR サイクルを担います。
+plan artifact が揃ったら `implement` に引き継ぎます。`implement` が bootstrap 確認、contract checkpoint、実装、eval gate、review、furikaeri、PR サイクルを担います。
 
 interactive app の場合は `sdd/references/interactive-app-bootstrap-checklist.md` を handoff に添付します。
 
 ## 注意点
 
-- **設計の妥当性を再確認しない**: 設計レビューは design-workshop で済んでいる前提です。設計に疑問があれば design-workshop に戻ります。
+- **設計の妥当性を再確認しない**: 設計レビューは design-and-plan で済んでいる前提です。設計に疑問があれば design-and-plan に戻ります。
 - **計画の更新は PLAN mode に戻す**: テスト観点を補っても、計画そのものの正本にはなりません。

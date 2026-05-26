@@ -68,15 +68,19 @@ copilot /prototype
 
 ### 4. 設計
 
-構造判断が必要な場合だけ `/design-workshop` を使います。
+構造判断が必要な場合だけ `/design-and-plan` を使います。
 
 ```powershell
-copilot /design-workshop
+copilot /design-and-plan
 ```
 
 ### 5. 実装
 
-feature branch を切って変更します。
+feature branch を切り、`implement` で実装と完了処理を進めます。
+
+```powershell
+copilot /implement
+```
 
 ```powershell
 git checkout -b feature/your-feature-name

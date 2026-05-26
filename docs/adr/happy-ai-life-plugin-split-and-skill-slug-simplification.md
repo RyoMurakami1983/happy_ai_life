@@ -53,7 +53,7 @@
 原則維持する代表例:
 
 - `spec-workshop`
-- `design-workshop`
+- `design-and-plan`
 - `sdd`
 - `debug`
 - `safe-refactor`
@@ -81,9 +81,9 @@
 - `debug`
 - `deep-research-preflight`
 - `deep-review-preflight`
-- `design-workshop`
+- `design-and-plan`
 - `dotnet*`
-- `impl-and-ship`
+- `implement`
 - `implementation-eval-gate`
 - `modularity-review`
 - `nuget-local`

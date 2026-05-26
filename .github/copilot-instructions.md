@@ -20,7 +20,8 @@
 
 - 要求整理・用語・前提・判断の確認: `grill-with-docs`
 - 実装前の小さな試作: `prototype`
-- 設計・構造検証: `design-workshop`
+- 設計・構造検証: `design-and-plan`
+- 実装契約が固まった後の実装と完了処理: `implement`
 - custom skill / agent / instructions の作成・改善: `copilot-authoring`
 - 既存コードのモジュール境界分析: `modularity-review`
 - TDD 実装 specialist が必要で、仕様・設計・実装契約がそろっている: `tdd-coder`

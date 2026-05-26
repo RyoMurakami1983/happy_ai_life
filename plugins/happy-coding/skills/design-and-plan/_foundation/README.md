@@ -1,6 +1,6 @@
-# design-workshop 共通リソース
+# design-and-plan 共通リソース
 
-このフォルダには、design-workshop の sub_skill 間で共有するリソースを置きます。
+このフォルダには、design-and-plan の sub_skill 間で共有するリソースを置きます。
 
 ## 配置するもの
 

@@ -12,6 +12,9 @@
 /
 ├── CONTEXT.md
 ├── docs/
+│   ├── grill_results/
+│   ├── design/
+│   ├── plan/
 │   └── adr/
 └── src/
 ```
@@ -22,6 +25,9 @@
 /
 ├── CONTEXT-MAP.md
 ├── docs/
+│   ├── grill_results/
+│   ├── design/
+│   ├── plan/
 │   └── adr/
 └── src/
     ├── ordering/
@@ -65,6 +71,13 @@ _Avoid_: bill, payment request
 - 関係が明らかな場合は cardinality や所有関係を短く書く。
 - 曖昧さが残った言葉は `Flagged ambiguities` に解決内容つきで残す。
 - 日本語を基本にし、コード識別子や業界で定着した英語は括弧で併記する。
+
+## 進行文書の扱い
+
+- `CONTEXT.md` は用語の正本なので、解決した瞬間に inline で更新する。
+- `docs/grill_results/NNN_GRILL_WITH_DOCS_RESULT.md` は grill フェーズ完了時に 1 回だけ保存する。
+- `docs/design/NNN_TECHNICAL_DESIGN.md` と `docs/plan/NNN_PLAN.md` は同じ案件番号 `NNN` を共有する。
+- ADR は `docs/adr/0001-short-slug.md` の独立連番を使い、判断が確定した時点で作る。
 
 ## ADR
 

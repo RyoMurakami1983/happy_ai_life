@@ -18,7 +18,7 @@ license: MIT-derived
 - ゼロから要求を立ち上げる、または既存ドラフトの穴を埋めたいとき
 - 内部 source of truth と外部公開情報を分け、事実・推論・未確認事項を整理したいとき
 - `CONTEXT.md`、`CONTEXT-MAP.md`、`docs/adr/` と計画の矛盾を洗いたいとき
-- design-workshop や実装前に、用語と前提を対話で固めたいとき
+- design-and-plan や実装前に、用語と前提を対話で固めたいとき
 - 決定を ADR に残すべきか、過剰文書化かを判断したいとき
 
 ## 判断表
@@ -52,7 +52,7 @@ Why: 最初に根拠を固定しないと、好みの質問や一般論で計画
 
 ### ステップ 2 — 1 問ずつ厳しく確認する
 
-質問は 1 つずつ行い、各質問には推奨回答を添えます。ただし、コードや docs を読めば答えられる質問をユーザーへ投げません。
+質問は 1 つずつ行い、各質問には推奨回答を添えます。回答を受けたら `Unknown` を更新し、`Unknown` が 0 になるまで次の 1 問へ進みます。ただし、コードや docs を読めば答えられる質問をユーザーへ投げません。
 
 確認する観点:
 - 目的、スコープ、制約、Acceptance Criteria が観測可能か
@@ -71,11 +71,25 @@ Why: 最初に根拠を固定しないと、好みの質問や一般論で計画
 - **Inference**: fact から妥当に導けるが、まだ判断を含むこと
 - **Unknown**: 調査しても未確認、またはユーザー確認が必要なこと
 
-外部情報は内部 source of truth より優先しません。外部 best practice と repo の既存方針が衝突した場合は、衝突として記録し、設計判断が必要なら `design-workshop` に渡します。
+`Unknown` が残る限りステップ 2 に戻り、1 問ずつ確認します。
+
+外部情報は内部 source of truth より優先しません。外部 best practice と repo の既存方針が衝突した場合は、衝突として記録し、設計判断が必要なら `design-and-plan` に渡します。
+
+### ステップ 2b — 鳥の目で俯瞰する
+
+次のいずれかに当てはまったら、深掘りを一度止めて 1 回だけ鳥の目で俯瞰します。
+
+- `Unknown` が 0 になったとき
+- 直近 2 問が、ユーザー説明の詳細深掘りに偏ったとき
+- 実装詳細はかなり埋まっているのに、ゴール、非対象、成功条件、運用境界、責務境界、ステークホルダー、影響範囲、戻しにくい判断のいずれかが未確認なとき
+
+俯瞰では、直前までの質問がユーザーの視点の深掘りだけに閉じていないかを点検します。新しい `Unknown` が見つかったら、その中で最も上位のものを 1 問だけ質問し、ステップ 2 に戻ります。新しい `Unknown` が増えなければステップ 3 に進みます。
 
 ### ステップ 3 — 合意した用語だけを CONTEXT に残す
 
 用語が解決したら、その場で `CONTEXT.md` へ小さく反映します。複数 context がある場合は `CONTEXT-MAP.md` を読み、該当 context の `CONTEXT.md` を更新します。
+
+`CONTEXT.md` は用語の正本なので inline で更新します。一方、grill の要約はフェーズ完了時に 1 回だけ `docs/grill_results/NNN_GRILL_WITH_DOCS_RESULT.md` へ保存し、`NNN` は同じ案件の `design` / `plan` と共有します。
 
 `CONTEXT.md` は用語集であり、仕様書、設計メモ、実装判断の置き場ではありません。実装詳細は書かず、domain 固有の言葉、避ける別名、関係、曖昧さの解決だけに絞ります。
 
@@ -91,7 +105,7 @@ Why: `docs/PHILOSOPHY.md` の外科的対応に合わせ、知識資産は増や
 
 ### ステップ 5 — 次工程へ handoff する
 
-最後に、合意できた用語、残った質問、作成または更新した docs、ADR 候補、次に渡す skill を短く返します。
+最後に、合意できた用語、残った質問、作成または更新した docs、ADR 候補、次に渡す skill を短く返します。grill 完了時は同じ内容を `docs/grill_results/NNN_GRILL_WITH_DOCS_RESULT.md` にも保存します。
 
 出力形式:
 
@@ -109,15 +123,18 @@ Why: `docs/PHILOSOPHY.md` の外科的対応に合わせ、知識資産は増や
 ## 共通リソース
 
 - `references/domain-docs.md` — `CONTEXT.md` と ADR の Happy AI Life 向け書式
+- `references/GRILL_RESULT_TEMPLATE.md` — `docs/grill_results/NNN_GRILL_WITH_DOCS_RESULT.md` の雛形
 - `references/origin.md` — 出典、適用範囲、MIT license notice
 - `prototype` — 実装前の不確実性を短時間で試す
-- `design-workshop` — 用語と前提が固まった後の設計
-- `impl-and-ship` — 実装契約が固まった後の実装・eval・review・PR
+- `design-and-plan` — 用語と前提が固まった後の設計
+- `implement` — 実装契約が固まった後の実装・eval・review・PR
 - `modularity-review` — 既存コードの境界をさらに分析したいとき
 
 ## 注意点
 
 - すべての質問をユーザーへ投げない。調べれば分かることは先に調べる。
 - `CONTEXT.md` を仕様書や設計メモにしない。
+- 深掘りだけで満足しない。必要になったら鳥の目へ切り替えて、より上位の `Unknown` を探す。
+- `CONTEXT.md` と成果物の保存タイミングを混ぜない。`CONTEXT.md` は inline、grill result はフェーズ完了時に保存する。
 - ADR を量産しない。戻しにくさ、驚き、実トレードオフが揃わない判断は残さない。
-- grill の勢いで実装に入らない。用語と判断を固めたら、design-workshop / impl-and-ship へ渡す。
+- grill の勢いで実装に入らない。用語と判断を固めたら、design-and-plan / implement へ渡す。

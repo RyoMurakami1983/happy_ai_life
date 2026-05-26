@@ -26,8 +26,8 @@ description: >
 
 | 成果物 | 存在する場合の意味 | 次のフェーズ |
 | --- | --- | --- |
-| 実装中のコード + テスト + plan.md | 実装フェーズまで進んでいる（計画あり） | `impl-and-ship` へ（bootstrap 確認 → 残 slice の実装継続） |
-| 実装計画（plan.md / todos） | 計画フェーズまで進んでいる（設計あり） | `impl-and-ship` へ（plan handoff 完了済みとして渡す） |
+| 実装中のコード + テスト + plan.md | 実装フェーズまで進んでいる（計画あり） | `implement` へ（bootstrap 確認 → 残 slice の実装継続） |
+| 実装計画（plan.md / todos） | 計画フェーズまで進んでいる（設計あり） | `implement` へ（plan handoff 完了済みとして渡す） |
 | 技術設計書 | 設計フェーズまで進んでいる（仕様あり） | `from-design` へ |
 | 仕様書 | 仕様フェーズまで進んでいる | `from-spec` へ |
 | 何もない | まだ始まっていない | `from-scratch` へ |
@@ -49,7 +49,7 @@ description: >
   - コンポーネント構成と責務境界
   - データフロー
   - セキュリティ設計の確認結果
-- 不足がある場合は、design-workshop に戻ることを提案
+- 不足がある場合は、design-and-plan に戻ることを提案
 
 **仕様書がある場合**:
 - 以下が明記されているか確認
@@ -72,9 +72,9 @@ description: >
 
 判定結果に基づいて、該当する skill / sub-skill に委譲します。
 
-- **実装中のコード + テスト + 完全な plan.md** がある場合は `impl-and-ship` に委譲します。
-- **完全な plan.md のみ** がある場合は `impl-and-ship` に委譲します（plan handoff 完了済みとして）。
-- **完全な設計書のみ** がある場合は `from-design` に委譲し、PLAN mode → impl-and-ship へ進めます。
+- **実装中のコード + テスト + 完全な plan.md** がある場合は `implement` に委譲します。
+- **完全な plan.md のみ** がある場合は `implement` に委譲します（plan handoff 完了済みとして）。
+- **完全な設計書のみ** がある場合は `from-design` に委譲し、PLAN mode → implement へ進めます。
 - **成果物が不完全** な場合は、1つ前のフェーズに戻ることを提案します（例：「plan.md が不完全 → from-design に戻す」）。
 
 ## 注意点

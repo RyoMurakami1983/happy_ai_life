@@ -7,7 +7,7 @@ description: >
 
 # From Spec
 
-仕様書が手元にある状態から、設計 → 計画 → impl-and-ship handoff を進める sub-skill です。spec-workshop を経由せず、design-workshop から開始します。
+仕様書が手元にある状態から、設計 → 計画 → implement handoff を進める sub-skill です。spec-workshop を経由せず、design-and-plan から開始します。
 ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
 
 
@@ -31,7 +31,7 @@ description: >
 
 **multirepository 判定と explicit handoff**:
 - 「このプロジェクトに関連するリポは複数か」を質問。関連リポを列挙する。
-- 判定結果を **明示的に design-workshop へ handoff** してください：
+- 判定結果を **明示的に design-and-plan へ handoff** してください：
 
 ```
 【multirepository handoff】
@@ -55,18 +55,18 @@ description: >
 
 要求の理解や画面・操作感の確認を優先したい場合は、ここでモックを作成します。モックの技術は仮選定として扱い、そのまま MVP の本選定に直結させません。
 
-### ステップ 2 — 設計を検証する（design-workshop）
+### ステップ 2 — 設計を検証する（design-and-plan）
 
-仕様書を `design-workshop` に渡し、判断表に従い standard または balanced-coupling-design ルートで設計を進めます。standard ルートでは、構造判断の後に MVP 技術選定チェックポイントを通して本採用する言語・フレームワークを比較・決定します。balanced-coupling-design ルートでは、ステップ 3 のモジュール設計で技術方式を選定します。
+仕様書を `design-and-plan` に渡し、判断表に従い standard または balanced-coupling-design ルートで設計を進めます。standard ルートでは、構造判断の後に MVP 技術選定チェックポイントを通して本採用する言語・フレームワークを比較・決定します。balanced-coupling-design ルートでは、ステップ 3 のモジュール設計で技術方式を選定します。
 
-### ステップ 3 — 実装計画と impl-and-ship handoff
+### ステップ 3 — 実装計画と implement handoff
 
-設計書が完成したら、from-design または from-plan を使用して PLAN mode → impl-and-ship へ引き継ぎます：
+設計書が完成したら、from-design または from-plan を使用して PLAN mode → implement へ引き継ぎます：
 
 **ルート選択**:
 - 計画をゼロから立てる場合は `sdd/sub_skills/from-design/` を呼び出す
 - 計画が既に存在する場合は `sdd/sub_skills/from-plan/` を呼び出す
-- どちらでも最終的には `impl-and-ship` へ handoff します
+- どちらでも最終的には `implement` へ handoff します
 
 ## 注意点
 

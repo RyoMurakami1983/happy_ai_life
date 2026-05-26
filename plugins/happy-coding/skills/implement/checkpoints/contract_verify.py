@@ -1,10 +1,11 @@
 """
-Contract Verification Checkpoint for impl-and-ship.
+Contract Verification Checkpoint for implement.
 
 Validates that all required artifacts from dependent repos are present
 and verifies checksums match between upstream provides and local requires.
 
-This checkpoint runs after eval checkpoint in the impl-and-ship workflow.
+This checkpoint runs during contract verification in the implement workflow,
+before execution starts for repos that depend on upstream artifacts.
 
 On first run (checksum is null in plan_dict), calculates and updates the checksum.
 On subsequent runs, verifies checksum matches.
@@ -154,7 +155,7 @@ def _build_failure_result(
                 f"\n  - Missing artifact: {artifact}"
                 f"\n    Path: {path}"
                 f"\n    Action: Check if upstream repo merged PR with this artifact"
-                f"\n    Remediation: Wait for upstream impl-and-ship to complete, or verify path is correct"
+                f"\n    Remediation: Wait for upstream implement to complete, or verify path is correct"
             )
         elif reason == "checksum_mismatch":
             expected = failed.get("expected", "unknown")
@@ -165,7 +166,7 @@ def _build_failure_result(
                 f"\n    Expected: {expected}"
                 f"\n    Actual:   {actual}"
                 f"\n    Action: Upstream artifact changed since design handoff"
-                f"\n    Remediation: Contact upstream team or re-run design-workshop"
+                f"\n    Remediation: Contact upstream team or re-run design-and-plan"
             )
 
     if verified_count > 0:
@@ -216,5 +217,4 @@ def save_plan_with_updated_checksums(plan_path: Path, plan_dict: dict[str, Any])
 
     # Write back
     plan_path.write_text(updated_content, encoding="utf-8")
-
 

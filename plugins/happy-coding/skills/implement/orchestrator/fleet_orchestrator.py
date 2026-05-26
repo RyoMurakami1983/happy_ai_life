@@ -1,5 +1,5 @@
 """
-Fleet orchestrator for multi-repo impl-and-ship execution.
+Fleet orchestrator for multi-repo implement execution.
 
 Coordinates multi-repo implementation execution with:
 - Input validation (unknown repo references)
@@ -25,7 +25,7 @@ class CircularDependencyError(Exception):
 
 @dataclass
 class OrchestratorResult:
-    """Result of orchestrated multi-repo impl-and-ship execution."""
+    """Result of orchestrated multi-repo implement execution."""
 
     overall_status: str  # 'SUCCESS' or 'FAILURE'
     repos_passed: list[str] = field(default_factory=list)
@@ -166,7 +166,7 @@ def resolve_dependency_order(repos: dict[str, dict]) -> list[str]:
     return result
 
 
-def orchestrate_multi_repo_impl_and_ship(
+def orchestrate_multi_repo_implement(
     repo_plans: dict[str, dict],
     polling_interval_sec: int = 30,
     timeout_sec: int = 3600,
@@ -174,7 +174,7 @@ def orchestrate_multi_repo_impl_and_ship(
     mock_failures: list[str] | None = None,
 ) -> OrchestratorResult:
     """
-    Orchestrate multi-repo impl-and-ship execution.
+    Orchestrate multi-repo implement execution.
 
     Args:
         repo_plans: Dictionary of {repo_name: plan_dict} with dependencies
@@ -322,4 +322,22 @@ def orchestrate_multi_repo_impl_and_ship(
         repos_failed=repos_failed,
         repos_blocked=repos_blocked,
         status_log=status_log,
+    )
+
+
+def orchestrate_multi_repo_impl_and_ship(
+    repo_plans: dict[str, dict],
+    polling_interval_sec: int = 30,
+    timeout_sec: int = 3600,
+    mock_mode: bool = False,
+    mock_failures: list[str] | None = None,
+) -> OrchestratorResult:
+    """Backward-compatible alias for the previous orchestrator name."""
+
+    return orchestrate_multi_repo_implement(
+        repo_plans=repo_plans,
+        polling_interval_sec=polling_interval_sec,
+        timeout_sec=timeout_sec,
+        mock_mode=mock_mode,
+        mock_failures=mock_failures,
     )
