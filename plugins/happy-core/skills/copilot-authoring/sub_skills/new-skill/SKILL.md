@@ -16,7 +16,7 @@ compatibility: "../../_skill/_foundation/CONVENTIONS.md, ../../_skill/scripts/cr
 - 新しい workflow を `plugins/happy-core/skills/` または `plugins/happy-coding/skills/` に追加したいとき
 - 既存の手作業プロンプトを skill として定着させたいとき
 - router と sub-skill をまとめて立ち上げたいとき
-- `works/(またはitems/)` の草案を `plugins/*` に昇格し、frontmatter の name / description を配布向けに整えたいとき
+- `works/` の草案を `plugins/*` に昇格し、frontmatter の name / description を配布向けに整えたいとき
 - 公開 / 内部 / repo 専用の置き場を決めながら草案化したいとき
 
 ## ワークフロー: skill を作る
