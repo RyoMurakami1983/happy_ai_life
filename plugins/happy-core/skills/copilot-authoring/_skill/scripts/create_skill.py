@@ -84,7 +84,7 @@ def build_decision_rows(sub_skills: list[dict[str, str]]) -> str:
         intent = item.get("intent", f"{label} に関する流れを扱う")
         summary = item.get(
             "summary",
-            f"ユーザーを {label} のワークフローへ案内し、公開前に要約を実文へ置き換える。",
+            f"ユーザーを {label} のワークフローへ案内し、公開前に配布先と昇格条件を含む実文へ置き換える。",
         )
         rows.append(f"| {intent} | `sub_skills/{name}/` | {summary} |")
     return "\n".join(rows)
@@ -110,7 +110,7 @@ def render_workflow_template(
         "<What this skill does>": description,
         "compatibility: <optional tools, runtime, or platform constraints>\n": compatibility_line,
         "<Skill Title>": title,
-        "<Explain why this skill exists in 1-2 sentences.>": "このスキルが必要な理由を書き、公開前にプレースホルダーを削除してください。",
+        "<Explain why this skill exists in 1-2 sentences.>": "このスキルが必要な理由と配布先（works/ か plugins/*）を書き、公開前にプレースホルダーを削除してください。",
         "<Verb-led scenario 1>": "実際の trigger に置き換える",
         "<Verb-led scenario 2>": "検証前に 2 つ目の具体例を追加する",
         "<Verb-led scenario 3>": "検証前に 3 つ目の具体例を追加する",
@@ -138,7 +138,7 @@ def render_router_template(
         "<context>-<object>": name,
         "<What this router does>": description,
         "<Router Title>": title,
-        "<Explain what this router unifies and why a single entry point helps.>": "この router が何を束ねるのかを書き、公開前にプレースホルダーを削除してください。",
+        "<Explain what this router unifies and why a single entry point helps.>": "この router が何を束ねるのかと配布先（works/ か plugins/*）を書き、公開前にプレースホルダーを削除してください。",
         "<Verb-led scenario 1>": "実際の router trigger に置き換える",
         "<Verb-led scenario 2>": "検証前に 2 つ目のルート別シナリオを追加する",
         "<Verb-led scenario 3>": "検証前に 3 つ目のルート別シナリオを追加する",
@@ -169,7 +169,7 @@ def render_sub_skill_template(
         "<What this sub-skill does>": description,
         "compatibility: <optional shared resources or constraints>\n": compatibility_line,
         "<Sub-skill Title>": title,
-        "<Explain why this sub-skill exists in 1-2 sentences.>": "この sub-skill が必要な理由を書き、公開前にプレースホルダーを削除してください。",
+        "<Explain why this sub-skill exists in 1-2 sentences.>": "この sub-skill が必要な理由と配布先（works/ か plugins/*）を書き、公開前にプレースホルダーを削除してください。",
         "<Verb-led scenario 1>": "実際の trigger に置き換える",
         "<Verb-led scenario 2>": "検証前に 2 つ目の具体例を追加する",
         "<Verb-led scenario 3>": "検証前に 3 つ目の具体例を追加する",
