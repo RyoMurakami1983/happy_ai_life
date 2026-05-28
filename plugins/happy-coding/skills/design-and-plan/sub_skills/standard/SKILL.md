@@ -1,189 +1,147 @@
 ---
 name: standard
 description: >
-  仕様書から技術設計書を組み立て、構造判断と設計レビューを行ってから
-  implementation handoff に渡す標準設計ワークフロー。
-  Use when: 仕様が固まり構造判断と検証を経て設計書を作りたいとき。
+  単一 repo または通常の機能追加で、要求を構造判断、behavior list、vertical slices、implementation handoff に変える標準設計ワークフロー。
+  Use when: 既存 stack で実装できる仕様を、TDD 可能な slice と plan artifact に整理したいとき。
 ---
 
 # Standard Design Workflow
 
-要求や仕様を技術設計書に落とし込み、構造・MVP 技術選定・実装適合・セキュリティ境界を順に確認するワークフローです。grill-with-docs の後段に位置します。設計と実装契約を分離する理由は、設計の再検証や部分的なやり直しが実装中の手戻りに直結しないようにするためです。
-ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
-
+`grill-with-docs` で固まった要求を、`implement` が TDD で進められる形へ圧縮します。
+既存 repo の通常変更では、このルートを既定にします。
 
 ## こんなときに使う
 
-このスキルは次のようなときに使います:
-- 仕様が固まり、コンポーネント構造やデータフローを設計したいとき
-- モックを経て、MVP で本採用する言語・フレームワークを決めたいとき
-- 実装計画に渡す前に、構造判断とセキュリティ設計を確認したいとき
-- 設計判断が実装しやすい形かを整理したいとき
-- 設計レビューを構造・セキュリティの両面で実施したいとき
+- 単一 repo の通常機能追加を設計したいとき
+- 既存 stack のまま実装可能な slice に分けたいとき
+- behavior list と public interface を整理したいとき
+- HITL / AFK と first test 観点を handoff したいとき
 
-## ワークフロー: 設計検証
+## ワークフロー: standard design を implementation handoff に変える
 
-### ステップ 1 — 仕様の受け取りと前提確認
+### ステップ 1 — 入力を確認する
 
-grill-with-docs で整理した要求・仕様・用語・前提を受け取り、設計に進める状態かを確認する。
+読むもの:
 
-確認すること:
-- 仕様書が存在し、主要な要件が記述されているか
-- `docs/grill_results/NNN_GRILL_WITH_DOCS_RESULT.md` または同等の grill 結果が存在するか
-- 対象の技術スタック（言語・フレームワーク・既存基盤）が明確か
-- 非機能要件（性能、安全性、可用性）の言及があるか
-- 未確定事項が残っている場合は、設計に影響するかを判断する
+- grill result、仕様、issue、会話で合意した要求
+- 関連 docs / ADR / `CONTEXT.md`
+- 変更対象の既存コードと test
+- repo instructions
 
-仕様の不足が設計を阻む場合は、grill-with-docs に戻ることを提案する。
+固定するもの:
 
-### ステップ 2 — 構造判断
+- ゴール
+- 成功条件
+- 対象外
+- 確認 command
+- blocking unknown の有無
 
-設計判断に必要な前提を整理し、複数案を比較しながら構造判断を行う。
+blocking unknown が残る場合は `grill-with-docs` に戻します。
 
-入力:
-- 仕様書の要件（機能・非機能）
-- 対象の技術スタックと既存基盤の情報
-- 統合ポイント（外部システム、既存コンポーネントとの接点）
+### ステップ 2 — 構造判断をする
 
-ここで整理するもの:
-- コンポーネントの責務と境界
-- データフローと状態管理
-- 各判断の Why とトレードオフ
-- ADR（重要な判断の場合）
-- 余白メモ（今決めなくてよいこと）
+実装に必要な構造だけを決めます。
 
-### ステップ 3 — MVP 技術選定チェックポイント
+- どの module / component が責務を持つか
+- 既存 interface を使うか、新しい public interface が必要か
+- 状態、データフロー、外部入力がどこを通るか
+- 触らない境界はどこか
+- 追加する抽象化は本当に必要か
 
-モックの仮選定と MVP の本選定を切り分け、比較軸と根拠を明示したうえで採用候補を絞る。
+判断 lens:
 
-- モックが必要な場合は、早く形にするための仮選定として扱う
-- MVP の本選定は、構造判断の後に行う
-- 比較軸は最低限、要件適合度・保守性・実行環境・チーム習熟度・切り替えコストを使う
-- 不確実性が高い場合は、`_foundation/TECH_SELECTION_HARNESS.md` に沿って小さな技術検証を挟む
-- 既存コード廃棄や中期戦略に関わる判断は、根拠と承認者を Decision Log に残す
+- public interface を test surface にできるか
+- module は浅い便利関数ではなく、内部複雑性を隠せているか
+- 変更が局所化されるか
+- 消す・置き換える時の範囲が見えるか
 
-このステップの出力:
-- モック段階の仮選定（必要な場合）
-- MVP の本選定
-- 不採用候補と理由
-- 見直し条件
+大きな技術選定が必要な場合だけ `_foundation/TECH_SELECTION_HARNESS.md` を読みます。既存 stack で自然に実装できる場合は技術選定 checkpoint を省略します。
 
-### ステップ 4 — 実装適合レビュー
+### ステップ 3 — behavior list を作る
 
-構造判断を、対象技術で自然に実装できる形かという観点でレビューする。
+受け入れ条件を、観測可能な振る舞いに変換します。
 
-- 複数言語にまたがる場合は、主実装言語を先に固定する
-- 技術制約が特に強い場合のみ、このステップを構造判断の前に先行させてよい
-- 詳細な言語ルールは repository instructions や `*.instructions.md` を参照する
+各 behavior に含めるもの:
 
-レビューで確認すること:
-- 構造が対象言語/フレームワークで自然に実装できるか
-- 言語固有のパターンやイディオムとの不整合がないか
-- 型システムや依存管理の観点から無理がないか
+- user-visible behavior または外から観測できる contract
+- public interface
+- 正常系
+- 重要な境界値 / 失敗系
+- security boundary が関係する場合の入力検証観点
 
-不整合があれば、設計を微修正する。
+private method や内部 collaborator の呼び出し回数を仕様化しません。
 
-### ステップ 5 — セキュリティ設計確認
+### ステップ 4 — vertical slices に切る
 
-設計段階のセキュリティ確認を、オーケストレーターまたは built-in review で行う。
+1 slice は 1 ユーザー行動、または 1 acceptance condition を主語にします。
+最初の slice は tracer bullet として、必要な層を薄く縦断します。
 
-確認に使う入力:
-- 設計判断（コンポーネント構成、データフロー）
-- 認証/認可の設計方針
-- 外部入力の経路
-- 機密データの扱い
+各 slice に含めるもの:
 
-確認してもらうこと:
-- trust boundary が明確に定義されているか
-- 認証/認可の設計方針が決まっているか
-- 機密データの保存・転送方針が決まっているか
-- 外部入力の検証方針が決まっているか
+- slice 名
+- HITL / AFK
+- done 条件
+- 最初に書く test 観点
+- `RED` の期待失敗理由
+- `GREEN` / acceptance command
+- 対象外
 
-セキュリティ上の指摘があれば、設計に反映する。
+horizontal slice（DB だけ、UI だけ、テストだけ）は避けます。
 
-### ステップ 6 — implementation handoff サマリ生成
+### ステップ 5 — security と実装適合を確認する
 
-設計判断と検証結果を、`implement` が実装契約として扱える形にまとめる。
+次に該当する場合は、設計内で扱います。
 
-handoff サマリに含めるもの:
-- **設計判断の要約**: コンポーネント構成、責務境界、データフロー
-- **MVP 技術選定**: 採用技術、比較軸、見直し条件
-- **確定事項**: 設計レビューを通過した判断
-- **制約**: 技術的制約、セキュリティ要件、非機能要件
-- **未決定事項**: 設計段階で保留した判断とその理由
-- **リスク**: 実装時に注意すべきリスクと対応方針
-- **ADR**: 重要な設計判断の記録（ある場合）
+- 認証 / 認可
+- 外部入力
+- 機密データ
+- 外部 API / Webhook
+- ファイル I/O
+- コマンド実行
+- trust boundary をまたぐデータフロー
 
-### 成果物の保存規約
+設計が対象技術で自然に実装できない場合は、構造判断へ戻して小さく直します。
 
-- 設計書は `docs/design/NNN_TECHNICAL_DESIGN.md` に保存する
-- `NNN` は同じ案件の `docs/grill_results/NNN_GRILL_WITH_DOCS_RESULT.md` と `docs/plan/NNN_PLAN.md` で共有する
-- `Implementation Handoff` は別ファイルに分けず、設計書末尾の `## Implementation Handoff` に含める
-- `docs/plan/NNN_PLAN.md` は、設計が implementation handoff 可能な段階まで固まったときだけ作る
-- `docs/plan/NNN_PLAN.md` は人間向け進捗計画であり、multirepository fleet の contract verification が使う repo root の `plan.md` とは別物として扱う
+### ステップ 6 — implementation handoff を作る
 
-## 出力の型
+`docs/design/NNN_TECHNICAL_DESIGN.md` が必要なら保存します。
+実装進行の checklist が必要な場合だけ `docs/plan/NNN_PLAN.md` を作ります。
 
-### 設計書 (`docs/design/NNN_TECHNICAL_DESIGN.md`)
+handoff の最小形:
 
 ```markdown
-# 技術設計書: [プロジェクト/機能名]
-
-## 概要
-[何を設計したか、なぜこの構造にしたか — 1-2 文]
-
-## コンポーネント構成
-[設計判断から]
-
-## データフロー
-[入力から出力までの流れ]
-
-## MVP 技術選定
-[採用技術、比較結果、見直し条件]
-
-## 技術検証結果
-[実装適合レビューの結果と反映内容]
-
-## セキュリティ設計
-[セキュリティ観点の確認結果]
-
-## 設計判断の記録
-[ADR がある場合]
-
-## 余白メモ
-[今は決めなくてよいこと、将来の拡張で検討すべきこと]
-
 ## Implementation Handoff
 
-## 設計判断の要約
-[コンポーネント、責務、データフロー — 箇条書き]
+### Goal
 
-## MVP 技術選定
-[採用技術、比較軸、見直し条件]
+### Success Criteria
 
-## 確定事項
-[実装で前提にしてよい判断]
+### Out of Scope
 
-## 制約
-[技術的制約、セキュリティ要件]
+### Structure Decisions
 
-## 未決定事項
-[保留した判断とその理由]
+### Behavior List
 
-## リスク
-[実装時の注意点]
+### Vertical Slices
+
+| Slice | HITL/AFK | Done | First Test | RED Expectation | Commands |
+|---|---|---|---|---|---|
+
+### Risks / Unknowns
+
+### Return Conditions
 ```
 
 ## 注意点
 
-- **実装をここで始めない**: 実装作業はこの skill の範囲外です。handoff サマリを作ったら `implement` へ進みます。
-- **コードレビューをここで完結させない**: コード差分が存在しない段階なので、品質レビューは実装後に行います。
-- **設計レビューを広げすぎない**: 実装可能性と trust boundary の確認に絞り、細かなコード論は実装フェーズへ残します。
-- **仕様の穴を設計で埋めない**: 仕様レベルの未確定事項を見つけたら、grill-with-docs に戻ることを提案します。
+- 実装を始めない。handoff ができたら `implement` に渡す。
+- 仕様の穴を設計判断で埋めない。
+- 技術選定や詳細テスト仕様を毎回作らない。
+- plan は人間向け進捗補助であり、実装契約の本体は handoff と slice contract。
 
 ## 関連リソース
 
-- `plugins/happy-coding/skills/grill-with-docs/SKILL.md` — 前段: 要求・仕様・用語・前提の整理
-- `plugins/happy-coding/skills/prototype/SKILL.md` — 設計判断前の小さな試作
-- `plugins/happy-coding/skills/design-and-plan/_foundation/DDD_GLOSSARY.md` — DDD 用語集
-- `plugins/happy-coding/skills/design-and-plan/references/WORK_ARTIFACTS.md` — 設計書 / PLAN の保存規約とテンプレート
+- `plugins/happy-coding/skills/grill-with-docs/SKILL.md`
+- `plugins/happy-coding/skills/implement/SKILL.md`
+- `plugins/happy-coding/skills/design-and-plan/references/WORK_ARTIFACTS.md`
+- `plugins/happy-coding/skills/design-and-plan/assets/NNN_PLAN_TEMPLATE.md`

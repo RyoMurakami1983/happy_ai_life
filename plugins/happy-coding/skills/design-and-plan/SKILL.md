@@ -1,63 +1,93 @@
 ---
 name: design-and-plan
 description: >
-  要求や仕様から技術設計と plan artifact を組み立てる入口。標準設計と Balanced Coupling レンズ設計を振り分ける。
-  Use when: grill-with-docs で要求や仕様が固まり、設計書と実装計画の土台をそろえたいとき、
-  結合構造を意識した設計がしたいとき、実装前に構造とセキュリティを確認したいとき。
+  要求や仕様から、実装に渡せる構造判断、vertical slices、HITL/AFK 区分、behavior list、plan artifact を作る入口。
+  Use when: grill-with-docs 後に設計判断と実装計画を作りたいとき、既存 repo の変更を TDD 可能な slice に分けたいとき、multi-repo や境界設計が必要か判断したいとき。
 ---
 
-# design-and-plan — 設計から計画まで
+# design-and-plan — 設計を実装契約に変える
 
-要求や仕様を技術設計書に落とし込み、必要なら `docs/plan/NNN_PLAN.md` まで含めた handoff を作るための入口です。設計アプローチに応じて適切な sub_skill に案内します。grill-with-docs の後段に位置します。
-ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
-
+要求や仕様を、`implement` がそのまま TDD で進められる契約に落とします。
+この skill は router です。標準設計で足りる場合は軽く進め、multi-repo や境界リスクがある場合だけ Balanced Coupling へ切り替えます。
 
 ## こんなときに使う
 
-- 仕様が固まり、コンポーネント構造やデータフローを設計したいとき
-- MVP で採用する言語・フレームワークを、比較軸つきで選びたいとき
-- 実装計画に渡せるよう、設計書と plan artifact の土台をそろえたいとき
-- 設計判断を実装しやすい形に整えたいとき
-- 設計レビューを構造の観点で実施したいとき
-- 既存コードの結合構造を意識した設計がしたいとき
+- grill 後の要求を実装可能な構造判断へ落としたいとき
+- 既存 repo の変更を TDD 可能な vertical slice に分けたいとき
+- HITL / AFK の切り分けを実装前に決めたいとき
+- multi-repo や所有境界の設計が必要か判断したいとき
+- `implement` へ渡す handoff を作りたいとき
+
+## Core Loop
+
+```text
+grill result / spec
+  -> goal and success criteria
+  -> route selection
+  -> structure decisions
+  -> behavior list
+  -> vertical slices
+  -> implementation handoff
+```
 
 ## 判断表
 
-| やりたいこと | ルート | 次にやること |
+| 状況 | ルート | 判断 |
 |---|---|---|
-| 標準的な設計ワークフローで進めたい（単一リポまたはモノリシック） | `sub_skills/standard/` | 構造判断、MVP 技術選定、設計レビューを行い、implementation handoff を作る |
-| 複数リポが関連する、または結合の3次元（統合強度・距離・変動性）を意識した設計がしたい | `sub_skills/balanced-coupling-design/` | マルチリポ環境での context map 作成、サブドメイン分類とバランスルールを使い、モジュラーアーキテクチャを設計する |
+| 単一 repo、既存 stack、通常の機能追加 | `sub_skills/standard/` | 既定ルート |
+| 新規 product / stack 未確定 / 大きな採用判断 | `sub_skills/standard/` + 技術選定 checkpoint | MVP 技術選定を明示する |
+| 複数 repo、shared library、SDK、microservice、別チーム所有 | `sub_skills/balanced-coupling-design/` | provide / require と統合距離を見る |
+| 境界が崩れている、分散モノリス化、過剰共有が疑われる | `sub_skills/balanced-coupling-design/` | 結合の 3 次元で評価する |
 
-**multirepository 判定ガイド**: 以下のいずれかに当てはまる場合は、「複数リポが関連する」と判定し、balanced-coupling-design ルートを検討してください:
-- フロントエンド、バックエンド、モバイルなど複数のアプリが存在する
-- SDK や shared library など、他リポから参照される
-- 独立したマイクロサービスが複数ある
-- 複数の開発チームが異なるリポを担当する
+迷ったら `standard` から始めます。境界設計が実際に問題になった時点で Balanced Coupling へ切り替えます。
 
-## 共通リソース
+## 共通の設計 lens
 
-- `_foundation/README.md` — 共通リソースの説明
-- `_foundation/DDD_GLOSSARY.md` — DDD と Balanced Coupling モデルの用語集
-- `_foundation/IMPLEMENTATION_HEURISTICS.md` — サブドメイン分類から実装パターンを導く判断ツリー
-- `_foundation/TECH_SELECTION_HARNESS.md` — モックの仮選定と MVP の本選定を分ける技術選定ハーネス
-- `references/WORK_ARTIFACTS.md` — `docs/grill_results/`, `docs/design/`, `docs/plan/`, `docs/adr/` の成果物規約とテンプレート
-- `assets/NNN_PLAN_TEMPLATE.md` — `docs/plan/NNN_PLAN.md` を checklist 主体で作るときの正本テンプレート
-- `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド（repo 内ローカル参照。`~/.copilot` 同期環境では開けない）
+どのルートでも、次を短く確認します。
 
-## ルーティングメモ
+- **Goal**: 何が成立したら終わりか
+- **Success criteria**: 観測可能な完了条件
+- **Structure**: どこに責務を置き、どこを触らないか
+- **Interface as test surface**: どの public interface で確認するか
+- **Vertical slices**: 1 ユーザー行動または 1 acceptance condition ごとに切る
+- **HITL / AFK**: 人間判断が必要な slice と自走できる slice を分ける
+- **Deletion pressure**: 追加する抽象化が、消す・置き換える・狭める余地を残しているか
+- **Security boundary**: 外部入力、認証/認可、機密情報、コマンド実行、ファイル I/O の境界
 
-- 迷ったら **standard** から始める。結合分析が必要だと分かった時点で balanced-coupling-design に切り替えてもよい。
-- Balanced Coupling レンズは全案件の既定ではなく、モジュール分割や境界設計を深掘りしたい場合に選ぶ。
-- どちらのルートでも、最終的に `implement` へ渡せる implementation handoff summary を出力する。
-- 成果物の path、命名、番号共有は router ではなく `references/WORK_ARTIFACTS.md` と各 sub-skill 側に寄せる。
+## 出力
+
+最終的に `implement` へ渡せる implementation handoff を作ります。
+
+handoff に含めるもの:
+
+- ゴール
+- 成功条件
+- 対象外
+- 構造判断
+- public interface と behavior list
+- vertical slices（HITL / AFK を明示）
+- 各 slice の最初の test 観点
+- 実行 command
+- 未決定事項と戻り先
+
+設計書が必要な場合は `docs/design/NNN_TECHNICAL_DESIGN.md` に保存します。
+実装進行用の checklist が必要な場合だけ `docs/plan/NNN_PLAN.md` を作ります。
+成果物の path、命名、番号共有は `references/WORK_ARTIFACTS.md` に従います。
 
 ## 注意点
 
-- **router に実行詳細を書き込まない**: 設計プロセスの詳細は sub_skill に委譲する。
-- **2つのルートを混ぜない**: 1つの設計フェーズでは1つのルートを選ぶ。途中での切り替えは、明示的な判断として記録する。
+- router に詳細プロセスを書き込まない。詳細は sub-skill に置く。
+- MVP 技術選定を毎回通さない。既存 stack で自然に進められるなら省略する。
+- Balanced Coupling を毎回通さない。multi-repo、所有境界、統合リスクがあるときだけ使う。
+- 実装をここで始めない。handoff を作ったら `implement` へ渡す。
+- 仕様の穴を設計で埋めない。blocking unknown があれば `grill-with-docs` に戻す。
 
-## 関連リソース
+## 共通リソース
 
-- `plugins/happy-coding/skills/grill-with-docs/SKILL.md` — 要求・用語・前提・ADR と照合してから設計に入るとき
-- `plugins/happy-coding/skills/prototype/SKILL.md` — 設計前に技術・UI・境界の不確実性を小さく試すとき
-- `plugins/happy-coding/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
+- `_foundation/DDD_GLOSSARY.md` — DDD と Balanced Coupling モデルの用語集
+- `_foundation/IMPLEMENTATION_HEURISTICS.md` — サブドメイン分類から実装パターンを導く判断ツリー
+- `_foundation/TECH_SELECTION_HARNESS.md` — 技術選定が必要な場合だけ読む
+- `references/WORK_ARTIFACTS.md` — 成果物規約
+- `assets/NNN_PLAN_TEMPLATE.md` — PLAN テンプレート
+- `sub_skills/standard/` — 既定ルート
+- `sub_skills/balanced-coupling-design/` — multi-repo / 境界設計ルート

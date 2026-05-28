@@ -98,6 +98,59 @@ Use this skill when:
     assert report.critical_passed is True
 
 
+def test_l1_passes_for_thin_skill_with_trigger_rich_description(tmp_path: Path):
+    mod = load_module()
+    skill_path = write_skill(
+        tmp_path,
+        "thin-skill",
+        """---
+name: thin-skill
+description: "Use when: the user asks for a blunt second opinion on an idea."
+---
+
+# Thin Skill
+
+Challenge the idea directly.
+
+Ask one sharp follow-up only if the missing detail blocks the answer.
+""",
+        with_references_dir=False,
+    )
+    report = mod.validate(skill_path, "L1")
+    assert report.critical_passed is True
+
+
+def test_l1_passes_for_core_loop_without_workflow_heading(tmp_path: Path):
+    mod = load_module()
+    skill_path = write_skill(
+        tmp_path,
+        "core-loop-skill",
+        """---
+name: core-loop-skill
+description: >
+  Core loop 型の skill を検証する。Use when: workflow 見出しではなく Core Loop で実行構造を示したいとき。
+---
+
+# Core Loop Skill
+
+## こんなときに使う
+
+- Core Loop 型の skill を検証したいとき
+- 既存 workflow 見出しなしで構造を示したいとき
+- validator の互換性を確認したいとき
+
+## Core Loop
+
+```text
+input -> action -> output
+```
+""",
+        with_references_dir=False,
+    )
+    report = mod.validate(skill_path, "L1")
+    assert report.critical_passed is True
+
+
 def test_l2_can_pass_without_references_dir_when_skill_is_compact(tmp_path: Path):
     mod = load_module()
     skill_path = write_skill(

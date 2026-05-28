@@ -117,12 +117,20 @@ def has_workflow_or_router(content: str) -> bool:
         for pattern in (
             r"^##\s+Workflow:",
             r"^##\s+ワークフロー[:：]",
+            r"^##\s+Core Loop$",
             r"^##\s+Decision Table$",
             r"^##\s+判断表$",
             r"^###\s+Step\s+\d+",
             r"^###\s*ステップ\s*\d+",
         )
     )
+
+
+def is_thin_skill(content: str) -> bool:
+    """本文を description で補える薄い skill かどうかを判定する。"""
+    body = re.sub(r"^---\s*\n.*?\n---\s*\n", "", content, count=1, flags=re.DOTALL)
+    non_empty_lines = [line for line in body.splitlines() if line.strip()]
+    return len(non_empty_lines) <= 40 and has_title_heading(body)
 
 
 def is_action_led(text: str) -> bool:
@@ -181,13 +189,22 @@ def validate(path: Path, level: str) -> ValidationReport:
     quick_reference = get_section(content, QUICK_REFERENCE_HEADINGS)
     pitfalls = get_section(content, PITFALL_HEADINGS)
     references_dir = path.parent / "references"
+    thin_skill = is_thin_skill(content)
 
     critical = [
         CheckResult("C1", "Frontmatter に name と description がある", {"name", "description"} <= frontmatter.keys()),
         CheckResult("C2", "name がディレクトリ名と一致する", frontmatter.get("name") == folder_name, f"directory={folder_name}"),
         CheckResult("C3", "description に trigger phrase が入っている", has_trigger_phrase(description), description),
-        CheckResult("C4", "『こんなときに使う』互換セクションがある", when_section is not None),
-        CheckResult("C5", "ワークフローまたは router セクションがある", has_workflow_or_router(content)),
+        CheckResult(
+            "C4",
+            "『こんなときに使う』互換セクションがある、または thin skill である",
+            when_section is not None or thin_skill,
+        ),
+        CheckResult(
+            "C5",
+            "ワークフロー / router / Core Loop セクションがある、または thin skill である",
+            has_workflow_or_router(content) or thin_skill,
+        ),
     ]
 
     recommended = [

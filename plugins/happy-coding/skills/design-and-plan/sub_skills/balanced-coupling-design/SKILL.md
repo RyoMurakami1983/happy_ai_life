@@ -1,155 +1,94 @@
 ---
 name: balanced-coupling-design
 description: >
-  結合の3次元（統合強度・距離・変動性）とバランスルールを使い、モジュラーアーキテクチャを設計する。
-  Use when: モジュール間の結合を構造的に評価したいとき、業務領域の分類から設計判断を導きたいとき。
+  multi-repo、所有境界、shared library、service split、分散モノリス疑いがあるとき、結合の3次元で設計を評価し implementation handoff に変える。
+  Use when: 通常の standard 設計では統合距離、変動性、共有知識のリスクを扱いきれないとき。
 ---
 
 # Balanced Coupling Design
 
-結合の 3 次元モデル（統合強度・距離・変動性）を設計レンズとして使い、モジュラーアーキテクチャを組み立てるワークフローです。Vlad Khononov の Balanced Coupling モデルの概念を参考にしています。
-ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
-
-
-standard ワークフローとの違いは、結合の評価とバランスルールの適用を設計プロセスの中核に据える点です。
+結合の 3 次元（統合強度・距離・変動性）で、multi-repo や境界設計のリスクを確認します。
+これは標準ルートでは重い場合にだけ使う optional route です。
 
 ## こんなときに使う
 
-- モジュール間の結合を 3 次元（統合強度・距離・変動性）で評価したいとき
-- 業務領域（サブドメイン）の分類から変動性を見積もり、設計に反映したいとき
-- 文脈の境界（境界付きコンテキスト）とモジュール境界を対応づけたいとき
-- 密結合のリスク（分散モノリス化）や低凝集のリスク（泥団子化）を設計段階で検出したいとき
+- 複数 repo が関係するとき
+- shared library / SDK / generated client を提供または消費するとき
+- frontend / backend / worker / mobile など所有境界が分かれるとき
+- service split や context 分割を判断したいとき
+- 共有 model や shared database が増えているとき
+- 変更時に複数チーム・複数 deploy を同期する必要があるとき
 
-## ワークフロー: Balanced Coupling 設計
+単一 repo の通常機能追加なら `standard` に戻ります。
 
-### ステップ 1 — 要件理解と業務領域分類
+## ワークフロー: Balanced Coupling を implementation handoff に変える
 
-仕様書を読み込み、業務領域（サブドメイン）を分類する。
+### ステップ 1 — context と ownership を整理する
 
-やること:
-- 仕様書の機能要件を業務領域ごとに整理する
-- 各業務領域をサブドメインに分類する:
-  - **中核業務領域（Core）**: 競争優位の源泉。変動性が高い
-  - **支援業務領域（Supporting）**: 必要だが差別化要因ではない。変動性が低い
-  - **汎用業務領域（Generic）**: 既製品がある領域。機能の変動性は低いが、実装（プロバイダ）の変動性は可変
-- 不明点をユーザーに確認する。推測しない
+表にします。
 
-出力: サブドメイン分類表（業務領域 / 分類 / 根拠 / 変動性）
-
-用語は `_foundation/DDD_GLOSSARY.md` を参照する。
-
-### ステップ 2 — モジュラーアーキテクチャ設計
-
-サブドメイン分類を元に、モジュール構成と結合を設計する。
-
-入力:
-- 仕様書の要件
-- サブドメイン分類表（ステップ 1 の出力）
-- 対象の技術スタックと既存基盤
-- 実装の経験則（`_foundation/IMPLEMENTATION_HEURISTICS.md`）に基づく実装パターンの候補
-
-ここで行うこと:
-1. モジュール（コンポーネント）の責務と境界を定義する
-2. モジュール間の統合を特定し、3 次元で評価する:
-   - **統合強度**: 共有する知識の量（Contract < Model < Functional < Intrusive）
-   - **距離**: 変更を同期するコスト（技術的 + 組織的）
-   - **変動性**: サブドメイン分類から評価した変更確率
-3. バランスルールを適用する: `BALANCE = (統合強度 XOR 距離) OR NOT 変動性`
-4. 不均衡な統合を検出し、是正策を提案する:
-   - 高強度 + 高距離 + 高変動性 → **密結合**: 統合強度を下げる（契約の導入）か、距離を縮める（モジュール統合）
-   - 低強度 + 低距離 → **低凝集**: 関連のない部品を分離するか、統合強度を上げて凝集を高める
-
-出力: 結合評価表（統合 / 統合強度 / 距離 / 変動性 / バランス? / 是正策）
-
-### ステップ 3 — モジュール設計書作成と MVP 技術方式の選定
-
-各モジュールの設計書を作成し、MVP で採用する技術方式を比較しながら決める。対象技術で自然に実装できる形かを、オーケストレーターまたは repository instructions に沿って確認する。比較軸や記録方針は `_foundation/TECH_SELECTION_HARNESS.md` も参照する。
-
-各モジュール設計書に含めるもの:
-- **機能的責務**: このモジュールが担う業務機能
-- **カプセル化する知識**: 他のモジュールが知るべきではない内部情報
-- **サブドメイン分類**: Core / Supporting / Generic とその根拠
-- **業務ロジック実装方法と技術方式**: サブドメイン分類に基づく選択、MVP の比較結果、その根拠（`_foundation/IMPLEMENTATION_HEURISTICS.md` の判断ツリーと `_foundation/TECH_SELECTION_HARNESS.md` を参照）
-- **統合契約**: 他モジュールとの統合ポイント（方向、統合強度、共有知識、契約定義）
-- **変更ベクトル**: このモジュール「だけ」の変更で済む将来の変更シナリオ
-
-セキュリティ設計確認は、オーケストレーターまたは built-in review で行う。
-
-### ステップ 4 — モジュールテスト仕様作成
-
-各モジュールのテスト仕様を作成する。サブドメイン分類に応じたテスト型（ピラミッド / ダイヤモンド / 逆ピラミッド）を `_foundation/IMPLEMENTATION_HEURISTICS.md` から選び、テスト比率の方針を決めてから区分を設計する。
-
-テスト区分:
-- **ユニットテスト**: モジュール内部のロジック（業務ルール、状態遷移、境界値）
-- **統合契約テスト**: モジュールが自身の統合契約を遵守していることの検証
-- **境界テスト**: 不正入力の拒否、カプセル化の維持
-- **振る舞いテスト**: 業務シナリオから見たモジュールの期待動作
-
-### ステップ 5 — アーキテクチャ文書作成
-
-全体のアーキテクチャ文書を作成する。
-
-保存先と命名は standard ルートとそろえ、`docs/design/NNN_TECHNICAL_DESIGN.md` を正本にし、必要なら `docs/plan/NNN_PLAN.md` を同じ `NNN` で作成します。`Implementation Handoff` は設計書末尾に含めます。
-
-含めるもの:
-- 要件の要約
-- モジュール一覧と1行説明
-- 主要なユースケースにおけるモジュール間のデータ/制御フロー
-- MVP 技術方式の選定結果と見直し条件
-- 結合評価表とその設計判断の根拠
-- 設計判断とトレードオフ（ADR がある場合は参照）
-- 未解決リスク
-- implementation handoff summary
-
-### ステップ 6 — モジュラリティレビュー
-
-設計全体の結合バランスを最終確認する。
-
-やること:
-1. 各統合を再評価し、3 次元とバランスルールを適用する
-2. 不均衡を重大度で分類する:
-   - **Critical**: 高強度 + 高距離 + 高変動性。頻繁で高コストな変更が予想される
-   - **Significant**: 中程度の変動性で不均衡、または暗黙的な結合が隠れている
-   - **Minor**: 低変動性で不均衡。認知負荷は上がるが実害は小さい
-3. Critical / Significant があれば是正策を提案し、ユーザー承認後に設計書を更新する
-4. Minor はアーキテクチャ文書の「未解決リスク」に記録する
-
-このステップで解消しきれない構造的課題が見つかった場合は、`modularity-review` skill への接続を提案する。
-
-## 出力の型
-
-standard ワークフローと同じ型に加え、以下を追加する:
-
-### 結合評価表
-
-```markdown
-| 統合 | 統合強度 | 距離 | 変動性 | バランス? | 是正策 |
+| Context / Repo | Owner | Responsibility | Provides | Requires | Deploy / Release |
 |---|---|---|---|---|---|
-| モジュール A → B | Model | 高（別サービス） | 高（Core） | 不均衡 — 密結合 | 統合契約を導入し統合強度を下げる |
-```
 
-### サブドメイン分類表
+ここでの目的は、誰が何を所有し、どの contract を提供/要求するかを明確にすることです。
+
+### ステップ 2 — サブドメインと変動性を見る
+
+必要な範囲でだけ分類します。
+
+- **Core**: 競争優位や主要価値に直結し、変わりやすい
+- **Supporting**: 必要だが差別化ではなく、変化は中程度
+- **Generic**: 既製品や標準機能で足りることが多い
+
+分類は設計の補助です。全機能を DDD 表に落とすことが目的ではありません。
+
+### ステップ 3 — 統合を 3 次元で評価する
+
+主要な統合だけ評価します。
+
+- **統合強度**: Contract < Model < Functional < Intrusive
+- **距離**: 同一 module < 同一 repo < 別 repo < 別 team / 別 deploy
+- **変動性**: 低 / 中 / 高
 
 ```markdown
-| 業務領域 | 分類 | 根拠 | 変動性 |
-|---|---|---|---|
-| [領域名] | Core | [なぜ競争優位の源泉か] | 高 |
+| Integration | Strength | Distance | Volatility | Risk | Adjustment |
+|---|---|---|---|---|---|
 ```
+
+目安:
+
+- 高強度 + 高距離 + 高変動性: contract を薄くする、所有境界を寄せる、同期変更を減らす
+- 低強度 + 低距離: 分けすぎの可能性を見る
+- Generic で高強度統合: provider lock-in と置換コストを見る
+
+### ステップ 4 — implementation handoff へ落とす
+
+standard と同じ handoff に、multi-repo の contract 情報を追加します。
+
+追加するもの:
+
+- repo ごとの provide / require
+- 依存順序
+- contract artifact path
+- checksum や version が必要な artifact
+- 各 repo の vertical slices
+- HITL / AFK
+- 統合 test / contract test の確認 command
+
+`docs/design/NNN_TECHNICAL_DESIGN.md` が必要なら保存します。
+複数リポで `implement/checkpoints/contract_verify.py` を使う場合は、repo root の `plan.md` front-matter に required artifact を明示します。
 
 ## 注意点
 
-- **バランスルールを機械的に適用しない**: ルールは設計の指針であり、文脈に応じた判断が必要
-- **概念の出典**: Balanced Coupling モデル by Vlad Khononov。詳細は `docs/local_references/balanced-coupling/README.md` を参照
-- **standard ワークフローの成果も使える**: standard で始めて結合分析が必要になった場合、そこまでの設計成果をこのワークフローのステップ 2 に持ち込んでよい
-- **1次元だけで結合を評価しない**: 統合強度・距離・変動性の3つを常にセットで見る
-- **本質的変動性と偶発的変動性を区別する**: コミット頻度が高いことは変動性が高いことを意味しない
-- **multirepository 時の実装契約**: 複数リポの設計を完成させた後、このワークフローの結合評価表と統合方針を implementation handoff に残します。各リポの他リポへの依存（provide/require）と実装順序を明記してから `implement` に渡します。
+- Balanced Coupling を毎回使わない。
+- 3 次元評価を機械判定にしない。設計判断の会話を短くするための lens として使う。
+- モジュールテスト仕様をここで詳細化しすぎない。`implement` に渡す behavior list と first test 観点までに留める。
+- contract が不明なら、推測で実装順序を決めず `grill-with-docs` に戻す。
 
 ## 関連リソース
 
-- `plugins/happy-coding/skills/design-and-plan/_foundation/DDD_GLOSSARY.md` — DDD 用語集
-- `plugins/happy-coding/skills/design-and-plan/_foundation/IMPLEMENTATION_HEURISTICS.md` — 実装の経験則（判断ツリー）
-- `plugins/happy-coding/skills/design-and-plan/references/WORK_ARTIFACTS.md` — 成果物の path、命名、PLAN テンプレート
-- `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド
-- `plugins/happy-coding/skills/modularity-review/SKILL.md` — 既存コードの結合構造分析
-- `plugins/happy-coding/skills/implement/SKILL.md` — multirepository の実装契約を受けて bootstrap・実装・eval へ進むとき
+- `plugins/happy-coding/skills/design-and-plan/sub_skills/standard/SKILL.md`
+- `plugins/happy-coding/skills/design-and-plan/_foundation/DDD_GLOSSARY.md`
+- `plugins/happy-coding/skills/design-and-plan/_foundation/IMPLEMENTATION_HEURISTICS.md`
+- `plugins/happy-coding/skills/implement/SKILL.md`
+- `docs/local_references/balanced-coupling/README.md`
