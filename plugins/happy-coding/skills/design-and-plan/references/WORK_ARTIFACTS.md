@@ -25,99 +25,91 @@ docs/
 
 - `CONTEXT.md` は用語解決ごとに inline 更新する
 - `docs/grill_results/NNN_GRILL_WITH_DOCS_RESULT.md` は grill 完了時に保存する
-- `docs/design/NNN_TECHNICAL_DESIGN.md` は設計完了時に保存する
-- `docs/plan/NNN_PLAN.md` は implementation handoff 可能な段階でだけ作る
-- `implement` の Step 7 完了処理まで終わったら `docs/plan/NNN_PLAN_DONE.md` へリネームする
+- `docs/design/NNN_TECHNICAL_DESIGN.md` は設計判断を後で読み返す価値がある場合に保存する
+- `docs/plan/NNN_PLAN.md` は implementation handoff を checklist として追いたい場合だけ作る
+- `implement` の completion handoff まで終わったら、必要に応じて `docs/plan/NNN_PLAN_DONE.md` へリネームする
 
 ## Boundary with `implement`
 
-`docs/plan/NNN_PLAN.md` は人間向けの進捗計画です。multirepository fleet の contract verification が読む repo root の `plan.md` YAML front-matter とは別物として扱います。
+`docs/plan/NNN_PLAN.md` は人間向けの進捗計画です。
+`implement` は各 slice の直前に slice contract を再固定し、TDD loop と slice gate を実行します。
+
+multirepository fleet の contract verification が読む repo root の `plan.md` YAML front-matter とは別物として扱います。
 
 ## Technical Design template
 
 ```markdown
-# 技術設計書: [プロジェクト/機能名]
+# Technical Design NNN: [Project / Feature]
 
-## ゴール
-[何を達成する設計か]
+## Goal
 
-## 成功条件
-- [設計が成立したと判断する条件]
+## Success Criteria
 
-## 確認手段
-- [設計をどう確認するか]
+## Out of Scope
 
-## 概要
-[構造の要約]
+## Context / Source of Truth
 
-## コンポーネント構成
-[責務境界]
+## Structure Decisions
 
-## データフロー
-[主要フロー]
+## Public Interfaces / Test Surface
 
-## MVP 技術選定
-[採用技術、比較結果、見直し条件]
+## Data Flow
 
-## 技術検証結果
-[実装適合レビュー]
+## Security Boundary
 
-## セキュリティ設計
-[trust boundary、認証、入力検証]
+## Behavior List
 
-## 設計判断の記録
-[ADR がある場合]
+## Vertical Slices
 
-## 余白メモ
-[今は決めなくてよいこと]
+| Slice | HITL/AFK | Done | First Test | RED Expectation | Commands |
+|---|---|---|---|---|---|
+
+## Risks / Unknowns
+
+## ADR
 
 ## Implementation Handoff
 
-### 設計判断の要約
-- [コンポーネント、責務、データフロー]
+### Goal
 
-### 確定事項
-- [実装で前提にしてよい判断]
+### Success Criteria
 
-### 制約
-- [技術的制約、セキュリティ要件]
+### Out of Scope
 
-### 未決定事項
-- [保留した判断]
+### Structure Decisions
 
-### リスク
-- [実装時の注意点]
+### Behavior List
+
+### Vertical Slices
+
+### Commands
+
+### Return Conditions
 ```
 
 ## PLAN template
 
-PLAN の正本テンプレートは `assets/NNN_PLAN_TEMPLATE.md` に置きます。既存の PLAN の良い点を踏まえつつ、進捗確認しやすいように checklist 主体へ寄せます。
+PLAN の正本テンプレートは `assets/NNN_PLAN_TEMPLATE.md` に置きます。
+PLAN は進捗を追う補助であり、重い工程表ではありません。
 
-- `GOAL` を先頭で固定する
-- `逆算したマイルストーン` と `実装スライス` の両方を持つ
-- 進捗表現は `- [ ]` / `- [x]` を基本にする
-- `docs/plan/NNN_PLAN.md` は人間が見て現在地と完了済みを一目で追える形を優先する
+含めるもの:
 
-最小構成は次です。
+- `GOAL`
+- `Success Criteria`
+- `Out of Scope`
+- `Structure Decisions`
+- `Behavior List`
+- `Vertical Slices`
+- 各 slice の `HITL / AFK`
+- 各 slice の `First test`
+- `RED expectation`
+- `GREEN command`
+- `Acceptance command`
+- `Return Conditions`
 
-```markdown
-# PLAN NNN
+含めないもの:
 
-## GOAL
-
-## 進捗
-
-## ゴール時点で成立している状態
-
-## 逆算したマイルストーン
-
-## 実装スライス
-
-## 実装順序の理由
-
-## 受け入れ条件
-
-## 対象外
-
-## リスク / 未決定事項
-```
+- 毎回の MVP 技術選定
+- 詳細すぎるモジュールテスト仕様
+- 実装後の PR / review / furikaeri 手順
+- phase ごとの自動停止指示
