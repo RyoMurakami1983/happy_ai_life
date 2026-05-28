@@ -6,6 +6,10 @@ script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 skill_dir="$(CDPATH= cd -- "$script_dir/.." && pwd)"
 assets_dir="$skill_dir/assets"
 settings_path="$copilot_dir/settings.json"
+windows_terminal_helper="$script_dir/windows_terminal_font.py"
+recommended_font_face="MesloLGM Nerd Font"
+recommended_font_slug="meslo"
+oh_my_posh_install_dir="${COPILOT_STATUSLINE_OH_MY_POSH_INSTALL_DIR:-$HOME/.local/bin}"
 
 is_truthy() {
   local normalized
@@ -24,6 +28,31 @@ is_wsl() {
     return 0
   fi
   grep -qi microsoft /proc/version 2>/dev/null
+}
+
+has_command() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+detect_arch() {
+  local arch
+  arch="$(uname -m | tr '[:upper:]' '[:lower:]')"
+  case "$arch" in
+    x86_64) arch="amd64" ;;
+    armv*) arch="arm" ;;
+    arm64|aarch64) arch="arm64" ;;
+  esac
+  printf '%s\n' "$arch"
+}
+
+detect_platform() {
+  local platform
+  platform="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  case "$platform" in
+    linux|darwin) ;;
+    *) return 1 ;;
+  esac
+  printf '%s\n' "$platform"
 }
 
 normalize_wsl_path() {
@@ -47,7 +76,7 @@ normalize_wsl_path() {
 }
 
 show_oh_my_posh_status() {
-  if command -v oh-my-posh >/dev/null 2>&1; then
+  if has_command oh-my-posh; then
     local version
     version="$(oh-my-posh version 2>/dev/null | head -n 1 || true)"
     printf 'Found oh-my-posh %s\n' "${version:-unknown version}"
@@ -55,8 +84,72 @@ show_oh_my_posh_status() {
   fi
 
   printf '%s\n' 'Warning: oh-my-posh is not installed yet. The statusline files were installed, but icon rendering needs oh-my-posh.' >&2
-  printf '%s\n' 'Install it with the official command after ensuring curl, unzip, realpath, and dirname are available:' >&2
+  printf '%s\n' 'Install it with either the official installer or a direct binary download:' >&2
   printf '%s\n' '  curl -s https://ohmyposh.dev/install.sh | bash -s' >&2
+  printf '%s\n' '  curl -fsSL https://cdn.ohmyposh.dev/releases/latest/posh-linux-amd64 -o "$HOME/.local/bin/oh-my-posh" && chmod +x "$HOME/.local/bin/oh-my-posh"' >&2
+}
+
+install_oh_my_posh_binary_fallback() {
+  local platform arch target url installed_path
+  platform="$(detect_platform || true)"
+  arch="$(detect_arch)"
+  if [[ -z "$platform" ]]; then
+    printf '%s\n' 'Warning: this platform is not supported by the direct oh-my-posh fallback installer.' >&2
+    return 1
+  fi
+
+  target="${platform}-${arch}"
+  url="https://cdn.ohmyposh.dev/releases/latest/posh-${target}"
+  installed_path="$oh_my_posh_install_dir/oh-my-posh"
+
+  printf 'Falling back to direct oh-my-posh binary download for %s\n' "$target"
+  if curl -fsSL "$url" -o "$installed_path"; then
+    chmod +x "$installed_path"
+    PATH="$oh_my_posh_install_dir:$PATH"
+    export PATH
+    printf '%s\n' "$installed_path"
+    return 0
+  fi
+
+  return 1
+}
+
+ensure_oh_my_posh() {
+  if has_command oh-my-posh; then
+    command -v oh-my-posh
+    return 0
+  fi
+
+  if ! has_command curl; then
+    printf '%s\n' 'Warning: curl was not found, so oh-my-posh could not be installed automatically.' >&2
+    return 1
+  fi
+
+  mkdir -p "$oh_my_posh_install_dir"
+
+  if has_command unzip && has_command realpath && has_command dirname; then
+    printf 'Installing oh-my-posh into %s with the official installer\n' "$oh_my_posh_install_dir"
+    if curl -fsSL https://ohmyposh.dev/install.sh | bash -s -- -d "$oh_my_posh_install_dir"; then
+      local installed_path="$oh_my_posh_install_dir/oh-my-posh"
+      if [[ -x "$installed_path" ]]; then
+        PATH="$oh_my_posh_install_dir:$PATH"
+        export PATH
+        printf '%s\n' "$installed_path"
+        return 0
+      fi
+    fi
+    printf '%s\n' 'Warning: the official oh-my-posh installer failed, so a direct binary fallback will be tried.' >&2
+  else
+    printf '%s\n' 'Info: unzip/realpath/dirname is incomplete, so a direct oh-my-posh binary fallback will be used.' >&2
+  fi
+
+  if install_oh_my_posh_binary_fallback >/dev/null; then
+    command -v oh-my-posh
+    return 0
+  fi
+
+  printf '%s\n' 'Warning: oh-my-posh auto-install failed. Install it manually if icon rendering is still unavailable.' >&2
+  return 1
 }
 
 resolve_windows_terminal_settings_path() {
@@ -172,111 +265,65 @@ show_wsl_host_font_status() {
     return
   fi
 
-  COPILOT_STATUSLINE_WINDOWS_FONT_DIRS="${font_dirs}" python3 - "$settings_file" "${WSL_DISTRO_NAME:-}" <<'PY'
-from __future__ import annotations
+  local inspect_args=("$windows_terminal_helper" "inspect" "--settings" "$settings_file")
+  while IFS= read -r font_dir; do
+    inspect_args+=("--font-dir" "$font_dir")
+  done <<<"$font_dirs"
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+    inspect_args+=("--distro" "$WSL_DISTRO_NAME")
+  fi
 
-import json
-import os
-import sys
-from pathlib import Path
+  local inspect_json
+  inspect_json="$(python3 "${inspect_args[@]}")"
+  local configured installed_faces_count configured_face configured_origin target_font_face
+  configured="$(python3 -c 'import json,sys; print("1" if json.load(sys.stdin).get("configured") else "0")' <<<"$inspect_json")"
+  if [[ "$configured" == "1" ]]; then
+    configured_face="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("configured_face",""))' <<<"$inspect_json")"
+    configured_origin="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("configured_origin",""))' <<<"$inspect_json")"
+    printf 'Windows Terminal font check: OK (%s via %s).\n' "$configured_face" "$configured_origin"
+    return
+  fi
 
+  installed_faces_count="$(python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("installed_faces", [])))' <<<"$inspect_json")"
+  if [[ "$installed_faces_count" == "0" ]]; then
+    if command -v oh-my-posh.exe >/dev/null 2>&1; then
+      printf 'Installing %s on the Windows host via oh-my-posh.exe...\n' "$recommended_font_face"
+      if ! oh-my-posh.exe font install "$recommended_font_slug"; then
+        printf '%s\n' 'Warning: host Nerd Font installation failed. Check Windows permissions and retry manually.' >&2
+        return
+      fi
+    else
+      printf '%s\n' 'Warning: oh-my-posh.exe was not found from WSL, so the host Nerd Font could not be installed automatically.' >&2
+      return
+    fi
+    target_font_face="$recommended_font_face"
+  else
+    target_font_face="$(python3 -c 'import json,sys; print((json.load(sys.stdin).get("installed_faces") or [""])[0])' <<<"$inspect_json")"
+  fi
 
-def looks_like_nerd_font(face: object) -> bool:
-    if not isinstance(face, str):
-        return False
-    lower = face.casefold()
-    return "nerd font" in lower or lower.endswith(" nf")
+  local apply_args=("$windows_terminal_helper" "apply" "--settings" "$settings_file" "--font-face" "$target_font_face")
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+    apply_args+=("--distro" "$WSL_DISTRO_NAME")
+  fi
 
+  local apply_json
+  apply_json="$(python3 "${apply_args[@]}")"
+  local backup_path
+  backup_path="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("backup_path",""))' <<<"$apply_json")"
+  printf 'Updated Windows Terminal font settings to %s (backup: %s).\n' "$target_font_face" "$backup_path"
+}
 
-def font_face(section: object) -> str | None:
-    if not isinstance(section, dict):
-        return None
-    font = section.get("font")
-    if not isinstance(font, dict):
-        return None
-    face = font.get("face")
-    if isinstance(face, str) and face.strip():
-        return face.strip()
-    return None
+show_linux_host_font_note() {
+  if is_wsl; then
+    return
+  fi
 
+  if [[ -n "${SSH_CONNECTION:-}${SSH_CLIENT:-}${SSH_TTY:-}" ]]; then
+    printf '%s\n' 'Linux/SSH note: icon rendering depends on the client terminal font. This server installer cannot change your local Windows Terminal or terminal emulator settings.'
+    return
+  fi
 
-def detect_installed_faces(font_dirs: list[str]) -> list[str]:
-    known_patterns = {
-        "MesloLGMNerdFont": "MesloLGM Nerd Font",
-        "CaskaydiaMonoNerdFont": "CaskaydiaMono Nerd Font",
-        "CaskaydiaCoveNerdFont": "CaskaydiaCove Nerd Font",
-        "CascadiaCodeNerdFont": "Cascadia Code Nerd Font",
-        "FiraCodeNerdFont": "FiraCode Nerd Font",
-    }
-    faces: set[str] = set()
-    for raw_dir in font_dirs:
-        if not raw_dir:
-            continue
-        directory = Path(raw_dir)
-        if not directory.is_dir():
-            continue
-        for marker, face in known_patterns.items():
-            try:
-                if next(directory.glob(f"{marker}*.ttf"), None) is not None:
-                    faces.add(face)
-            except OSError:
-                continue
-    return sorted(faces)
-
-
-settings_path = Path(sys.argv[1])
-distro_name = sys.argv[2]
-font_dirs = [entry for entry in os.environ.get("COPILOT_STATUSLINE_WINDOWS_FONT_DIRS", "").splitlines() if entry]
-
-try:
-    settings = json.loads(settings_path.read_text(encoding="utf-8"))
-except (OSError, json.JSONDecodeError):
-    print(f"Warning: {settings_path} could not be read as JSON. Check the host terminal font manually.", file=sys.stderr)
-    raise SystemExit(0)
-
-profiles = settings.get("profiles")
-if not isinstance(profiles, dict):
-    print(f"Warning: {settings_path} has no profiles object. Check the host terminal font manually.", file=sys.stderr)
-    raise SystemExit(0)
-
-defaults_face = font_face(profiles.get("defaults"))
-profile_list = profiles.get("list")
-if not isinstance(profile_list, list):
-    profile_list = []
-
-wsl_profiles = [profile for profile in profile_list if isinstance(profile, dict) and profile.get("source") == "Microsoft.WSL"]
-if distro_name:
-    matched = [profile for profile in wsl_profiles if profile.get("name") == distro_name]
-    if matched:
-        wsl_profiles = matched
-
-candidates: list[tuple[str, str]] = []
-if defaults_face:
-    candidates.append(("profiles.defaults.font.face", defaults_face))
-for profile in wsl_profiles:
-    face = font_face(profile)
-    if face:
-        candidates.append((f"WSL profile {profile.get('name', '<unnamed>')}", face))
-
-configured = next(((origin, face) for origin, face in candidates if looks_like_nerd_font(face)), None)
-if configured:
-    print(f"Windows Terminal font check: OK ({configured[1]} via {configured[0]}).")
-    raise SystemExit(0)
-
-installed_faces = detect_installed_faces(font_dirs)
-if installed_faces:
-    print("Warning: host Nerd Fonts were detected, but the Windows Terminal defaults/WSL profile do not appear to use one.", file=sys.stderr)
-    print(f"Detected host Nerd Fonts: {', '.join(installed_faces[:3])}", file=sys.stderr)
-    print(f"Set profiles.defaults.font.face or the WSL profile font.face in {settings_path}.", file=sys.stderr)
-    raise SystemExit(0)
-
-if not font_dirs:
-    print("Warning: Windows font directories could not be inspected from WSL. Check the host terminal font manually.", file=sys.stderr)
-    raise SystemExit(0)
-
-print("Warning: no host Nerd Font was detected in the Windows font directories that were inspected.", file=sys.stderr)
-print("Install one on Windows first (recommended: run 'oh-my-posh.exe font install meslo' in PowerShell), then set Windows Terminal font.face.", file=sys.stderr)
-PY
+  printf '%s\n' 'Linux note: icon rendering depends on the terminal font on this machine. If icons look broken, configure your local terminal to use a Nerd Font.'
 }
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -347,6 +394,8 @@ settings_path.write_text(json.dumps(settings, ensure_ascii=False, indent=2) + "\
 PY
 
 printf 'Installed Copilot statusline to %s\n' "$copilot_dir"
+ensure_oh_my_posh >/dev/null || true
 show_oh_my_posh_status
+show_linux_host_font_note
 show_wsl_host_font_status
 printf 'Run /restart in Copilot CLI if it is already open.\n'

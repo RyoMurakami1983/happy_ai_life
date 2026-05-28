@@ -36,6 +36,12 @@ compatibility: "Windows, WSL/Linux, PowerShell 7, bash, Python 3.10+, Oh My Posh
 | 雛形 | この skill の `assets/` をコピーする |
 | 自動導入 | Windows: `scripts\install_statusline.ps1` / WSL/Linux: `scripts/install_statusline.sh` |
 
+| 利用形態 | installer の考え方 |
+| --- | --- |
+| Windows | Windows 側で oh-my-posh / Nerd Font / Windows Terminal `font.face` まで整える |
+| WSL (Ubuntu 26.04 など) | Linux 側の statusline を作りつつ、host Windows 側の Nerd Font / Windows Terminal `font.face` も見る |
+| Pure Ubuntu 26.04 server | server 側では `statusline.sh` と `oh-my-posh` を整える。font は接続元 terminal 側で扱う |
+
 ### ステップ 1 — ゴール、成功条件、確認手段を固定する
 
 ゴールは「Copilot CLI がローカル command を呼び、Oh My Posh で安全な 1 行 statusline を表示する」ことです。
@@ -60,7 +66,8 @@ WSL/Linux の成功条件は次のように置きます。
 ### ステップ 2 — 前提条件と既存設定を確認する
 
 Windows では `pwsh`、`oh-my-posh`、既存の `.copilot\settings.json` を確認します。
-WSL/Linux では `bash`、`python3` 3.10 以上、`oh-my-posh`、既存の `.copilot/settings.json` を確認します。
+WSL では `bash`、`python3` 3.10 以上、`oh-my-posh`、`powershell.exe` 経由で見える host Windows Terminal、既存の `.copilot/settings.json` を確認します。
+Pure Ubuntu 26.04 server では `bash`、`python3` 3.10 以上、`curl`、既存の `.copilot/settings.json` を確認します。`unzip` が無い server では direct binary download fallback で `oh-my-posh` を入れます。
 既存設定は置き換えず、必ずマージ対象として読むようにします。
 
 確認例:
@@ -87,9 +94,12 @@ Oh My Posh のアイコンは **statusline を動かしている OS ではなく
 
 - Windows: 今使っている terminal の profile または `profiles.defaults.font.face` を Nerd Font にする
 - WSL: Windows host の terminal 設定を確認する。WSL 内にフォントを置いても glyph 崩れは直らない
+- Pure Ubuntu 26.04 server: glyph は server ではなく接続元 terminal が描画する。SSH 先から接続元 terminal の font は自動変更できない
 - Oh My Posh 推奨フォント: `MesloLGM Nerd Font`
 
-インストーラーはこの点を preflight し、`oh-my-posh` の有無と Windows Terminal の font 設定状況を表示します。
+インストーラーはこの点を preflight し、`oh-my-posh` が無ければ導入し、必要なら `MesloLGM Nerd Font` も入れます。
+Windows Terminal の `settings.json` が見つかり、まだ Nerd Font が設定されていなければ、バックアップを作って `font.face` も自動更新します。
+ただし pure Ubuntu 26.04 server の場合は host terminal に触れないため、server 側では `oh-my-posh` 導入までに留まり、font は接続元で整えます。
 詳しい切り分けと設定例は `references/host-terminal-fonts.md` を参照します。
 
 ### ステップ 3 — 小さな 4 ファイルを作る
@@ -114,8 +124,10 @@ WSL/Linux へ手早く導入する場合:
 bash "$HOME/.copilot/skills/copilot-setup-statusline/scripts/install_statusline.sh"
 ```
 
-Windows script と WSL 上の Linux script は `.copilot` 配下のファイルを更新したあと、`oh-my-posh` の有無と host terminal font の状況を表示します。
-ただし **Windows Terminal や VS Code の設定は自動では書き換えません**。想定外の terminal-wide 変更を避けるためです。
+Windows script と WSL 上の Linux script は `.copilot` 配下のファイルを更新したあと、必要なら `oh-my-posh` と `MesloLGM Nerd Font` を導入します。
+Windows Terminal の `settings.json` が見つかり、まだ Nerd Font が使われていなければ、バックアップを作ったうえで `font.face` を `MesloLGM Nerd Font` へ寄せます。
+Pure Ubuntu 26.04 server では Linux script が `oh-my-posh` を user 領域へ入れ、`unzip` が無い場合は direct binary download fallback を使います。接続元 terminal の font は自動変更しません。
+VS Code など Windows Terminal 以外の host terminal は自動変更しないため、その場合は手動設定が必要です。
 
 手作業で導入する場合、Windows では `statusline.cmd`、`statusline.ps1`、`statusline.omp.json` を `%USERPROFILE%\.copilot` にコピーします。
 WSL/Linux では `statusline.sh` と `statusline.omp.json` を `$HOME/.copilot` にコピーし、`statusline.sh` に実行権限を付けます。
@@ -271,6 +283,7 @@ Copilot CLI を既に開いている場合は `/restart` します。
 - `assets/statusline.ps1`: Windows で Copilot payload を statusline 表示へ変換する renderer template
 - `assets/statusline.sh`: WSL/Linux で Copilot payload を statusline 表示へ変換する renderer template
 - `assets/statusline.omp.json`: Oh My Posh の mini theme template
-- `scripts/install_statusline.ps1`: Windows で assets を `.copilot` へコピーし、`settings.json` をバックアップしてマージし、terminal font の preflight を表示する helper
-- `scripts/install_statusline.sh`: WSL/Linux で assets を `.copilot` へコピーし、`settings.json` をバックアップしてマージし、WSL host font の preflight を表示する helper
+- `scripts/install_statusline.ps1`: Windows で assets を `.copilot` へコピーし、`settings.json` をバックアップしてマージし、必要なら oh-my-posh / Nerd Font / Windows Terminal font.face を整える helper
+- `scripts/install_statusline.sh`: WSL/Linux で assets を `.copilot` へコピーし、`settings.json` をバックアップしてマージし、必要なら oh-my-posh と WSL host 側の Nerd Font / Windows Terminal font.face を整える helper
+- `scripts/windows_terminal_font.py`: WSL から Windows Terminal の font 設定を検査・更新する helper
 - `references/host-terminal-fonts.md`: Windows / WSL で icon glyph を崩さないための host terminal font 設定メモ
