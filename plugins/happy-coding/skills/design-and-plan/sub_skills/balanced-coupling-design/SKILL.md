@@ -10,20 +10,20 @@ description: >
 結合の 3 次元（統合強度・距離・変動性）で、multi-repo や境界設計のリスクを確認します。
 これは標準ルートでは重い場合にだけ使う optional route です。
 
-## 使う条件
+## こんなときに使う
 
-次のいずれかがある場合だけ使います。
-
-- 複数 repo が関係する
-- shared library / SDK / generated client を提供または消費する
-- frontend / backend / worker / mobile など所有境界が分かれる
-- service split や context 分割を判断する
-- 共有 model や shared database が増えている
-- 変更時に複数チーム・複数 deploy を同期する必要がある
+- 複数 repo が関係するとき
+- shared library / SDK / generated client を提供または消費するとき
+- frontend / backend / worker / mobile など所有境界が分かれるとき
+- service split や context 分割を判断したいとき
+- 共有 model や shared database が増えているとき
+- 変更時に複数チーム・複数 deploy を同期する必要があるとき
 
 単一 repo の通常機能追加なら `standard` に戻ります。
 
-## ステップ 1 — context と ownership を整理する
+## ワークフロー: Balanced Coupling を implementation handoff に変える
+
+### ステップ 1 — context と ownership を整理する
 
 表にします。
 
@@ -32,7 +32,7 @@ description: >
 
 ここでの目的は、誰が何を所有し、どの contract を提供/要求するかを明確にすることです。
 
-## ステップ 2 — サブドメインと変動性を見る
+### ステップ 2 — サブドメインと変動性を見る
 
 必要な範囲でだけ分類します。
 
@@ -42,7 +42,7 @@ description: >
 
 分類は設計の補助です。全機能を DDD 表に落とすことが目的ではありません。
 
-## ステップ 3 — 統合を 3 次元で評価する
+### ステップ 3 — 統合を 3 次元で評価する
 
 主要な統合だけ評価します。
 
@@ -61,7 +61,7 @@ description: >
 - 低強度 + 低距離: 分けすぎの可能性を見る
 - Generic で高強度統合: provider lock-in と置換コストを見る
 
-## ステップ 4 — implementation handoff へ落とす
+### ステップ 4 — implementation handoff へ落とす
 
 standard と同じ handoff に、multi-repo の contract 情報を追加します。
 

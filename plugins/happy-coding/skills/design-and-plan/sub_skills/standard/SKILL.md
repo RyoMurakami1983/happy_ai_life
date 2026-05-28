@@ -10,7 +10,16 @@ description: >
 `grill-with-docs` で固まった要求を、`implement` が TDD で進められる形へ圧縮します。
 既存 repo の通常変更では、このルートを既定にします。
 
-## ステップ 1 — 入力を確認する
+## こんなときに使う
+
+- 単一 repo の通常機能追加を設計したいとき
+- 既存 stack のまま実装可能な slice に分けたいとき
+- behavior list と public interface を整理したいとき
+- HITL / AFK と first test 観点を handoff したいとき
+
+## ワークフロー: standard design を implementation handoff に変える
+
+### ステップ 1 — 入力を確認する
 
 読むもの:
 
@@ -29,7 +38,7 @@ description: >
 
 blocking unknown が残る場合は `grill-with-docs` に戻します。
 
-## ステップ 2 — 構造判断をする
+### ステップ 2 — 構造判断をする
 
 実装に必要な構造だけを決めます。
 
@@ -48,7 +57,7 @@ blocking unknown が残る場合は `grill-with-docs` に戻します。
 
 大きな技術選定が必要な場合だけ `_foundation/TECH_SELECTION_HARNESS.md` を読みます。既存 stack で自然に実装できる場合は技術選定 checkpoint を省略します。
 
-## ステップ 3 — behavior list を作る
+### ステップ 3 — behavior list を作る
 
 受け入れ条件を、観測可能な振る舞いに変換します。
 
@@ -62,7 +71,7 @@ blocking unknown が残る場合は `grill-with-docs` に戻します。
 
 private method や内部 collaborator の呼び出し回数を仕様化しません。
 
-## ステップ 4 — vertical slices に切る
+### ステップ 4 — vertical slices に切る
 
 1 slice は 1 ユーザー行動、または 1 acceptance condition を主語にします。
 最初の slice は tracer bullet として、必要な層を薄く縦断します。
@@ -79,7 +88,7 @@ private method や内部 collaborator の呼び出し回数を仕様化しませ
 
 horizontal slice（DB だけ、UI だけ、テストだけ）は避けます。
 
-## ステップ 5 — security と実装適合を確認する
+### ステップ 5 — security と実装適合を確認する
 
 次に該当する場合は、設計内で扱います。
 
@@ -93,7 +102,7 @@ horizontal slice（DB だけ、UI だけ、テストだけ）は避けます。
 
 設計が対象技術で自然に実装できない場合は、構造判断へ戻して小さく直します。
 
-## ステップ 6 — implementation handoff を作る
+### ステップ 6 — implementation handoff を作る
 
 `docs/design/NNN_TECHNICAL_DESIGN.md` が必要なら保存します。
 実装進行の checklist が必要な場合だけ `docs/plan/NNN_PLAN.md` を作ります。

@@ -3,6 +3,7 @@ name: grill-with-docs
 description: >
   要求・計画・設計・用語を、既存 docs、CONTEXT、ADR、コードに照らして問い直し、実装や設計をブロックする曖昧さだけを解消する。
   Use when: 実装前に domain language、source of truth、未確認事項、ADR 候補を確認し、design-and-plan または implement へ渡せる状態にしたいとき。
+license: MIT-derived
 ---
 
 # Grill with Docs
@@ -11,6 +12,14 @@ description: >
 目的は「質問を増やすこと」ではなく、次工程をブロックする曖昧さを減らすことです。
 
 Matt Pocock さんの `grill-with-docs` を出発点に、日本語での対話、`CONTEXT.md`、ADR、Happy AI Life の docs 運用へ合わせています。出典と license notice は `references/origin.md` を参照します。
+
+## こんなときに使う
+
+- 実装前に要求や計画の言葉を既存 docs と照合したいとき
+- domain language や `CONTEXT.md` との矛盾を確認したいとき
+- 次工程を止める Blocking Unknown だけを切り分けたいとき
+- ADR に残すべき判断かを見極めたいとき
+- `design-and-plan` または `implement` へ渡す前提を整えたいとき
 
 ## Core Loop
 
@@ -23,7 +32,9 @@ target
   -> handoff
 ```
 
-## ステップ 1 — 対象と source of truth を固定する
+## ワークフロー: docs とコードで計画を grill する
+
+### ステップ 1 — 対象と source of truth を固定する
 
 まず何を grill するのか、成功条件、確認手段を 1-2 文で固定します。
 次に、今回読む根拠を分けます。
@@ -37,7 +48,7 @@ target
 
 コードや docs を読めば答えられることを、ユーザーに聞きません。
 
-## ステップ 2 — Fact / Inference / Blocking Unknown に分ける
+### ステップ 2 — Fact / Inference / Blocking Unknown に分ける
 
 調査結果を混ぜずに分類します。
 
@@ -47,7 +58,7 @@ target
 
 Blocking Unknown だけを質問対象にします。知っておくと便利な程度の疑問は、handoff の残件に回します。
 
-## ステップ 3 — 1 問だけ確認する
+### ステップ 3 — 1 問だけ確認する
 
 質問が必要な場合は、最も上位の Blocking Unknown を 1 つだけ聞きます。
 各質問には推奨回答または判断軸を添えます。
@@ -62,7 +73,7 @@ Blocking Unknown だけを質問対象にします。知っておくと便利な
 
 2 問続けて詳細に寄ったら、一度だけ鳥の目へ戻り、ゴール、非対象、成功条件、責務境界、影響範囲を見直します。
 
-## ステップ 4 — CONTEXT と ADR を小さく更新する
+### ステップ 4 — CONTEXT と ADR を小さく更新する
 
 用語が解決し、domain 固有の言葉なら `CONTEXT.md` に小さく反映します。
 複数 context がある場合は `CONTEXT-MAP.md` を読み、該当 context の `CONTEXT.md` だけを更新します。
@@ -89,7 +100,7 @@ ADR は次の 3 条件をすべて満たすときだけ提案します。
 2. 背景なしに読むと驚きがある
 3. 実際に比較した代替案とトレードオフがある
 
-## ステップ 5 — handoff する
+### ステップ 5 — handoff する
 
 最後に、次工程へ渡せる形でまとめます。
 grill 完了時は同じ内容を `docs/grill_results/NNN_GRILL_WITH_DOCS_RESULT.md` に保存します。`NNN` は同じ案件の `design` / `plan` と共有します。

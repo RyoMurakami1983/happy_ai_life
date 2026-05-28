@@ -15,6 +15,7 @@
 - `description` は trigger-oriented に書き、`こんなときに使う` 相当の表現を入れる
 - `description: >` を使う場合、折り返しは句点や読点など意味の切れ目に寄せる。`こんなときに` と `使う` のように意味のまとまりを不自然に分断しない
 - `compatibility` には、本当に必要なツールや runtime 制約だけを書く
+- thin skill では、使いどころを `description` に寄せて本文を短く保ってよい
 
 ## Directory Rules
 
@@ -62,6 +63,12 @@ router-name/
 | L1 | frontmatter | 短く、trigger-rich に保つ |
 | L2 | `SKILL.md` body | hot path を短く読みやすく保つ |
 | L3 | bundled resources | 必要になったときだけ読む |
+
+## Thin Skills
+
+本文が 40 行程度以下で、`description` が十分に trigger-rich な skill は、`## こんなときに使う` や `## ワークフロー:` を必須にしません。
+短い指示や態度づけの skill では、重い構成を足すより、本文をそのまま実行できる形に保ちます。
+一方で router や multi-step workflow は、`## 判断表`、`## ワークフロー:`、または `## Core Loop` で実行構造を明示します。
 
 ## Writing Style
 

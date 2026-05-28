@@ -10,6 +10,14 @@ description: >
 実装契約を、観測可能な vertical slice に分け、各 slice を TDD で通してから handoff します。
 この skill は実装フェーズだけを扱います。PR 作成、PR review 対応、pre-PR review、furikaeri は別 skill に任せます。
 
+## こんなときに使う
+
+- 実装契約からローカル実装を始めたいとき
+- 受け入れ条件を vertical slice に分けたいとき
+- TDD の RED/GREEN/REFACTOR を崩さず進めたいとき
+- slice ごとに evidence gate を通したいとき
+- 実装完了後に handoff だけ残して閉じたいとき
+
 ## Core Loop
 
 ```text
@@ -23,7 +31,9 @@ implementation contract
   -> next slice or completion handoff
 ```
 
-## ステップ 1 — 実装契約を確認する
+## ワークフロー: TDD で実装して閉じる
+
+### ステップ 1 — 実装契約を確認する
 
 次が揃っていれば実装に入ります。不足が実装判断をブロックする場合は、`grill-with-docs` または `design-and-plan` に戻します。
 
@@ -35,7 +45,7 @@ implementation contract
 
 実装に不要な設計議論をここで広げません。必要十分な契約に圧縮してから進みます。
 
-## ステップ 2 — bootstrap を軽く確認する
+### ステップ 2 — bootstrap を軽く確認する
 
 対象 repo で次を確認します。
 
@@ -47,7 +57,7 @@ implementation contract
 
 bootstrap の不足が今の slice を壊すなら修正します。関係ない整備は実装 scope に混ぜません。
 
-## ステップ 3 — slice contract を固定する
+### ステップ 3 — slice contract を固定する
 
 1 受け入れ条件、または 1 ユーザー行動を 1 vertical slice として切ります。最初の slice は tracer bullet として、必要な層を薄く縦断します。
 
@@ -63,7 +73,7 @@ bootstrap の不足が今の slice を壊すなら修正します。関係ない
 
 層ごとに「DB だけ」「UI だけ」「テストだけ」を横に広げる horizontal slice は避けます。
 
-## ステップ 4 — TDD loop を回す
+### ステップ 4 — TDD loop を回す
 
 各 slice は次の順で進めます。
 
@@ -83,7 +93,7 @@ TDD の規律:
 
 docs-only / config-only など RED が成立しない slice では、TDD を装いません。代わりに verification command と期待結果を slice contract に明記します。
 
-## ステップ 5 — slice gate で評価する
+### ステップ 5 — slice gate で評価する
 
 各 slice の最後に、実装者の自己正当化ではなく証拠として gate を通します。
 
@@ -103,7 +113,7 @@ verdict:
 
 必要なら `plugins/happy-coding/skills/implementation-eval-gate/SKILL.md` を独立評価として使います。ただし、この skill 内では slice gate を最小の必須評価として扱います。
 
-## ステップ 6 — completion handoff で閉じる
+### ステップ 6 — completion handoff で閉じる
 
 全 slice が `PASS` したら、実装フェーズを閉じます。
 

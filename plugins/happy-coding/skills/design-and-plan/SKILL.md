@@ -10,6 +10,14 @@ description: >
 要求や仕様を、`implement` がそのまま TDD で進められる契約に落とします。
 この skill は router です。標準設計で足りる場合は軽く進め、multi-repo や境界リスクがある場合だけ Balanced Coupling へ切り替えます。
 
+## こんなときに使う
+
+- grill 後の要求を実装可能な構造判断へ落としたいとき
+- 既存 repo の変更を TDD 可能な vertical slice に分けたいとき
+- HITL / AFK の切り分けを実装前に決めたいとき
+- multi-repo や所有境界の設計が必要か判断したいとき
+- `implement` へ渡す handoff を作りたいとき
+
 ## Core Loop
 
 ```text
@@ -22,7 +30,7 @@ grill result / spec
   -> implementation handoff
 ```
 
-## ルート選択
+## 判断表
 
 | 状況 | ルート | 判断 |
 |---|---|---|
