@@ -86,7 +86,7 @@ show_oh_my_posh_status() {
   printf '%s\n' 'Warning: oh-my-posh is not installed yet. The statusline files were installed, but icon rendering needs oh-my-posh.' >&2
   printf '%s\n' 'Install it with either the official installer or a direct binary download:' >&2
   printf '%s\n' '  curl -s https://ohmyposh.dev/install.sh | bash -s' >&2
-  printf '%s\n' '  curl -fsSL https://cdn.ohmyposh.dev/releases/latest/posh-linux-amd64 -o "$HOME/.local/bin/oh-my-posh" && chmod +x "$HOME/.local/bin/oh-my-posh"' >&2
+  printf '%s\n' '  curl -fsSL https://cdn.ohmyposh.dev/releases/latest/posh-<platform>-<arch> -o "$HOME/.local/bin/oh-my-posh" && chmod +x "$HOME/.local/bin/oh-my-posh"' >&2
 }
 
 install_oh_my_posh_binary_fallback() {
@@ -274,7 +274,10 @@ show_wsl_host_font_status() {
   fi
 
   local inspect_json
-  inspect_json="$(python3 "${inspect_args[@]}")"
+  if ! inspect_json="$(python3 "${inspect_args[@]}")"; then
+    printf '%s\n' 'Warning: Windows Terminal settings.json could not be inspected from WSL. Continuing with statusline setup.' >&2
+    return
+  fi
   local configured installed_faces_count configured_face configured_origin target_font_face
   configured="$(python3 -c 'import json,sys; print("1" if json.load(sys.stdin).get("configured") else "0")' <<<"$inspect_json")"
   if [[ "$configured" == "1" ]]; then
@@ -307,7 +310,10 @@ show_wsl_host_font_status() {
   fi
 
   local apply_json
-  apply_json="$(python3 "${apply_args[@]}")"
+  if ! apply_json="$(python3 "${apply_args[@]}")"; then
+    printf '%s\n' 'Warning: Windows Terminal font settings could not be updated from WSL. Please set font.face manually if needed.' >&2
+    return
+  fi
   local backup_path
   backup_path="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("backup_path",""))' <<<"$apply_json")"
   printf 'Updated Windows Terminal font settings to %s (backup: %s).\n' "$target_font_face" "$backup_path"

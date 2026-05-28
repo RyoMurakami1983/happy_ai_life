@@ -83,6 +83,38 @@ def test_windows_terminal_font_helper_inspects_existing_nerd_font(tmp_path: Path
     assert result["installed_faces"] == ["MesloLGM Nerd Font"]
 
 
+def test_windows_terminal_font_helper_ignores_other_wsl_profiles_when_distro_name_does_not_match(tmp_path: Path) -> None:
+    helper = _load_helper_module()
+    settings_path = tmp_path / "settings.json"
+    settings_path.write_text(
+        json.dumps(
+            {
+                "profiles": {
+                    "defaults": {"font": {"face": "Consolas"}},
+                    "list": [
+                        {"name": "Debian", "source": "Microsoft.WSL", "font": {"face": "MesloLGM Nerd Font"}},
+                        {"name": "Ubuntu-26.04", "source": "Microsoft.WSL", "font": {"face": "Consolas"}},
+                    ],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = helper.inspect_settings(settings_path, "Ubuntu-24.04", [])
+
+    assert result["configured"] is False
+    assert "configured_origin" not in result
+    assert result["installed_faces"] == []
+
+    updated = helper.apply_font(settings_path, "Ubuntu-24.04", "MesloLGM Nerd Font")
+    rendered = json.loads(settings_path.read_text(encoding="utf-8"))
+    assert updated["applied_to"] == ["profiles.defaults.font.face"]
+    assert rendered["profiles"]["defaults"]["font"]["face"] == "MesloLGM Nerd Font"
+    assert rendered["profiles"]["list"][0]["font"]["face"] == "MesloLGM Nerd Font"
+    assert rendered["profiles"]["list"][1]["font"]["face"] == "Consolas"
+
+
 def test_install_statusline_sh_installs_oh_my_posh_and_updates_windows_terminal_font(tmp_path: Path) -> None:
     home = tmp_path / "home"
     copilot_dir = home / ".copilot"

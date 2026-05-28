@@ -89,8 +89,7 @@ def collect_candidates(settings: dict[str, Any], distro_name: str | None) -> lis
     ]
     if distro_name:
         named_profiles = [profile for profile in wsl_profiles if profile.get("name") == distro_name]
-        if named_profiles:
-            wsl_profiles = named_profiles
+        wsl_profiles = named_profiles
 
     for profile in wsl_profiles:
         face = font_face(profile)
@@ -161,8 +160,7 @@ def apply_font(settings_path: Path, distro_name: str | None, font_face_value: st
     ]
     if distro_name:
         named_profiles = [profile for profile in wsl_profiles if profile.get("name") == distro_name]
-        if named_profiles:
-            wsl_profiles = named_profiles
+        wsl_profiles = named_profiles
 
     for profile in wsl_profiles:
         profile_font = _ensure_font_section(profile)

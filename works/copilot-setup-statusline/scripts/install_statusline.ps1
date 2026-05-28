@@ -255,7 +255,8 @@ function Set-WindowsTerminalFontIfNeeded {
         $profile.font | Add-Member -NotePropertyName face -NotePropertyValue $FontFaceToApply -Force
     }
 
-    $backup = "$ResolvedSettingsPath.statusline-backup-$(Get-Date -Format 'yyyyMMddTHHmmssK')"
+    $timestamp = (Get-Date -Format 'yyyyMMddTHHmmsszzz').Replace(':', '')
+    $backup = "$ResolvedSettingsPath.statusline-backup-$timestamp"
     Copy-Item -LiteralPath $ResolvedSettingsPath -Destination $backup -Force
     $terminalSettings | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $ResolvedSettingsPath -Encoding UTF8
     Write-Host "Updated Windows Terminal font settings to $FontFaceToApply (backup: $backup)."
