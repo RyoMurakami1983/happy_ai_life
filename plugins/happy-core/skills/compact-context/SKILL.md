@@ -71,7 +71,7 @@ git status
 
 git diff --stat
 
-Select-String -Path .* -Pattern "keyword" -Recurse
+Select-String -Path .\* -Pattern "keyword" -Recurse
 ~~~
 
 ## Scope Limit
