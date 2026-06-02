@@ -104,6 +104,11 @@ def test_sync_to_home_writes_home_safety_guard_hook_file(tmp_path: Path) -> None
         encoding="utf-8",
     )
 
+    # legacy session continuity remnants should not break sync.
+    legacy = destination / "hooks" / "session-continuity.json"
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_text("{}", encoding="utf-8")
+
     command = [
         _powershell_executable(),
         "-NoProfile",
@@ -122,6 +127,8 @@ def test_sync_to_home_writes_home_safety_guard_hook_file(tmp_path: Path) -> None
     completed = subprocess.run(command, check=False, capture_output=True, text=True)
 
     assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert not legacy.exists()
+
     hook_path = destination / "hooks" / "safety-guard.json"
     assert hook_path.exists()
 

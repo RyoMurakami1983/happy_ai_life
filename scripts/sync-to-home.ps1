@@ -366,6 +366,9 @@ function Invoke-FileAction {
         "delete-file" {
             Remove-PathItem -Path $Action.Destination
         }
+        "delete-path" {
+            Remove-PathItem -Path $Action.Destination
+        }
         "write-text" {
             Ensure-ParentDirectory -Path $Action.Destination
             $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
