@@ -4,6 +4,9 @@
   "managedFiles": [
     "copilot-instructions.md",
     "managed-manifest.json",
+    "hooks/safety-guard.json",
+    "hooks/scripts/guard_pre_tool.ps1",
+    "hooks/scripts/guard_pre_tool.sh",
     "scripts/sync-to-repo.ps1",
     "scripts/sync-to-repo.sh",
     "scripts/install-git-hooks.ps1",
@@ -16,8 +19,7 @@
     "policy/guard-policy.schema.json"
   ],
   "managedDirectories": [
-    "repo-template/",
-    "hooks/"
+    "repo-template/"
   ],
   "managedEntries": [
     {
