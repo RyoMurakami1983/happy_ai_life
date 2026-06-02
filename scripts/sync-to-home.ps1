@@ -508,7 +508,7 @@ function Read-CommentPrefixedConfigJson {
 
 function ConvertTo-CommentPrefixedConfigJson {
     param(
-        [Parameter(Mandatory = $true)][string]$Preamble,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Preamble,
         [Parameter(Mandatory = $true)]$Content
     )
 
@@ -542,13 +542,12 @@ function Get-ManagedHookEntryId {
 function New-ManagedHomeHookEntry {
     param(
         [Parameter(Mandatory = $true)][string]$PowerShellScriptPath,
-        [Parameter(Mandatory = $true)][string]$BashScriptPath,
+        [Parameter()][string]$BashScriptPath,
         [Parameter(Mandatory = $true)][string]$HookEventName
     )
 
-    return [pscustomobject][ordered]@{
+    $entry = [ordered]@{
         type = "command"
-        bash = (Get-ManagedBashHookCommand -ScriptPath $BashScriptPath)
         powershell = (Get-ManagedPowerShellHookCommand -ScriptPath $PowerShellScriptPath)
         cwd = "."
         timeoutSec = 10
@@ -557,6 +556,13 @@ function New-ManagedHomeHookEntry {
             HAPPY_AI_LIFE_HOOK_EVENT = $HookEventName
         }
     }
+
+    # Windows host では bash が未導入/未設定のことが多く、両 variant を載せると hook 実行が失敗して全ツールが止まることがあります。
+    if (-not ($env:OS -eq "Windows_NT") -and -not [string]::IsNullOrWhiteSpace($BashScriptPath)) {
+        $entry.bash = (Get-ManagedBashHookCommand -ScriptPath $BashScriptPath)
+    }
+
+    return [pscustomobject]$entry
 }
 
 function Update-ManagedHookArray {
@@ -564,7 +570,7 @@ function Update-ManagedHookArray {
         [Parameter(Mandatory = $true)]$Hooks,
         [Parameter(Mandatory = $true)][string]$EventName,
         [Parameter(Mandatory = $true)][string]$PowerShellScriptPath,
-        [Parameter(Mandatory = $true)][string]$BashScriptPath
+        [Parameter()][string]$BashScriptPath
     )
 
     $eventProperty = $Hooks.PSObject.Properties[$EventName]
@@ -592,7 +598,7 @@ function Get-HomeConfigHookPlan {
     param(
         [Parameter(Mandatory = $true)][string]$ConfigPath,
         [Parameter(Mandatory = $true)][string]$PowerShellScriptPath,
-        [Parameter(Mandatory = $true)][string]$BashScriptPath
+        [Parameter()][string]$BashScriptPath
     )
 
     $configExists = Test-Path -LiteralPath $ConfigPath -PathType Leaf
@@ -672,6 +678,129 @@ function Get-HomeConfigHookPlan {
         Deleted = @()
         MirrorMode = $false
         DestinationRoot = Split-Path -Path $ConfigPath -Parent
+    }
+}
+
+function Get-HomeHooksSafetyGuardPlan {
+    param(
+        [Parameter(Mandatory = $true)][string]$HooksRoot,
+        [Parameter(Mandatory = $true)][string]$PowerShellScriptPath,
+        [Parameter()][string]$BashScriptPath
+    )
+
+    $destination = Join-Path $HooksRoot "safety-guard.json"
+    $hooks = [pscustomobject][ordered]@{
+        preToolUse = @(
+            New-ManagedHomeHookEntry -PowerShellScriptPath $PowerShellScriptPath -BashScriptPath $BashScriptPath -HookEventName "preToolUse"
+        )
+        permissionRequest = @(
+            New-ManagedHomeHookEntry -PowerShellScriptPath $PowerShellScriptPath -BashScriptPath $BashScriptPath -HookEventName "permissionRequest"
+        )
+    }
+
+    $document = [pscustomobject][ordered]@{
+        version = 1
+        hooks = $hooks
+    }
+
+    $desiredContent = ($document | ConvertTo-Json -Depth 20) + "`n"
+    $desiredStableJson = Get-StableJson -Value $document
+
+    $added = @()
+    $updated = @()
+    $actions = @()
+
+    if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) {
+        $added = @("hooks/safety-guard.json")
+        $actions = @([pscustomobject]@{
+                Kind = "write-text"
+                Destination = $destination
+                Content = $desiredContent
+            })
+    }
+    else {
+        try {
+            $existing = Get-Content -LiteralPath $destination -Raw | ConvertFrom-Json
+            $existingStableJson = Get-StableJson -Value $existing
+            if ($existingStableJson -ne $desiredStableJson) {
+                $updated = @("hooks/safety-guard.json")
+                $actions = @([pscustomobject]@{
+                        Kind = "write-text"
+                        Destination = $destination
+                        Content = $desiredContent
+                    })
+            }
+        }
+        catch {
+            $updated = @("hooks/safety-guard.json")
+            $actions = @([pscustomobject]@{
+                    Kind = "write-text"
+                    Destination = $destination
+                    Content = $desiredContent
+                })
+        }
+    }
+
+    return [pscustomobject]@{
+        Label = "hooks/safety-guard.json"
+        Actions = $actions
+        Added = $added
+        Updated = $updated
+        Deleted = @()
+        MirrorMode = $false
+        DestinationRoot = $HooksRoot
+    }
+}
+
+function Get-HomeHooksSessionContinuityCleanupPlan {
+    param([Parameter(Mandatory = $true)][string]$HooksRoot)
+
+    $relativeFiles = @(
+        "session-continuity.json",
+        "scripts\session-end.js",
+        "scripts\session-start.js",
+        "scripts\lib\decision-validation.js",
+        "scripts\lib\session-utils.js"
+    )
+
+    $toDelete = @(
+        foreach ($relative in $relativeFiles) {
+            $candidate = Join-Path $HooksRoot $relative
+            if (Test-Path -LiteralPath $candidate) {
+                $candidate
+            }
+        }
+    )
+
+    if ($toDelete.Count -eq 0) {
+        return [pscustomobject]@{
+            Label = "hooks/session-continuity cleanup"
+            Actions = @()
+            Added = @()
+            Updated = @()
+            Deleted = @()
+            MirrorMode = $false
+            DestinationRoot = $HooksRoot
+        }
+    }
+
+    $actions = @(
+        foreach ($path in $toDelete) {
+            [pscustomobject]@{
+                Kind = "delete-path"
+                Destination = $path
+            }
+        }
+    )
+
+    return [pscustomobject]@{
+        Label = "hooks/session-continuity cleanup"
+        Actions = $actions
+        Added = @()
+        Updated = @()
+        Deleted = @("hooks/session-continuity.json and scripts")
+        MirrorMode = $false
+        DestinationRoot = $HooksRoot
     }
 }
 
@@ -794,10 +923,6 @@ $directoryPlans = @(
     [pscustomobject]@{
         Label = "repo-template/ (managed)"
         Plan = (Get-DirectorySyncPlan -Source (Join-Path $sourceRootPath "repo-template") -Destination (Join-Path $destinationPath "repo-template") -PreviewRoot "repo-template" -MirrorMode)
-    },
-    [pscustomobject]@{
-        Label = "hooks/ (managed)"
-        Plan = (Get-DirectorySyncPlan -Source (Join-Path $sourceRootPath ".github\hooks") -Destination (Join-Path $destinationPath "hooks") -PreviewRoot "hooks" -MirrorMode)
     }
 )
 
@@ -809,6 +934,14 @@ $trackedFilePlans = @(
     [pscustomobject]@{
         Label = "managed-manifest.json"
         Plan = (Get-TrackedFilePlan -Source (Join-Path $templateRoot "managed-manifest.json") -Destination (Join-Path $destinationPath "managed-manifest.json") -PreviewPath "managed-manifest.json")
+    },
+    [pscustomobject]@{
+        Label = "hooks/scripts/guard_pre_tool.ps1"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path $sourceRootPath ".github\hooks\scripts\guard_pre_tool.ps1") -Destination (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.ps1") -PreviewPath "hooks/scripts/guard_pre_tool.ps1")
+    },
+    [pscustomobject]@{
+        Label = "hooks/scripts/guard_pre_tool.sh"
+        Plan = (Get-TrackedFilePlan -Source (Join-Path $sourceRootPath ".github\hooks\scripts\guard_pre_tool.sh") -Destination (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.sh") -PreviewPath "hooks/scripts/guard_pre_tool.sh")
     },
     [pscustomobject]@{
         Label = "scripts/sync-to-repo.ps1"
@@ -852,6 +985,14 @@ $trackedFilePlans = @(
     }
 )
 
+$hooksRoot = Join-Path $destinationPath "hooks"
+
+$hooksCleanupPlan = Get-HomeHooksSessionContinuityCleanupPlan -HooksRoot $hooksRoot
+$hooksSafetyGuardPlan = Get-HomeHooksSafetyGuardPlan `
+    -HooksRoot $hooksRoot `
+    -PowerShellScriptPath (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.ps1") `
+    -BashScriptPath (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.sh")
+
 $configHookPlan = Get-HomeConfigHookPlan `
     -ConfigPath (Join-Path $destinationPath "config.json") `
     -PowerShellScriptPath (Join-Path $destinationPath "hooks\scripts\guard_pre_tool.ps1") `
@@ -869,13 +1010,23 @@ foreach ($entry in $trackedFilePlans) {
     Add-PreviewItems -PreviewState $previewState -Bucket Added -Items @($entry.Plan.Added)
     Add-PreviewItems -PreviewState $previewState -Bucket Updated -Items @($entry.Plan.Updated)
 }
+
+Add-PreviewItems -PreviewState $previewState -Bucket Deleted -Items @($hooksCleanupPlan.Deleted)
+Add-PreviewItems -PreviewState $previewState -Bucket Added -Items @($hooksSafetyGuardPlan.Added)
+Add-PreviewItems -PreviewState $previewState -Bucket Updated -Items @($hooksSafetyGuardPlan.Updated)
+
 Add-PreviewItems -PreviewState $previewState -Bucket Added -Items @($configHookPlan.Added)
 Add-PreviewItems -PreviewState $previewState -Bucket Updated -Items @($configHookPlan.Updated)
 
 if ($VerboseLog) {
     Write-VerbosePlanDetails `
         -DirectoryPlans $directoryPlans `
-        -TrackedFilePlans @($trackedFilePlans + [pscustomobject]@{ Label = $configHookPlan.Label; Plan = $configHookPlan }) `
+        -TrackedFilePlans @(
+            $trackedFilePlans +
+            [pscustomobject]@{ Label = $hooksCleanupPlan.Label; Plan = $hooksCleanupPlan } +
+            [pscustomobject]@{ Label = $hooksSafetyGuardPlan.Label; Plan = $hooksSafetyGuardPlan } +
+            [pscustomobject]@{ Label = $configHookPlan.Label; Plan = $configHookPlan }
+        ) `
         -DryRunMode:$DryRun
 }
 
@@ -894,6 +1045,14 @@ if (-not $DryRun) {
         foreach ($action in @($entry.Plan.Actions)) {
             Invoke-FileAction -Action $action
         }
+    }
+
+    foreach ($action in @($hooksCleanupPlan.Actions)) {
+        Invoke-FileAction -Action $action
+    }
+
+    foreach ($action in @($hooksSafetyGuardPlan.Actions)) {
+        Invoke-FileAction -Action $action
     }
 
     foreach ($action in @($configHookPlan.Actions)) {

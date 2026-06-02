@@ -253,10 +253,9 @@ def managed_powershell_hook_command(script_path: str) -> str:
     )
 
 
-def managed_home_hook_entry(*, powershell_script_path: str, bash_script_path: str, event_name: str) -> dict[str, Any]:
-    return {
+def managed_home_hook_entry(*, powershell_script_path: str, bash_script_path: str | None, event_name: str) -> dict[str, Any]:
+    entry: dict[str, Any] = {
         "type": "command",
-        "bash": f'bash "{bash_script_path}"',
         "powershell": managed_powershell_hook_command(powershell_script_path),
         "cwd": ".",
         "timeoutSec": 10,
@@ -265,6 +264,11 @@ def managed_home_hook_entry(*, powershell_script_path: str, bash_script_path: st
             "HAPPY_AI_LIFE_HOOK_EVENT": event_name,
         },
     }
+
+    if bash_script_path:
+        entry["bash"] = f'bash "{bash_script_path}"'
+
+    return entry
 
 
 def get_home_config_hook_plan(config_path: Path, *, powershell_script_path: str, bash_script_path: str) -> SyncPlan:
@@ -321,6 +325,75 @@ def get_home_config_hook_plan(config_path: Path, *, powershell_script_path: str,
     elif original_stable_json != desired_stable_json:
         plan.updated.append("config.json")
         plan.actions.append(FileAction(kind="write-text", destination=config_path, content=desired_content))
+    return plan
+
+
+def get_home_hooks_safety_guard_plan(
+    hooks_root: Path,
+    *,
+    powershell_script_path: str,
+    bash_script_path: str | None,
+) -> SyncPlan:
+    destination = hooks_root / "safety-guard.json"
+    document = {
+        "version": 1,
+        "hooks": {
+            "preToolUse": [
+                managed_home_hook_entry(
+                    powershell_script_path=powershell_script_path,
+                    bash_script_path=bash_script_path,
+                    event_name="preToolUse",
+                )
+            ],
+            "permissionRequest": [
+                managed_home_hook_entry(
+                    powershell_script_path=powershell_script_path,
+                    bash_script_path=bash_script_path,
+                    event_name="permissionRequest",
+                )
+            ],
+        },
+    }
+
+    desired_text = json.dumps(document, ensure_ascii=False, indent=2) + "\n"
+    desired_stable = stable_json(document)
+
+    plan = SyncPlan(destination_root=hooks_root)
+    if not destination.exists():
+        plan.added.append("hooks/safety-guard.json")
+        plan.actions.append(FileAction(kind="write-text", destination=destination, content=desired_text))
+        return plan
+
+    try:
+        existing = json.loads(destination.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        existing = None
+
+    if stable_json(existing) != desired_stable:
+        plan.updated.append("hooks/safety-guard.json")
+        plan.actions.append(FileAction(kind="write-text", destination=destination, content=desired_text))
+
+    return plan
+
+
+def get_home_hooks_session_continuity_cleanup_plan(hooks_root: Path) -> SyncPlan:
+    relative_files = (
+        "session-continuity.json",
+        "scripts/session-end.js",
+        "scripts/session-start.js",
+        "scripts/lib/decision-validation.js",
+        "scripts/lib/session-utils.js",
+    )
+
+    to_delete = [hooks_root / relative for relative in relative_files if (hooks_root / relative).exists()]
+    plan = SyncPlan(destination_root=hooks_root)
+    if not to_delete:
+        return plan
+
+    plan.deleted.append("hooks/session-continuity.json and scripts")
+    for path in to_delete:
+        plan.actions.append(FileAction(kind="delete-path", destination=path))
+
     return plan
 
 
@@ -450,19 +523,20 @@ def main(argv: list[str] | None = None) -> int:
                 mirror_mode=True,
             ),
         ),
-        (
-            "hooks/ (managed)",
-            get_directory_sync_plan(
-                source=source_root / ".github" / "hooks",
-                destination=destination_path / "hooks",
-                preview_root="hooks",
-                mirror_mode=True,
-            ),
-        ),
     ]
     tracked_file_specs = [
         ("copilot-instructions.md", template_root / "copilot-instructions.md", destination_path / "copilot-instructions.md"),
         ("managed-manifest.json", template_root / "managed-manifest.json", destination_path / "managed-manifest.json"),
+        (
+            "hooks/scripts/guard_pre_tool.ps1",
+            source_root / ".github" / "hooks" / "scripts" / "guard_pre_tool.ps1",
+            destination_path / "hooks" / "scripts" / "guard_pre_tool.ps1",
+        ),
+        (
+            "hooks/scripts/guard_pre_tool.sh",
+            source_root / ".github" / "hooks" / "scripts" / "guard_pre_tool.sh",
+            destination_path / "hooks" / "scripts" / "guard_pre_tool.sh",
+        ),
         ("scripts/sync-to-repo.ps1", source_root / "scripts" / "sync-to-repo.ps1", destination_path / "scripts" / "sync-to-repo.ps1"),
         ("scripts/sync-to-repo.sh", source_root / "scripts" / "sync-to-repo.sh", destination_path / "scripts" / "sync-to-repo.sh"),
         ("scripts/install-git-hooks.ps1", source_root / "scripts" / "install-git-hooks.ps1", destination_path / "scripts" / "install-git-hooks.ps1"),
@@ -478,13 +552,29 @@ def main(argv: list[str] | None = None) -> int:
         (label, get_tracked_file_plan(source=source, destination=destination, preview_path=label))
         for label, source, destination in tracked_file_specs
     ]
-    config_hook_plan = get_home_config_hook_plan(
-        destination_path / "config.json",
-        powershell_script_path="hooks\\scripts\\guard_pre_tool.ps1",
-        bash_script_path="hooks/scripts/guard_pre_tool.sh",
+    powershell_guard_script = str(destination_path / "hooks" / "scripts" / "guard_pre_tool.ps1")
+    bash_guard_script = str(destination_path / "hooks" / "scripts" / "guard_pre_tool.sh")
+
+    hooks_cleanup_plan = get_home_hooks_session_continuity_cleanup_plan(destination_path / "hooks")
+    hooks_safety_guard_plan = get_home_hooks_safety_guard_plan(
+        destination_path / "hooks",
+        powershell_script_path=powershell_guard_script,
+        bash_script_path=bash_guard_script,
     )
 
-    for _label, plan in directory_plans + tracked_file_plans + [("config.json", config_hook_plan)]:
+    config_hook_plan = get_home_config_hook_plan(
+        destination_path / "config.json",
+        powershell_script_path=powershell_guard_script,
+        bash_script_path=bash_guard_script,
+    )
+
+    all_plans = directory_plans + tracked_file_plans + [
+        ("hooks/session-continuity cleanup", hooks_cleanup_plan),
+        ("hooks/safety-guard.json", hooks_safety_guard_plan),
+        ("config.json", config_hook_plan),
+    ]
+
+    for _label, plan in all_plans:
         preview_state.added.extend(plan.added)
         preview_state.updated.extend(plan.updated)
         preview_state.deleted.extend(plan.deleted)
@@ -492,7 +582,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.VerboseLog:
         write_line("◆ 詳細ログ")
         write_line(f"Mode            : {'dry-run' if args.DryRun else 'live'}")
-        for label, plan in directory_plans + tracked_file_plans + [("config.json", config_hook_plan)]:
+        for label, plan in all_plans:
             if not plan.actions:
                 continue
             write_line(f"  [{label}] actions={len(plan.actions)}")
@@ -501,7 +591,7 @@ def main(argv: list[str] | None = None) -> int:
                 write_line(f"    - {action.kind}: {target}")
 
     if not args.DryRun:
-        for _label, plan in directory_plans + tracked_file_plans + [("config.json", config_hook_plan)]:
+        for _label, plan in all_plans:
             for action in plan.actions:
                 if action.kind in {"copy-file", "write-text", "delete-path"}:
                     backup_existing_path(
