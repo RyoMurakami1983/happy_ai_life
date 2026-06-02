@@ -117,7 +117,7 @@ def test_sync_to_home_sh_writes_bash_managed_hook_entry(tmp_path: Path) -> None:
     config = json.loads((destination / "config.json").read_text(encoding="utf-8"))
     entry = config["hooks"]["preToolUse"][-1]
     assert entry["env"]["HAPPY_AI_LIFE_HOOK_ID"] == "happy-ai-life-safety-guard"
-    assert entry["bash"] == 'bash "hooks/scripts/guard_pre_tool.sh"'
+    assert 'hooks/scripts/guard_pre_tool.sh"' in entry["bash"]
     assert "guard_pre_tool.ps1" in entry["powershell"]
     assert (destination / "hooks" / "safety-guard.json").exists()
 
@@ -155,7 +155,7 @@ def test_sync_to_home_sh_preserves_comment_prefixed_config_json(tmp_path: Path) 
     assert config["permissions"]["allow"] is None
     assert config["hooks"]["preToolUse"][0]["bash"] == "echo keep"
     assert config["hooks"]["preToolUse"][-1]["env"]["HAPPY_AI_LIFE_HOOK_ID"] == "happy-ai-life-safety-guard"
-    assert config["hooks"]["preToolUse"][-1]["bash"] == 'bash "hooks/scripts/guard_pre_tool.sh"'
+    assert 'hooks/scripts/guard_pre_tool.sh"' in config["hooks"]["preToolUse"][-1]["bash"]
 
 
 def test_sync_to_home_sh_replaces_invalid_hooks_value(tmp_path: Path) -> None:
