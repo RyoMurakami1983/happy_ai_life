@@ -8,6 +8,8 @@ $ErrorActionPreference = 'Stop'
 $skillDir = Split-Path -Parent $PSScriptRoot
 $assetsDir = Join-Path $skillDir 'assets'
 $settingsPath = Join-Path $CopilotDir 'settings.json'
+$recommendedFontFace = 'MesloLGM Nerd Font'
+$recommendedFontSlug = 'meslo'
 
 function Test-JsonObjectLike {
     param([object]$Value)
@@ -82,6 +84,184 @@ function Get-InstalledNerdFontFaces {
     return @($faces | Sort-Object)
 }
 
+function Get-WindowsTerminalFontCandidates {
+    param([object]$TerminalSettings)
+
+    $faces = [System.Collections.Generic.List[object]]::new()
+    if (-not (Test-JsonObjectLike $TerminalSettings.profiles)) {
+        return $faces
+    }
+
+    $defaultsFontFace = $TerminalSettings.profiles.defaults.font.face
+    if (-not [string]::IsNullOrWhiteSpace($defaultsFontFace)) {
+        $faces.Add([pscustomobject]@{
+            Origin = 'profiles.defaults.font.face'
+            Face = [string]$defaultsFontFace
+        })
+    }
+
+    $profileList = @($TerminalSettings.profiles.list)
+    $defaultProfileGuid = if (-not [string]::IsNullOrWhiteSpace($TerminalSettings.defaultProfile)) {
+        [string]$TerminalSettings.defaultProfile
+    } else {
+        ''
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($defaultProfileGuid)) {
+        $defaultProfile = $profileList | Where-Object {
+            (Test-JsonObjectLike $_) -and $_.guid -eq $defaultProfileGuid
+        } | Select-Object -First 1
+        if ($null -ne $defaultProfile) {
+            $defaultProfileFontFace = $defaultProfile.font.face
+            if (-not [string]::IsNullOrWhiteSpace($defaultProfileFontFace)) {
+                $faces.Add([pscustomobject]@{
+                    Origin = "defaultProfile $($defaultProfile.name)"
+                    Face = [string]$defaultProfileFontFace
+                })
+            }
+        }
+    }
+
+    foreach ($profile in $profileList) {
+        if (-not (Test-JsonObjectLike $profile)) {
+            continue
+        }
+        if ($profile.source -ne 'Windows.Terminal.PowershellCore' -and $profile.name -ne 'PowerShell') {
+            continue
+        }
+        $profileFontFace = $profile.font.face
+        if ([string]::IsNullOrWhiteSpace($profileFontFace)) {
+            continue
+        }
+        $faces.Add([pscustomobject]@{
+            Origin = "profile $($profile.name)"
+            Face = [string]$profileFontFace
+        })
+    }
+
+    return $faces
+}
+
+function Ensure-OhMyPoshCommand {
+    $command = Get-Command 'oh-my-posh' -ErrorAction SilentlyContinue
+    if ($null -ne $command) {
+        return $command.Source
+    }
+
+    if (-not (Get-Command 'winget' -ErrorAction SilentlyContinue)) {
+        Write-Warning 'winget was not found, so oh-my-posh could not be installed automatically.'
+        return $null
+    }
+
+    Write-Host 'Installing oh-my-posh with winget...'
+    & winget install JanDeDobbeleer.OhMyPosh --source winget --accept-package-agreements --accept-source-agreements --silent
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning 'oh-my-posh auto-install failed. Install it manually if icon rendering is still unavailable.'
+        return $null
+    }
+
+    $installedPath = Join-Path $env:LOCALAPPDATA 'Programs\oh-my-posh\bin\oh-my-posh.exe'
+    if (Test-Path -LiteralPath $installedPath) {
+        $env:PATH = "$(Split-Path -Parent $installedPath);$env:PATH"
+        return $installedPath
+    }
+
+    $command = Get-Command 'oh-my-posh' -ErrorAction SilentlyContinue
+    if ($null -ne $command) {
+        return $command.Source
+    }
+
+    Write-Warning 'oh-my-posh was installed but could not be resolved in the current session.'
+    return $null
+}
+
+function Install-NerdFontIfNeeded {
+    param([string]$OhMyPoshPath)
+
+    if ([string]::IsNullOrWhiteSpace($OhMyPoshPath)) {
+        return
+    }
+
+    $installedFaces = @(Get-InstalledNerdFontFaces)
+    if ($installedFaces.Count -gt 0) {
+        return
+    }
+
+    Write-Host "Installing $recommendedFontFace..."
+    try {
+        & $OhMyPoshPath font install $recommendedFontSlug
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning 'Nerd Font auto-install failed. Install a Nerd Font manually if icons still look broken.'
+        }
+    } catch {
+        Write-Warning 'Nerd Font auto-install failed. Install a Nerd Font manually if icons still look broken.'
+    }
+}
+
+function Set-WindowsTerminalFontIfNeeded {
+    param(
+        [string]$ResolvedSettingsPath,
+        [string]$FontFaceToApply
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ResolvedSettingsPath)) {
+        Write-Warning 'Windows Terminal settings.json was not found. Configure font.face to a Nerd Font manually if icons still look broken.'
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($FontFaceToApply)) {
+        Write-Warning 'No installed Nerd Font was available to apply to Windows Terminal.'
+        return
+    }
+
+    try {
+        $terminalSettings = Get-Content -Raw -LiteralPath $ResolvedSettingsPath | ConvertFrom-Json
+    } catch {
+        Write-Warning "$ResolvedSettingsPath could not be read as JSON. Check the host terminal font manually."
+        return
+    }
+
+    if (-not (Test-JsonObjectLike $terminalSettings.profiles)) {
+        Write-Warning "$ResolvedSettingsPath has no profiles object. Check the host terminal font manually."
+        return
+    }
+
+    $configured = Get-WindowsTerminalFontCandidates -TerminalSettings $terminalSettings | Where-Object {
+        Test-LooksLikeNerdFont $_.Face
+    } | Select-Object -First 1
+    if ($null -ne $configured) {
+        Write-Host "Windows Terminal font check: OK ($($configured.Face) via $($configured.Origin))."
+        return
+    }
+
+    if (-not (Test-JsonObjectLike $terminalSettings.profiles.defaults)) {
+        $terminalSettings.profiles | Add-Member -NotePropertyName defaults -NotePropertyValue ([pscustomobject]@{}) -Force
+    }
+    if (-not (Test-JsonObjectLike $terminalSettings.profiles.defaults.font)) {
+        $terminalSettings.profiles.defaults | Add-Member -NotePropertyName font -NotePropertyValue ([pscustomobject]@{}) -Force
+    }
+    $terminalSettings.profiles.defaults.font | Add-Member -NotePropertyName face -NotePropertyValue $FontFaceToApply -Force
+
+    foreach ($profile in @($terminalSettings.profiles.list)) {
+        if (-not (Test-JsonObjectLike $profile)) {
+            continue
+        }
+        if ($profile.source -ne 'Windows.Terminal.PowershellCore' -and $profile.name -ne 'PowerShell') {
+            continue
+        }
+        if (-not (Test-JsonObjectLike $profile.font)) {
+            $profile | Add-Member -NotePropertyName font -NotePropertyValue ([pscustomobject]@{}) -Force
+        }
+        $profile.font | Add-Member -NotePropertyName face -NotePropertyValue $FontFaceToApply -Force
+    }
+
+    $timestamp = (Get-Date -Format 'yyyyMMddTHHmmsszzz').Replace(':', '')
+    $backup = "$ResolvedSettingsPath.statusline-backup-$timestamp"
+    Copy-Item -LiteralPath $ResolvedSettingsPath -Destination $backup -Force
+    $terminalSettings | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $ResolvedSettingsPath -Encoding UTF8
+    Write-Host "Updated Windows Terminal font settings to $FontFaceToApply (backup: $backup)."
+}
+
 function Write-OhMyPoshStatus {
     $command = Get-Command 'oh-my-posh' -ErrorAction SilentlyContinue
     if ($null -ne $command) {
@@ -122,54 +302,7 @@ function Write-WindowsTerminalFontStatus {
         return
     }
 
-    $faces = [System.Collections.Generic.List[object]]::new()
-    $defaultsFontFace = $terminalSettings.profiles.defaults.font.face
-    if (-not [string]::IsNullOrWhiteSpace($defaultsFontFace)) {
-        $faces.Add([pscustomobject]@{
-            Origin = 'profiles.defaults.font.face'
-            Face = [string]$defaultsFontFace
-        })
-    }
-
-    $profileList = @($terminalSettings.profiles.list)
-    $defaultProfileGuid = if (-not [string]::IsNullOrWhiteSpace($terminalSettings.defaultProfile)) {
-        [string]$terminalSettings.defaultProfile
-    } else {
-        ''
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($defaultProfileGuid)) {
-        $defaultProfile = $profileList | Where-Object {
-            (Test-JsonObjectLike $_) -and $_.guid -eq $defaultProfileGuid
-        } | Select-Object -First 1
-        if ($null -ne $defaultProfile) {
-            $defaultProfileFontFace = $defaultProfile.font.face
-            if (-not [string]::IsNullOrWhiteSpace($defaultProfileFontFace)) {
-                $faces.Add([pscustomobject]@{
-                    Origin = "defaultProfile $($defaultProfile.name)"
-                    Face = [string]$defaultProfileFontFace
-                })
-            }
-        }
-    }
-
-    foreach ($profile in $profileList) {
-        if (-not (Test-JsonObjectLike $profile)) {
-            continue
-        }
-        if ($profile.source -ne 'Windows.Terminal.PowershellCore' -and $profile.name -ne 'PowerShell') {
-            continue
-        }
-        $profileFontFace = $profile.font.face
-        if ([string]::IsNullOrWhiteSpace($profileFontFace)) {
-            continue
-        }
-        $faces.Add([pscustomobject]@{
-            Origin = "profile $($profile.name)"
-            Face = [string]$profileFontFace
-        })
-    }
-
+    $faces = Get-WindowsTerminalFontCandidates -TerminalSettings $terminalSettings
     $configured = $faces | Where-Object { Test-LooksLikeNerdFont $_.Face } | Select-Object -First 1
     if ($null -ne $configured) {
         Write-Host "Windows Terminal font check: OK ($($configured.Face) via $($configured.Origin))."
@@ -238,6 +371,10 @@ $settings | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $settingsPath -E
 
 Write-Host "Installed Copilot statusline to $CopilotDir"
 $resolvedWindowsTerminalSettingsPath = Get-WindowsTerminalSettingsPath -OverridePath $WindowsTerminalSettingsPath
+$ohMyPoshPath = Ensure-OhMyPoshCommand
+Install-NerdFontIfNeeded -OhMyPoshPath $ohMyPoshPath
+$fontFaceToApply = @(Get-InstalledNerdFontFaces | Select-Object -First 1)[0]
 Write-OhMyPoshStatus
+Set-WindowsTerminalFontIfNeeded -ResolvedSettingsPath $resolvedWindowsTerminalSettingsPath -FontFaceToApply $fontFaceToApply
 Write-WindowsTerminalFontStatus -ResolvedSettingsPath $resolvedWindowsTerminalSettingsPath
 Write-Host "Run /restart in Copilot CLI if it is already open."
