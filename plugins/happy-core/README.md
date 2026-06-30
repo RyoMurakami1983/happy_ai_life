@@ -27,7 +27,7 @@ copilot plugin marketplace remove happy-ai-life-marketplace
 
 ## Included assets
 
-- `skills/` — source of truth for reusable Copilot CLI workflows, authoring assets, Git/GitHub operations, and the daily `furikaeri` workflow
+- `skills/` — source of truth for reusable Copilot CLI workflows, authoring assets, Git/GitHub operations, Loop Engineering, and the daily `furikaeri` workflow
 
 This package intentionally does not include MCP server configuration, plugin hooks, plugin commands, or repo-local instructions.
 Generic safety hooks are managed by the trusted home sync path through `%USERPROFILE%\.copilot\config.json`, not by plugin install. Plugin hooks remain deferred until hook loading, script path resolution, and coexistence with repo-scoped hooks pass smoke validation through the supported marketplace-based install path.
