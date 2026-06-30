@@ -165,6 +165,12 @@ Loop Engineering はこれらを置き換える親プロセスではありませ
 ## 関連スキル / 共通リソース
 
 - `references/private-eval.md` — PrivateEval の採点基準
+- `references/eval-scenarios.md` — ループが機能するかを確認する代表シナリオ
+- `references/verify-commands.md` — 機械判定を先に通すための検証コマンド例
+- `assets/templates/loop-report.md` — ループ結果を残すテンプレート
+- `assets/templates/pr-body.md` — PR 本文へ Why と PrivateEval を残すテンプレート
+- `assets/templates/commit-message.md` — commit message へ Why と Verify を残すテンプレート
+- `assets/templates/adr.md` — 戻しにくい判断を ADR 化するテンプレート
 - `skill-eval` — skill / prompt 評価の入口
 - `empirical-prompt-tuning` — 指示明瞭性の実証検査
 - `knowledge-capture` — 公開されうる知識の匿名化と捕捉
