@@ -226,6 +226,12 @@ P0 は最初のPRにすべて入れる作業ではありません。skill ecosys
 ## 参考
 
 - Matt Pocock skills: <https://github.com/mattpocock/skills/tree/main>
+- `CONTEXT.md`
+- `docs/SKILL_MAP.md`
+- `docs/PRIVATE_EVAL.md`
+- `docs/PLUGIN_MAINTENANCE.md`
+- `docs/WORKS_PROMOTION.md`
+- `docs/PHILOSOPHY_SUMMARY.md`
 - `docs/PHILOSOPHY.md`
 - `docs/DEVELOPMENT.md`
 - `docs/AUTHORING.md`
