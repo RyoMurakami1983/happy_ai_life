@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_DIR = ROOT / "plugins"
+MARKETPLACE_MANIFEST = ROOT / ".github" / "plugin" / "marketplace.json"
 
 
 def test_plugin_manifests_point_to_existing_distribution_dirs() -> None:
@@ -29,3 +30,15 @@ def test_plugin_manifests_point_to_existing_distribution_dirs() -> None:
             assert agents_dir.is_dir()
             assert any(agents_dir.glob("*.agent.md"))
 
+
+def test_plugin_manifest_versions_match_marketplace_entries() -> None:
+    marketplace = json.loads(MARKETPLACE_MANIFEST.read_text(encoding="utf-8"))
+    marketplace_plugins = {
+        plugin["name"]: plugin for plugin in marketplace["plugins"]
+    }
+
+    for manifest_path in sorted(PLUGIN_DIR.glob("*/plugin.json")):
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        marketplace_plugin = marketplace_plugins[manifest["name"]]
+
+        assert manifest["version"] == marketplace_plugin["version"]
