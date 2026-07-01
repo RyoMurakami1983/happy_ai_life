@@ -13,7 +13,7 @@ Happy Add Issue は、**Happy AI Life への意見窓口**です。
 対象は今開発している repo の backlog ではなく、基本的に
 `https://github.com/RyoMurakami1983/happy_ai_life/` の Issue です。
 
-短い感想、違和感、改善要望を失わずに残し、必要なら後でこの repo 側で具体化できる状態にします。
+短い感想、違和感、改善要望を失わずに残し、必要なら後で母艦 repo 側で具体化できる状態にします。
 
 ## ゴール
 
