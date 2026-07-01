@@ -46,8 +46,8 @@ domain-modeling
 | `domain-modeling` | repo 固有語彙を `CONTEXT.md` に濃縮する | `grill-with-docs`, `copilot-authoring` |
 | `empirical-prompt-tuning` | 別実行者で指示の明瞭性を検査する | `skill-eval` |
 | `furikaeri` | ふりかえりを残す | `knowledge-capture` |
-| `happy-add-issue` | 雑なメモから最低限の Issue 骨格を作って backlog 化する | `gh-issue-create` |
-| `gh-issue-create` | Issue を作る | `gh-pr-create` |
+| `happy-add-issue` | Happy AI Life の skill / docs / 運用への意見を母艦 repo の Issue にする | `gh-issue-create` |
+| `gh-issue-create` | 今開発中の repo に実行用 Issue を作る | `gh-pr-create` |
 | `gh-pr-create` | PR を作る | `deep-review-preflight` |
 | `gh-pr-respond` | PR review へ対応する | `deep-review-preflight`, `git-commit` |
 | `git-commit` | 原子的 commit を作る | `gh-pr-create` |

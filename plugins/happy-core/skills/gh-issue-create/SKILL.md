@@ -16,6 +16,7 @@ description: >
 - 断続的な障害の再現手順を記録したい
 - サポート依頼を開発タスクとして追跡したい
 - フォローアップ作業を別担当に引き渡したい
+- **今開発している repo に、その repo 自体の Issue を起票したい**
 
 ## 関連スキル
 
@@ -23,6 +24,7 @@ description: >
 - **`gh-pr-create`** - PR運用とマージ方針
 - **`skill`** - 変更管理と履歴・ドキュメント品質の整理
 - **`knowledge-capture`** - 公開リポジトリ向けコンテンツの匿名化ゲート
+- **`happy-add-issue`** - Happy AI Life 自体への意見を `RyoMurakami1983/happy_ai_life` に返す入口
 - **`references/origin.md`** - vertical-slice Issue 分割の出典メモ
 
 ---
@@ -32,6 +34,12 @@ description: >
 - GitHubアカウント（リポジトリ権限）
 - GitHub CLI (gh)（CLI運用時・任意）
 - チームのラベル/優先度規約
+
+## 投稿先の原則
+
+- この skill は、**いま対象にしている repo へ Issue を作る標準入口**です。
+- Happy AI Life の skill / agent / docs / plugin 導線そのものへの意見を、
+  `RyoMurakami1983/happy_ai_life` に返したいときは `happy-add-issue` を使います。
 
 ---
 
