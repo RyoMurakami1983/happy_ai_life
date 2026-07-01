@@ -21,6 +21,14 @@ copilot-authoring
     -> empirical-prompt-tuning
     -> loop-engineering
 
+loop-engineering
+  -> grill-with-docs
+  -> design-and-plan
+  -> implement
+  -> skill-eval
+  -> knowledge-capture
+  -> gh-issue-create
+
 domain-modeling
   -> grill-with-docs
   -> CONTEXT.md
@@ -41,7 +49,7 @@ domain-modeling
 | `gh-pr-respond` | PR review へ対応する | `deep-review-preflight`, `git-commit` |
 | `git-commit` | 原子的 commit を作る | `gh-pr-create` |
 | `knowledge-capture` | 公開可能な知識として捕捉する | `furikaeri` |
-| `loop-engineering` | Observe から Evaluate まで改善ループを回す | `skill-eval`, `knowledge-capture` |
+| `loop-engineering` | 調査、修正、検証、評価、follow-up まで改善ループを回す | `grill-with-docs`, `design-and-plan`, `implement`, `skill-eval`, `knowledge-capture`, `gh-issue-create` |
 | `low-cost-mode` | 低燃費で進める | すべての軽量作業 |
 | `pptx` | PowerPoint ファイルを扱う | 文書系作業 |
 | `session-handoff` | session を引き継げる形にする | `compact-context` |

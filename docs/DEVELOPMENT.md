@@ -86,6 +86,20 @@ copilot /implement
 git checkout -b feature/your-feature-name
 ```
 
+### 補助導線: loop-engineering
+
+失敗ログ、review 指摘、既知課題を見ながら、**調査 → 修正 → 検証 → ふりかえり / 後続 Issue 化** までを 1 つの流れで回したい場合は `loop-engineering` を起点にします。
+
+```powershell
+copilot /loop-engineering
+```
+
+代表例:
+
+- review 対応後に「どの軸がまだ不安か」を分けて再実行したい
+- hook / bootstrap / instructions のような運用資産を、再発防止まで含めて直したい
+- authoring 作業で PrivateEval や follow-up Issue までつなげたい
+
 #### protected path 開発時の maintenance mode
 
 `.github/hooks/**`、`.githooks/**`、`.github/workflows/**`、`.gitleaks.toml`、`policy/guard-policy.json` などの事故防止に関わる protected path を変更する作業では、通常の guard が `ask` または human review に止めることがあります。これは通常運用では正しい挙動です。

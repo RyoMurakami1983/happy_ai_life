@@ -96,6 +96,103 @@ function Get-RequiredGitHookIssues {
     return $issues
 }
 
+function Get-GitHookLineEndingIssues {
+    param(
+        [Parameter(Mandatory = $true)][string]$HooksPath,
+        [Parameter(Mandatory = $true)][string]$HooksLabel,
+        [Parameter(Mandatory = $true)][string]$RepoHookScriptsPath,
+        [Parameter(Mandatory = $true)][string]$RepoHookScriptsLabel,
+        [Parameter(Mandatory = $true)][string]$GitAttributesPath,
+        [Parameter(Mandatory = $true)][string]$GitAttributesLabel
+    )
+
+    $issues = @()
+    $requiredPathRules = @(
+        ".githooks/**",
+        ".github/hooks/scripts/*.sh"
+    )
+
+    function Get-EffectiveGitAttributesEol {
+        param(
+            [Parameter(Mandatory = $true)][string]$GitAttributesContent,
+            [Parameter(Mandatory = $true)][string]$PathRule
+        )
+
+        $effectiveEol = ""
+        foreach ($line in ($GitAttributesContent -split "`r?`n")) {
+            $trimmed = $line.Trim()
+            if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
+                continue
+            }
+
+            $tokens = $trimmed -split '\s+'
+            if ($tokens.Count -lt 2) {
+                continue
+            }
+
+            $pattern = $tokens[0]
+            if ($pattern -ne "*" -and $pattern -ne $PathRule) {
+                continue
+            }
+
+            foreach ($token in $tokens[1..($tokens.Count - 1)]) {
+                if ($token -like "eol=*") {
+                    $effectiveEol = $token.Substring(4)
+                }
+            }
+        }
+
+        return $effectiveEol
+    }
+
+    function Add-LineEndingIssuesForPath {
+        param(
+            [Parameter(Mandatory = $true)][string]$RootPath,
+            [Parameter(Mandatory = $true)][string]$RootLabel
+        )
+
+        if (-not (Test-Path -LiteralPath $RootPath -PathType Container)) {
+            return @()
+        }
+
+        $pathIssues = @()
+        $scriptFiles = Get-ChildItem -LiteralPath $RootPath -Recurse -File | Where-Object {
+            $_.Extension -eq ".sh" -or $_.Name -like "pre-*" -or $_.Name -like "post-*"
+        }
+
+        foreach ($scriptFile in $scriptFiles) {
+            $scriptContent = Get-Content -LiteralPath $scriptFile.FullName -Raw
+            if ($scriptContent -match "`r`n") {
+                $relativePath = $scriptFile.FullName.Substring($RootPath.Length).TrimStart('\')
+                $displayPath = "$RootLabel/$($relativePath.Replace('\', '/'))"
+                $pathIssues += "CRLF line ending found in $displayPath."
+            }
+        }
+
+        return $pathIssues
+    }
+
+    if (-not (Test-Path -LiteralPath $GitAttributesPath -PathType Leaf)) {
+        $issues += "$GitAttributesLabel is missing."
+    }
+    else {
+        $gitAttributesContent = Get-Content -LiteralPath $GitAttributesPath -Raw
+        foreach ($requiredPathRule in $requiredPathRules) {
+            $effectiveEol = Get-EffectiveGitAttributesEol `
+                -GitAttributesContent $gitAttributesContent `
+                -PathRule $requiredPathRule
+            if ($effectiveEol -ne "lf") {
+                $issues += "$GitAttributesLabel does not resolve '$requiredPathRule' to eol=lf."
+            }
+        }
+    }
+
+    $issues += Add-LineEndingIssuesForPath -RootPath $HooksPath -RootLabel $HooksLabel
+    $issues += Add-LineEndingIssuesForPath -RootPath $RepoHookScriptsPath -RootLabel $RepoHookScriptsLabel
+
+    return $issues
+}
+
 function Test-RequiredCopilotSafetyHook {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -415,6 +512,10 @@ $targetGitHooksPath = Join-Path $targetRepoPath ".githooks"
 $sourceGitHooksPath = Join-Path $targetRepoPath "repo-template\.githooks"
 $gitHooksPath = if ($isSourceRepository) { $sourceGitHooksPath } else { $targetGitHooksPath }
 $gitHooksLabel = if ($isSourceRepository) { "repo-template/.githooks" } else { ".githooks" }
+$repoHookScriptsPath = Join-Path $targetRepoPath ".github\hooks\scripts"
+$repoHookScriptsLabel = ".github/hooks/scripts"
+$gitAttributesPath = if ($isSourceRepository) { Join-Path $targetRepoPath "repo-template\.gitattributes" } else { Join-Path $targetRepoPath ".gitattributes" }
+$gitAttributesLabel = if ($isSourceRepository) { "repo-template/.gitattributes" } else { ".gitattributes" }
 
 $isGitRepo = Test-GitRepository -Path $targetRepoPath
 $coreHooksConfigured = ""
@@ -469,6 +570,14 @@ else {
 }
 $gitHookIssues = @(Get-RequiredGitHookIssues -Path $gitHooksPath)
 $gitHooksOk = $gitHookIssues.Count -eq 0
+$gitHookLineEndingIssues = @(Get-GitHookLineEndingIssues `
+    -HooksPath $gitHooksPath `
+    -HooksLabel $gitHooksLabel `
+    -RepoHookScriptsPath $repoHookScriptsPath `
+    -RepoHookScriptsLabel $repoHookScriptsLabel `
+    -GitAttributesPath $gitAttributesPath `
+    -GitAttributesLabel $gitAttributesLabel)
+$gitHookLineEndingsOk = $gitHookLineEndingIssues.Count -eq 0
 $toolDependencyState = Get-ToolDependencyState -HooksPath $copilotHooksPath
 $toolDependenciesOk = $toolDependencyState.missing.Count -eq 0
 $toolDependencyDetails = if ($toolDependenciesOk) {
@@ -513,6 +622,12 @@ $checks = @(
         -Ok $gitHooksOk `
         -Path $gitHooksPath `
         -Details ($(if ($gitHooksOk) { "$gitHooksLabel に pre-commit / pre-push / secret-guard / commit-safety-guard が存在し、pre-commit / pre-push から呼び出されています。" } else { "$gitHooksLabel の必須 hook が不足または未接続です: $($gitHookIssues -join ', ')" }))),
+    (New-CheckResult `
+        -Key "gitHookLineEndings" `
+        -Label "git hook line endings" `
+        -Ok $gitHookLineEndingsOk `
+        -Path $gitAttributesPath `
+        -Details ($(if ($gitHookLineEndingsOk) { "$gitAttributesLabel に LF 固定ルールがあり、$gitHooksLabel の shell hook は CRLF を含みません。" } else { "Git hook line ending policy issue(s): $($gitHookLineEndingIssues -join ' ')" }))),
     (New-CheckResult `
         -Key "githubWorkflows" `
         -Label "GitHub Actions workflows" `

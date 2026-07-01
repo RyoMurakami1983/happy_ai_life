@@ -125,6 +125,7 @@ cat "$HOME/.copilot/copilot-instructions.md"
 ### 開発の流れ
 
 - `grill-with-docs`、必要に応じた `prototype` / `design-and-plan` で整理し、実装は `implement` で進める
+- 失敗ログや review 対応を含めて改善を回すときは、`loop-engineering` を起点にしてから必要な専門 skill へ渡す
 - 変更範囲に合う focused test と `uv run ruff check .` を流す
 - PR を作って review を受ける
 
@@ -186,7 +187,7 @@ cat "$HOME/.copilot/copilot-instructions.md"
    git status
    ```
 
-   `.github/` と `.githooks/` の追加が見えれば正常です。
+   `.github/`、`.githooks/`、`.gitattributes` の追加が見えれば正常です。
 
 ### 注意
 
@@ -194,6 +195,7 @@ cat "$HOME/.copilot/copilot-instructions.md"
 - チーム全員が同じ instructions を使う前提です
 - `gitleaks` により commit 時に secret を検査します
 - Linux / WSL2 では `bash`、`git`、`rsync` が必要です。bash variant の safety guard を使う host では `jq` も必要です
+- `.gitattributes` で `.githooks/**` の LF を固定します。`repo-secure-check` で line ending 指摘が出たら、まず `sync-to-repo` を再実行してください
 
 通常は上の手順だけで十分です。重い governance や追加 profile は既定導線から外しています。
 
