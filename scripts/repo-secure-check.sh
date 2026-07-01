@@ -93,6 +93,7 @@ get_git_hook_line_ending_issues() {
     local path_rule="$1"
     local effective=""
     while IFS= read -r raw_line || [[ -n "${raw_line}" ]]; do
+      raw_line="${raw_line%$'\r'}"
       local line="${raw_line#"${raw_line%%[![:space:]]*}"}"
       [[ -n "${line}" ]] || continue
       [[ "${line}" == \#* ]] && continue

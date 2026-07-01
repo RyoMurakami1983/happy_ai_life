@@ -89,6 +89,17 @@ def _write_git_hook_line_ending_policy(repo: Path, relative: str) -> None:
     )
 
 
+def _write_git_hook_line_ending_policy_crlf(repo: Path, relative: str) -> None:
+    template_root = Path(relative).parent
+    policy_path = repo / template_root / ".gitattributes"
+    policy_path.parent.mkdir(parents=True, exist_ok=True)
+    policy_path.write_text(
+        ".githooks/** text eol=lf\r\n.github/hooks/scripts/*.sh text eol=lf\r\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+
 def _tool_env(tmp_path: Path) -> dict[str, str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -325,6 +336,40 @@ def test_repo_secure_check_sh_reports_actionable_core_hooks_and_tool_dependency_
     tool_dependencies = next(check for check in report["checks"] if check["key"] == "toolDependencies")
     assert "jq" in tool_dependencies["details"]
     assert "PATH に追加するかインストール" in tool_dependencies["details"]
+
+
+def test_repo_secure_check_sh_accepts_crlf_gitattributes_for_source_repo(tmp_path: Path) -> None:
+    _require_linux_bootstrap_tools()
+    source_repo = tmp_path / "source"
+    source_repo.mkdir()
+    _git(source_repo, "init")
+    _git(source_repo, "config", "--local", "core.hooksPath", "repo-template/.githooks")
+
+    (source_repo / ".github" / "copilot-instructions.md").parent.mkdir(parents=True)
+    (source_repo / ".github" / "copilot-instructions.md").write_text("# instructions\n", encoding="utf-8")
+    (source_repo / ".github" / "hooks").mkdir()
+    (source_repo / ".github" / "hooks" / "safety-guard.json").write_text(
+        '{"bash":"hooks/scripts/guard_pre_tool.sh"}\n',
+        encoding="utf-8",
+    )
+    (source_repo / ".github" / "workflows").mkdir()
+    (source_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    _write_required_git_hooks(source_repo, "repo-template/.githooks")
+    _write_git_hook_line_ending_policy_crlf(source_repo, "repo-template/.githooks")
+
+    report_completed = _bash(
+        ROOT / "scripts" / "repo-secure-check.sh",
+        "-TargetRepoPath",
+        str(source_repo),
+        "-SourceRoot",
+        str(source_repo),
+        "-AsJson",
+        env=_tool_env(tmp_path),
+    )
+
+    assert report_completed.returncode == 0, report_completed.stdout + report_completed.stderr
+    report = json.loads(report_completed.stdout)
+    assert "gitHookLineEndings" not in report["missing"]
 
 
 def test_home_synced_shell_script_can_generate_repo_assets(tmp_path: Path) -> None:
