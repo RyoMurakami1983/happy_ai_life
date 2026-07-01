@@ -1,106 +1,130 @@
 ---
 name: happy-add-issue
 description: >
-  短い自然文や雑なメモから、最低限行動可能な GitHub Issue に整えてすばやく起票する軽量入口。 Use when: 作業中に見つけた別件をその場で backlog 化したいとき、PR や debug 中の follow-up を低摩擦で切り出したいとき。
+  Happy AI Life 関連の skill、agent、docs、運用への意見や改善要望を、
+  `RyoMurakami1983/happy_ai_life` の Issue にすばやく起票する入口。 Use when:
+  「この skill が分かりづらい」「この導線を直してほしい」のような雑なフィードバックを、
+  母艦 repo の Issue に残したいとき。
 ---
 
 # Happy Add Issue
 
-Happy Add Issue は、作業の途中で見つけた改善点を「あとで書こう」で失わないための軽量入口です。
-詳細な整形や公開向け匿名化の本体は `gh-issue-create` を正本にし、この skill は**短い入力から最小の Issue 骨格を作ってすぐ起票する**ところに絞ります。
+Happy Add Issue は、**Happy AI Life への意見窓口**です。
+対象は今開発している repo の backlog ではなく、基本的に
+`https://github.com/RyoMurakami1983/happy_ai_life/` の Issue です。
+
+短い感想、違和感、改善要望を失わずに残し、必要なら後で母艦 repo 側で具体化できる状態にします。
 
 ## ゴール
 
-- 短い入力を、見失わない最小の GitHub Issue 骨格へ変える。
+- Happy AI Life 関連のフィードバックを、母艦 repo の Issue としてすぐ残す。
 
 ## 成功条件
 
-- タイトル、背景、問題、提案、Acceptance Criteria が 1 回で埋まる。
-- 詳細化が必要な場合に `gh-issue-create` へ迷わず handoff できる。
+- 投稿先が `RyoMurakami1983/happy_ai_life` だと明確に分かる。
+- skill / agent / docs / hooks / plugin 導線への意見が、最小限の背景つきで残る。
+- 今開発中の repo に起票したい場合は `gh-issue-create` へ迷わず切り替えられる。
 
 ## こんなときに使う
 
-- PR、debug、loop-engineering の途中で別件をすぐ backlog 化したい
-- 「この改善を Issue にして」の 1 文から最小限の本文を作りたい
-- ラベルや受け入れ条件をゼロから考える前に、まず追跡可能な形へ残したい
-- 後続担当へ「何を直すべきか」だけ先に渡したい
+- 「この skill の説明が分かりづらい」を Happy AI Life に伝えたい
+- plugin、README、docs、hook、router の導線改善を提案したい
+- 他 repo で使っていて見つけた違和感を、母艦 repo に返したい
+- 実装中ではなく、配布物や運用体験への意見をまず 1 件残したい
 
 ## 使わない場面
 
-- 公開 repo 向け匿名化、ラベル設計、受け入れ条件の厳密化まで丁寧にやりたい
+- 今開発している repo のバグや改善を、その repo 自体に起票したい
+- ラベル、Acceptance Criteria、DoD まで丁寧に整えた実行用 Issue を作りたい
 - 既存 Issue の本文を大きく再設計したい
-- 1 本の大きい epic を vertical slice に分割したい
 
 その場合は `gh-issue-create` を使います。
-
-## ワークフロー:
-
-```text
-rough note
-  -> 1文に圧縮
-  -> 最小テンプレへ整形
-  -> Acceptance Criteria を 1〜3 個置く
-  -> そのまま起票 or gh-issue-create へ handoff
-```
-
-## 軽量フロー
-
-1. 入力を 1 文で圧縮し、「何を困っているか」と「何を変えたいか」を分ける。
-2. 次の最小テンプレに落とす。
-3. Acceptance Criteria を 1〜3 個だけ置く。
-4. 必要なら `gh issue create` で起票し、重い整形が必要なら `gh-issue-create` に handoff する。
-
-## 最小テンプレ
-
-```markdown
-## 背景
-- どの作業中に見つかったか
-
-## 問題
-- 何が足りないか / どこで迷うか
-
-## 提案
-- 最小でどう変えたいか
-
-## Acceptance Criteria
-- [ ] 変更後に観測できる結果
-```
 
 ## 使い分け
 
 | 状況 | 使う skill |
 | --- | --- |
-| まず忘れないように軽く backlog 化したい | `happy-add-issue` |
-| ラベル、匿名化、vertical slice、DoD まで丁寧に整えたい | `gh-issue-create` |
-| PR review 中の指摘から follow-up を切り出したい | `gh-pr-respond` -> `happy-add-issue` |
-| 改善ループの最後に次の課題を残したい | `loop-engineering` -> `happy-add-issue` |
+| Happy AI Life の skill / docs / 運用への意見を母艦 repo に返したい | `happy-add-issue` |
+| 今開発中の repo に、その repo の作業 Issue を起票したい | `gh-issue-create` |
+| PR review 中の指摘から現 repo の follow-up を切り出したい | `gh-pr-respond` -> `gh-issue-create` |
+| 改善ループの最後に Happy AI Life 側への要望を残したい | `loop-engineering` -> `happy-add-issue` |
+
+## ワークフロー
+
+```text
+rough feedback
+  -> 何が困ったかを1文にする
+  -> Happy AI Life 向けの改善要望に言い換える
+  -> 最小テンプレへ整形
+  -> RyoMurakami1983/happy_ai_life に起票
+```
+
+## 軽量フロー
+
+1. 入力を 1 文で圧縮し、「どこで困ったか」と「どう変わってほしいか」を分ける。
+2. 投稿先が `RyoMurakami1983/happy_ai_life` であることを明示する。
+3. 次の最小テンプレに落とす。
+4. 必要なら `gh issue create -R RyoMurakami1983/happy_ai_life` で起票する。
+5. 現 repo の実装 Issue にすべきだと分かったら `gh-issue-create` に切り替える。
+
+## 最小テンプレ
+
+```markdown
+Title: 🟢 skill 名または導線名: 何を改善してほしいか
+
+投稿先: RyoMurakami1983/happy_ai_life
+
+## 背景
+- どの skill / docs / 導線を使っていて気になったか
+
+## 困りごと
+- 何が分かりづらいか / 何が使いにくいか
+
+## こう変わってほしい
+- 期待する改善
+
+## 補足
+- 例、再現場面、関連 skill など（任意）
+```
 
 ## 入力例
 
 ```text
-この skill、導入方法は分かるけど update 手順が見つけづらい。Issue にして。
+domain-modeling は grill-with-docs とのつながりが見えづらい。Happy AI Life 側に Issue として残したい。
 ```
 
 ## 出力イメージ
 
 ```markdown
-Title: 🟢 plugin update 導線: 利用者が更新手順を見つけやすくする
+Title: 🟢 domain-modeling: grill-with-docs との接続を分かりやすくする
+
+投稿先: RyoMurakami1983/happy_ai_life
 
 ## 背景
-- plugin 導入後の運用確認中に見つかった
+- `domain-modeling` の説明を読み、関連 skill とのつながりを確認していた
 
-## 問題
-- update 手順が入口 docs から見つけづらい
+## 困りごと
+- `grill-with-docs` からどう渡るのかが本文だけでは読み取りづらい
 
-## 提案
-- README または Getting Started に update 導線を追加する
+## こう変わってほしい
+- 接続元と接続先を判断表か導線図で明示してほしい
 
-## Acceptance Criteria
-- [ ] 利用者が plugin update 手順へ 2 クリック以内で到達できる
+## 補足
+- Happy AI Life の skill 間の関係を初見でも追えるようにしたい
+```
+
+## CLI 例
+
+```powershell
+gh issue create `
+  -R RyoMurakami1983/happy_ai_life `
+  --title "🟢 domain-modeling: grill-with-docs との接続を分かりやすくする" `
+  --body-file issue.md
 ```
 
 ## 注意点
 
-- タイトル、背景、Acceptance Criteria を盛りすぎない。最初は薄く残し、必要なら `gh-issue-create` で育てる。
-- 公開 repo に出す内容は、固有名詞や内部事情をそのまま書かない。
-- 今の作業を止めない。Issue 化は「切り出して続ける」ための動作として使う。
+- この skill の既定の投稿先は **今の作業 repo ではなく** `RyoMurakami1983/happy_ai_life`。
+- 現 repo の backlog を切る用途に流用しない。現 repo の Issue は `gh-issue-create` を使う。
+- 最初から重い仕様化をしない。まず意見を失わず残し、必要ならこの repo 側で具体化する。
+- 公開 Issue なので、他 repo の private 情報や固有名詞はそのまま書かない。
