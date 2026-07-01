@@ -25,14 +25,15 @@ docs/
 
 - `CONTEXT.md` は用語解決ごとに inline 更新する
 - `docs/grill_results/NNN_GRILL_WITH_DOCS_RESULT.md` は grill 完了時に保存する
-- `docs/design/NNN_TECHNICAL_DESIGN.md` は設計判断を後で読み返す価値がある場合に保存する
-- `docs/plan/NNN_PLAN.md` は implementation handoff を checklist として追いたい場合だけ作る
+- `docs/design/NNN_TECHNICAL_DESIGN.md` は設計判断を後で読み返す価値がある場合、またはユーザーが設計書の保存を明示した場合に保存する
+- `docs/plan/NNN_PLAN.md` は implementation handoff を checklist として追いたい場合、またはユーザーが計画書の保存を明示した場合に作る
 - `implement` の completion handoff まで終わったら、必要に応じて `docs/plan/NNN_PLAN_DONE.md` へリネームする
 
 ## Boundary with `implement`
 
 `docs/plan/NNN_PLAN.md` は人間向けの進捗計画です。
 `implement` は各 slice の直前に slice contract を再固定し、TDD loop と slice gate を実行します。
+handoff には必ず `artifacts:` フィールドを含めます。値は `artifacts: conversation-only`、または `artifacts:` の下に保存した path を列挙する形に統一します。`implement` は bootstrap でこのフィールドを見て、列挙された path の存在確認を行います。
 
 multirepository fleet の contract verification が読む repo root の `plan.md` YAML front-matter とは別物として扱います。
 
@@ -81,6 +82,24 @@ multirepository fleet の contract verification が読む repo root の `plan.md
 ### Behavior List
 
 ### Vertical Slices
+
+### Artifacts
+
+```markdown
+### Artifacts
+
+artifacts: conversation-only
+```
+
+または:
+
+```markdown
+### Artifacts
+
+artifacts:
+  - docs/design/NNN_TECHNICAL_DESIGN.md
+  - docs/plan/NNN_PLAN.md
+```
 
 ### Commands
 

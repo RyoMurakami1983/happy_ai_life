@@ -106,6 +106,8 @@ horizontal slice（DB だけ、UI だけ、テストだけ）は避けます。
 
 `docs/design/NNN_TECHNICAL_DESIGN.md` が必要なら保存します。
 実装進行の checklist が必要な場合だけ `docs/plan/NNN_PLAN.md` を作ります。
+ユーザーが設計書 / 計画書を repo に残すよう明示した場合は、保存を省略しません。
+handoff には必ず `artifacts:` フィールドを入れます。`artifacts: conversation-only` とするか、保存した path を `### Artifacts` 配下に列挙します。
 
 handoff の最小形:
 
@@ -126,6 +128,16 @@ handoff の最小形:
 
 | Slice | HITL/AFK | Done | First Test | RED Expectation | Commands |
 |---|---|---|---|---|---|
+
+### Artifacts
+
+artifacts: conversation-only
+
+または:
+
+artifacts:
+  - docs/design/NNN_TECHNICAL_DESIGN.md
+  - docs/plan/NNN_PLAN.md
 
 ### Risks / Unknowns
 
