@@ -168,6 +168,7 @@ function Merge-AppendOnlyFile {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
         [Parameter(Mandatory = $true)][string]$Destination,
+        [string]$LineEnding = [System.Environment]::NewLine,
         [switch]$WhatIfMode
     )
 
@@ -243,11 +244,11 @@ function Merge-AppendOnlyFile {
 
     $destinationContent = Get-TextFileContent -Path $Destination
     $appendContent = ''
-    if ($destinationContent.Length -gt 0 -and -not $destinationContent.EndsWith([System.Environment]::NewLine)) {
-        $appendContent += [System.Environment]::NewLine
+    if ($destinationContent.Length -gt 0 -and -not $destinationContent.EndsWith($LineEnding)) {
+        $appendContent += $LineEnding
     }
 
-    $appendContent += (($linesToAppend -join [System.Environment]::NewLine) + [System.Environment]::NewLine)
+    $appendContent += (($linesToAppend -join $LineEnding) + $LineEnding)
     [System.IO.File]::AppendAllText($Destination, $appendContent, [System.Text.UTF8Encoding]::new($false))
 }
 
@@ -417,6 +418,7 @@ if (-not (Test-Path -LiteralPath $targetRepoPath)) {
 }
 
 $sourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $TemplateRelativePath))
+$templateRootPath = Split-Path -Path $sourcePath -Parent
 $policySourcePath = $null
 if (-not [string]::IsNullOrWhiteSpace($PolicyRelativePath)) {
     $policySourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceRoot $PolicyRelativePath))
@@ -503,6 +505,16 @@ Merge-AppendOnlyFile `
     -Source $githubGitIgnoreSourcePath `
     -Destination $githubGitIgnoreDestinationPath `
     -WhatIfMode:$DryRun
+
+$repoGitattributesSourcePath = Join-Path $templateRootPath ".gitattributes"
+if (Test-Path -LiteralPath $repoGitattributesSourcePath -PathType Leaf) {
+    Write-Section "Sync repo-template root text files"
+    Merge-AppendOnlyFile `
+        -Source $repoGitattributesSourcePath `
+        -Destination (Join-Path $targetRepoPath ".gitattributes") `
+        -LineEnding "`n" `
+        -WhatIfMode:$DryRun
+}
 
 Remove-ExcludedPolicyProfileArtifacts `
     -TargetRepoRoot $targetRepoPath `

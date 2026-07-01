@@ -79,6 +79,75 @@ get_required_git_hook_issues() {
   printf '%s\n' "${issues[@]}"
 }
 
+get_git_hook_line_ending_issues() {
+  local hooks_path="$1"
+  local hooks_label="$2"
+  local repo_hook_scripts_path="$3"
+  local repo_hook_scripts_label="$4"
+  local gitattributes_path="$5"
+  local gitattributes_label="$6"
+  local -a required_rules=(".githooks/**" ".github/hooks/scripts/*.sh")
+  local -a issues=()
+
+  effective_eol_for_rule() {
+    local path_rule="$1"
+    local effective=""
+    while IFS= read -r raw_line || [[ -n "${raw_line}" ]]; do
+      local line="${raw_line#"${raw_line%%[![:space:]]*}"}"
+      [[ -n "${line}" ]] || continue
+      [[ "${line}" == \#* ]] && continue
+
+      read -r -a parts <<<"${line}"
+      [[ "${#parts[@]}" -ge 2 ]] || continue
+
+      local pattern="${parts[0]}"
+      if [[ "${pattern}" != "*" && "${pattern}" != "${path_rule}" ]]; then
+        continue
+      fi
+
+      local token
+      for token in "${parts[@]:1}"; do
+        if [[ "${token}" == eol=* ]]; then
+          effective="${token#eol=}"
+        fi
+      done
+    done <"${gitattributes_path}"
+    printf '%s\n' "${effective}"
+  }
+
+  if [[ ! -f "${gitattributes_path}" ]]; then
+    issues+=("${gitattributes_label} is missing.")
+  else
+    local required_rule
+    for required_rule in "${required_rules[@]}"; do
+      local effective_eol
+      effective_eol="$(effective_eol_for_rule "${required_rule}")"
+      if [[ "${effective_eol}" != "lf" ]]; then
+        issues+=("${gitattributes_label} does not resolve '${required_rule}' to eol=lf.")
+      fi
+    done
+  fi
+
+  collect_crlf_issues() {
+    local root_path="$1"
+    local root_label="$2"
+    [[ -d "${root_path}" ]] || return
+    local hook_file relative_path
+    while IFS= read -r hook_file; do
+      [[ -n "${hook_file}" ]] || continue
+      if grep -q $'\r' "${hook_file}"; then
+        relative_path="${hook_file#${root_path}/}"
+        issues+=("CRLF line ending found in ${root_label}/${relative_path}.")
+      fi
+    done < <(find "${root_path}" -type f \( -name '*.sh' -o -name 'pre-*' -o -name 'post-*' \) -print)
+  }
+
+  collect_crlf_issues "${hooks_path}" "${hooks_label}"
+  collect_crlf_issues "${repo_hook_scripts_path}" "${repo_hook_scripts_label}"
+
+  printf '%s\n' "${issues[@]}"
+}
+
 test_required_copilot_safety_hook() {
   [[ -f "$1/safety-guard.json" ]]
 }
@@ -285,10 +354,16 @@ fi
 if [[ "${is_source_repository}" -eq 1 ]]; then
   git_hooks_path="${target_repo_path}/repo-template/.githooks"
   git_hooks_label="repo-template/.githooks"
+  gitattributes_path="${target_repo_path}/repo-template/.gitattributes"
+  gitattributes_label="repo-template/.gitattributes"
 else
   git_hooks_path="${target_repo_path}/.githooks"
   git_hooks_label=".githooks"
+  gitattributes_path="${target_repo_path}/.gitattributes"
+  gitattributes_label=".gitattributes"
 fi
+repo_hook_scripts_path="${target_repo_path}/.github/hooks/scripts"
+repo_hook_scripts_label=".github/hooks/scripts"
 
 is_git_repo=0
 if test_git_repository "${target_repo_path}"; then
@@ -344,6 +419,16 @@ if ((${#git_hook_issues[@]} == 0)) && [[ -d "${git_hooks_path}" ]]; then
   git_hooks_ok=1
 fi
 
+mapfile -t git_hook_line_ending_issues < <(get_git_hook_line_ending_issues "${git_hooks_path}" "${git_hooks_label}" "${repo_hook_scripts_path}" "${repo_hook_scripts_label}" "${gitattributes_path}" "${gitattributes_label}" 2>/dev/null || true)
+git_hook_line_ending_issues=("${git_hook_line_ending_issues[@]}")
+if ((${#git_hook_line_ending_issues[@]} == 1)) && [[ -z "${git_hook_line_ending_issues[0]}" ]]; then
+  git_hook_line_ending_issues=()
+fi
+git_hook_line_endings_ok=0
+if ((${#git_hook_line_ending_issues[@]} == 0)); then
+  git_hook_line_endings_ok=1
+fi
+
 tool_dependency_state="$(tool_dependency_state_json "${copilot_hooks_path}")"
 tool_dependencies_ok=1
 if grep -q '"missing":\[[^]]' <<<"${tool_dependency_state}"; then
@@ -368,6 +453,7 @@ missing=()
 [[ "${instructions_ok}" -eq 1 ]] || missing+=("repoInstructions")
 [[ "${copilot_hooks_ok}" -eq 1 ]] || missing+=("copilotHooks")
 [[ "${git_hooks_ok}" -eq 1 ]] || missing+=("gitHooksDirectory")
+[[ "${git_hook_line_endings_ok}" -eq 1 ]] || missing+=("gitHookLineEndings")
 [[ "${github_workflows_ok}" -eq 1 ]] || missing+=("githubWorkflows")
 [[ "${core_hooks_ok}" -eq 1 ]] || missing+=("coreHooksPath")
 [[ "${tool_dependencies_ok}" -eq 1 ]] || missing+=("toolDependencies")
@@ -417,6 +503,7 @@ if [[ "${as_json}" -eq 1 ]]; then
   append_check "repoInstructions" "repo instructions" "${instructions_ok}" "${instructions_path}" "$([[ "${instructions_ok}" -eq 1 ]] && printf 'repo-wide instructions が存在します。' || printf 'repo-wide instructions がありません。')"
   append_check "copilotHooks" "Copilot hooks" "${copilot_hooks_ok}" "${copilot_hooks_path}" "$([[ "${copilot_hooks_ok}" -eq 1 ]] && printf 'Copilot safety hook safety-guard.json が存在します。session continuity hooks は標準運用から封印済みで、必要な repo だけ明示 opt-in します。' || printf 'Copilot safety hook safety-guard.json がありません。')"
   append_check "gitHooksDirectory" "${git_hooks_label}" "${git_hooks_ok}" "${git_hooks_path}" "$([[ "${git_hooks_ok}" -eq 1 ]] && printf '%s に pre-commit / pre-push / secret-guard / commit-safety-guard が存在し、pre-commit / pre-push から呼び出されています。' "${git_hooks_label}" || printf '%s の必須 hook が不足または未接続です: %s' "${git_hooks_label}" "$(IFS=', '; printf '%s' "${git_hook_issues[*]}")")"
+  append_check "gitHookLineEndings" "git hook line endings" "${git_hook_line_endings_ok}" "${gitattributes_path}" "$([[ "${git_hook_line_endings_ok}" -eq 1 ]] && printf '%s に LF 固定ルールがあり、%s の shell hook は CRLF を含みません。' "${gitattributes_label}" "${git_hooks_label}" || printf 'Git hook line ending policy issue(s): %s' "$(IFS=' '; printf '%s' "${git_hook_line_ending_issues[*]}")")"
   append_check "githubWorkflows" "GitHub Actions workflows" "${github_workflows_ok}" "${github_workflows_path}" "${github_workflows_details}"
   append_check "coreHooksPath" "core.hooksPath" "${core_hooks_ok}" "${core_hooks_resolved_path:-${git_hooks_path}}" "${core_hooks_details}"
   append_check "toolDependencies" "hook tool dependencies" "${tool_dependencies_ok}" "${copilot_hooks_path}" "${tool_dependency_details}"
@@ -439,6 +526,7 @@ else
   report_check "${instructions_ok}" "repo instructions" "${instructions_path}" "$([[ "${instructions_ok}" -eq 1 ]] && printf 'repo-wide instructions が存在します。' || printf 'repo-wide instructions がありません。')"
   report_check "${copilot_hooks_ok}" "Copilot hooks" "${copilot_hooks_path}" "$([[ "${copilot_hooks_ok}" -eq 1 ]] && printf 'Copilot safety hook safety-guard.json が存在します。session continuity hooks は標準運用から封印済みで、必要な repo だけ明示 opt-in します。' || printf 'Copilot safety hook safety-guard.json がありません。')"
   report_check "${git_hooks_ok}" "${git_hooks_label}" "${git_hooks_path}" "$([[ "${git_hooks_ok}" -eq 1 ]] && printf '%s に pre-commit / pre-push / secret-guard / commit-safety-guard が存在し、pre-commit / pre-push から呼び出されています。' "${git_hooks_label}" || printf '%s の必須 hook が不足または未接続です: %s' "${git_hooks_label}" "$(IFS=', '; printf '%s' "${git_hook_issues[*]}")")"
+  report_check "${git_hook_line_endings_ok}" "git hook line endings" "${gitattributes_path}" "$([[ "${git_hook_line_endings_ok}" -eq 1 ]] && printf '%s に LF 固定ルールがあり、%s の shell hook は CRLF を含みません。' "${gitattributes_label}" "${git_hooks_label}" || printf 'Git hook line ending policy issue(s): %s' "$(IFS=' '; printf '%s' "${git_hook_line_ending_issues[*]}")")"
   report_check "${github_workflows_ok}" "GitHub Actions workflows" "${github_workflows_path}" "${github_workflows_details}"
   report_check "${core_hooks_ok}" "core.hooksPath" "${core_hooks_resolved_path:-${git_hooks_path}}" "${core_hooks_details}"
   report_check "${tool_dependencies_ok}" "hook tool dependencies" "${copilot_hooks_path}" "${tool_dependency_details}"

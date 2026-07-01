@@ -19,6 +19,19 @@
 - 作ったら focused test または手動確認を残す
 - 基本導線は [Skill Map](SKILL_MAP.md) に接続する
 
+## dispatch の考え方
+
+新しい skill や instructions を増やす前に、既存の基本導線で十分かを確認します。
+
+| 状況 | 既定の入口 |
+|---|---|
+| 用語や要求が固まっていない | `grill-with-docs` |
+| 構造判断が必要 | `design-and-plan` |
+| 実装契約が固まっている | `implement` |
+| 調査、修正、検証、ふりかえり、follow-up Issue 化までをつなげたい | `loop-engineering` |
+
+`loop-engineering` は専門 skill の代替ではなく、複数ステップを安定して回すための進行型です。authoring でも、失敗ログ、review 指摘、PrivateEval をまたぐ改善ではまずこの導線を検討します。
+
 ## skill の最小構成
 
 ```text

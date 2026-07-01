@@ -18,6 +18,22 @@ Loop Engineering は、AI に「作らせて終わり」にせず、観察、計
 - レビュー指摘や失敗ログから、改善する軸だけを選んで再実行したいとき
 - 後続のテンプレート、README、ADR、PR 本文へ Why を残す判断をしたいとき
 
+## 起動トリガー例
+
+- 失敗ログ、review 指摘、既知の TODO を見ながら、原因切り分けから修正、検証、次の改善まで一気通貫で進めたい
+- 1 回の修正で終わらず、「何が落ちたか」「どの軸だけ直すか」を分けて安定駆動させたい
+- 実装だけでなく、follow-up Issue、ふりかえり、公開可能な知識化まで残して次に接続したい
+
+## dispatch / handoff
+
+Loop Engineering は万能入口ではなく、**改善ループの進行型**です。各段階で次の専門 skill へ委譲します。
+
+- 要求や用語の曖昧さが残る: `grill-with-docs`
+- 実装契約を切る必要がある: `design-and-plan`
+- ローカル実装と focused verify に入る: `implement`
+- 評価観点や prompt 実験を深める: `skill-eval`, `empirical-prompt-tuning`
+- 後続 Issue や公開知識へ残す: `gh-issue-create`, `knowledge-capture`
+
 ## 使わない場面
 
 - 単純な質問への回答だけで、Act や Verify がない
@@ -143,6 +159,7 @@ Patch は「評価で落ちた軸に対する最小修正」です。
 | 要求や用語の曖昧さを先に潰す | `grill-with-docs` |
 | 実装契約と vertical slice を作る | `design-and-plan` |
 | ローカル実装を TDD で進める | `implement` |
+| follow-up を Issue 化して次のループへ渡す | `gh-issue-create` |
 | skill / agent / instructions を作る・直す | `copilot-authoring` |
 | skill / prompt の評価方法を選ぶ | `skill-eval` |
 | 別実行者に指示明瞭性を実証検査させる | `empirical-prompt-tuning` |
@@ -171,6 +188,7 @@ Loop Engineering はこれらを置き換える親プロセスではありませ
 - `assets/templates/pr-body.md` — PR 本文へ Why と PrivateEval を残すテンプレート
 - `assets/templates/commit-message.md` — commit message へ Why と Verify を残すテンプレート
 - `assets/templates/adr.md` — 戻しにくい判断を ADR 化するテンプレート
+- `gh-issue-create` — follow-up Issue を切って次のループへつなぐ
 - `skill-eval` — skill / prompt 評価の入口
 - `empirical-prompt-tuning` — 指示明瞭性の実証検査
 - `knowledge-capture` — 公開されうる知識の匿名化と捕捉

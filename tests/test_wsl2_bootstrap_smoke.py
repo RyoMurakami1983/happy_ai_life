@@ -59,13 +59,34 @@ def _write_required_git_hooks(repo: Path, relative: str) -> None:
     (hooks / "pre-commit").write_text(
         '#!/usr/bin/env sh\nsh "$(dirname "$0")/lib/commit-safety-guard.sh"\nsh "$(dirname "$0")/lib/secret-guard.sh"\n',
         encoding="utf-8",
+        newline="\n",
     )
     (hooks / "pre-push").write_text(
         '#!/usr/bin/env sh\nsh "$(dirname "$0")/lib/secret-guard.sh" --range "$remote_sha..$local_sha"\n',
         encoding="utf-8",
+        newline="\n",
     )
-    (hooks / "lib" / "secret-guard.sh").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
-    (hooks / "lib" / "commit-safety-guard.sh").write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+    (hooks / "lib" / "secret-guard.sh").write_text(
+        "#!/usr/bin/env sh\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    (hooks / "lib" / "commit-safety-guard.sh").write_text(
+        "#!/usr/bin/env sh\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
+def _write_git_hook_line_ending_policy(repo: Path, relative: str) -> None:
+    template_root = Path(relative).parent
+    policy_path = repo / template_root / ".gitattributes"
+    policy_path.parent.mkdir(parents=True, exist_ok=True)
+    policy_path.write_text(
+        ".githooks/** text eol=lf\n.github/hooks/scripts/*.sh text eol=lf\n",
+        encoding="utf-8",
+        newline="\n",
+    )
 
 
 def _tool_env(tmp_path: Path) -> dict[str, str]:
@@ -238,6 +259,8 @@ def test_sync_to_repo_and_repo_secure_check_sh_work_on_linux(tmp_path: Path) -> 
     assert (target_repo / ".github" / "hooks" / "safety-guard.json").exists()
     assert not (target_repo / ".github" / "hooks" / "session-continuity.json").exists()
     assert (target_repo / ".githooks" / "pre-commit").exists()
+    assert (target_repo / ".gitattributes").exists()
+    assert ".githooks/** text eol=lf" in (target_repo / ".gitattributes").read_text(encoding="utf-8")
     assert (target_repo / "policy" / "guard-policy.json").exists()
 
     install_completed = _bash(
@@ -282,6 +305,7 @@ def test_repo_secure_check_sh_reports_actionable_core_hooks_and_tool_dependency_
     (source_repo / ".github" / "workflows").mkdir()
     (source_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
     _write_required_git_hooks(source_repo, "repo-template/.githooks")
+    _write_git_hook_line_ending_policy(source_repo, "repo-template/.githooks")
 
     report_completed = _bash(
         ROOT / "scripts" / "repo-secure-check.sh",

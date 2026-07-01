@@ -198,6 +198,7 @@ mv .github/copilot-instructions.md .github/copilot-instructions.md.bak
 **症状**
 
 - `sync-to-repo.ps1` は通ったのに最初の commit が失敗する
+- `env: 'sh\r': No such file or directory` と出る
 
 **対処**
 
@@ -209,6 +210,19 @@ git config core.hooksPath
 ```
 
 `.githooks` と表示されるか確認してください。
+
+続けて `repo-secure-check` を実行し、`.githooks` の line ending 指摘がないか確認します。
+
+```powershell
+& $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath .
+```
+
+それでも `sh\r` が出る場合は、`.gitattributes` が同期されているか確認し、必要なら `sync-to-repo` を再実行してください。
+
+```powershell
+Get-Content .gitattributes
+& $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath .
+```
 
 ### 問題: `repo-secure-check.sh` で `core.hooksPath` が不足と出る
 

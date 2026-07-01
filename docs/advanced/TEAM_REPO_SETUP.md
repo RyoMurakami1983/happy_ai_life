@@ -11,6 +11,7 @@ Team Repo Setup は、既存の別 repo に HappyDefault の Copilot guidance、
 - `.github/workflows/*.yml`
 - `.githooks/pre-commit`
 - `.githooks/pre-push`
+- `.gitattributes`
 - `policy/guard-policy.json`
 - `policy/guard-policy.schema.json`
 
@@ -46,4 +47,5 @@ Team Repo Setup は、既存の別 repo に HappyDefault の Copilot guidance、
 
 - 変更は対象 repo に commit されます。
 - secret scan、hook bypass 禁止、force push 禁止、破壊的操作の禁止は弱めません。
+- `.gitattributes` により `.githooks/**` は LF 固定で配布されます。`repo-secure-check` が line ending を警告した場合は、同期漏れか手編集を疑ってください。
 - 旧 `REPO_BOOTSTRAP.md` は `archive/enterprise-hardening/docs/REPO_BOOTSTRAP.md` に退避しています。

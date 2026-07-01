@@ -263,6 +263,7 @@ fi
 target_repo_path="$(full_path "${target_repo_path}")"
 source_root="$(full_path "${source_root}")"
 source_path="$(full_path "${source_root}/${template_relative_path}")"
+template_root_path="$(dirname "${source_path}")"
 effective_policy_profile="$(resolve_policy_profile "${policy_profile}")"
 
 if [[ ! -d "${target_repo_path}" ]]; then
@@ -332,6 +333,10 @@ esac
 
 sync_directory "${source_path}" "${destination_path}" "${mirror}" "${dry_run}" "${verbose_log}" "${exclude_args[@]}"
 merge_append_only_file "${source_path}/.gitignore" "${destination_path}/.gitignore" "${dry_run}"
+if [[ -f "${template_root_path}/.gitattributes" ]]; then
+  write_section "Sync repo-template root text files"
+  merge_append_only_file "${template_root_path}/.gitattributes" "${target_repo_path}/.gitattributes" "${dry_run}"
+fi
 remove_excluded_policy_profile_artifacts "${target_repo_path}" "${effective_policy_profile}" "${dry_run}"
 
 should_sync_hooks=0
