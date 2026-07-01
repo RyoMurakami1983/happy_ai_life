@@ -145,3 +145,9 @@ docs/local_skill_evals/*
 # Eval run artifacts (not committed)
 docs/local_skill_evals/**/runs/
 docs/local_skill_evals/**/viewer.html
+
+# PrivateEval reusable cases may live in evals/, but raw artifacts stay local
+evals/**/runs/
+evals/**/viewer.html
+evals/**/*transcript*
+evals/**/*raw*

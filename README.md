@@ -49,6 +49,9 @@ copilot plugin update happy-coding@happy-ai-life-marketplace
 | WSL2 での現状を確認する | [WSL2 開発調査](docs/WSL2_DEVELOPMENT.md) |
 | 確認方針を見る | [品質ゲート](docs/QUALITY_GATES.md) |
 | skill / agent / instructions を作る | [作成ガイド](docs/AUTHORING.md) |
+| skill の地図を見る | [Skill Map](docs/SKILL_MAP.md) |
+| privateEval の方針を見る | [PrivateEval](docs/PRIVATE_EVAL.md) |
+| skill / privateEval の整理計画を見る | [Skill Ecosystem Action Plan](docs/SKILL_ECOSYSTEM_ACTION_PLAN.md) |
 | よくある質問を見る | [FAQ](docs/FAQ.md) |
 | 困ったとき | [トラブルシューティング](docs/TROUBLESHOOTING.md) |
 
