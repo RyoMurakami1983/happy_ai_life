@@ -22,6 +22,7 @@ copilot-authoring
     -> loop-engineering
 
 loop-engineering
+  -> happy-add-issue
   -> grill-with-docs
   -> design-and-plan
   -> implement
@@ -39,17 +40,19 @@ domain-modeling
 | skill | 主な使いどころ | 接続先 |
 | --- | --- | --- |
 | `ask-happy` | どの Happy AI Life skill を使うか迷う | 各基本 skill |
+| `beginner-readme-ops` | 初心者向けの README / 運用手順を構造化する | `grill-with-docs` |
 | `compact-context` | 長い文脈を次工程へ圧縮する | `session-handoff`, `knowledge-capture` |
 | `copilot-authoring` | skill / agent / instructions を作る・改善する | `skill-eval`, `domain-modeling` |
 | `domain-modeling` | repo 固有語彙を `CONTEXT.md` に濃縮する | `grill-with-docs`, `copilot-authoring` |
 | `empirical-prompt-tuning` | 別実行者で指示の明瞭性を検査する | `skill-eval` |
 | `furikaeri` | ふりかえりを残す | `knowledge-capture` |
+| `happy-add-issue` | 雑なメモから最低限の Issue 骨格を作って backlog 化する | `gh-issue-create` |
 | `gh-issue-create` | Issue を作る | `gh-pr-create` |
 | `gh-pr-create` | PR を作る | `deep-review-preflight` |
 | `gh-pr-respond` | PR review へ対応する | `deep-review-preflight`, `git-commit` |
 | `git-commit` | 原子的 commit を作る | `gh-pr-create` |
 | `knowledge-capture` | 公開可能な知識として捕捉する | `furikaeri` |
-| `loop-engineering` | 調査、修正、検証、評価、follow-up まで改善ループを回す | `grill-with-docs`, `design-and-plan`, `implement`, `skill-eval`, `knowledge-capture`, `gh-issue-create` |
+| `loop-engineering` | 調査、修正、検証、評価、follow-up まで改善ループを回す | `grill-with-docs`, `design-and-plan`, `implement`, `skill-eval`, `knowledge-capture`, `happy-add-issue`, `gh-issue-create` |
 | `low-cost-mode` | 低燃費で進める | すべての軽量作業 |
 | `pptx` | PowerPoint ファイルを扱う | 文書系作業 |
 | `session-handoff` | session を引き継げる形にする | `compact-context` |
