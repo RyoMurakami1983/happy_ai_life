@@ -67,11 +67,12 @@ handoff に含めるもの:
 - public interface と behavior list
 - vertical slices（HITL / AFK を明示）
 - 各 slice の最初の test 観点
+- `artifacts:` フィールド（`artifacts: conversation-only` または保存した path の列挙）
 - 実行 command
 - 未決定事項と戻り先
 
-設計書が必要な場合は `docs/design/NNN_TECHNICAL_DESIGN.md` に保存します。
-実装進行用の checklist が必要な場合だけ `docs/plan/NNN_PLAN.md` を作ります。
+設計書が必要な場合、またはユーザーが設計書の保存を明示した場合は `docs/design/NNN_TECHNICAL_DESIGN.md` に保存します。
+実装進行用の checklist が必要な場合、またはユーザーが計画書の保存を明示した場合は `docs/plan/NNN_PLAN.md` を作ります。
 成果物の path、命名、番号共有は `references/WORK_ARTIFACTS.md` に従います。
 
 ## 注意点
