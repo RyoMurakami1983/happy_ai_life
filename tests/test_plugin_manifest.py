@@ -39,6 +39,9 @@ def test_plugin_manifest_versions_match_marketplace_entries() -> None:
 
     for manifest_path in sorted(PLUGIN_DIR.glob("*/plugin.json")):
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        marketplace_plugin = marketplace_plugins[manifest["name"]]
+        marketplace_plugin = marketplace_plugins.get(manifest["name"])
 
+        assert marketplace_plugin is not None, (
+            f"Missing marketplace entry for plugin {manifest['name']}"
+        )
         assert manifest["version"] == marketplace_plugin["version"]

@@ -22,7 +22,13 @@ def test_skill_map_lists_every_distributed_skill_once() -> None:
     )
 
     for skill_name in skill_names:
-        assert skill_map.count(f"`{skill_name}`") >= 1
+        occurrences = len(
+            re.findall(rf"^\| `{re.escape(skill_name)}` \|", skill_map, flags=re.MULTILINE)
+        )
+        assert occurrences == 1, (
+            f"Expected `{skill_name}` to appear exactly once as a catalog entry in "
+            f"SKILL_MAP.md, but found {occurrences}."
+        )
 
 
 def test_skill_map_does_not_reference_missing_skill_directories() -> None:
