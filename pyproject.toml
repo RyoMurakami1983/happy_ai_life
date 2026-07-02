@@ -22,9 +22,6 @@ dev = [
 [tool.ty.environment]
 extra-paths = [
     "./plugins/happy-core/skills/pptx/scripts",
-    "./plugins/happy-coding/skills/impl-and-ship/orchestrator",
-    "./plugins/happy-coding/skills/impl-and-ship/checkpoints",
-    "./plugins/happy-coding/skills/sdd/sub_skills/split_multi_repo_plan",
 ]
 
 [tool.ty.src]
