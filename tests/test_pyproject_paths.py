@@ -17,6 +17,20 @@ def test_ty_extra_paths_point_to_existing_directories() -> None:
 
     for relative_path in extra_paths:
         assert isinstance(relative_path, str)
-        assert (ROOT / relative_path).is_dir(), (
+
+        path_obj = Path(relative_path)
+        assert not path_obj.is_absolute(), (
+            f"Expected relative ty extra-path, got: {relative_path}"
+        )
+        assert ".." not in path_obj.parts, (
+            f"Ty extra-path escapes repo root: {relative_path}"
+        )
+
+        candidate_path = (ROOT / path_obj).resolve(strict=False)
+        repo_root = ROOT.resolve(strict=False)
+        assert candidate_path.is_relative_to(repo_root), (
+            f"Ty extra-path escapes repo root: {relative_path}"
+        )
+        assert candidate_path.is_dir(), (
             f"Missing ty extra-path directory: {relative_path}"
         )
