@@ -28,6 +28,8 @@ REQUIRED_SPECIALIZED_RULE_IDS = {
     "git-commit-secret-scan",
     "git-push-secret-scan",
     "gh-pr-create-secret-scan",
+    "gh-gist-public-review",
+    "gh-gist-anonymization-review",
 }
 
 MINIMAL_FALLBACK_POLICY_DATA = json.loads(
@@ -61,6 +63,8 @@ MINIMAL_FALLBACK_POLICY_DATA = json.loads(
         {"id": "git-commit-secret-scan", "kind": "specialized", "description": "Run staged gitleaks scan before git commit."},
         {"id": "git-push-secret-scan", "kind": "specialized", "description": "Run unpushed-commit gitleaks scan before git push."},
         {"id": "gh-pr-create-secret-scan", "kind": "specialized", "description": "Run unpushed-commit gitleaks scan before gh pr create."},
+        {"id": "gh-gist-public-review", "kind": "specialized", "description": "Ask for human review when a gist command explicitly requests public visibility."},
+        {"id": "gh-gist-anonymization-review", "kind": "specialized", "description": "Ask for human review on gist writes so anonymization is checked; inline URLs, IPs, or GitHub repo references strengthen the warning message."},
         {"id": "rm-rf-root", "kind": "pattern", "matchAgainst": "normalized", "description": "Block recursive forced rm against root.", "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\\.exe)?)(?:\\s+\\S+)*\\s+-(?:c|lc|command)\\s+(?:\\\"|')?)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*r[a-z]*f[a-z]*[^;&|]*\\s+\\/(?=\\s|$|[;&|]|[\\\"'])"},
         {"id": "rm-fr-root", "kind": "pattern", "matchAgainst": "normalized", "description": "Block forced recursive rm against root.", "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\\.exe)?)(?:\\s+\\S+)*\\s+-(?:c|lc|command)\\s+(?:\\\"|')?)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*f[a-z]*r[a-z]*[^;&|]*\\s+\\/(?=\\s|$|[;&|]|[\\\"'])"},
         {"id": "rm-r-f-root", "kind": "pattern", "matchAgainst": "normalized", "description": "Block split recursive forced rm against root.", "pattern": "(^|[;&|]\\s*)(?:(?:sudo|doas)\\s+)?(?:(?:cmd|cmd\\.exe)\\s+\\/c\\s+)?(?:(?:sudo|doas)\\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\\.exe)?)(?:\\s+\\S+)*\\s+-(?:c|lc|command)\\s+(?:\\\"|')?)?(?:(?:sudo|doas)\\s+)?rm[^;&|]*\\s-[a-z]*r[a-z]*(?=\\s|$|[;&|])[^;&|]*\\s-[a-z]*f[a-z]*[^;&|]*\\s+\\/(?=\\s|$|[;&|]|[\\\"'])"},
@@ -686,6 +690,59 @@ def _extract_command(tool_args: Any) -> str | None:
     return None
 
 
+def _is_gist_command(compact: str) -> bool:
+    is_gh_gist_create_or_edit = re.search(
+        r"(^|[;&|]\s*)gh\s+gist\s+(?:create|edit)(\s|$)",
+        compact,
+    )
+    has_explicit_gist_write_method = re.search(
+        r"(^|\s)(?:--method(?:=|\s+)|-x(?:\s*|=))(?:post|patch)(\s|$)",
+        compact,
+    )
+    has_explicit_gist_read_method = re.search(
+        r"(^|\s)(?:--method(?:=|\s+)|-x(?:\s*|=))get(\s|$)",
+        compact,
+    )
+    has_field_driven_gist_write = re.search(
+        r"(^|\s)(?:--raw-field|--field|-f)(?:=|\s)",
+        compact,
+    )
+    is_gh_api_gists_write = (
+        re.search(r"(^|[;&|]\s*)gh\s+api(\s|$)", compact) is not None
+        and re.search(r"(?:^|\s)[\"']?(?:https?://api\.github\.com)?/?gists(?:\s|$|[/?#\"'])", compact) is not None
+        and (
+            has_explicit_gist_write_method is not None
+            or (
+                has_field_driven_gist_write is not None
+                and has_explicit_gist_read_method is None
+            )
+        )
+    )
+    return is_gh_gist_create_or_edit is not None or is_gh_api_gists_write
+
+
+def _gist_command_requests_public_visibility(compact: str) -> bool:
+    return (
+        re.search(r"(^|\s)(?:--public|-p)(\s|$)", compact) is not None
+        or re.search(r"(^|\s)(?:--raw-field|--field|-f)(?:=|\s+)[\"']?public=true[\"']?(\s|$|[;&|])", compact) is not None
+        or re.search(r'"public"\s*:\s*true', compact) is not None
+    )
+
+
+def _gist_command_has_inline_sensitive_signal(compact: str) -> bool:
+    url_matches = re.findall(r"https?://[^\s]+", compact)
+    for match in url_matches:
+        if re.match(r"^https?://api\.github\.com/?gists(?:$|[/?#\"'])", match) is None:
+            return True
+    patterns = (
+        r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
+        r"github\.com/[^\s]+/[^\s]+",
+        r"git@github\.com:[^\s]+/[^\s]+",
+        r"\brepo:[^\s]+/[^\s]+",
+    )
+    return any(re.search(pattern, compact) is not None for pattern in patterns)
+
+
 def _evaluate_shell(payload: HookPayload, *, policy: GuardPolicy, context: EvaluationContext) -> GuardDecision:
     command = _extract_command(payload.tool_args)
     if command is None or not command.strip():
@@ -747,12 +804,37 @@ def _evaluate_shell(payload: HookPayload, *, policy: GuardPolicy, context: Evalu
     if _rule_enabled(policy, "gh-pr-create-secret-scan") and is_gh_pr_create and context.unpushed_secret_scan_reason_for_pr:
         return deny(context.unpushed_secret_scan_reason_for_pr)
 
+    is_gist_command = _is_gist_command(compact)
+    gist_requests_public_visibility = _rule_enabled(policy, "gh-gist-public-review") and is_gist_command and _gist_command_requests_public_visibility(compact)
+    gist_requires_anonymization_review = _rule_enabled(policy, "gh-gist-anonymization-review") and is_gist_command
+    gist_has_inline_sensitive_signal = gist_requires_anonymization_review and _gist_command_has_inline_sensitive_signal(compact)
+
     for rule in policy.deny_command_rules:
         if rule.kind != "pattern" or rule.pattern is None:
             continue
         candidate = compact if rule.match_against == "compact" else normalized
         if re.search(rule.pattern, candidate):
             return deny(f"Blocked potentially destructive command: {command}")
+    if gist_requests_public_visibility and gist_has_inline_sensitive_signal:
+        return ask(
+            "Public gist request detected, and the command also contains inline URL, IP, or GitHub repository reference. Happy AI Life defaults to secret gist, so confirm both the visibility and anonymization before continuing."
+        )
+    if gist_requests_public_visibility and gist_requires_anonymization_review:
+        return ask(
+            "Public gist request detected. Happy AI Life defaults to secret gist, so confirm both the visibility and anonymization of the gist content before continuing."
+        )
+    if gist_requests_public_visibility:
+        return ask(
+            "Public gist request detected. Happy AI Life defaults to secret gist, so confirm that this gist must be public before continuing."
+        )
+    if gist_requires_anonymization_review and not gist_has_inline_sensitive_signal:
+        return ask(
+            "Gist command detected. Confirm the gist content is anonymized and safe to share before continuing."
+        )
+    if gist_has_inline_sensitive_signal:
+        return ask(
+            "Gist command contains inline URL, IP, or GitHub repository reference. Confirm the gist stays anonymous and free of private identifiers before continuing."
+        )
     return allow()
 
 

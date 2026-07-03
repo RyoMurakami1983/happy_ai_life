@@ -143,6 +143,16 @@
       "description": "Run unpushed-commit gitleaks scan before gh pr create."
     },
     {
+      "id": "gh-gist-public-review",
+      "kind": "specialized",
+      "description": "Ask for human review when a gist command explicitly requests public visibility."
+    },
+    {
+      "id": "gh-gist-anonymization-review",
+      "kind": "specialized",
+      "description": "Ask for human review on gist writes so anonymization is checked; inline URLs, IPs, or GitHub repo references strengthen the warning message."
+    },
+    {
       "id": "rm-rf-root",
       "kind": "pattern",
       "matchAgainst": "normalized",
