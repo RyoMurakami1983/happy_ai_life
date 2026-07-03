@@ -23,6 +23,8 @@ default_active_rule_ids=(
   git-commit-secret-scan
   git-push-secret-scan
   gh-pr-create-secret-scan
+  gh-gist-public-review
+  gh-gist-anonymization-review
   rm-rf-root
   rm-fr-root
   rm-r-f-root
@@ -66,6 +68,8 @@ required_specialized_rule_ids=(
   git-commit-secret-scan
   git-push-secret-scan
   gh-pr-create-secret-scan
+  gh-gist-public-review
+  gh-gist-anonymization-review
 )
 default_pattern_rules_json="$(cat <<'JSON'
 [
@@ -138,6 +142,9 @@ deny() {
 }
 
 ask() {
+  if [[ "${hook_event}" == "permissionRequest" ]]; then
+    return
+  fi
   jq -nc --arg reason "$1" \
     '{permissionDecision:"ask", permissionDecisionReason:$reason}'
 }
@@ -221,7 +228,7 @@ load_guard_policy() {
     and (.denyCommandRules | type == "array" and length > 0)
     and all(.denyCommandRules[]; (.id | type == "string" and test("\\S")) and (.kind | IN("specialized"; "pattern")) and (if .kind == "pattern" then ((.pattern | type == "string" and test("\\S")) and (.matchAgainst | IN("normalized"; "compact")) and (.pattern as $pattern | try ("" | test($pattern)) catch false)) else ((has("pattern") | not) and (has("matchAgainst") | not)) end))
     and unique_values([.denyCommandRules[].id])
-    and (["maintenance-mode-manual-only","git-hooks-no-verify","git-hooks-path-change","git-hooks-update-index-bypass","git-push-force","git-commit-secret-scan","git-push-secret-scan","gh-pr-create-secret-scan"] | all(.[] as $id | any($policy.denyCommandRules[]; .id == $id)))
+    and (["maintenance-mode-manual-only","git-hooks-no-verify","git-hooks-path-change","git-hooks-update-index-bypass","git-push-force","git-commit-secret-scan","git-push-secret-scan","gh-pr-create-secret-scan","gh-gist-public-review","gh-gist-anonymization-review"] | all(.[] as $id | any($policy.denyCommandRules[]; .id == $id)))
   ' "${policy_path}" >/dev/null 2>&1; then
     return 0
   fi
@@ -984,6 +991,60 @@ if rule_enabled "gh-pr-create-secret-scan" && [[ "${is_gh_pr_create}" -eq 1 ]]; 
   scan_unpushed_for_secrets "gh pr create" || exit 0
 fi
 
+is_gh_gist_create_or_edit=0
+is_gh_api_gists_write=0
+has_public_gist_visibility=0
+has_inline_gist_sensitive_signal=0
+grep -E -q '(^|[;&|][[:space:]]*)gh[[:space:]]+gist[[:space:]]+(create|edit)([[:space:]]|$)' <<<"${compact}" && is_gh_gist_create_or_edit=1
+if grep -E -q '(^|[;&|][[:space:]]*)gh[[:space:]]+api([[:space:]]|$)' <<<"${compact}" &&
+  grep -E -q "(^|[[:space:]])[\"']?(https?://api\\.github\\.com)?/?gists([[:space:]]|$|[/?#\"'])" <<<"${compact}" &&
+  { grep -E -q '(^|[[:space:]])(--method(=|[[:space:]]+)|-x([[:space:]]*|=))(post|patch)([[:space:]]|$)' <<<"${compact}" ||
+    { grep -E -q '(^|[[:space:]])(--raw-field|--field|-f)(=|[[:space:]])' <<<"${compact}" &&
+      ! grep -E -q '(^|[[:space:]])(--method(=|[[:space:]]+)|-x([[:space:]]*|=))get([[:space:]]|$)' <<<"${compact}"; }; }; then
+  is_gh_api_gists_write=1
+fi
+
+if grep -E -q '(^|[[:space:]])(--public|-p)([[:space:]]|$)' <<<"${compact}" ||
+  grep -E -q "(^|[[:space:]])(--raw-field|--field|-f)(=|[[:space:]]+)[\"']?public=true[\"']?([[:space:]]|$|[;&|])" <<<"${compact}" ||
+  grep -E -q '"public"[[:space:]]*:[[:space:]]*true' <<<"${compact}"; then
+  has_public_gist_visibility=1
+fi
+
+has_non_endpoint_url=0
+gist_endpoint_url_regex="^https?://api\\.github\\.com/?gists($|[/?#\"'])"
+while IFS= read -r url; do
+  [[ -z "${url}" ]] && continue
+  if [[ ! "${url}" =~ $gist_endpoint_url_regex ]]; then
+    has_non_endpoint_url=1
+    break
+  fi
+done < <(grep -Eo 'https?://[^[:space:]]+' <<<"${compact}" || true)
+
+if [[ "${has_non_endpoint_url}" -eq 1 ]] ||
+  grep -E -q '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b|github\.com/[^[:space:]]+/[^[:space:]]+|git@github\.com:[^[:space:]]+/[^[:space:]]+|\brepo:[^[:space:]]+/[^[:space:]]+' <<<"${compact}"; then
+  has_inline_gist_sensitive_signal=1
+fi
+
+is_gist_command=0
+if [[ "${is_gh_gist_create_or_edit}" -eq 1 || "${is_gh_api_gists_write}" -eq 1 ]]; then
+  is_gist_command=1
+fi
+
+should_ask_for_public_gist=0
+if rule_enabled "gh-gist-public-review" && [[ "${is_gist_command}" -eq 1 && "${has_public_gist_visibility}" -eq 1 ]]; then
+  should_ask_for_public_gist=1
+fi
+
+should_ask_for_gist_anonymization=0
+if rule_enabled "gh-gist-anonymization-review" && [[ "${is_gist_command}" -eq 1 ]]; then
+  should_ask_for_gist_anonymization=1
+fi
+
+has_inline_sensitive_gist_anonymization_signal=0
+if [[ "${should_ask_for_gist_anonymization}" -eq 1 && "${has_inline_gist_sensitive_signal}" -eq 1 ]]; then
+  has_inline_sensitive_gist_anonymization_signal=1
+fi
+
 for rule_json in "${pattern_rules[@]}"; do
   rule_id="$(jq -r '.id' <<<"${rule_json}")"
   if ! rule_enabled "${rule_id}"; then
@@ -1002,6 +1063,31 @@ for rule_json in "${pattern_rules[@]}"; do
     exit 0
   fi
 done
+
+if [[ "${should_ask_for_public_gist}" -eq 1 && "${has_inline_sensitive_gist_anonymization_signal}" -eq 1 ]]; then
+  ask "Public gist request detected, and the command also contains inline URL, IP, or GitHub repository reference. Happy AI Life defaults to secret gist, so confirm both the visibility and anonymization before continuing."
+  exit 0
+fi
+
+if [[ "${should_ask_for_public_gist}" -eq 1 && "${should_ask_for_gist_anonymization}" -eq 1 ]]; then
+  ask "Public gist request detected. Happy AI Life defaults to secret gist, so confirm both the visibility and anonymization of the gist content before continuing."
+  exit 0
+fi
+
+if [[ "${should_ask_for_public_gist}" -eq 1 ]]; then
+  ask "Public gist request detected. Happy AI Life defaults to secret gist, so confirm that this gist must be public before continuing."
+  exit 0
+fi
+
+if [[ "${should_ask_for_gist_anonymization}" -eq 1 && "${has_inline_sensitive_gist_anonymization_signal}" -eq 0 ]]; then
+  ask "Gist command detected. Confirm the gist content is anonymized and safe to share before continuing."
+  exit 0
+fi
+
+if [[ "${has_inline_sensitive_gist_anonymization_signal}" -eq 1 ]]; then
+  ask "Gist command contains inline URL, IP, or GitHub repository reference. Confirm the gist stays anonymous and free of private identifiers before continuing."
+  exit 0
+fi
 
 # allow: 何も返さない
 exit 0

@@ -17,7 +17,9 @@ function Get-RequiredSpecializedDenyRuleIds {
         "git-push-force",
         "git-commit-secret-scan",
         "git-push-secret-scan",
-        "gh-pr-create-secret-scan"
+        "gh-pr-create-secret-scan",
+        "gh-gist-public-review",
+        "gh-gist-anonymization-review"
     )
 }
 
@@ -69,6 +71,8 @@ function Get-MinimalGuardPolicy {
             [pscustomobject]@{ id = "git-commit-secret-scan"; kind = "specialized"; description = "Run staged gitleaks scan before git commit." }
             [pscustomobject]@{ id = "git-push-secret-scan"; kind = "specialized"; description = "Run unpushed-commit gitleaks scan before git push." }
             [pscustomobject]@{ id = "gh-pr-create-secret-scan"; kind = "specialized"; description = "Run unpushed-commit gitleaks scan before gh pr create." }
+            [pscustomobject]@{ id = "gh-gist-public-review"; kind = "specialized"; description = "Ask for human review when a gist command explicitly requests public visibility." }
+            [pscustomobject]@{ id = "gh-gist-anonymization-review"; kind = "specialized"; description = "Ask for human review on gist writes so anonymization is checked; inline URLs, IPs, or GitHub repo references strengthen the warning message." }
             [pscustomobject]@{ id = "rm-rf-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block recursive forced rm against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*r[a-z]*f[a-z]*[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
             [pscustomobject]@{ id = "rm-fr-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block forced recursive rm against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*f[a-z]*r[a-z]*[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
             [pscustomobject]@{ id = "rm-r-f-root"; kind = "pattern"; matchAgainst = "normalized"; description = "Block split recursive forced rm against root."; pattern = '(^|[;&|]\s*)(?:(?:sudo|doas)\s+)?(?:(?:cmd|cmd\.exe)\s+\/c\s+)?(?:(?:sudo|doas)\s+)?(?:(?:(?:bash|sh|powershell|pwsh)(?:\.exe)?)(?:\s+\S+)*\s+-(?:c|lc|command)\s+(?:"|'')?)?(?:(?:sudo|doas)\s+)?rm[^;&|]*\s-[a-z]*r[a-z]*(?=\s|$|[;&|])[^;&|]*\s-[a-z]*f[a-z]*[^;&|]*\s+\/(?=\s|$|[;&|]|["''])' }
@@ -1103,6 +1107,21 @@ if ((Test-DenyCommandRuleEnabled -RuleId "maintenance-mode-manual-only") -and ($
 $isGitCommit = $compact -match "(^|[;&|]\s*)git\s+commit(\s|$)"
 $isGitPush = $compact -match "(^|[;&|]\s*)git\s+push(\s|$)"
 $isGhPrCreate = $compact -match "(^|[;&|]\s*)gh\s+pr\s+create(\s|$)"
+$isGhGistCreateOrEdit = $compact -match "(^|[;&|]\s*)gh\s+gist\s+(?:create|edit)(\s|$)"
+$hasExplicitGistWriteMethod = $compact -match "(^|\s)(?:--method(?:=|\s+)|-x(?:\s*|=))(?:post|patch)(\s|$)"
+$hasExplicitGistReadMethod = $compact -match "(^|\s)(?:--method(?:=|\s+)|-x(?:\s*|=))get(\s|$)"
+$hasFieldDrivenGistWrite = $compact -match "(^|\s)(?:--raw-field|--field|-f)(?:=|\s)"
+$isGhApiGistsWrite = ($compact -match "(^|[;&|]\s*)gh\s+api(\s|$)") -and ($compact -match "(?:^|\s)[""']?(?:https?://api\.github\.com)?/?gists(?:\s|$|[/?#""'])") -and ($hasExplicitGistWriteMethod -or ($hasFieldDrivenGistWrite -and -not $hasExplicitGistReadMethod))
+$isGistCommand = $isGhGistCreateOrEdit -or $isGhApiGistsWrite
+$hasPublicGistVisibility = ($compact -match "(^|\s)(?:--public|-p)(\s|$)") -or ($compact -match "(^|\s)(?:--raw-field|--field|-f)(?:=|\s+)[""']?public=true[""']?(\s|$|[;&|])") -or ($compact -match '"public"\s*:\s*true')
+$hasNonEndpointUrl = $false
+foreach ($match in [regex]::Matches($compact, "https?://[^\s]+")) {
+    if ($match.Value -notmatch "^https?://api\.github\.com/?gists(?:$|[/?#""'])") {
+        $hasNonEndpointUrl = $true
+        break
+    }
+}
+$hasInlineGistSensitiveSignal = $hasNonEndpointUrl -or ($compact -match "\b(?:\d{1,3}\.){3}\d{1,3}\b") -or ($compact -match "github\.com/[^\s]+/[^\s]+") -or ($compact -match "git@github\.com:[^\s]+/[^\s]+") -or ($compact -match "\brepo:[^\s]+/[^\s]+")
 $isGitConfigHooksPathWrite = ($compact -match "(^|[;&|]\s*)git\s+config(\s|$)") -and ($compact -match "(^|\s)core\.hookspath(?:\s*=\s*|\s+)[^;&|]+")
 $isGitConfigHooksPathUnset = $compact -match "(^|[;&|]\s*)git\s+config(?:\s+[^;&|]+)*\s+--unset(?:-all)?(?:\s+[^;&|]+)*\s+core\.hookspath(?=\s*($|[;&|]))"
 $isGitConfigRemoveCoreSection = $compact -match "(^|[;&|]\s*)git\s+config(?:\s+[^;&|]+)*\s+--remove-section(?:\s+[^;&|]+)*\s+core(?=\s*($|[;&|]))"
@@ -1157,8 +1176,12 @@ if ((Test-DenyCommandRuleEnabled -RuleId "gh-pr-create-secret-scan") -and $isGhP
     }
 }
 
-# Block list: keep it minimal and destructive-only at first
-$denyPatterns = @(
+ $shouldAskForPublicGist = (Test-DenyCommandRuleEnabled -RuleId "gh-gist-public-review") -and $isGistCommand -and $hasPublicGistVisibility
+ $shouldAskForGistAnonymization = (Test-DenyCommandRuleEnabled -RuleId "gh-gist-anonymization-review") -and $isGistCommand
+ $hasInlineSensitiveGistAnonymizationSignal = $shouldAskForGistAnonymization -and $hasInlineGistSensitiveSignal
+
+ # Block list: keep it minimal and destructive-only at first
+ $denyPatterns = @(
     foreach ($rule in @($script:GuardPolicy.denyCommandRules)) {
         if ([string]$rule.kind -eq "pattern") {
             [pscustomobject]@{
@@ -1175,6 +1198,31 @@ foreach ($rule in $denyPatterns) {
         Write-Deny ("Blocked potentially destructive command: {0}" -f $command)
         exit 0
     }
+}
+
+if ($shouldAskForPublicGist -and $hasInlineSensitiveGistAnonymizationSignal) {
+    Write-Ask "Public gist request detected, and the command also contains inline URL, IP, or GitHub repository reference. Happy AI Life defaults to secret gist, so confirm both the visibility and anonymization before continuing."
+    exit 0
+}
+
+if ($shouldAskForPublicGist -and $shouldAskForGistAnonymization) {
+    Write-Ask "Public gist request detected. Happy AI Life defaults to secret gist, so confirm both the visibility and anonymization of the gist content before continuing."
+    exit 0
+}
+
+if ($shouldAskForPublicGist) {
+    Write-Ask "Public gist request detected. Happy AI Life defaults to secret gist, so confirm that this gist must be public before continuing."
+    exit 0
+}
+
+if ($shouldAskForGistAnonymization -and -not $hasInlineSensitiveGistAnonymizationSignal) {
+    Write-Ask "Gist command detected. Confirm the gist content is anonymized and safe to share before continuing."
+    exit 0
+}
+
+if ($hasInlineSensitiveGistAnonymizationSignal) {
+    Write-Ask "Gist command contains inline URL, IP, or GitHub repository reference. Confirm the gist stays anonymous and free of private identifiers before continuing."
+    exit 0
 }
 
 # Allow by default (do nothing)

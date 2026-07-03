@@ -5,24 +5,26 @@ from pathlib import Path
 
 import pytest
 
-from scripts.guard_policy import EvaluationContext, evaluate_payload
+from scripts.guard_policy import EvaluationContext, HookEvent, evaluate_payload
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _evaluate(payload: dict[str, object], *, home: Path, hook_event: str = "preToolUse") -> dict[str, object] | None:
+def _evaluate(
+    payload: dict[str, object], *, home: Path, hook_event: HookEvent = "preToolUse"
+) -> dict[str, object] | None:
     decision = evaluate_payload(
         payload,
         context=EvaluationContext(
-            hook_event=hook_event,  # type: ignore[arg-type]
+            hook_event=hook_event,
             cwd=str(ROOT),
             repo_root=str(ROOT),
             home=str(home),
             policy_path=str(ROOT / "policy" / "guard-policy.json"),
         ),
     )
-    return decision.render(hook_event)  # type: ignore[arg-type]
+    return decision.render(hook_event)
 
 
 @pytest.mark.parametrize(
@@ -103,3 +105,130 @@ def test_guard_denies_direct_maintenance_mode_state_edit(tmp_path: Path) -> None
         "interrupt": True,
     }
 
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "gh gist create note.md --public",
+        "gh gist create -p note.md",
+        "echo https://github.com/MyOrg/private-repo | gh gist create -",
+        'gh api --method POST /gists --raw-field public=true --raw-field description="see 10.0.0.12"',
+        'gh api --method POST /gists --raw-field "public=true"',
+        "gh api --method=POST /gists --raw-field public=true",
+        'gh api --method POST "https://api.github.com/gists" --raw-field public=true',
+        "gh api gists -f public=true -F files[a.txt][content]=hello",
+        "gh api /gists --field=public=true -F files[a.txt][content]=hello",
+    ],
+)
+def test_guard_asks_for_public_or_inline_sensitive_gist_commands(
+    tmp_path: Path, command: str
+) -> None:
+    response = _evaluate(
+        {"toolName": "powershell", "toolArgs": {"command": command}},
+        home=tmp_path,
+    )
+
+    assert response is not None
+    assert response["permissionDecision"] == "ask"
+
+
+def test_guard_asks_for_file_based_secret_gist_review(tmp_path: Path) -> None:
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {"command": 'gh gist create issue_evidence.md --desc "anonymous memo"'},
+        },
+        home=tmp_path,
+    )
+
+    assert response is not None
+    assert response["permissionDecision"] == "ask"
+    assert response["permissionDecisionReason"] == (
+        "Gist command detected. Confirm the gist content is anonymized and safe to share before continuing."
+    )
+
+
+def test_guard_combines_public_and_sensitive_gist_review_reason(tmp_path: Path) -> None:
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": 'gh api --method POST /gists --raw-field public=true --raw-field description="see 10.0.0.12"'
+            },
+        },
+        home=tmp_path,
+    )
+
+    assert response is not None
+    assert response["permissionDecision"] == "ask"
+    reason = response["permissionDecisionReason"]
+    assert isinstance(reason, str)
+    assert "visibility" in reason
+    assert "anonymization" in reason
+
+
+def test_guard_does_not_treat_github_api_endpoint_as_sensitive_inline_url(
+    tmp_path: Path,
+) -> None:
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": "gh api --method POST https://api.github.com/gists --raw-field files[a.txt][content]=hello"
+            },
+        },
+        home=tmp_path,
+    )
+
+    assert response is not None
+    assert response["permissionDecision"] == "ask"
+    assert response["permissionDecisionReason"] == (
+        "Gist command detected. Confirm the gist content is anonymized and safe to share before continuing."
+    )
+
+
+def test_guard_does_not_treat_quoted_github_api_endpoint_as_sensitive_inline_url(
+    tmp_path: Path,
+) -> None:
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {
+                "command": 'gh api --method POST "https://api.github.com/gists" --raw-field files[a.txt][content]=hello'
+            },
+        },
+        home=tmp_path,
+    )
+
+    assert response is not None
+    assert response["permissionDecision"] == "ask"
+    assert response["permissionDecisionReason"] == (
+        "Gist command detected. Confirm the gist content is anonymized and safe to share before continuing."
+    )
+
+
+def test_guard_allows_explicit_read_only_gist_api_commands(tmp_path: Path) -> None:
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {"command": "gh api --method GET /gists -f per_page=100"},
+        },
+        home=tmp_path,
+    )
+
+    assert response is None
+
+
+def test_guard_keeps_destructive_command_denied_even_when_gist_review_applies(
+    tmp_path: Path,
+) -> None:
+    response = _evaluate(
+        {
+            "toolName": "powershell",
+            "toolArgs": {"command": "gh gist create note.md ; rm -rf /"},
+        },
+        home=tmp_path,
+    )
+
+    assert response is not None
+    assert response["permissionDecision"] == "deny"
