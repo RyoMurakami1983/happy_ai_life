@@ -1020,8 +1020,9 @@ while IFS= read -r url; do
   fi
 done < <(grep -Eo 'https?://[^[:space:]]+' <<<"${compact}" || true)
 
+gist_sensitive_signal_regex='(^|[^0-9])([0-9]{1,3}\.){3}[0-9]{1,3}([^0-9]|$)|(^|[^[:alnum:]_])github\.com/[^[:space:]]+/[^[:space:]]+([^[:alnum:]_]|$)|(^|[^[:alnum:]_])git@github\.com:[^[:space:]]+/[^[:space:]]+([^[:alnum:]_]|$)|(^|[^[:alnum:]_])repo:[^[:space:]]+/[^[:space:]]+([^[:alnum:]_]|$)'
 if [[ "${has_non_endpoint_url}" -eq 1 ]] ||
-  grep -E -q '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b|github\.com/[^[:space:]]+/[^[:space:]]+|git@github\.com:[^[:space:]]+/[^[:space:]]+|\brepo:[^[:space:]]+/[^[:space:]]+' <<<"${compact}"; then
+  grep -E -q "${gist_sensitive_signal_regex}" <<<"${compact}"; then
   has_inline_gist_sensitive_signal=1
 fi
 
