@@ -4,7 +4,6 @@ description: >
   Agent作業前に cheap signals から最小スコープを切り、Context Pack を作る文脈圧縮プロトコル。
   対象は code / docs / skills。
   Use when: compact context, context pack, 文脈圧縮, コンテキスト圧縮, 読む範囲を絞る, low-cost investigation.
-license: MIT
 ---
 
 # Compact Context
