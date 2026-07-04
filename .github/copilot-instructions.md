@@ -18,7 +18,7 @@
 
 ## Skill dispatch
 
-- 要求整理・用語・前提・判断の確認: `grill-with-docs`
+- 要求整理・前提・判断の確認: `to-prd`
 - 調査→修正→検証→ふりかえり/後続 Issue 化までを 1 つの改善ループで回す: `loop-engineering`
 - 実装前の小さな試作: `prototype`
 - 設計・構造検証: `design-and-plan`

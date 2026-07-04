@@ -22,7 +22,7 @@ Public interface 経由の振る舞いを 1 vertical slice ずつ固定し、内
 ## 出典と再設計
 
 TDD の public interface、vertical slice、internal collaborator を mock しない方針は、Matt Pocock さんの `skills/engineering/tdd` を参考にし、この repo の `docs/PHILOSOPHY.md` に合わせて再設計しています。
-出典と MIT license notice は `../skills/grill-with-docs/references/origin.md` を参照してください。
+出典と MIT license notice は `../skills/interview-with-docs/SKILL.md` を参照してください。
 
 ## 役割
 
@@ -142,7 +142,7 @@ Green 後に重複や命名のゆがみを最小限で整えます。
 
 ## 関連スキル
 
-- `grill-with-docs`
+- `interview-with-docs`
 - `design-and-plan`
 - `prototype`
 - `copilot-authoring`

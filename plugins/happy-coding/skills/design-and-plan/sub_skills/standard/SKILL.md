@@ -7,7 +7,7 @@ description: >
 
 # Standard Design Workflow
 
-`grill-with-docs` で固まった要求を、`implement` が TDD で進められる形へ圧縮します。
+`interview-with-docs` で固まった要求を、`implement` が TDD で進められる形へ圧縮します。
 既存 repo の通常変更では、このルートを既定にします。
 
 ## こんなときに使う
@@ -36,7 +36,7 @@ description: >
 - 確認 command
 - blocking unknown の有無
 
-blocking unknown が残る場合は `grill-with-docs` に戻します。
+blocking unknown が残る場合は `interview-with-docs` に戻します。
 
 ### ステップ 2 — 構造判断をする
 
@@ -153,7 +153,7 @@ artifacts:
 
 ## 関連リソース
 
-- `plugins/happy-coding/skills/grill-with-docs/SKILL.md`
+- `plugins/happy-coding/skills/interview-with-docs/SKILL.md`
 - `plugins/happy-coding/skills/implement/SKILL.md`
 - `plugins/happy-coding/skills/design-and-plan/references/WORK_ARTIFACTS.md`
 - `plugins/happy-coding/skills/design-and-plan/assets/NNN_PLAN_TEMPLATE.md`

@@ -105,7 +105,7 @@ README を更新して。demo と production が混ざって読みにくい。sy
 | --- | --- |
 | README の運用導線を初心者向けに整えたい | `beginner-readme-ops` |
 | skill / instructions の設計や境界を整理したい | `copilot-authoring` |
-| 実装前に source of truth と用語を確認したい | `grill-with-docs` |
+| 実装前に source of truth と用語を確認したい | `interview-with-docs` |
 
 ## 注意点
 

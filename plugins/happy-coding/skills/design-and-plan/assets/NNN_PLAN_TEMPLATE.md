@@ -66,4 +66,4 @@
 ## Return Conditions
 
 - FAIL: [同じ plan のまま implement に戻す条件]
-- REPLAN_REQUIRED: [grill-with-docs / design-and-plan に戻す条件]
+- REPLAN_REQUIRED: [interview-with-docs / design-and-plan に戻す条件]

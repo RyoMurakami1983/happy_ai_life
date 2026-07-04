@@ -1,6 +1,6 @@
 # Work Artifacts
 
-`grill-with-docs` から `design-and-plan`、`implement` へ渡る成果物の既定構造です。
+`interview-with-docs` から `design-and-plan`、`implement` へ渡る成果物の既定構造です。
 
 ## Canonical doc structure
 

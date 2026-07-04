@@ -52,10 +52,10 @@ uv sync --dev
 
 ### 2. 前提整理
 
-変更が非自明なら `grill-with-docs` を使い、既存 docs・用語・ADR・コードとのズレを先に整理します。
+変更が非自明なら `to-prd` を使い、既存 docs・要件・コードとの差分を先に整理します。
 
 ```powershell
-copilot /grill-with-docs
+copilot /to-prd
 ```
 
 ### 3. 試作（必要な場合）

@@ -1,60 +1,17 @@
 ---
 name: domain-modeling
+disable-model-invocation: true
 description: >
-  repo 固有の言葉を CONTEXT.md に濃縮し、skill / docs / ADR の用語揺れを減らす。
-  Use when: grill-with-docs や authoring 中に domain language、canonical term、避ける別名を整理したいとき。
+  用語と概念の整理を始めるための互換入口。実装上の正本は `happy-coding@domain-modeling` で、ここでは既存呼び出しを安全に案内する。
 ---
 
-# Domain Modeling
+# domain-modeling
 
-Domain Modeling は、会話や docs に散らばった repo 固有語彙を `CONTEXT.md` に小さく集約する skill です。
-目的は仕様や設計を増やすことではなく、AI と人間が同じ言葉で続きの作業を進められる状態にすることです。
+この skill は、既存の `/domain-modeling` 呼び出しを維持するための互換入口です。
+実際の用語・概念整理は `happy-coding@domain-modeling` で進めてください。
 
-## こんなときに使う
+## 使い方
 
-- 同じ意味に複数の呼び方がある
-- `grill-with-docs` で用語の曖昧さが解けた
-- skill / docs / ADR の言葉がずれている
-- `PHILOSOPHY.md` の言葉を日常参照用に圧縮したい
-
-## Core Loop
-
-```text
-term candidate
-  -> source of truth
-  -> canonical term
-  -> avoid aliases
-  -> 1-2 sentence definition
-  -> CONTEXT.md patch
-```
-
-## 入れるもの
-
-- domain 固有語
-- canonical term
-- 避ける別名
-- 1-2文の定義
-- 所有関係や範囲が重要な場合の最小説明
-
-## 入れないもの
-
-- 仕様詳細
-- 設計メモ
-- 実装方針
-- TODO
-- 一般的な技術語
-
-## handoff
-
-`CONTEXT.md` を更新したら、次工程へ次を渡します。
-
-- 追加・変更した用語
-- 参照した source of truth
-- 解決した曖昧さ
-- まだ残る Blocking Unknown
-
-## 関連
-
-- `grill-with-docs` — 用語の曖昧さを source of truth と照合する入口
-- `copilot-authoring` — skill / agent / instructions へ用語を反映する入口
-- `CONTEXT.md` — domain language の正本
+1. まず対象の用語・概念・境界を整理したいことを短く示す。
+2. `happy-coding@domain-modeling` に引き継いで、用語の正規化と境界の明確化を進める。
+3. 必要なら `CONTEXT.md` や ADR へ落とし込む。
