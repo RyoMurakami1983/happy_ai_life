@@ -37,7 +37,6 @@ loop-engineering
 | --- | --- | --- |
 | `ask-happy` | どの Happy AI Life skill を使うか迷う | 各基本 skill |
 | `beginner-readme-ops` | 初心者向けの README / 運用手順を構造化する | `to-prd` |
-| `compact-context` | 長い文脈を次工程へ圧縮する | `session-handoff`, `knowledge-capture` |
 | `copilot-authoring` | skill / agent / instructions を作る・改善する | `skill-eval` |
 | `empirical-prompt-tuning` | 別実行者で指示の明瞭性を検査する | `skill-eval` |
 | `furikaeri` | ふりかえりを残す | `knowledge-capture` |
@@ -46,12 +45,11 @@ loop-engineering
 | `gh-pr-create` | PR を作る | `deep-review-preflight` |
 | `gh-pr-respond` | PR review へ対応する | `deep-review-preflight`, `git-commit` |
 | `git-commit` | 原子的 commit を作る | `gh-pr-create` |
+| `git-create-branch` | 新しい作業 branch を命名して作る | `git-commit`, `gh-pr-create` |
 | `knowledge-capture` | 公開可能な知識として捕捉する | `furikaeri` |
 | `loop-engineering` | 調査、修正、検証、評価、follow-up まで改善ループを回す | `to-prd`, `design-and-plan`, `implement`, `skill-eval`, `knowledge-capture`, `happy-add-issue`, `gh-issue-create` |
 | `linux-server-ops` | Ubuntu / Linux サーバーの SSH 接続、sudo、systemd、HTTP 監視を安全に進める | `beginner-readme-ops`, `copilot-authoring` |
-| `low-cost-mode` | 低燃費で進める | すべての軽量作業 |
 | `pptx` | PowerPoint ファイルを扱う | 文書系作業 |
-| `session-handoff` | session を引き継げる形にする | `compact-context` |
 | `skill-eval` | skill / prompt 評価の入口 | `empirical-prompt-tuning`, `loop-engineering` |
 | `to-prd` | 会話内容を短い PRD にまとめる | `design-and-plan`, `implement` |
 | `interview-me` | 企画や設計について、ユーザーに一問ずつ深掘りして確認する | `interview-with-docs` |

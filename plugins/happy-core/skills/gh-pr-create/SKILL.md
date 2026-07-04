@@ -1,7 +1,7 @@
 ---
 name: gh-pr-create
 description: >
-  feature branch の変更を PR として出し、レビュー待機へ安全に移す。Use when: 検証済み変更をレビューに出したいとき。
+  ユーザーが「PR を作って」「プルリク作って」などと言ったら、こんなときに使う。feature branch の変更を PR として出し、レビュー待機へ安全に移す。検証済み変更をレビューに出したい場合に使用します。
 ---
 
 # GitHub PR 作成
@@ -10,7 +10,7 @@ description: >
 
 ## 使い方
 
-ユーザーが「PR を作って」「プルリク作って」などと言ったら、次の 4 ステップで進めます。
+次の 4 ステップで進めます。
 
 1. 現在の branch / status / 既存 PR を確認する。
 2. 必要なら commit / push する。
@@ -20,6 +20,7 @@ description: >
 ## 実行ルール
 
 - main ではなく feature branch から作る。
+- まず `git-create-branch` で branch の目的と名前を確認し、必要なら新しい branch を作る。
 - 変更が未コミットなら、まず `git-commit` で整理する。
 - push していないなら `git push -u origin <branch>` する。
 - 既存の open PR があるなら、新しく作らず、既存 URL を報告して止める。
