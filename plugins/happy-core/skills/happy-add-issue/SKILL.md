@@ -2,8 +2,7 @@
 name: happy-add-issue
 description: >
   Happy AI Life 関連の skill、agent、docs、運用への意見や改善要望を、
-  `RyoMurakami1983/happy_ai_life` の Issue にすばやく起票する入口。 Use when:
-  「この skill が分かりづらい」「この導線を直してほしい」のような雑なフィードバックを、
+  `RyoMurakami1983/happy_ai_life` の Issue にすばやく起票する入口。 「この skill が分かりづらい」「この導線を直してほしい」のような雑なフィードバックを、
   母艦 repo の Issue に残したいとき。
 ---
 

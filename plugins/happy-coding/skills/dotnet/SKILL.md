@@ -2,7 +2,7 @@
 name: dotnet
 description: >
   .NET 関連の依頼を、適切な C#、WPF、テスト、基盤、文書系 skill へ振り分ける入口。
-  Use when: どの .NET skill を使うべきか迷うとき、または今後追加される dotnet skill の起点が必要なとき。
+  どの .NET skill を使うべきか迷うとき、または今後追加される dotnet skill の起点が必要なとき。
 ---
 
 # dotnet ルーター

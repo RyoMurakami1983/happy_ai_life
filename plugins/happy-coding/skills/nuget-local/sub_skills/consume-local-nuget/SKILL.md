@@ -1,8 +1,7 @@
 ---
 name: consume-local-nuget
 description: >
-  local feed を利用側 repository に接続し、参照追加から restore/build まで通す。Use when: 作成した nupkg を対象 repository で確認したいとき。
-compatibility: "Visual Studio / Package Manager Console, NuGet.Config, packages.config, PackageReference, dotnet msbuild"
+  local feed を利用側 repository に接続し、参照追加から restore/build まで通す。作成した nupkg を対象 repository で確認したいとき。
 ---
 
 # ローカル NuGet を使う

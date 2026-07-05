@@ -1,9 +1,7 @@
 ---
 name: new-agent
 description: >
-  新しい custom agent を既存 agent 群と同じ型で立ち上げる。Use when:
-  agent の新規追加、役割分離のための専門 agent 作成、既存群の隙間を埋めたいとき。
-compatibility: "../../_agent/references/agent-template.md, ../../_eval/scripts/validate_agent.py"
+  新しい custom agent を既存 agent 群と同じ型で立ち上げる。agent の新規追加、役割分離のための専門 agent 作成、既存群の隙間を埋めたいとき。
 ---
 
 # Agent を新規作成する
@@ -29,7 +27,7 @@ compatibility: "../../_agent/references/agent-template.md, ../../_eval/scripts/v
 
 ### ステップ 3 — template から agent.md を起こす
 
-既存雛形を基準に frontmatter と本文構成を埋めます。`description` の `Use when:`、`役割`、`非責務`、`<領域名>の原則`、`プロセス`、`出力の型`、`注意点`、`完了条件` は `_agent` の正本契約として最低限そろえます。
+既存雛形を基準に frontmatter と本文構成を埋めます。`description` の ``、`役割`、`非責務`、`<領域名>の原則`、`プロセス`、`出力の型`、`注意点`、`完了条件` は `_agent` の正本契約として最低限そろえます。
 
 ### ステップ 4 — 近接 agent と比較する
 

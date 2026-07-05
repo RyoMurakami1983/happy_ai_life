@@ -1,9 +1,7 @@
 ---
 name: improve-existing
 description: >
-  既存の skill または agent を evidence ベースで改善する。Use when:
-  wording、責務境界、関連資料、検証導線の弱さを直したいとき。
-compatibility: "../../_skill/_foundation/CONVENTIONS.md, ../../_agent/references/agent-template.md"
+  既存の skill または agent を evidence ベースで改善する。wording、責務境界、関連資料、検証導線の弱さを直したいとき。
 ---
 
 # 既存の authoring 資産を改善する

@@ -1,7 +1,7 @@
 ---
 name: linux-server-ops
 description: >
-  Ubuntu / Linux サーバーに SSH で接続し、sudo、systemd サービス、HTTP 監視を一連で安全に進める。 Use when: サーバー接続・権限確認・サービス起動・停止・再起動・状態確認を一気に行いたいとき。
+  Ubuntu / Linux サーバーに SSH で接続し、sudo、systemd サービス、HTTP 監視を一連で安全に進める。 サーバー接続・権限確認・サービス起動・停止・再起動・状態確認を一気に行いたいとき。
 ---
 
 # Linux Server Ops

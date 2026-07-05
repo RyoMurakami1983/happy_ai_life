@@ -1,9 +1,8 @@
 ---
 name: safe-refactor
 description: >
-  Use when: 既存コードを振る舞いを変えずに小さく安全に改善したいとき。
+  既存コードを振る舞いを変えずに小さく安全に改善したいとき。
   機能追加よりも、保守性改善・責務分離・重複削減・命名改善に向く。
-license: Personal
 ---
 
 # safe-refactor

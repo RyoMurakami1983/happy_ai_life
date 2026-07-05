@@ -3,11 +3,7 @@ name: dotnet-wpf-mvvm-patterns
 description: >
   CommunityToolkit.Mvvmを使ったWPFアプリケーションのMVVM分離、コマンド、バリデーション、
   ダイアログパターンを実装する。
-  Use when: 新しい WPF ビューを実装するとき、またはコードビハインドを ViewModel-first アーキテクチャにリファクタリングするとき。
-metadata:
-  author: RyoMurakami1983
-  tags: [wpf, mvvm, csharp, communitytoolkit, xaml, dotnet]
-  invocable: false
+  新しい WPF ビューを実装するとき、またはコードビハインドを ViewModel-first アーキテクチャにリファクタリングするとき。
 ---
 
 # WPF MVVMパターン

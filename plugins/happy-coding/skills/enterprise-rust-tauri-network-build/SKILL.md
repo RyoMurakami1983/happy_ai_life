@@ -2,7 +2,7 @@
 name: enterprise-rust-tauri-network-build
 description: >
   会社ネットワーク配下で、git config の proxy / CA 証明書設定を Cargo・Tauri・WiX build へ橋渡ししながら、
-  Windows の Rust / Tauri デスクトップビルドを通す。Use when: corporate proxy、custom CA、
+  Windows の Rust / Tauri デスクトップビルドを通す。corporate proxy、custom CA、
   `CRYPT_E_NO_REVOCATION_CHECK`、crates.io 到達失敗、社内証明書環境での Tauri build を扱うとき。
 ---
 

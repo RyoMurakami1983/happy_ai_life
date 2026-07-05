@@ -1,8 +1,7 @@
 ---
 name: skill-eval
 description: >
-  skill / プロンプト資産の評価を 1 つの入口にまとめる。Use when:
-  skill の behavioral A/B 比較（baseline / legacy / current）をしたいとき、または
+  skill / プロンプト資産の評価を 1 つの入口にまとめる。skill の behavioral A/B 比較（baseline / legacy / current）をしたいとき、または
   プロンプト指示の明瞭性を実証的に検証したいとき。
 ---
 

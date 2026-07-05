@@ -3,11 +3,7 @@ name: dotnet-type-design-performance
 description: >
   .NETの型をパフォーマンス重視で設計する。sealed クラス、readonly 構造体、
   静的関数、遅延列挙、不変コレクションを活用。
-  Use when: 新しい型を設計するとき、性能をレビューするとき、または class / struct / record の使い分けを判断するとき。
-metadata:
-  author: RyoMurakami1983
-  tags: [dotnet, csharp, performance, type-design, sealed, readonly-struct, collections]
-  invocable: false
+  新しい型を設計するとき、性能をレビューするとき、または class / struct / record の使い分けを判断するとき。
 ---
 
 このドキュメントは dotnet-type-design-performance の日本語版です。

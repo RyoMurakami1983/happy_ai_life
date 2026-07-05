@@ -1,7 +1,7 @@
 ---
 name: nuget-local
 description: >
-  ローカルで自作 NuGet の pack と consume を切り分けて案内する。Use when: remote repository から clone し、release build で nupkg 化して local feed に置き、利用側 repository で参照追加と build 確認まで進めたいとき。
+  ローカルで自作 NuGet の pack と consume を切り分けて案内する。remote repository から clone し、release build で nupkg 化して local feed に置き、利用側 repository で参照追加と build 確認まで進めたいとき。
 ---
 
 # ローカル NuGet ワークフロー

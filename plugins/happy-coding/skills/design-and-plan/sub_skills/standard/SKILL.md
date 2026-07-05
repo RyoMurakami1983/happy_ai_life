@@ -2,7 +2,7 @@
 name: standard
 description: >
   単一 repo または通常の機能追加で、要求を構造判断、behavior list、vertical slices、implementation handoff に変える標準設計ワークフロー。
-  Use when: 既存 stack で実装できる仕様を、TDD 可能な slice と plan artifact に整理したいとき。
+  既存 stack で実装できる仕様を、TDD 可能な slice と plan artifact に整理したいとき。
 ---
 
 # Standard Design Workflow

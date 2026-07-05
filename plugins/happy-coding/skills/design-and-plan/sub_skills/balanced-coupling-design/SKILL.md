@@ -2,7 +2,7 @@
 name: balanced-coupling-design
 description: >
   multi-repo、所有境界、shared library、service split、分散モノリス疑いがあるとき、結合の3次元で設計を評価し implementation handoff に変える。
-  Use when: 通常の standard 設計では統合距離、変動性、共有知識のリスクを扱いきれないとき。
+  通常の standard 設計では統合距離、変動性、共有知識のリスクを扱いきれないとき。
 ---
 
 # Balanced Coupling Design

@@ -2,8 +2,7 @@
 name: tauri-sidecar-stability
 description: >
   Tauri v2 + Node sidecar の packaged-only failure を、smoke gate・MSI・
-  clean Windows validation まで含めて安定化する。Use when:
-  `externalBin`、shell capability、`@yao-pkg/pkg` Standard/SEA、enterprise proxy、
+  clean Windows validation まで含めて安定化する。`externalBin`、shell capability、`@yao-pkg/pkg` Standard/SEA、enterprise proxy、
   MSI install 後だけ壊れる挙動をまとめて扱いたいとき。
 ---
 

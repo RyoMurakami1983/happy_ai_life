@@ -2,7 +2,7 @@
 name: tauri-node-sidecar-windows-distribution
 description: >
   Tauri v2 と Node.js sidecar を組み合わせて、Windows 向け MSI 配布へ落とし込む。
-  Use when: 既存 Node CLI の desktop 化、`pkg` sidecar、`externalBin`、shell plugin、
+  既存 Node CLI の desktop 化、`pkg` sidecar、`externalBin`、shell plugin、
   MSI 配布、ユーザー向け install script をまとめて扱いたいとき。
 ---
 

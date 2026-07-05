@@ -2,7 +2,7 @@
 name: design-and-plan
 description: >
   要求や仕様から、実装に渡せる構造判断、vertical slices、HITL/AFK 区分、behavior list、plan artifact を作る入口。
-  Use when: interview-with-docs 後に設計判断と実装計画を作りたいとき、既存 repo の変更を TDD 可能な slice に分けたいとき、multi-repo や境界設計が必要か判断したいとき。
+  interview-with-docs 後に設計判断と実装計画を作りたいとき、既存 repo の変更を TDD 可能な slice に分けたいとき、multi-repo や境界設計が必要か判断したいとき。
 ---
 
 # design-and-plan — 設計を実装契約に変える

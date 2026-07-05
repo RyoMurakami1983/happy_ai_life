@@ -2,8 +2,7 @@
 name: prototype
 description: >
   捨てられる前提の小さな prototype で、実装前の不確実性を短時間で潰す。
-  Use when: 技術選定、UI/UX、業務ロジック、外部 API 接続などを本実装前に試したいとき。
-license: MIT-derived
+  技術選定、UI/UX、業務ロジック、外部 API 接続などを本実装前に試したいとき。
 ---
 
 # Prototype

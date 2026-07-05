@@ -5,9 +5,8 @@ description: >
   Copilot の custom skill / agent / repository instructions の作成・改善・構造確認を
   1 つの入口にまとめる。複合スキルとして、対象に応じて適切な authoring ルートへ
   分けつつ、実行時のモデル呼び出しを抑止してルーティングを優先する。試作から
-  `plugins/*` 配布へ昇格するときの name / description 整備も扱う。Use when: skill /
+  `plugins/*` 配布へ昇格するときの name / description 整備も扱う。skill /
   agent / repo-wide instructions / path-specific instructions を新規作成したいとき、既存定義を育てたいとき、公開前に責務や導線を確かめたいとき。
-compatibility: "_skill/_foundation, _skill/_eval, _skill/scripts, _agent/references/agent-template.md, _eval/scripts/validate_agent.py"
 ---
 
 # Copilot authoring を進める

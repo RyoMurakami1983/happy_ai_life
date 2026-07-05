@@ -2,9 +2,7 @@
 name: new-skill
 description: >
   新しい custom skill を既存 conventions に沿って立ち上げる。試作から
-  `plugins/*` 配布へ昇格する際の name / description 設計も扱う。Use when:
-  skill の新規追加、router / sub-skill の雛形作成、手作業 workflow の skill 化をしたいとき。
-compatibility: "../../_skill/_foundation/CONVENTIONS.md, ../../_skill/scripts/create_skill.py"
+  `plugins/*` 配布へ昇格する際の name / description 設計も扱う。skill の新規追加、router / sub-skill の雛形作成、手作業 workflow の skill 化をしたいとき。
 ---
 
 # Skill を新規作成する

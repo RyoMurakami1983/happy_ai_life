@@ -1,8 +1,7 @@
 ---
 name: dotnet-setup-dev-environment
 description: >
-  Use when: dotnet CLI を軸に、再現可能な .NET 開発環境を安全に整えたいとき。
-license: Personal
+  dotnet CLI を軸に、再現可能な .NET 開発環境を安全に整えたいとき。
 ---
 
 # dotnet-setup-dev-environment

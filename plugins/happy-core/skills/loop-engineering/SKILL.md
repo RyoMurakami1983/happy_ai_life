@@ -2,7 +2,7 @@
 name: loop-engineering
 description: >
   Observe -> Plan -> Act -> Verify -> Evaluate -> Reflect -> Patch -> Stop or Loop
-  の型で、AI 開発や authoring の改善ループを回す。Use when: 単発対応ではなく、
+  の型で、AI 開発や authoring の改善ループを回す。単発対応ではなく、
   検証、PrivateEval、ふりかえり、最小修正をつなげて品質を上げたいとき。
 ---
 

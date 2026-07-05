@@ -2,7 +2,7 @@
 name: implement
 description: >
   実装契約を受け取り、bootstrap 確認、vertical slice 分割、TDD loop、slice gate、completion handoff まで進める。
-  Use when: interview-with-docs / design-and-plan / issue / plan から実装可能な契約を受け取り、PR やふりかえりではなくローカル実装を完了したいとき。
+  interview-with-docs / design-and-plan / issue / plan から実装可能な契約を受け取り、PR やふりかえりではなくローカル実装を完了したいとき。
 ---
 
 # implement — TDD で実装して閉じる

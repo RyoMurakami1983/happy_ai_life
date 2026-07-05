@@ -3,7 +3,7 @@ name: gh-pr-respond
 description: >
   PR レビューコメントを blocking / non-blocking / reply-only に分類し、
   必要な修正だけを外科的に実装して、返信、再レビュー依頼、
-  人間へのマージ判断引き継ぎまで進める。Use when: PR に review signal が届き、
+  人間へのマージ判断引き継ぎまで進める。PR に review signal が届き、
   修正・棄却・保留を構造化して扱いたいとき。
 ---
 # GitHub PR Review Response
