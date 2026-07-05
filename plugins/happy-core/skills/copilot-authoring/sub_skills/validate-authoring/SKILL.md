@@ -34,7 +34,7 @@ uv run python plugins\happy-core\skills\copilot-authoring\_skill\_eval\scripts\v
 
 ### ステップ 3 — agent は同梱 validator を通す
 
-agent では `name` / filename 一致、``、必須 section、構造の型を確認します。`## 1. 役割` のような番号付き H2、`## 設計プロセス` / `## レビュープロセス`、師範 agent の legacy mode 構成も許容し、既存 agent 群と同じ型を保ちます。template 系 agent では `原則` と step 構造を最低線とします。これは prose の良し悪しではなく、利用者が agent を見つけて安全に使えるかの最低線です。
+agent では `name` / filename 一致、`trigger phrase`（『こんなときに使う』相当）、必須 section、構造の型を確認します。`## 1. 役割` のような番号付き H2、`## 設計プロセス` / `## レビュープロセス`、師範 agent の legacy mode 構成も許容し、既存 agent 群と同じ型を保ちます。template 系 agent では `原則` と step 構造を最低線とします。これは prose の良し悪しではなく、利用者が agent を見つけて安全に使えるかの最低線です。
 
 ```powershell
 uv run python plugins/happy-core/skills/copilot-authoring/_eval/scripts/validate_agent.py plugins/happy-coding/agents/<agent-name>.agent.md --level L1

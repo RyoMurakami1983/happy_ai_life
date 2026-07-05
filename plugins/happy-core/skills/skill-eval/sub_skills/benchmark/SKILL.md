@@ -1,7 +1,7 @@
 ---
 name: benchmark
 description: >
-  baseline / legacy / current を比較し、skill の行動変化を測定する。trigger 精度、出力品質、回帰リスクを実証的に確認したいとき。
+  こんなときに使う: baseline / legacy / current を比較し、skill の行動変化を測りたいとき。trigger 精度、出力品質、回帰リスクを実証的に確認したいとき。
 ---
 
 # スキルをベンチマーク比較する
