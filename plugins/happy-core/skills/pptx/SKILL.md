@@ -1,17 +1,16 @@
 ---
 name: pptx
-description: "Use when: any .pptx file is involved in any way — as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx file; editing, modifying, or updating existing presentations; combining or splitting slide files; working with templates, layouts, speaker notes, or comments. Trigger whenever the user mentions \"deck,\" \"slides,\" \"presentation,\" or references a .pptx filename."
-license: See LICENSE.txt for the current maintainer notice and redistribution caveat.
+description: >
+  こんなときに使う: PowerPoint (.pptx) ファイルを読み、内容を要約したり、スライドを編集・再構成したいとき。
 ---
 
 # PPTX Skill
 
-## When to Use This Skill
+## こんなときに使う
 
-Use this skill when:
-- Creating a new presentation, pitch deck, or slide deck.
-- Reading, extracting, or summarizing content from a `.pptx` file.
-- Editing, combining, splitting, or rebuilding slides from a template.
+- 新しいプレゼンテーション、ピッチデッキ、スライドデッキを作りたいとき
+- `.pptx` ファイルの内容を読み、要約したいとき
+- スライドを編集、結合、分割、再構成したいとき
 
 Before changing files, define the desired presentation outcome, success criteria, and validation method.
 

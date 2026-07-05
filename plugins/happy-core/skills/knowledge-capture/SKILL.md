@@ -1,7 +1,7 @@
 ---
 name: knowledge-capture
 description: >
-  公開されうる skill や reference に流用される文書を、匿名化ゲート付きで構造化して残す。Use when: ふりかえり、ADR、インシデント記録、学習メモなどを再利用可能な知識資産として整理したいとき。
+  公開されうる skill や reference に流用される文書を、匿名化ゲート付きで構造化して残す。ふりかえり、ADR、インシデント記録、学習メモなどを再利用可能な知識資産として整理したいとき。
 ---
 # Knowledge Capture（知識の捕捉）
 

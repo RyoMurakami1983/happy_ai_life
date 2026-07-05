@@ -2,9 +2,8 @@
 name: instructions-authoring
 description: >
   repo-wide と path-specific の custom instructions を、責務分離と conflict 回避を保ちながら作成・改善する。
-  Use when: `.github/copilot-instructions.md` や `.github/instructions/*.instructions.md` を新規作成したいとき、
+  `.github/copilot-instructions.md` や `.github/instructions/*.instructions.md` を新規作成したいとき、
   既存の rule を整理したいとき、instructions の境界を見直したいとき。
-compatibility: "../../_skill/_foundation/CONVENTIONS.md, ../../../../../.github/copilot-instructions.md"
 ---
 
 # Repository instructions を作成・改善する

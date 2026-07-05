@@ -5,10 +5,6 @@ description: >
   こんなときに使う: 既存の TypeScript/HTML/CSS アプリを Windows で
   軽量なデスクトップアプリとして動かしたいとき、MSVC・Rust・Tauri CLI の
   導入順序と初回ビルド確認を安全にそろえたいとき。
-metadata:
-  author: RyoMurakami1983
-  tags: [tauri, rust, msvc, desktop, typescript, windows]
-  invocable: false
 ---
 
 # TypeScript 向け Tauri セットアップ

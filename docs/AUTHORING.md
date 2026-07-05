@@ -25,7 +25,7 @@
 
 | 状況 | 既定の入口 |
 |---|---|
-| 用語や要求が固まっていない | `grill-with-docs` |
+| 用語や要求が固まっていない | `to-prd` |
 | 構造判断が必要 | `design-and-plan` |
 | 実装契約が固まっている | `implement` |
 | 調査、修正、検証、ふりかえり、follow-up Issue 化までをつなげたい | `loop-engineering` |
@@ -79,7 +79,7 @@ skills/<skill-name>/sub_skills/*/SKILL.md
 中核導線は次を基本にします。
 
 ```text
-grill-with-docs -> design-and-plan -> implement -> implementation-eval-gate
+to-prd -> design-and-plan -> implement -> implementation-eval-gate
 ```
 
 この導線に乗らない skill は、[Skill Map](SKILL_MAP.md) に接続先を追加するか、`works/` に留めます。

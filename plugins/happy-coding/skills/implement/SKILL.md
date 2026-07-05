@@ -2,7 +2,7 @@
 name: implement
 description: >
   実装契約を受け取り、bootstrap 確認、vertical slice 分割、TDD loop、slice gate、completion handoff まで進める。
-  Use when: grill-with-docs / design-and-plan / issue / plan から実装可能な契約を受け取り、PR やふりかえりではなくローカル実装を完了したいとき。
+  interview-with-docs / design-and-plan / issue / plan から実装可能な契約を受け取り、PR やふりかえりではなくローカル実装を完了したいとき。
 ---
 
 # implement — TDD で実装して閉じる
@@ -35,7 +35,7 @@ implementation contract
 
 ### ステップ 1 — 実装契約を確認する
 
-次が揃っていれば実装に入ります。不足が実装判断をブロックする場合は、`grill-with-docs` または `design-and-plan` に戻します。
+次が揃っていれば実装に入ります。不足が実装判断をブロックする場合は、`interview-with-docs` または `design-and-plan` に戻します。
 
 - 目的、対象、非対象
 - 受け入れ条件
@@ -111,7 +111,7 @@ verdict:
 
 - `PASS`: 次の slice へ進む
 - `FAIL`: 同じ slice の実装に戻る
-- `REPLAN_REQUIRED`: `grill-with-docs` または `design-and-plan` に戻る
+- `REPLAN_REQUIRED`: `interview-with-docs` または `design-and-plan` に戻る
 
 必要なら `plugins/happy-coding/skills/implementation-eval-gate/SKILL.md` を独立評価として使います。ただし、この skill 内では slice gate を最小の必須評価として扱います。
 

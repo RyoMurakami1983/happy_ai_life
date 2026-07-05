@@ -2,12 +2,7 @@
 name: dotnet-wpf-secure-config
 description: >
   WPF アプリに DPAPI 暗号化された設定管理を追加し、資格情報を安全に保存する。
-  Use when: WPF アプリケーションで暗号化済み設定を用意するとき。
-license: MIT
-metadata:
-  author: RyoMurakami1983
-  tags: [dotnet, wpf, csharp, security, dpapi, configuration]
-  invocable: false
+  WPF アプリケーションで暗号化済み設定を用意するとき。
 ---
 
 <!-- このドキュメントは dotnet-wpf-secure-config の日本語版です。 -->

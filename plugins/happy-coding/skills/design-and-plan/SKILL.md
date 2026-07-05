@@ -2,7 +2,7 @@
 name: design-and-plan
 description: >
   要求や仕様から、実装に渡せる構造判断、vertical slices、HITL/AFK 区分、behavior list、plan artifact を作る入口。
-  Use when: grill-with-docs 後に設計判断と実装計画を作りたいとき、既存 repo の変更を TDD 可能な slice に分けたいとき、multi-repo や境界設計が必要か判断したいとき。
+  interview-with-docs 後に設計判断と実装計画を作りたいとき、既存 repo の変更を TDD 可能な slice に分けたいとき、multi-repo や境界設計が必要か判断したいとき。
 ---
 
 # design-and-plan — 設計を実装契約に変える
@@ -12,7 +12,7 @@ description: >
 
 ## こんなときに使う
 
-- grill 後の要求を実装可能な構造判断へ落としたいとき
+- interview-with-docs 後の要求を実装可能な構造判断へ落としたいとき
 - 既存 repo の変更を TDD 可能な vertical slice に分けたいとき
 - HITL / AFK の切り分けを実装前に決めたいとき
 - multi-repo や所有境界の設計が必要か判断したいとき
@@ -81,7 +81,7 @@ handoff に含めるもの:
 - MVP 技術選定を毎回通さない。既存 stack で自然に進められるなら省略する。
 - Balanced Coupling を毎回通さない。multi-repo、所有境界、統合リスクがあるときだけ使う。
 - 実装をここで始めない。handoff を作ったら `implement` へ渡す。
-- 仕様の穴を設計で埋めない。blocking unknown があれば `grill-with-docs` に戻す。
+- 仕様の穴を設計で埋めない。blocking unknown があれば `interview-with-docs` に戻す。
 
 ## 共通リソース
 

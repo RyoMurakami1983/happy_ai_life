@@ -1,15 +1,15 @@
 # Origin and License
 
-The vertical-slice issue splitting guidance in `gh-issue-create` references ideas from Matt Pocock's public `skills` repository and is rewritten for GitHub Copilot CLI, Japanese-first interaction, and the Happy AI Life philosophy.
+This agent is adapted from Matt Pocock's public `skills` repository and rewritten for GitHub Copilot CLI, Japanese-first interaction, and the Happy AI Life philosophy.
 
 ## Source
 
 - Repository: <https://github.com/mattpocock/skills>
 - Reference commit checked: `b8be62ffacb0118fa3eaa29a0923c87c8c11985c`
-- Source skill referenced: `skills/engineering/to-issues`
+- Primary source skill: `skills/engineering/tdd`
 - Original license: MIT License
 
-The adapted Happy AI Life version keeps the useful ideas of vertical slices, tracer bullets, and distinguishing human-in-the-loop work from autonomous work. The wording, templates, and issue operations are rewritten for this repository.
+The adapted Happy AI Life version keeps the useful ideas of short-lived TDD loops, public interface-driven tests, and converting findings into implementation handoff. The wording, Japanese guidance, routing, and integration with `docs/PHILOSOPHY.md` are rewritten for this repository.
 
 ## Original MIT License Notice
 

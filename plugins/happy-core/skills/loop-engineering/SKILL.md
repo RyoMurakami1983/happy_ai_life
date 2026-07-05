@@ -2,7 +2,7 @@
 name: loop-engineering
 description: >
   Observe -> Plan -> Act -> Verify -> Evaluate -> Reflect -> Patch -> Stop or Loop
-  の型で、AI 開発や authoring の改善ループを回す。Use when: 単発対応ではなく、
+  の型で、AI 開発や authoring の改善ループを回す。単発対応ではなく、
   検証、PrivateEval、ふりかえり、最小修正をつなげて品質を上げたいとき。
 ---
 
@@ -28,7 +28,7 @@ Loop Engineering は、AI に「作らせて終わり」にせず、観察、計
 
 Loop Engineering は万能入口ではなく、**改善ループの進行型**です。各段階で次の専門 skill へ委譲します。
 
-- 要求や用語の曖昧さが残る: `grill-with-docs`
+- 要求や用語の曖昧さが残る: `interview-with-docs`
 - 実装契約を切る必要がある: `design-and-plan`
 - ローカル実装と focused verify に入る: `implement`
 - 評価観点や prompt 実験を深める: `skill-eval`, `empirical-prompt-tuning`
@@ -82,7 +82,7 @@ Evaluate では次の 5 軸を使います。詳細な採点基準は `reference
 - **Inference**: fact から導いた判断
 - **Unknown**: 次の Plan を止める未確認事項
 
-Unknown が作業方針を変えるなら、先に `grill-with-docs` またはユーザー確認へ戻します。
+Unknown が作業方針を変えるなら、先に `interview-with-docs` またはユーザー確認へ戻します。
 
 ### Step 2 — Plan: 最小の実行契約を作る
 
@@ -158,7 +158,7 @@ Patch は「評価で落ちた軸に対する最小修正」です。
 
 | 状況 | 使う skill |
 |---|---|
-| 要求や用語の曖昧さを先に潰す | `grill-with-docs` |
+| 要求や用語の曖昧さを先に潰す | `interview-with-docs` |
 | 実装契約と vertical slice を作る | `design-and-plan` |
 | ローカル実装を TDD で進める | `implement` |
 | Happy AI Life 側への改善要望を母艦 repo に返す | `happy-add-issue` |

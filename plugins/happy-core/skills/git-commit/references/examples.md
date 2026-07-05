@@ -1,63 +1,55 @@
-# Git Commit Practices — Examples
+# Git Commit の例
 
-## Conventional Commit Examples
+このファイルは、`git-commit` skill で使う補助例です。短い実行型の skill では、本文の基本ルールを優先し、このファイルは例として参照します。
 
-### Feature commits
-```
-feat: add user authentication with JWT
-feat(api): implement rate limiting for public endpoints
-feat!: redesign commit message format (BREAKING CHANGE)
-```
+## 典型的なコミット例
 
-### Fix commits
-```
-fix: resolve null pointer in user session handler
-fix(ui): correct button alignment on mobile viewport
-fix!: change default branch from master to main
+### 機能追加
+```text
+feat: ユーザー認証を追加
+feat(api): 公開エンドポイントのレート制限を追加
+feat!: コミットメッセージ形式を再設計
 ```
 
-### Chore / maintenance
+### 修正
+```text
+fix: セッションハンドラの null 参照を修正
+fix(ui): モバイル表示でボタン位置を修正
+fix!: デフォルトブランチを master から main に変更
 ```
-chore: update dependencies to latest stable versions
-chore(ci): switch from CircleCI to GitHub Actions
-docs: add API endpoint documentation
-refactor: extract validation logic to separate module
+
+### メンテナンス
+```text
+chore: 依存関係を最新安定版へ更新
+chore(ci): CircleCI から GitHub Actions へ移行
+docs: API エンドポイントのドキュメントを追加
+refactor: バリデーション処理を独立モジュールへ切り出す
 ```
 
-## Japanese Subject Examples (optional convention)
+## 日本語の件名例
 
-| English intent | Japanese subject |
-|----------------|-----------------|
-| Add feature X | X機能を追加 |
-| Fix bug in Y | Yのバグを修正 |
-| Update docs for Z | ZのドキュメントをUpdate |
-| Refactor module A | モジュールAをリファクタリング |
+| 意図 | 件名 |
+| --- | --- |
+| 機能追加 | X機能を追加 |
+| バグ修正 | Yのバグを修正 |
+| ドキュメント更新 | Zのドキュメントを更新 |
+| リファクタ | モジュールAをリファクタリング |
 
-## Atomic Commit Checklist
+## atomic commit の目安
 
-Before committing, verify:
-- [ ] This commit does **one logical thing** only
-- [ ] If reverted, no other unrelated feature breaks
-- [ ] The commit message explains WHY, not just what changed
-- [ ] Related tests are included in this same commit
-- [ ] No debug code, console.logs, or TODO comments left in
+- [ ] 1コミットで 1 つの変更意図だけにする
+- [ ] 取り消しても他の機能が壊れない
+- [ ] メッセージに Why を含める
+- [ ] 関連テストは同じコミットに含める
+- [ ] デバッグコードや TODO を残さない
 
-## Commit Size Guidelines
+## 良い例 / 悪い例
 
-| Lines changed | Assessment |
-|---------------|------------|
-| 1-50 | Ideal atomic commit |
-| 51-200 | Acceptable, verify single purpose |
-| 201-500 | Consider splitting |
-| 500+ | Almost always should be split |
+悪い例: `fix stuff`
+良い例: `fix: 支払いフォームの二重送信を防ぐ`
 
-## Bad vs Good Examples
+悪い例: `WIP`
+良い例: `feat(auth): パスワードリセットメール送信フローを追加`
 
-❌ Bad: `fix stuff`
-✅ Good: `fix: prevent double-submission on payment form`
-
-❌ Bad: `WIP`
-✅ Good: `feat(auth): add password reset email flow (incomplete — reset endpoint pending)`
-
-❌ Bad: one giant commit with 20 unrelated changes
-✅ Good: one commit per logical unit of work
+悪い例: 20 個の無関係な変更を 1 つのコミットにまとめる
+良い例: 1 つの論理単位ごとにコミットを分ける

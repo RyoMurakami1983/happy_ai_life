@@ -4,7 +4,6 @@ description: >
   GitHub Copilot CLI の実験的 statusline を Oh My Posh で導入・調整する。
   こんなときに使う: .copilot に statusline.cmd / statusline.ps1 / statusline.sh / statusline.omp.json を作りたいとき、
   STATUS_LINE feature flag を安全に有効化したいとき、host terminal の Nerd Font / Windows Terminal font.face まで切り分けたいとき。
-compatibility: "Windows, WSL/Linux, PowerShell 7, bash, Python 3.10+, Oh My Posh, Nerd Font, GitHub Copilot CLI STATUS_LINE"
 ---
 
 # Copilot CLI statusline を Oh My Posh で導入する

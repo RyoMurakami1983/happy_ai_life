@@ -2,7 +2,7 @@
 name: modularity-review
 description: >
   既存コードの結合構造を 3 次元（統合強度・距離・変動性）で分析し、不均衡を検出する。
-  Use when: 既存システムのモジュール境界を見直したいとき、分散モノリスや泥団子の兆候を調査したいとき、
+  既存システムのモジュール境界を見直したいとき、分散モノリスや泥団子の兆候を調査したいとき、
   リファクタリング前に結合構造を把握したいとき。
 ---
 
@@ -155,5 +155,5 @@ description: >
 - `plugins/happy-coding/skills/design-and-plan/SKILL.md` — 設計の入口
 - `plugins/happy-coding/skills/design-and-plan/_foundation/DDD_GLOSSARY.md` — 用語集
 - `plugins/happy-coding/skills/design-and-plan/SKILL.md` — 是正策の構造判断
-- `plugins/happy-coding/skills/grill-with-docs/SKILL.md` — 是正策を用語・前提・ADR と照合するとき
+- `plugins/happy-coding/skills/interview-with-docs/SKILL.md` — 是正策を用語・前提・ADR と照合するとき
 - `docs/local_references/balanced-coupling/README.md` — Balanced Coupling モデルの参照ガイド

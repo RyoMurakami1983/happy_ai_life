@@ -3,12 +3,7 @@ name: dotnet-csharp-concurrency-patterns
 description: >
   .NET の並行処理抽象を正しく選択する — async/await、Channels、Akka.NET Streams、
   Reactive Extensions、Akka.NET Actors。
-  Use when: 並行処理の設計判断、ツール選定、または複数エンティティの状態管理が必要な場合。
-license: MIT
-metadata:
-  author: RyoMurakami1983
-  tags: [csharp, concurrency, async-await, channels, akka-net, reactive-extensions]
-  invocable: false
+  並行処理の設計判断、ツール選定、または複数エンティティの状態管理が必要な場合。
 ---
 
 <!-- このドキュメントは dotnet-csharp-concurrency-patterns の日本語版です。 -->

@@ -5,10 +5,6 @@ description: >
   こんなときに使う: 新規 TypeScript プロジェクトを strict 前提で始めたいとき、
   lint / format / test を標準化したいとき、ESLint / Prettier / Jest / VS Code の
   足並みをそろえたいとき。
-metadata:
-  author: RyoMurakami1983
-  tags: [typescript, nodejs, npm, eslint, prettier, jest, vscode]
-  invocable: false
 ---
 
 # TypeScript 開発環境を整える

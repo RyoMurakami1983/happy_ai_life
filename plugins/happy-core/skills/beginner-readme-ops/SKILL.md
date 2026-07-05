@@ -1,7 +1,7 @@
 ---
 name: beginner-readme-ops
 description: >
-  コマンドは打てるが運用文脈の補完は弱い読者向けに、README の前提、起動、確認、停止、片付けを迷いにくい順序へ整える。 Use when: demo / dry-run / production / systemd を含む運用 README を初心者向けに構成したいとき。
+  コマンドは打てるが運用文脈の補完は弱い読者向けに、README の前提、起動、確認、停止、片付けを迷いにくい順序へ整える。 demo / dry-run / production / systemd を含む運用 README を初心者向けに構成したいとき。
 ---
 
 # Beginner README Ops
@@ -105,7 +105,7 @@ README を更新して。demo と production が混ざって読みにくい。sy
 | --- | --- |
 | README の運用導線を初心者向けに整えたい | `beginner-readme-ops` |
 | skill / instructions の設計や境界を整理したい | `copilot-authoring` |
-| 実装前に source of truth と用語を確認したい | `grill-with-docs` |
+| 実装前に source of truth と用語を確認したい | `interview-with-docs` |
 
 ## 注意点
 

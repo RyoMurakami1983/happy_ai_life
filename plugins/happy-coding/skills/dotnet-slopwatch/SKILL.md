@@ -3,12 +3,8 @@ name: dotnet-slopwatch
 description: >
   .NET 向けの 2 層スロップ防止。Slopwatch CLI によるコードレベル検出（SW-xxx）と、
   アーキテクチャ上のアンチパターンカタログ（SLOP-xxx）を扱う。
-  Use when: LLM 生成の C# コードを検証するとき、層境界違反を確認するとき、
+  LLM 生成の C# コードを検証するとき、層境界違反を確認するとき、
   または anti-slop の品質ゲートを CI/CD に組み込むとき。
-metadata:
-  author: RyoMurakami1983
-  tags: [dotnet, quality, llm, anti-cheat, slopwatch]
-  invocable: false
 ---
 
 このドキュメントは dotnet-slopwatch の日本語版です。

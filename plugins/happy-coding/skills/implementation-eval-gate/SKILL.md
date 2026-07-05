@@ -2,7 +2,7 @@
 name: implementation-eval-gate
 description: >
   1つの実装 slice を、RED/GREEN/acceptance evidence と実装契約に照らして評価し、PASS / FAIL / REPLAN_REQUIRED を返す。
-  Use when: implement の slice 完了後に、次の slice へ進むか、同じ slice を直すか、grill-with-docs / design-and-plan に戻すかを決めたいとき。
+  implement の slice 完了後に、次の slice へ進むか、同じ slice を直すか、interview-with-docs / design-and-plan に戻すかを決めたいとき。
 ---
 
 # Implementation Eval Gate
@@ -23,7 +23,7 @@ description: >
 | --- | --- | --- |
 | slice contract を満たし、RED/GREEN/acceptance evidence がある | `PASS` | 次の slice へ進む |
 | contract は明確だが、実装未達または証拠不足がある | `FAIL` | 同じ slice の実装へ戻る |
-| contract / design / 前提が曖昧、または実装で前提崩れが見つかった | `REPLAN_REQUIRED` | `grill-with-docs` / `design-and-plan` へ戻る |
+| contract / design / 前提が曖昧、または実装で前提崩れが見つかった | `REPLAN_REQUIRED` | `interview-with-docs` / `design-and-plan` へ戻る |
 
 ## ワークフロー: 実装 slice を gate する
 

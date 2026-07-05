@@ -1,7 +1,7 @@
 ---
 name: initial_setup_happy_env
 description: >
-  Use when: この母艦リポジトリを初回セットアップし、uv・ruff・ty・Python launcher の入口を安全に整えたいとき。
+  この母艦リポジトリを初回セットアップし、uv・ruff・ty・Python launcher の入口を安全に整えたいとき。
 license: Personal
 ---
 
