@@ -120,4 +120,6 @@ SSH_AUTH_SOCK=<socket> ssh -o BatchMode=yes -o ConnectTimeout=5 -p 22 user@host 
 
 | 症状 | 原因 | 切り分け | 回復 |
 | --- | --- | --- | --- |
-| `Permission denied (publickey)` かつ `ssh-add -l` が空 |
+| `Permission denied (publickey)` かつ `ssh-add -l` が空 | 鍵未登録または agent socket が違う | `echo $SSH_AUTH_SOCK` と `ssh-add -l` を確認する | `ssh-agent` を起動し、鍵を登録して再試行する |
+| `Connection timed out` | 接続先・ポート・ネットワーク経路の問題 | `ssh -o BatchMode=yes -o ConnectTimeout=5` で再確認する | 接続先、ポート、ユーザー名、ネットワーク経路を確認する |
+| `sudo: a password is required` | sudo 権限が必要だがパスワード未設定 | `whoami` / `id` / `sudo -v` を確認する | sudo が必要な操作はパスワード付き前提で実行する |
