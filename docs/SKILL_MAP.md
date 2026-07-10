@@ -47,7 +47,6 @@ loop-engineering
 | `git-commit` | 原子的 commit を作る | `gh-pr-create` |
 | `git-create-branch` | 新しい作業 branch を命名して作る | `git-commit`, `gh-pr-create` |
 | `knowledge-capture` | 公開可能な知識として捕捉する | `furikaeri` |
-| `loop-engineering` | 調査、修正、検証、評価、follow-up まで改善ループを回す | `to-prd`, `design-and-plan`, `implement`, `skill-eval`, `knowledge-capture`, `happy-add-issue`, `gh-issue-create` |
 | `linux-server-ops` | Ubuntu / Linux サーバーの SSH 接続、sudo、systemd、HTTP 監視を安全に進める | `beginner-readme-ops`, `copilot-authoring` |
 | `pptx` | PowerPoint ファイルを扱う | 文書系作業 |
 | `skill-eval` | skill / prompt 評価の入口 | `empirical-prompt-tuning`, `loop-engineering` |
@@ -74,6 +73,7 @@ loop-engineering
 | `implement` | 実装契約をローカル実装へ進める | `implementation-eval-gate` |
 | `implementation-eval-gate` | slice 完了を評価する | `deep-review-preflight` |
 | `interview-with-docs` | 既存の会話から要点を抽出し、インタビューを進める | `interview-me` |
+| `loop-engineering` | 調査、修正、検証、評価、follow-up まで改善ループを回す | `to-prd`, `design-and-plan`, `implement`, `skill-eval`, `knowledge-capture`, `happy-add-issue`, `gh-issue-create` |
 | `domain-modeling` | repo 固有語彙を `CONTEXT.md` に濃縮する | `interview-with-docs`, `copilot-authoring` |
 | `modularity-review` | 既存コードの結合構造を分析する | `design-and-plan` |
 | `nuget-local` | 自作 NuGet の local feed consume を切り分ける | `dotnet` |

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -9,6 +10,37 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SECRET_GUARD = ROOT / "repo-template" / ".githooks" / "lib" / "secret-guard.sh"
+
+
+def _resolve_posix_shell() -> str:
+    env_shell = os.environ.get("SECRET_GUARD_SHELL")
+    if env_shell:
+        return env_shell
+
+    if os.name == "nt":
+        program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+        program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+        for base in (Path(program_files), Path(program_files_x86)):
+            for candidate in (
+                base / "Git" / "bin" / "bash.exe",
+                base / "Git" / "usr" / "bin" / "sh.exe",
+                base / "Git" / "bin" / "sh.exe",
+            ):
+                if candidate.exists():
+                    return str(candidate)
+
+    system_root = os.environ.get("SystemRoot", r"C:\Windows")
+    system32 = Path(system_root) / "System32"
+    for candidate in ("bash", "sh"):
+        resolved = shutil.which(candidate)
+        if not resolved:
+            continue
+        resolved_path = Path(resolved)
+        if os.name == "nt" and resolved_path.resolve().is_relative_to(system32.resolve()):
+            continue
+        return resolved
+
+    raise RuntimeError("No POSIX shell was found for the secret guard compatibility tests.")
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -120,7 +152,7 @@ class SecretGuardGitleaksCompatTests(unittest.TestCase):
             scan_exit_code=scan_exit_code,
             scan_output=scan_output,
         )
-        command = ["sh", str(SECRET_GUARD), *(args or [])]
+        command = [_resolve_posix_shell(), str(SECRET_GUARD), *(args or [])]
         completed = subprocess.run(
             command,
             cwd=repo,
