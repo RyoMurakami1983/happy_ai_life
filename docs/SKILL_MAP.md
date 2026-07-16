@@ -29,6 +29,9 @@ loop-engineering
   -> skill-eval
   -> knowledge-capture
   -> gh-issue-create
+
+linux-server-ops
+  -> linux-update-systemd-deploy
 ```
 
 ## happy-core
@@ -75,6 +78,7 @@ loop-engineering
 | `interview-with-docs` | 既存の会話から要点を抽出し、インタビューを進める | `interview-me` |
 | `loop-engineering` | 調査、修正、検証、評価、follow-up まで改善ループを回す | `to-prd`, `design-and-plan`, `implement`, `skill-eval`, `knowledge-capture`, `happy-add-issue`, `gh-issue-create` |
 | `domain-modeling` | repo 固有語彙を `CONTEXT.md` に濃縮する | `interview-with-docs`, `copilot-authoring` |
+| `linux-update-systemd-deploy` | 既存の systemd 配備を安全に更新する | `linux-server-ops` |
 | `modularity-review` | 既存コードの結合構造を分析する | `design-and-plan` |
 | `nuget-local` | 自作 NuGet の local feed consume を切り分ける | `dotnet` |
 | `prototype` | 実装前に小さく試す | `design-and-plan` |
