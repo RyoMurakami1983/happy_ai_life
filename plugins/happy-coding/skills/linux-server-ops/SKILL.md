@@ -78,13 +78,51 @@ SSH_AUTH_SOCK=<socket> ssh -o BatchMode=yes -o ConnectTimeout=5 -p 22 user@host 
 
 これが失敗したら、接続に進まず下の失敗パターン表で切り分ける。
 
-### ステップ 1 — 接続前提を固定する
+### ステップ 1 — 接続前提を固定する（preflight）
 
-接続先、ユーザー、ポート、鍵、**使用する socket**、sudo の必要性を確認し、最初にやる操作を固定する。
+操作に入る前に次を確認する。未確定なものがあれば先に埋めてから進む。
 
-### ステップ 2 — 権限と状態を確認する
+| 確認項目 | 確認内容 |
+|---|---|
+| 接続先 | host / user / port |
+| 鍵のパスフレーズ | あり / なし。あれば agent に登録済みか |
+| sudo パスワード | 必要 / 不要（NOPASSWD 設定の有無） |
+| outbound proxy | 必要 / 不要。必要なら `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` の値 |
+| 既存 systemd service の proxy env | 他サービスが override で proxy を持つ可能性があるか（ステップ 2 で確認） |
+
+これらが未確認のまま service 操作やデプロイに進まない。
+
+### ステップ 2 — 権限・状態・proxy 環境を確認する
 
 `whoami` / `id` / `sudo -v` で権限を確認し、`systemctl status` と `journalctl` でサービス状態を把握する。
+
+外部向け通信が必要な service を操作する場合、**先に既存 service の proxy env を確認する**。`apt` では proxy が通るのにアプリからは到達失敗、という切り分けを早める。
+
+~~~bash
+# 既存 service の proxy 設定を確認する
+# 候補 service 名は `systemctl list-units --type=service` などで探す
+systemctl cat <existing-service> --no-pager
+sudo cat /etc/systemd/system/<existing-service>.service.d/*.conf 2>/dev/null
+
+# 全 service に設定されている proxy env 変数を一覧する（-E で portable な OR 指定）
+sudo grep -rE "HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY" \
+  /etc/systemd/system/ /usr/lib/systemd/system/ 2>/dev/null | grep -v "^Binary"
+~~~
+
+新規 service に proxy が必要だと分かったら、drop-in に追記する:
+
+~~~bash
+sudo mkdir -p /etc/systemd/system/<service>.service.d/
+sudo tee /etc/systemd/system/<service>.service.d/proxy.conf << 'EOF'
+[Service]
+Environment="HTTP_PROXY=http://proxy.example.com:PORT"
+Environment="HTTPS_PROXY=http://proxy.example.com:PORT"
+Environment="ALL_PROXY=http://proxy.example.com:PORT"
+Environment="NO_PROXY=localhost,127.0.0.1,::1"
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart <service>
+~~~
 
 ### ステップ 3 — 変更と確認を分ける
 
@@ -170,3 +208,4 @@ sudo journalctl -u <service> -n 50 --no-pager
 | `Permission denied (publickey)` かつ `ssh-add -l` が空 | 鍵未登録または agent socket が違う | `echo $SSH_AUTH_SOCK` と `ssh-add -l` を確認する | `ssh-agent` を起動し、鍵を登録して再試行する |
 | `Connection timed out` | 接続先・ポート・ネットワーク経路の問題 | `ssh -o BatchMode=yes -o ConnectTimeout=5` で再確認する | 接続先、ポート、ユーザー名、ネットワーク経路を確認する |
 | `sudo: a password is required` | sudo 権限が必要だがパスワード未設定 | `whoami` / `id` / `sudo -v` を確認する | sudo が必要な操作はパスワード付き前提で実行する |
+| `apt` では外部到達できるがアプリが外部 API に失敗する | アプリの systemd service に proxy 設定がない | `systemctl cat <service>` で `HTTP_PROXY` が設定されているか確認する | drop-in に `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` / `NO_PROXY` を追記して `daemon-reload` + 再起動する |
