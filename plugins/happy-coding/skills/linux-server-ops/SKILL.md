@@ -102,14 +102,14 @@ SSH_AUTH_SOCK=<socket> ssh -o BatchMode=yes -o ConnectTimeout=5 -p 22 user@host 
 # 既存 service の proxy 設定を確認する
 # 候補 service 名は `systemctl list-units --type=service` などで探す
 systemctl cat <existing-service> --no-pager
-sudo cat /etc/systemd/system/<existing-service>.service.d/override.conf 2>/dev/null
+sudo cat /etc/systemd/system/<existing-service>.service.d/*.conf 2>/dev/null
 
-# 全 service に設定されている HTTP_PROXY / HTTPS_PROXY / NO_PROXY を一覧する
-sudo grep -r "HTTP_PROXY\|HTTPS_PROXY\|ALL_PROXY\|NO_PROXY" \
-  /etc/systemd/system/ /lib/systemd/system/ 2>/dev/null | grep -v "^Binary"
+# 全 service に設定されている proxy env 変数を一覧する（-E で portable な OR 指定）
+sudo grep -rE "HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY" \
+  /etc/systemd/system/ /usr/lib/systemd/system/ 2>/dev/null | grep -v "^Binary"
 ~~~
 
-新規 service に proxy が必要だと分かったら、override.conf に追記する:
+新規 service に proxy が必要だと分かったら、drop-in に追記する:
 
 ~~~bash
 sudo mkdir -p /etc/systemd/system/<service>.service.d/
@@ -117,6 +117,7 @@ sudo tee /etc/systemd/system/<service>.service.d/proxy.conf << 'EOF'
 [Service]
 Environment="HTTP_PROXY=http://proxy.example.com:PORT"
 Environment="HTTPS_PROXY=http://proxy.example.com:PORT"
+Environment="ALL_PROXY=http://proxy.example.com:PORT"
 Environment="NO_PROXY=localhost,127.0.0.1,::1"
 EOF
 sudo systemctl daemon-reload
@@ -207,4 +208,4 @@ sudo journalctl -u <service> -n 50 --no-pager
 | `Permission denied (publickey)` かつ `ssh-add -l` が空 | 鍵未登録または agent socket が違う | `echo $SSH_AUTH_SOCK` と `ssh-add -l` を確認する | `ssh-agent` を起動し、鍵を登録して再試行する |
 | `Connection timed out` | 接続先・ポート・ネットワーク経路の問題 | `ssh -o BatchMode=yes -o ConnectTimeout=5` で再確認する | 接続先、ポート、ユーザー名、ネットワーク経路を確認する |
 | `sudo: a password is required` | sudo 権限が必要だがパスワード未設定 | `whoami` / `id` / `sudo -v` を確認する | sudo が必要な操作はパスワード付き前提で実行する |
-| `apt` では外部到達できるがアプリが外部 API に失敗する | アプリの systemd service に proxy 設定がない | `systemctl cat <service>` で `HTTP_PROXY` が設定されているか確認する | override.conf に `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` を追記して `daemon-reload` + 再起動する |
+| `apt` では外部到達できるがアプリが外部 API に失敗する | アプリの systemd service に proxy 設定がない | `systemctl cat <service>` で `HTTP_PROXY` が設定されているか確認する | drop-in に `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` / `NO_PROXY` を追記して `daemon-reload` + 再起動する |
