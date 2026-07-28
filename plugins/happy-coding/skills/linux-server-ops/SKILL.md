@@ -108,7 +108,11 @@ systemd サービスには **system-level** と **user-level** の 2 種類が�
 
 既存の user-level service を system-level へ移行する手順。
 
+> **前提**: `systemctl --user` は**当該ユーザーの shell で実行する**必要がある。root から実行すると D-Bus に接続できず失敗する。root で SSH 接続している場合は `sudo -iu <user>` でユーザーに切り替えてから実行すること。
+
 ~~~bash
+# 当該ユーザーで実行する（root なら: sudo -iu <user>）
+
 # 1. 現状確認
 systemctl --user status <service>
 systemctl --user cat <service>          # ExecStart や EnvironmentFile を確認する

@@ -111,7 +111,7 @@ env 更新では、既存の運用値を壊さず **今回必要な差分だけ*
 ## 注意点
 
 - **認証方式を途中で混ぜない**: 鍵失敗と password fallback を曖昧にすると、どこで詰まったか分からなくなります。接続確認を先に 1 本通してください。
-- **production では system-level systemd を使う**: unit ファイルは `/etc/systemd/system/` に配置し、`sudo systemctl` で管理します。user-level（`~/.config/systemd/user/`）は `Linger=yes` でも session 依存リスクが残るため、production サービスには推奨しません。既存 user-level service を発見した場合は `linux-server-ops` の「systemd レベルの選択指針 - 是正手順」を参照してください。
+- **production では system-level systemd を使う**: unit ファイルは `/etc/systemd/system/` に配置し、`sudo systemctl` で管理します。user-level（`~/.config/systemd/user/`）は `Linger=yes` でも session 依存リスクが残るため、production サービスには推奨しません。既存 user-level service を発見した場合は `linux-server-ops` の「systemd レベルの選択指針」→「user-level で動いているサービスを発見した場合の是正手順」を参照してください。
 - **oneshot service を failed と誤認しない**: `inactive (dead)` は正常終了後にも出ます。必ず `status=0/SUCCESS` と journal を見ます。
 - **git 配備前提で進めない**: 本番配置先が単純展開ディレクトリなら、`git pull` より `backup -> extract` の方が安全です。
 - **env を丸ごと置換しない**: 本番値が消える事故を避けるため、必要なキーだけ追加・変更します。
