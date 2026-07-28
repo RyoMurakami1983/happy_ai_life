@@ -90,11 +90,58 @@ SSH_AUTH_SOCK=<socket> ssh -o BatchMode=yes -o ConnectTimeout=5 -p 22 user@host 
 
 `start / stop / restart / reload` を実行したら、`status` と `curl` / `ss` / `journalctl` で結果を検証する。
 
+## systemd レベルの選択指針
+
+systemd サービスには **system-level** と **user-level** の 2 種類がある。production 環境では原則として **system-level** を使う。
+
+### 選択表（3S 観点）
+
+| 観点 | system-level（`/etc/systemd/system/`） | user-level（`~/.config/systemd/user/`） |
+|---|---|---|
+| **Security** | `User=` / `Group=` で最小権限ユーザーを指定できる | 起動ユーザーの権限をそのまま引き継ぐ |
+| **Stability** | OS 起動時から動作・ログアウト非依存 | `Linger=no` ではログアウト時に停止。`Linger=yes` でも session 依存リスクが残る |
+| **Simplicity** | `sudo systemctl` 1 コマンドで全サービスを管理できる | `systemctl --user` が必要で、`sudo journalctl` と混在しやすい |
+
+**結論**: `Linger=yes` を設定しても user-level は session 依存のリスクが残る。production サービスには推奨しない。
+
+### user-level で動いているサービスを発見した場合の是正手順
+
+既存の user-level service を system-level へ移行する手順。
+
+> **前提**: `systemctl --user` は**当該ユーザーの shell で実行する**必要がある。root から実行すると D-Bus に接続できず失敗する。root で SSH 接続している場合は `sudo -iu <user>` でユーザーに切り替えてから実行すること。
+
+~~~bash
+# 当該ユーザーで実行する（root なら: sudo -iu <user>）
+
+# 1. 現状確認
+systemctl --user status <service>
+systemctl --user cat <service>          # ExecStart や EnvironmentFile を確認する
+
+# 2. system-level の unit ファイルを作成する
+#    User= / Group= に実行ユーザーを明示し、/etc/systemd/system/<service>.service へ配置する
+sudo vi /etc/systemd/system/<service>.service
+
+# 3. user-level を無効化・停止する
+systemctl --user stop <service>
+systemctl --user disable <service>
+
+# 4. system-level を有効化・起動する
+sudo systemctl daemon-reload
+sudo systemctl enable --now <service>
+
+# 5. 結果を確認する
+sudo systemctl status <service> --no-pager -l
+sudo journalctl -u <service> -n 50 --no-pager
+~~~
+
+> 移行後は `loginctl show-user <user>` で `Linger=no` のままにしておいてよい（system-level は影響しない）。
+
 ## 注意点
 
 - 接続前に `echo $SSH_AUTH_SOCK` と `ssh-add -l` を確認しないと、認証がどこで止まっているか分かりません。
 - `BatchMode=yes` の接続テストを通さずに service 操作に進まないでください。
 - sudo が必要な操作は、通常ユーザー操作と分けて実行してください。
+- **production では system-level systemd を使う**。user-level の service を発見したら、上記の是正手順で移行してください。
 
 ## 基本の手順
 
