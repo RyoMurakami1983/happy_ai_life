@@ -1,9 +1,9 @@
 ---
 name: loop-engineering
 description: >
-  Observe -> Plan -> Act -> Verify -> Evaluate -> Reflect -> Patch -> Stop or Loop
-  の型で、AI 開発や authoring の改善ループを回す。単発対応ではなく、
-  検証、PrivateEval、ふりかえり、最小修正をつなげて品質を上げたいとき。
+  こんなときに使う: Observe -> Plan -> Act -> Verify -> Evaluate -> Reflect
+  -> Patch -> Stop or Loop の型で、AI 開発や authoring の改善ループを回したいとき。
+  単発対応ではなく、検証、PrivateEval、ふりかえり、最小修正をつなげて品質を上げたいとき。
 ---
 
 # Loop Engineering
@@ -24,6 +24,16 @@ Loop Engineering は、AI に「作らせて終わり」にせず、観察、計
 - 1 回の修正で終わらず、「何が落ちたか」「どの軸だけ直すか」を分けて安定駆動させたい
 - 実装だけでなく、follow-up Issue、ふりかえり、公開可能な知識化まで残して次に接続したい
 
+## 入口の 3 類型
+
+まず次のどれかに寄せます。どれにも当てはまらない場合は、専門 skill を先に使います。
+
+| 類型 | 入口にする理由 | 先に逃がす先 |
+|---|---|---|
+| bugfix loop | 失敗再現、原因、修正、回帰確認、次の再発防止までつなぐ | 再現と切り分けだけなら `debug` |
+| review response loop | review 指摘を blocking / non-blocking / follow-up に分け、必要修正と再確認まで回す | PR review 対応が明確なら `gh-pr-respond` |
+| authoring improvement loop | skill / prompt / docs の失敗ログや評価結果から、最小修正と再評価まで回す | 新規作成や責務整理が主なら `copilot-authoring` |
+
 ## dispatch / handoff
 
 Loop Engineering は万能入口ではなく、**改善ループの進行型**です。各段階で次の専門 skill へ委譲します。
@@ -35,6 +45,8 @@ Loop Engineering は万能入口ではなく、**改善ループの進行型**�
 - Happy AI Life 側への改善要望を残す: `happy-add-issue`
 - 現 repo の後続 Issue を丁寧に具体化する / 公開向け匿名化まで見る: `gh-issue-create`
 - 公開知識へ残す: `knowledge-capture`
+
+`loop-engineering` は、どの専門 skill を使った後でも **Verify -> Evaluate -> Reflect -> Patch -> Stop** を失わないための進行役です。専門 skill の成果物を置き換えず、落ちた軸と次の行き先だけを決めます。
 
 ## 使わない場面
 
@@ -58,6 +70,19 @@ Observe -> Plan -> Act -> Verify -> Evaluate -> Reflect -> Patch -> Stop or Loop
 | Reflect | なぜ落ちたか、次回に残す知識があるかを見る | 改善仮説 |
 | Patch | 落ちた軸だけを最小修正する | 追加差分 |
 | Stop or Loop | 停止条件を満たすか、人間レビューに切り替えるか決める | Stop / Continue / Human Review |
+
+## 最小成果物
+
+低リスク作業でも、Stop 時には次だけ残します。長い loop report は必要な場合だけ `assets/templates/loop-report.md` を使います。
+
+```markdown
+Loop note:
+- Fact / Inference / Unknown:
+- Verify:
+- 落ちた軸:
+- Stop / Continue / Human Review:
+- 次回に残す型:
+```
 
 ## PrivateEval
 
@@ -120,6 +145,8 @@ test / lint / typecheck / build / security scan > rule check > PrivateEval
 5 軸を 1〜5 点で採点し、落ちた軸だけを改善対象にします。
 全軸を同時に直そうとすると差分が膨らむため、1 iteration では関連する 1 テーマに絞ります。
 
+skill / prompt の挙動そのものを測る必要がある場合は、ここで `skill-eval` に渡します。明瞭性や裁量補完の検出が主目的なら `empirical-prompt-tuning`、版差の比較が主目的なら `skill-eval` の benchmark へ進みます。
+
 ### Step 6 — Reflect: Why と再利用価値を見る
 
 次を短く確認します。
@@ -154,6 +181,15 @@ Patch は「評価で落ちた軸に対する最小修正」です。
 
 低リスクな小タスクでは、PrivateEval を表形式にせず、落ちた軸と停止理由だけを短く残してよいです。
 
+follow-up は次の基準で 1 つに絞ります。
+
+| 残すもの | 行き先 |
+|---|---|
+| この repo の未完了作業、回帰防止、後続実装 | `gh-issue-create` |
+| Happy AI Life の skill / docs / plugin 運用への改善要望 | `happy-add-issue` |
+| 公開可能な学び、再利用できる判断、匿名化した知識 | `knowledge-capture` |
+| 次回も同じ失敗を検出したい評価ケース | `skill-eval` / `evals/<skill-id>/` |
+
 ## 判断表
 
 | 状況 | 使う skill |
@@ -167,6 +203,8 @@ Patch は「評価で落ちた軸に対する最小修正」です。
 | skill / prompt の評価方法を選ぶ | `skill-eval` |
 | 別実行者に指示明瞭性を実証検査させる | `empirical-prompt-tuning` |
 | PR レビューコメントへ対応する | `gh-pr-respond` |
+| 再現、正常系/異常系比較、切り分けを深める | `debug` |
+| 振る舞いを変えずに保守性だけを改善する | `safe-refactor` |
 | 知識を公開可能な形に捕捉する | `knowledge-capture` |
 
 Loop Engineering はこれらを置き換える親プロセスではありません。ループの中で、必要な専門 skill へ委譲するための進行型です。

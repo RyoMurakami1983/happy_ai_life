@@ -55,3 +55,5 @@ The official user path for picking up a newer plugin distribution is `copilot pl
 copilot plugin list
 copilot plugin update happy-core@happy-ai-life-marketplace
 ```
+
+If a documented skill such as `loop-engineering` is missing locally, check the installed version first and update the plugin before changing repo files.

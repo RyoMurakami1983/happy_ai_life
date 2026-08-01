@@ -10,6 +10,7 @@ PLUGIN_DIRS = (
     ROOT / "plugins" / "happy-core" / "skills",
     ROOT / "plugins" / "happy-coding" / "skills",
 )
+LOOP_ENGINEERING_DIR = ROOT / "plugins" / "happy-core" / "skills" / "loop-engineering"
 
 
 def test_skill_map_lists_every_distributed_skill_once() -> None:
@@ -48,3 +49,32 @@ def test_skill_map_does_not_reference_missing_skill_directories() -> None:
     missing = documented_skill_names - existing_skill_names - allowed_non_skill_terms
 
     assert missing == set()
+
+
+def test_loop_engineering_links_required_flow_assets() -> None:
+    skill = (LOOP_ENGINEERING_DIR / "SKILL.md").read_text(encoding="utf-8")
+
+    required_assets = (
+        "references/private-eval.md",
+        "references/eval-scenarios.md",
+        "references/verify-commands.md",
+        "assets/templates/loop-report.md",
+        "assets/templates/pr-body.md",
+        "assets/templates/commit-message.md",
+        "assets/templates/adr.md",
+    )
+    for asset in required_assets:
+        assert asset in skill
+        assert (LOOP_ENGINEERING_DIR / asset).is_file()
+
+    required_terms = (
+        "bugfix loop",
+        "review response loop",
+        "authoring improvement loop",
+        "happy-add-issue",
+        "gh-issue-create",
+        "knowledge-capture",
+        "evals/<skill-id>/",
+    )
+    for term in required_terms:
+        assert term in skill

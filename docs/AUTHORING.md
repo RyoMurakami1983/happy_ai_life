@@ -30,7 +30,7 @@
 | 実装契約が固まっている | `implement` |
 | 調査、修正、検証、ふりかえり、follow-up Issue 化までをつなげたい | `loop-engineering` |
 
-`loop-engineering` は専門 skill の代替ではなく、複数ステップを安定して回すための進行型です。authoring でも、失敗ログ、review 指摘、PrivateEval をまたぐ改善ではまずこの導線を検討します。
+authoring の作成・責務整理はまず `copilot-authoring` から始めます。`loop-engineering` は専門 skill の代替ではなく、失敗ログ、review 指摘、PrivateEval、follow-up Issue 化をまたぐ改善を安定して回すための進行型です。
 
 ## skill の最小構成
 
