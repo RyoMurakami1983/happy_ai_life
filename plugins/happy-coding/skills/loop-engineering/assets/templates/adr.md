@@ -33,4 +33,3 @@ Proposed / Accepted / Deprecated
 | 完了条件設計力 |  |
 | 組織視点 |  |
 | 再利用性 |  |
-

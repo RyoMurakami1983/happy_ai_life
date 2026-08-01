@@ -12,7 +12,7 @@ copilot plugin install happy-core@happy-ai-life-marketplace
 Local filesystem path installs are not supported by the current Copilot CLI plugin spec, and direct repository installs now emit a deprecation warning. Note that `copilot plugin marketplace add <owner>/<repo>` generally reads the marketplace manifest from the default branch, so it will not reflect a PR branch until after merge. To pre-merge smoke test branch changes, add the repository root as a local marketplace instead:
 
 ```powershell
-copilot plugin marketplace add ..\..
+copilot plugin marketplace add .
 copilot plugin install happy-core@happy-ai-life-marketplace
 copilot plugin marketplace browse happy-ai-life-marketplace
 copilot plugin list
@@ -27,7 +27,7 @@ copilot plugin marketplace remove happy-ai-life-marketplace
 
 ## Included assets
 
-- `skills/` — source of truth for reusable Copilot CLI workflows, authoring assets, Git/GitHub operations, Loop Engineering, and the daily `furikaeri` workflow
+- `skills/` — source of truth for reusable Copilot CLI workflows, authoring assets, Git/GitHub operations, and the daily `furikaeri` workflow
 
 This package intentionally does not include MCP server configuration, plugin hooks, plugin commands, or repo-local instructions.
 Generic safety hooks are managed by the trusted home sync path through `%USERPROFILE%\.copilot\config.json`, not by plugin install. Plugin hooks remain deferred until hook loading, script path resolution, and coexistence with repo-scoped hooks pass smoke validation through the supported marketplace-based install path.
@@ -56,4 +56,4 @@ copilot plugin list
 copilot plugin update happy-core@happy-ai-life-marketplace
 ```
 
-If a documented skill such as `loop-engineering` is missing locally, check the installed version first and update the plugin before changing repo files.
+If a documented skill from this plugin is missing locally, check the installed version first and update the plugin before changing repo files.

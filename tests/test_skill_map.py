@@ -10,7 +10,7 @@ PLUGIN_DIRS = (
     ROOT / "plugins" / "happy-core" / "skills",
     ROOT / "plugins" / "happy-coding" / "skills",
 )
-LOOP_ENGINEERING_DIR = ROOT / "plugins" / "happy-core" / "skills" / "loop-engineering"
+LOOP_ENGINEERING_DIR = ROOT / "plugins" / "happy-coding" / "skills" / "loop-engineering"
 
 
 def test_skill_map_lists_every_distributed_skill_once() -> None:
