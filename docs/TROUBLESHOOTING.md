@@ -2,6 +2,71 @@
 
 ## インストール時の問題
 
+### 問題: README や docs にある skill が手元にない
+
+**症状**
+
+- `loop-engineering` など、docs に載っている skill が `/skill list` に出ない
+- README の説明と installed plugin の挙動が違う
+
+**原因**
+
+installed plugin が古い可能性があります。Copilot CLI plugin は自動更新を前提にせず、利用者が `copilot plugin update` で取得します。
+
+**対処**
+
+```powershell
+copilot plugin list
+copilot plugin update happy-core@happy-ai-life-marketplace
+copilot plugin update happy-coding@happy-ai-life-marketplace
+copilot plugin list
+```
+
+`アクセスが拒否されました` のような権限エラーが出る場合でも、ACL や file lock が原因とは限りません。`copilot plugin update` / `copilot plugin uninstall` の経路だけが失敗し、手動削除と fresh install は成功するケースがあります。
+
+また、`copilot plugin update` は default branch の配布物を取り直します。この repo の branch や PR 上の未公開変更を試したい場合は、update ではなく local marketplace を使います。
+
+切り分け:
+
+```powershell
+copilot plugin list
+copilot plugin marketplace browse happy-ai-life-marketplace
+copilot plugin update happy-core@happy-ai-life-marketplace
+```
+
+次を満たす場合は、update 経路の失敗として扱い、backup 後に対象 plugin だけを手動削除して入れ直します。
+
+- marketplace browse や remote manifest 取得は成功する
+- 対象 directory の ACL と read-only 属性に問題がない
+- 代表ファイルに file lock がない
+- 同じ場所への手動 create / delete は成功する
+- `update` / `uninstall` だけが `Access is denied` で失敗する
+
+必要なら、**backup 後に限って** `copilot plugin update --all` を追加実行し、「特定 plugin だけでなく update 経路全体が失敗しているか」を確認します。初動では read-only な比較を優先してください。
+
+回避策:
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$root = "$HOME\.copilot\installed-plugins\happy-ai-life-marketplace"
+$backupRoot = "$HOME\.copilot\plugin-backups\happy-ai-life-marketplace-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
+
+Copy-Item "$root\happy-core" "$backupRoot\happy-core" -Recurse -ErrorAction Stop
+[System.IO.Directory]::Delete("$root\happy-core", $true)
+copilot plugin install happy-core@happy-ai-life-marketplace
+if ($LASTEXITCODE -ne 0) { throw "happy-core install failed with exit code $LASTEXITCODE" }
+
+Copy-Item "$root\happy-coding" "$backupRoot\happy-coding" -Recurse -ErrorAction Stop
+[System.IO.Directory]::Delete("$root\happy-coding", $true)
+copilot plugin install happy-coding@happy-ai-life-marketplace
+if ($LASTEXITCODE -ne 0) { throw "happy-coding install failed with exit code $LASTEXITCODE" }
+
+copilot plugin list
+```
+
+同じ marketplace に複数 plugin がある場合は、marketplace directory 全体ではなく対象 plugin directory だけを削除してください。
+
 ### 問題: gitleaks が見つからない
 
 Git hook や `repo-secure-check.ps1` で次のように言われる場合です。

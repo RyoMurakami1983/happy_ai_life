@@ -65,5 +65,6 @@ raw run、viewer、実会話ログは repo に入れません。必要な場合�
 
 - PR 常時 gate にはしない。
 - skill / prompt / workflow の挙動を変える PR では、該当 skill の focused eval を検討する。
+- `loop-engineering` の Evaluate で再発しそうな落ち方が見えたら、まず loop report や PR 本文に判断を残し、再利用価値が確認できたものだけ `evals/<skill-id>/` へ昇格する。
 - raw artifact は `.gitignore` の `evals/**/runs/`、`evals/**/viewer.html`、`evals/**/*transcript*`、`evals/**/*raw*` に従って追跡しない。
 - secret / PII 混入は `gitleaks` と evals policy test の両方で防ぐ。

@@ -1,7 +1,8 @@
 ---
 name: debug
 description: >
-  再現可能な証拠で失敗を再現し、比較・切り分け・最小修正の検証まで進める。リグレッション調査、正常系と異常系の比較、変更前後のデバッグ痕跡を残したいとき。
+  こんなときに使う: 再現可能な証拠で失敗を再現し、比較・切り分け・最小修正の検証まで進めたいとき。
+  リグレッション調査、正常系と異常系の比較、変更前後のデバッグ痕跡を残したいとき。
 license: Personal
 ---
 # 再現可能な証拠でデバッグする
@@ -23,6 +24,7 @@ license: Personal
 
 ## 関連スキル
 
+- **`loop-engineering`** - デバッグで得た証拠を、docs / skill / Issue / eval case へ蒸留して改善ループを閉じる
 - **`gh-pr-create`** - 修正と検証が終わった後に、証拠付きで PR へつなぐ
 - **`gh-pr-respond`** - レビューで追加説明が必要になったときに、before/after の根拠で返す
 - **`knowledge-capture`** - デバッグで学んだ再利用可能な知見を整理する
@@ -57,6 +59,7 @@ license: Personal
 | 機能は正しいが latency、throughput、memory が悪い | `performance.md` | 機能差分より計測結果が主役になるため |
 | 共有順序、idempotency、retry、race、eventual consistency など分散/並行制御が主因らしい | `distributed-concurrency.md` | ordering と retry ポリシーを固定してから他要因を切り分けるため |
 | AI 出力の揺らぎ、seed 変化、時刻依存、retry ノイズ、共有順序や state sync が主因ではない揺らぎ | `nondeterminism.md` | time と制御変数を握るのが最短だから |
+| CLI、plugin、installer、tool update、local cache の失敗 | `cli-tooling.md` | install / update / uninstall、権限、ロック、設定、最小 probe の比較が主になるため |
 | 個体差、fixture、電源、環境、発生時間、場所、周辺設備、仕様外使用で出たり出なかったりする | `embedded-hardware.md` | 物理条件や測定品質が owner かもしれないため |
 | 何を記録し、どう比較するか自体が曖昧 | `evidence-manifest.md` | まず証拠パッケージの型を固定するため |
 
@@ -152,6 +155,7 @@ debug/<session>/
 | `distributed-concurrency.md` | ordering、retry、race、sync、eventual consistency の不具合 | 薄い starter |
 | `embedded-hardware.md` | sensor、waveform、calibration、fixture、環境条件の不具合 | 薄い starter |
 | `nondeterminism.md` | time、seed、retry、parallelism の横断課題 | 薄い starter |
+| `cli-tooling.md` | CLI、plugin、installer、local cache、update / uninstall の不具合 | 実セッションから追加 |
 | `evidence-manifest.md` | 何をどう記録し比較するかの標準化 | 薄い starter |
 
 現象が intermittent だからといって、最初から hardware と決めつけないでください。最初の手掛かりに最も合う evidence shape の module から入り、最初の比較結果を見てから広げます。

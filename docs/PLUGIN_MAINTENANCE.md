@@ -13,10 +13,10 @@
 
 ## pre-merge smoke
 
-PR branch の内容を試す場合は、repository root を local marketplace として追加します。
+PR branch の内容を試す場合は、**repository root で** local marketplace を追加します。
 
 ```powershell
-copilot plugin marketplace add ..\..
+copilot plugin marketplace add .
 copilot plugin install happy-core@happy-ai-life-marketplace
 copilot plugin install happy-coding@happy-ai-life-marketplace
 copilot plugin marketplace browse happy-ai-life-marketplace

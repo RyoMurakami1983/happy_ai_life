@@ -9,7 +9,7 @@ Copilot CLI の reusable skills、agents、repo bootstrap 資産を管理する�
 - **通常利用:** [はじめに](docs/GETTING_STARTED.md#パス-1-通常利用marketplace-plugin) から plugin を入れる
 - **この repo を改善:** [開発ガイド](docs/DEVELOPMENT.md) を開き、`to-prd` → `design-and-plan` → `implement` へ進む
 - **既存 repo に導入:** [はじめに](docs/GETTING_STARTED.md#パス-3-既存-repo-に導入するteam-repo-setup) の Team Repo Setup を使う
-- **調査から follow-up まで回す:** 単発修正で終わらせたくないときは `loop-engineering` を起点にする
+- **調査から follow-up まで回す:** bugfix、review 対応、authoring 改善を単発修正で終わらせたくないときは `loop-engineering` を起点にする
 
 ## 🚀 クイックスタート
 
@@ -32,6 +32,8 @@ copilot plugin update happy-coding@happy-ai-life-marketplace
 ```
 
 公式 docs 上、installed plugin の更新取得は `copilot plugin update` が正規の導線です。更新通知の自動配信は前提にせず、`copilot plugin list` で version を見て、必要に応じて `copilot plugin update` を実行してください。
+README や docs にある skill が手元で見つからない、または挙動が古い場合は、まず installed plugin の version 差を疑い、該当 plugin を更新してください。
+ただし **この branch や PR 上の未公開変更** を試したい場合、`copilot plugin update` は default branch の配布物しか取りません。branch の内容を smoke test したいときは、repo root で `copilot plugin marketplace add .` を使う `docs/PLUGIN_MAINTENANCE.md` の local marketplace 手順を使ってください。
 この repo では、利用者が見る個別 plugin version の正本は `plugins/*/plugin.json`、`.github/plugin/marketplace.json` はその配布メタ情報をそろえる mirror として扱います。
 
 ### 配布対象と `works/` の違い

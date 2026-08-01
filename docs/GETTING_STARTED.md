@@ -29,6 +29,15 @@ copilot plugin list
 ```
 
 `happy-core` と `happy-coding` が表示されれば完了です。
+README や docs に出てくる skill が手元にない、または説明と挙動が違う場合は、installed plugin が古い可能性があります。
+
+```powershell
+copilot plugin update happy-core@happy-ai-life-marketplace
+copilot plugin update happy-coding@happy-ai-life-marketplace
+```
+
+これは **default branch で公開済みの plugin** を取り直す手順です。
+この repo の branch や PR 上の未公開変更を試したい場合は、repo root で `copilot plugin marketplace add .` を使う local marketplace 手順へ進んでください。
 
 ### 入るもの
 
