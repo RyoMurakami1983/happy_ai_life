@@ -30,7 +30,7 @@ user-invocable: false
 
 - まず「何をコミットしたいか」を短く確認する。
 - **毎回 branch 名候補を明示する**。すでに適切な branch にいる場合も、「この branch 名で進める」ことを候補として確認する。
-- まず `git-create-branch` で branch の目的と名前を確認し、必要なら新しい branch を作る。
+- 必要なら `git-create-branch` で branch の目的と名前を確認し、新しい branch を作る。
 - 現在の branch が `main` / `master` なら、そのまま commit 既定にせず、feature branch 候補を先に提示する。
 - 変更内容が明確なら、diff を見ずに候補を出す。
 - 変更内容が曖昧なら、必要最小限だけ `git diff` を確認する。

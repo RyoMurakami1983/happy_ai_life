@@ -34,11 +34,11 @@
 
 ## Behavior List
 
-- [ ] `git-commit` が毎回 branch 名候補を確認する。
-- [ ] `git-commit` が毎回 commit message 候補を確認する。
-- [ ] `gh-pr-create` が未コミット時も同じ確認ルールを引き継ぐ。
-- [ ] docs が「既定で確認する」運用を明記する。
-- [ ] `happy-core` の version metadata が同期する。
+- [x] `git-commit` が毎回 branch 名候補を確認する。
+- [x] `git-commit` が毎回 commit message 候補を確認する。
+- [x] `gh-pr-create` が未コミット時も同じ確認ルールを引き継ぐ。
+- [x] docs が「既定で確認する」運用を明記する。
+- [x] `happy-core` の version metadata が同期する。
 
 ## Vertical Slices
 

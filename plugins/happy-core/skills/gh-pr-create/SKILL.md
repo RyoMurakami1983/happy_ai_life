@@ -29,7 +29,7 @@ description: >
 
 - main ではなく feature branch から作る。
 - **毎回 branch 名候補を確認する**。すでに適切な branch 上でも、その branch 名で進めることを候補として明示する。
-- まず `git-create-branch` で branch の目的と名前を確認し、必要なら新しい branch を作る。
+- 必要なら `git-create-branch` で branch の目的と名前を確認し、新しい branch を作る。
 - 変更が未コミットなら、まず `git-commit` で整理する。このとき **branch 名候補と commit message 候補を提示し、承認後に commit する** 既定を引き継ぐ。
 - push していないなら `git push -u origin <branch>` する。
 - 既存の open PR があるなら、新しく作らず、既存 URL を報告して止める。
