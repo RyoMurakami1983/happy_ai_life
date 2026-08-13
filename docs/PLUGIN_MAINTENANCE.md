@@ -47,3 +47,13 @@ copilot plugin list
 copilot plugin update happy-core@happy-ai-life-marketplace
 copilot plugin update happy-coding@happy-ai-life-marketplace
 ```
+
+Windows で `Access denied` / `アクセスが拒否されました` が出ても、public docs 上の primary path は update のまま維持します。  
+ただし maintainer がこの repo を clone 済みなら、safe fallback として次を使えます。
+
+```powershell
+uv run app.py plugin-repair --dry-run --no-interactive
+uv run app.py plugin-repair --yes --no-interactive
+```
+
+この command は `happy-core` / `happy-coding` の backup を取ってから reinstall し、install 失敗時は backup から restore を試みます。
