@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+from datetime import datetime
 from pathlib import Path
 
 import happy_env
@@ -211,6 +212,20 @@ def test_app_plugin_repair_requires_yes_when_non_interactive(monkeypatch) -> Non
 
     assert exit_code == 1
     assert "確認が必要です" in output.getvalue()
+
+
+def test_build_plugin_repair_plan_uses_subsecond_backup_root(monkeypatch) -> None:
+    monkeypatch.setattr(happy_env, "resolve_user_home", lambda: Path(r"C:\Users\tester"))
+
+    first = happy_env.build_plugin_repair_plan(
+        now=datetime(2026, 8, 13, 15, 0, 0, 123456)
+    )
+    second = happy_env.build_plugin_repair_plan(
+        now=datetime(2026, 8, 13, 15, 0, 0, 654321)
+    )
+
+    assert first.backup_root != second.backup_root
+    assert str(first.backup_root).endswith("happy-ai-life-marketplace-20260813-150000-123456")
 
 
 def test_app_plugin_repair_restores_backup_on_install_failure(monkeypatch, tmp_path) -> None:

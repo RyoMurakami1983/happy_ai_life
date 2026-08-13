@@ -152,7 +152,7 @@ def build_plugin_repair_plan(
     now: datetime | None = None,
 ) -> PluginRepairPlan:
     installed_root = resolve_copilot_home() / "installed-plugins" / marketplace
-    timestamp = (now or datetime.now()).strftime("%Y%m%d-%H%M%S")
+    timestamp = (now or datetime.now()).strftime("%Y%m%d-%H%M%S-%f")
     backup_root = resolve_copilot_home() / "plugin-backups" / f"{marketplace}-{timestamp}"
 
     targets = tuple(
