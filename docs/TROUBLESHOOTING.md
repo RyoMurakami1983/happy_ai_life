@@ -44,7 +44,19 @@ copilot plugin update happy-core@happy-ai-life-marketplace
 
 必要なら、**backup 後に限って** `copilot plugin update --all` を追加実行し、「特定 plugin だけでなく update 経路全体が失敗しているか」を確認します。初動では read-only な比較を優先してください。
 
-回避策:
+この repo を clone 済みなら、まずは safe repair command を使います。
+
+```powershell
+# 予定だけ確認
+uv run app.py plugin-repair --dry-run --no-interactive
+
+# backup 後に復旧
+uv run app.py plugin-repair --yes --no-interactive
+```
+
+`plugin-repair` は `happy-core` と `happy-coding` を既定対象にし、`--plugin happy-core` のように subset 指定もできます。`--yes` を付けない非対話実行では削除前に停止します。
+
+repo を clone していない、または `uv run app.py` を使えない場合の低レベル回避策:
 
 ```powershell
 $ErrorActionPreference = 'Stop'
@@ -55,12 +67,20 @@ New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
 Copy-Item "$root\happy-core" "$backupRoot\happy-core" -Recurse -ErrorAction Stop
 [System.IO.Directory]::Delete("$root\happy-core", $true)
 copilot plugin install happy-core@happy-ai-life-marketplace
-if ($LASTEXITCODE -ne 0) { throw "happy-core install failed with exit code $LASTEXITCODE" }
+if ($LASTEXITCODE -ne 0) {
+  if (Test-Path "$root\happy-core") { [System.IO.Directory]::Delete("$root\happy-core", $true) }
+  Copy-Item "$backupRoot\happy-core" "$root\happy-core" -Recurse -ErrorAction Stop
+  throw "happy-core install failed with exit code $LASTEXITCODE"
+}
 
 Copy-Item "$root\happy-coding" "$backupRoot\happy-coding" -Recurse -ErrorAction Stop
 [System.IO.Directory]::Delete("$root\happy-coding", $true)
 copilot plugin install happy-coding@happy-ai-life-marketplace
-if ($LASTEXITCODE -ne 0) { throw "happy-coding install failed with exit code $LASTEXITCODE" }
+if ($LASTEXITCODE -ne 0) {
+  if (Test-Path "$root\happy-coding") { [System.IO.Directory]::Delete("$root\happy-coding", $true) }
+  Copy-Item "$backupRoot\happy-coding" "$root\happy-coding" -Recurse -ErrorAction Stop
+  throw "happy-coding install failed with exit code $LASTEXITCODE"
+}
 
 copilot plugin list
 ```

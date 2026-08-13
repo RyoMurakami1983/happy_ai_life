@@ -9,12 +9,15 @@ import subprocess
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import TextIO
 
 ROOT_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = ROOT_DIR / "scripts"
 ALLOW_POLICY_BYPASS_ENV = "HAPPY_ENV_ALLOW_POLICY_BYPASS"
+REPAIR_MARKETPLACE = "happy-ai-life-marketplace"
+REPAIRABLE_PLUGINS = ("happy-core", "happy-coding")
 
 
 @dataclass(frozen=True)
@@ -30,6 +33,37 @@ class CommandResult:
     def succeeded(self) -> bool:
         return self.returncode == 0
 
+
+@dataclass(frozen=True)
+class PluginRepairTarget:
+    name: str
+    install_spec: str
+    installed_dir: Path
+    backup_dir: Path
+    existed_before: bool
+
+
+@dataclass(frozen=True)
+class PluginRepairPlan:
+    marketplace: str
+    backup_root: Path
+    targets: tuple[PluginRepairTarget, ...]
+
+
+def resolve_user_home() -> Path:
+    return Path.home()
+
+
+def resolve_copilot_home() -> Path:
+    return resolve_user_home() / ".copilot"
+
+
+def resolve_copilot_executable() -> str:
+    resolved = shutil.which("copilot")
+    if resolved is not None:
+        return resolved
+
+    raise RuntimeError("copilot CLI が見つかりません。インストール後に再実行してください。")
 
 
 def resolve_powershell_executable() -> str:
@@ -96,6 +130,284 @@ def build_home_sync_arguments(
     if verbose_log:
         arguments.append("-VerboseLog")
     return tuple(arguments)
+
+
+def normalize_plugin_selection(selected_plugins: Sequence[str] | None) -> tuple[str, ...]:
+    if not selected_plugins:
+        return REPAIRABLE_PLUGINS
+
+    normalized: list[str] = []
+    for plugin_name in selected_plugins:
+        if plugin_name not in REPAIRABLE_PLUGINS:
+            raise ValueError(f"未対応の plugin 名です: {plugin_name}")
+        if plugin_name not in normalized:
+            normalized.append(plugin_name)
+    return tuple(normalized)
+
+
+def build_plugin_repair_plan(
+    *,
+    selected_plugins: Sequence[str] | None = None,
+    marketplace: str = REPAIR_MARKETPLACE,
+    now: datetime | None = None,
+) -> PluginRepairPlan:
+    installed_root = resolve_copilot_home() / "installed-plugins" / marketplace
+    timestamp = (now or datetime.now()).strftime("%Y%m%d-%H%M%S")
+    backup_root = resolve_copilot_home() / "plugin-backups" / f"{marketplace}-{timestamp}"
+
+    targets = tuple(
+        PluginRepairTarget(
+            name=plugin_name,
+            install_spec=f"{plugin_name}@{marketplace}",
+            installed_dir=installed_root / plugin_name,
+            backup_dir=backup_root / plugin_name,
+            existed_before=(installed_root / plugin_name).exists(),
+        )
+        for plugin_name in normalize_plugin_selection(selected_plugins)
+    )
+    return PluginRepairPlan(
+        marketplace=marketplace,
+        backup_root=backup_root,
+        targets=targets,
+    )
+
+
+def build_plugin_repair_followup_command(plan: PluginRepairPlan) -> str:
+    command = ["uv", "run", "app.py", "plugin-repair"]
+    if tuple(target.name for target in plan.targets) != REPAIRABLE_PLUGINS:
+        for target in plan.targets:
+            command.extend(["--plugin", target.name])
+    command.extend(["--yes", "--no-interactive"])
+    return " ".join(command)
+
+
+def format_plugin_repair_plan(plan: PluginRepairPlan) -> str:
+    lines = [
+        "◆ plugin-repair ドライラン",
+        f"対象 marketplace: {plan.marketplace}",
+        f"backup root: {plan.backup_root}",
+        "",
+        "予定操作:",
+    ]
+    for target in plan.targets:
+        if target.existed_before:
+            lines.append(f"- backup {target.installed_dir} -> {target.backup_dir}")
+            lines.append(f"- delete {target.installed_dir}")
+        else:
+            lines.append(f"- skip backup (未インストール): {target.installed_dir}")
+        lines.append(f"- copilot plugin install {target.install_spec}")
+
+    lines.extend(
+        [
+            "",
+            f"実行するには `{build_plugin_repair_followup_command(plan)}` を使ってください。",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def prompt_plugin_repair_confirmation(plan: PluginRepairPlan) -> bool:
+    write_console_line("")
+    write_console_line("◆ plugin repair 確認")
+    write_console_line(f"対象 marketplace: {plan.marketplace}")
+    write_console_line(f"backup root: {plan.backup_root}")
+    write_console_line("対象 plugin:")
+    for target in plan.targets:
+        state = "installed" if target.existed_before else "missing"
+        write_console_line(f"  - {target.name} ({state})")
+    write_console_line("")
+    write_console_line("この操作は対象 plugin directory を backup 後に削除して再インストールします。")
+    write_console_line("続行する場合は y を入力してください。")
+    write_console_line("")
+
+    answer = input("> ").strip().lower()
+    return answer in {"y", "yes"}
+
+
+def run_external_command(command: Sequence[str], *, label: str) -> CommandResult:
+    completed = subprocess.run(
+        tuple(command),
+        cwd=ROOT_DIR,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=False,
+        check=False,
+    )
+    return CommandResult(
+        label=label,
+        command=tuple(command),
+        returncode=completed.returncode,
+        stdout=decode_process_output(completed.stdout).strip(),
+        stderr=decode_process_output(completed.stderr).strip(),
+    )
+
+
+def run_copilot_plugin_install(install_spec: str) -> CommandResult:
+    return run_external_command(
+        (resolve_copilot_executable(), "plugin", "install", install_spec),
+        label=f"plugin install {install_spec}",
+    )
+
+
+def remove_directory(path: Path) -> None:
+    if path.exists():
+        shutil.rmtree(path)
+
+
+def copy_directory(source: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, destination)
+
+
+def restore_plugin_directory(target: PluginRepairTarget) -> str:
+    if not target.existed_before or not target.backup_dir.exists():
+        return "未実行"
+
+    try:
+        remove_directory(target.installed_dir)
+        copy_directory(target.backup_dir, target.installed_dir)
+        return "成功"
+    except OSError as exc:
+        return f"失敗 ({exc})"
+
+
+def build_plugin_repair_failure(
+    *,
+    plan: PluginRepairPlan,
+    target: PluginRepairTarget,
+    step: str,
+    message: str,
+    restore_message: str = "未実行",
+    completed_plugins: Sequence[str] = (),
+    install_result: CommandResult | None = None,
+) -> CommandResult:
+    lines = [
+        "✗ plugin-repair 失敗",
+        f"失敗した plugin: {target.name}",
+        f"失敗した step: {step}",
+        f"backup root: {plan.backup_root}",
+        f"復元: {restore_message}",
+        f"詳細: {message}",
+    ]
+    if completed_plugins:
+        lines.append(f"先に完了した plugin: {', '.join(completed_plugins)}")
+    if install_result is not None and install_result.stdout:
+        lines.extend(("", "copilot stdout:", install_result.stdout))
+    if install_result is not None and install_result.stderr:
+        lines.extend(("", "copilot stderr:", install_result.stderr))
+    return CommandResult(
+        label="plugin-repair",
+        command=("app.py", "plugin-repair"),
+        returncode=1,
+        stdout="\n".join(lines),
+        stderr="",
+    )
+
+
+def execute_plugin_repair(plan: PluginRepairPlan) -> CommandResult:
+    plan.backup_root.mkdir(parents=True, exist_ok=True)
+    completed_plugins: list[str] = []
+
+    for target in plan.targets:
+        if target.existed_before:
+            try:
+                copy_directory(target.installed_dir, target.backup_dir)
+            except OSError as exc:
+                return build_plugin_repair_failure(
+                    plan=plan,
+                    target=target,
+                    step="backup",
+                    message=str(exc),
+                    completed_plugins=completed_plugins,
+                )
+
+        try:
+            remove_directory(target.installed_dir)
+        except OSError as exc:
+            return build_plugin_repair_failure(
+                plan=plan,
+                target=target,
+                step="delete",
+                message=str(exc),
+                restore_message=restore_plugin_directory(target),
+                completed_plugins=completed_plugins,
+            )
+
+        install_result = run_copilot_plugin_install(target.install_spec)
+        if install_result.succeeded:
+            completed_plugins.append(target.name)
+            continue
+
+        return build_plugin_repair_failure(
+            plan=plan,
+            target=target,
+            step="install",
+            message=f"{target.install_spec} の再インストールに失敗しました。",
+            restore_message=restore_plugin_directory(target),
+            completed_plugins=completed_plugins,
+            install_result=install_result,
+        )
+
+    lines = [
+        "✓ plugin-repair 完了",
+        f"対象 marketplace: {plan.marketplace}",
+        f"backup root: {plan.backup_root}",
+        f"完了した plugin: {', '.join(completed_plugins) if completed_plugins else 'なし'}",
+        "次の確認: copilot plugin list",
+    ]
+    return CommandResult(
+        label="plugin-repair",
+        command=("app.py", "plugin-repair"),
+        returncode=0,
+        stdout="\n".join(lines),
+        stderr="",
+    )
+
+
+def run_plugin_repair(
+    *,
+    selected_plugins: Sequence[str] | None = None,
+    dry_run: bool = False,
+    assume_yes: bool = False,
+    interactive: bool | None = None,
+) -> CommandResult:
+    plan = build_plugin_repair_plan(selected_plugins=selected_plugins)
+
+    if dry_run:
+        return CommandResult(
+            label="plugin-repair",
+            command=("app.py", "plugin-repair"),
+            returncode=0,
+            stdout=format_plugin_repair_plan(plan),
+            stderr="",
+        )
+
+    should_prompt = interactive is not False and stdin_is_interactive()
+    if not assume_yes:
+        if should_prompt:
+            try:
+                confirmed = prompt_plugin_repair_confirmation(plan)
+            except EOFError:
+                confirmed = False
+            if not confirmed:
+                return CommandResult(
+                    label="plugin-repair",
+                    command=("app.py", "plugin-repair"),
+                    returncode=1,
+                    stdout="plugin-repair を中止しました。",
+                    stderr="",
+                )
+        else:
+            return CommandResult(
+                label="plugin-repair",
+                command=("app.py", "plugin-repair"),
+                returncode=1,
+                stdout="確認が必要です。削除を伴うため、対話端末で実行するか `--yes --no-interactive` を付けてください。",
+                stderr="",
+            )
+
+    return execute_plugin_repair(plan)
+
 
 def decode_process_output(data: bytes) -> str:
     if not data:
@@ -506,6 +818,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="未指定時は対話可能な端末でのみプロンプトを表示します。--no-interactive で非対話実行を強制できます。",
     )
 
+    repair_parser = subparsers.add_parser(
+        "plugin-repair",
+        help="happy-ai-life marketplace plugin を backup 後に再インストールします。",
+    )
+    repair_parser.add_argument(
+        "--plugin",
+        dest="plugins",
+        action="append",
+        choices=REPAIRABLE_PLUGINS,
+        help="対象 plugin を限定します。未指定時は happy-core と happy-coding の両方を扱います。",
+    )
+    repair_parser.add_argument("--dry-run", action="store_true", help="backup / delete / reinstall の予定だけを表示します。")
+    repair_parser.add_argument("--yes", action="store_true", help="確認プロンプトを省略して実行します。")
+    repair_parser.add_argument(
+        "--interactive",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="未指定時は対話可能な端末でのみ確認プロンプトを表示します。--no-interactive で非対話実行を強制できます。",
+    )
+
     return parser
 
 
@@ -603,6 +935,15 @@ def run_cli_interactive(namespace: argparse.Namespace, *, has_explicit_flags: bo
             verbose_log=verbose_log,
         )
         message = format_command_result_improved(result, dry_run=dry_run, verbose_log=verbose_log)
+    elif namespace.command == "plugin-repair":
+        interactive_override = getattr(namespace, "interactive", None)
+        result = run_plugin_repair(
+            selected_plugins=namespace.plugins,
+            dry_run=namespace.dry_run,
+            assume_yes=namespace.yes,
+            interactive=interactive_override,
+        )
+        message = result.stdout
     else:
         raise ValueError(f"未対応の CLI コマンドです: {namespace.command}")
 

@@ -33,6 +33,8 @@ copilot plugin update happy-coding@happy-ai-life-marketplace
 
 公式 docs 上、installed plugin の更新取得は `copilot plugin update` が正規の導線です。更新通知の自動配信は前提にせず、`copilot plugin list` で version を見て、必要に応じて `copilot plugin update` を実行してください。
 README や docs にある skill が手元で見つからない、または挙動が古い場合は、まず installed plugin の version 差を疑い、該当 plugin を更新してください。
+Windows で `アクセスが拒否されました` が出た場合も、まずは **update を正規導線として維持** してください。復旧が必要なときは [トラブルシューティング](docs/TROUBLESHOOTING.md) の safe repair fallback を使います。  
+この repo を clone 済みなら、`uv run app.py plugin-repair --dry-run --no-interactive` で対象と backup 先を確認し、その後 `uv run app.py plugin-repair --yes --no-interactive` で復旧できます。
 ただし **この branch や PR 上の未公開変更** を試したい場合、`copilot plugin update` は default branch の配布物しか取りません。branch の内容を smoke test したいときは、repo root で `copilot plugin marketplace add .` を使う `docs/PLUGIN_MAINTENANCE.md` の local marketplace 手順を使ってください。
 この repo では、利用者が見る個別 plugin version の正本は `plugins/*/plugin.json`、`.github/plugin/marketplace.json` はその配布メタ情報をそろえる mirror として扱います。
 

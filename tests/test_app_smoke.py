@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 import happy_env
 
@@ -170,3 +171,123 @@ def test_run_home_sync_normalizes_shell_flags(monkeypatch) -> None:
     result = happy_env.run_home_sync(dry_run=True, verbose_log=True)
 
     assert result.succeeded
+
+
+def test_app_plugin_repair_dry_run_shows_default_targets(monkeypatch) -> None:
+    output = io.StringIO()
+
+    monkeypatch.setattr(happy_env, "resolve_user_home", lambda: Path(r"C:\Users\tester"))
+    monkeypatch.setattr(happy_env.sys, "stdout", output)
+
+    exit_code = happy_env.main(["plugin-repair", "--dry-run", "--no-interactive"])
+
+    assert exit_code == 0
+    assert "plugin-repair ドライラン" in output.getvalue()
+    assert "happy-core@happy-ai-life-marketplace" in output.getvalue()
+    assert "happy-coding@happy-ai-life-marketplace" in output.getvalue()
+
+
+def test_app_plugin_repair_dry_run_preserves_subset_followup_command(monkeypatch) -> None:
+    output = io.StringIO()
+
+    monkeypatch.setattr(happy_env, "resolve_user_home", lambda: Path(r"C:\Users\tester"))
+    monkeypatch.setattr(happy_env.sys, "stdout", output)
+
+    exit_code = happy_env.main(
+        ["plugin-repair", "--plugin", "happy-core", "--dry-run", "--no-interactive"]
+    )
+
+    assert exit_code == 0
+    assert "uv run app.py plugin-repair --plugin happy-core --yes --no-interactive" in output.getvalue()
+
+
+def test_app_plugin_repair_requires_yes_when_non_interactive(monkeypatch) -> None:
+    output = io.StringIO()
+
+    monkeypatch.setattr(happy_env, "resolve_user_home", lambda: Path(r"C:\Users\tester"))
+    monkeypatch.setattr(happy_env.sys, "stdout", output)
+
+    exit_code = happy_env.main(["plugin-repair", "--no-interactive"])
+
+    assert exit_code == 1
+    assert "確認が必要です" in output.getvalue()
+
+
+def test_app_plugin_repair_restores_backup_on_install_failure(monkeypatch, tmp_path) -> None:
+    installed_dir = (
+        tmp_path
+        / ".copilot"
+        / "installed-plugins"
+        / "happy-ai-life-marketplace"
+        / "happy-core"
+    )
+    installed_dir.mkdir(parents=True)
+    original_file = installed_dir / "plugin.json"
+    original_file.write_text("old", encoding="utf-8")
+
+    output = io.StringIO()
+
+    monkeypatch.setattr(happy_env, "resolve_user_home", lambda: tmp_path)
+    monkeypatch.setattr(happy_env, "resolve_copilot_executable", lambda: "copilot")
+    monkeypatch.setattr(happy_env.sys, "stdout", output)
+
+    def fake_run(command: tuple[str, ...], **_: object) -> object:
+        assert command == ("copilot", "plugin", "install", "happy-core@happy-ai-life-marketplace")
+
+        class Completed:
+            returncode = 1
+            stdout = b""
+            stderr = b"install failed"
+
+        return Completed()
+
+    monkeypatch.setattr(happy_env.subprocess, "run", fake_run)
+
+    exit_code = happy_env.main(
+        ["plugin-repair", "--plugin", "happy-core", "--yes", "--no-interactive"]
+    )
+
+    assert exit_code == 1
+    assert original_file.read_text(encoding="utf-8") == "old"
+    assert list(tmp_path.glob(".copilot/plugin-backups/happy-ai-life-marketplace-*/happy-core/plugin.json"))
+    assert "復元: 成功" in output.getvalue()
+
+
+def test_app_plugin_repair_delete_failure_returns_controlled_message(monkeypatch, tmp_path) -> None:
+    installed_dir = (
+        tmp_path
+        / ".copilot"
+        / "installed-plugins"
+        / "happy-ai-life-marketplace"
+        / "happy-core"
+    )
+    installed_dir.mkdir(parents=True)
+    (installed_dir / "plugin.json").write_text("old", encoding="utf-8")
+
+    output = io.StringIO()
+
+    monkeypatch.setattr(happy_env, "resolve_user_home", lambda: tmp_path)
+    monkeypatch.setattr(happy_env.sys, "stdout", output)
+    monkeypatch.setattr(happy_env, "remove_directory", lambda _: (_ for _ in ()).throw(OSError("locked")))
+
+    exit_code = happy_env.main(
+        ["plugin-repair", "--plugin", "happy-core", "--yes", "--no-interactive"]
+    )
+
+    assert exit_code == 1
+    assert "失敗した step: delete" in output.getvalue()
+    assert "locked" in output.getvalue()
+
+
+def test_app_plugin_repair_eof_during_confirmation_cancels_cleanly(monkeypatch) -> None:
+    output = io.StringIO()
+
+    monkeypatch.setattr(happy_env, "resolve_user_home", lambda: Path(r"C:\Users\tester"))
+    monkeypatch.setattr(happy_env, "stdin_is_interactive", lambda stream=None: True)
+    monkeypatch.setattr(happy_env.sys, "stdout", output)
+    monkeypatch.setattr("builtins.input", lambda prompt="": (_ for _ in ()).throw(EOFError()))
+
+    exit_code = happy_env.main(["plugin-repair"])
+
+    assert exit_code == 1
+    assert "plugin-repair を中止しました。" in output.getvalue()
