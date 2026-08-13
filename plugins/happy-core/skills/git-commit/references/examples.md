@@ -53,3 +53,15 @@ refactor: バリデーション処理を独立モジュールへ切り出す
 
 悪い例: 20 個の無関係な変更を 1 つのコミットにまとめる
 良い例: 1 つの論理単位ごとにコミットを分ける
+
+## 確認の出し方
+
+`git-commit` では、毎回次の形で確認を出してから commit します。
+
+```text
+branch 名候補: fix/249-branch-commit-check
+commit message 候補: docs: Git workflow の確認既定を明文化
+承認を取ってから commit する
+```
+
+すでに適切な branch にいる場合も、branch 名候補は省略せずに「この branch で進める」候補として明示します。

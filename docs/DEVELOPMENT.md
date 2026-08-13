@@ -142,6 +142,7 @@ full test と type check は必要なときだけ手元または manual workflow
 ### 7. コミット
 
 Conventional Commits を使い、必要なら Co-authored-by trailer を付けます。
+`git-commit` を使う場合は、**branch 名候補** と **commit message 候補** を毎回提示し、承認後に commit するのを既定にします。
 
 ```powershell
 git commit -m "feat: 変更内容"
@@ -153,6 +154,8 @@ git commit -m "feat: 変更内容"
 git push origin feature/your-feature-name
 gh pr create
 ```
+
+`gh-pr-create` を使う場合も、PR 作成前に branch 名候補を確認します。未コミット変更がある場合は `git-commit` の既定を引き継ぎ、branch 名候補と commit message 候補を提示してから進めます。
 
 ## 主要コマンド
 
@@ -224,11 +227,13 @@ chore: 雑務
 ### PR の流れ
 
 1. branch を切る
-2. ローカルで確認する
-3. push する
-4. PR を作る
-5. review 指摘に対応する
-6. 承認後に merge する
+2. branch 名候補を確認する
+3. commit message 候補を確認して commit する
+4. ローカルで確認する
+5. push する
+6. PR を作る
+7. review 指摘に対応する
+8. 承認後に merge する
 
 ## セキュリティの考え方
 
