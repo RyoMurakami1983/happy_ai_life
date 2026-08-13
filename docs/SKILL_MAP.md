@@ -45,9 +45,9 @@ linux-server-ops
 | `furikaeri` | ふりかえりを残す | `knowledge-capture` |
 | `happy-add-issue` | Happy AI Life の skill / docs / 運用への意見を母艦 repo の Issue にする | 必要なら `gh-issue-create` |
 | `gh-issue-create` | 今開発中の repo に実行用 Issue を作る | `gh-pr-create` |
-| `gh-pr-create` | PR を作る | `deep-review-preflight` |
+| `gh-pr-create` | branch 名候補を確認し、未コミットなら commit message 候補確認も引き継いで PR を作る | `deep-review-preflight` |
 | `gh-pr-respond` | PR review へ対応する | `deep-review-preflight`, `git-commit` |
-| `git-commit` | 原子的 commit を作る | `gh-pr-create` |
+| `git-commit` | branch 名候補と commit message 候補を確認して原子的 commit を作る | `gh-pr-create` |
 | `git-create-branch` | 新しい作業 branch を命名して作る | `git-commit`, `gh-pr-create` |
 | `knowledge-capture` | 公開可能な知識として捕捉する | `furikaeri` |
 | `linux-server-ops` | Ubuntu / Linux サーバーの SSH 接続、sudo、systemd、HTTP 監視を安全に進める | `beginner-readme-ops`, `copilot-authoring` |
