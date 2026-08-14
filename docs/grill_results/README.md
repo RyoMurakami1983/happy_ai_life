@@ -8,6 +8,7 @@
 | `001_GRILL_WITH_DOCS_RESULT.md` | active | Loop Engineering と PrivateEval の `happy-core` 配置整理 |
 | `002_GRILL_WITH_DOCS_RESULT.md` | active | skill ecosystem / privateEval / docs 整理計画 |
 | `003_GRILL_WITH_DOCS_RESULT.md` | active | plugin update 失敗に対する safe repair fallback 導線 |
+| `005_GRILL_WITH_DOCS_RESULT.md` | active | skill 構造の簡素化と評価導線の分離 |
 
 ## 更新ルール
 
