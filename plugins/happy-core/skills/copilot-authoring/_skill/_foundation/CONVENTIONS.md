@@ -32,6 +32,14 @@ skill-name/
 - `scripts/` には agent が毎回書き直すべきでない deterministic helper を置く
 - `assets/` には出力に埋め込むファイルを置き、説明文書は置かない
 
+## Responsibility
+
+- **1 skill = 1 primary purpose** を基本にする
+- `作成 + 改善 + 検証 + 評価` のような異なる責務を 1 つの本文へ直列に詰め込まない
+- 複数の専門 skill を 1 つの会話で束ねたい場合だけ、薄い orchestration skill を親に置く
+- orchestration 親の仕事が route / handoff だけなら、`disable-model-invocation: true` を既定にする
+- 親は入口判断と handoff に徹し、詳細な実行ロジックは child skill や `references/` に置く
+
 ## Router Skills
 
 1 つの入口から、明確に異なる sub-workflow へ分岐する必要があるときだけ router を使います。
@@ -55,6 +63,7 @@ router-name/
 - router が domain を供給できるなら、sub-skill 名は短い verb / verb-object でよい
 - 共有テンプレート、規約、補助断片は router の `_foundation/` に置く
 - 詳細な実行ロジックは親 router ではなく各 sub-skill に置く
+- `interview-with-docs` のように sibling skill を束ねる orchestration では、役割の境界と実行ルールだけを親に残し、子の中身を親へ複製しない
 
 ## Progressive Disclosure
 

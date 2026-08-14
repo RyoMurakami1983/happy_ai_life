@@ -1,13 +1,22 @@
 ---
 name: new-skill
 description: >
-  新しい custom skill を既存 conventions に沿って立ち上げる。試作から
-  `plugins/*` 配布へ昇格する際の name / description 設計も扱う。skill の新規追加、router / sub-skill の雛形作成、手作業 workflow の skill 化をしたいとき。
+  こんなときに使う: 新しい custom skill を既存 conventions に沿って立ち上げたいとき。
+  試作から `plugins/*` 配布へ昇格する際の name / description 設計も扱う。skill の
+  新規追加、router / sub-skill の雛形作成、手作業 workflow の skill 化をしたいとき。
 ---
 
 # Skill を新規作成する
 
 この sub-skill は、新しい workflow を再利用可能な skill package に落とし込むための入口です。先にゴール、trigger、成功条件を固める理由は、topic の説明ではなく実行可能な workflow として設計するためです。
+
+## 役割の境界
+
+- ここで扱うのは **新しい skill の作成** です。
+- 新しい custom agent は標準導線では作りません。skill では足りない権限境界や独立実行が必要な場合は、この場で作らず issue / design 判断へ戻します。
+- 既存 skill の wording や責務境界を磨き直す主担当は `../improve-existing/` です。
+- 静的な構造確認を主目的にする場合は `../validate-authoring/` へ戻します。
+- 別実行者にも通じるかの評価は `happy-core@skill-eval` または `happy-core@empirical-prompt-tuning` で扱います。
 
 ## こんなときに使う
 
@@ -32,6 +41,8 @@ skill が何を達成し、どの入力で起動され、どこまで面倒を�
 ### ステップ 2 — flat / router / suite を選ぶ
 
 一本道なら flat skill、1 つの入口から複数 route に分けるなら router、複数の sibling skill を束ねるなら suite を選びます。理由は、構造選択を後回しにすると後半で大きな移設が発生しやすいからです。
+
+このときの基本方針は **1 skill = 1 primary purpose** です。複数の専門機能を 1 本に混ぜるのではなく、まず sibling skill へ分解し、それでも 1 入口が必要な場合だけ `interview-with-docs` のような薄い orchestration skill を親に置きます。
 
 ### ステップ 3 — 雛形を起こす
 
@@ -77,6 +88,7 @@ uv run python plugins\happy-core\skills\copilot-authoring\_skill\_eval\scripts\v
 
 ## 注意点
 
+- **Agent を安易に作らない**: まず skill で足りるかを確認し、model / tool 権限を別 unit に切る必要がある場合だけ別 issue にします。
 - **built-in 名に寄せすぎない**: 独自 skill の名前が platform command と競合すると、使い分けの学習コストが増えます。
 - **一本道の workflow に router を使わない**: route が 1 本なら構造だけが増え、保守性を落とします。
 - **最初から detail を詰め込みすぎない**: 実行時にしか要らない説明は `references/` に逃がしたほうが再利用しやすいです。

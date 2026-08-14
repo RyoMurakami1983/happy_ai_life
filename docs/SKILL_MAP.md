@@ -19,7 +19,7 @@ to-prd
 copilot-authoring
   -> skill-eval
     -> empirical-prompt-tuning
-    -> loop-engineering
+  -> loop-engineering
 
 loop-engineering
   -> happy-add-issue
@@ -40,7 +40,7 @@ linux-server-ops
 | --- | --- | --- |
 | `ask-happy` | どの Happy AI Life skill を使うか迷う | 各基本 skill |
 | `beginner-readme-ops` | 初心者向けの README / 運用手順を構造化する | `to-prd` |
-| `copilot-authoring` | skill / agent / instructions を作る・改善する | `skill-eval` |
+| `copilot-authoring` | authoring の薄い統合入口として、skill / instructions の対象を専門ルートへ振り分ける | `skill-eval` |
 | `empirical-prompt-tuning` | 別実行者で指示の明瞭性を検査する | `skill-eval` |
 | `furikaeri` | ふりかえりを残す | `knowledge-capture` |
 | `happy-add-issue` | Happy AI Life の skill / docs / 運用への意見を母艦 repo の Issue にする | 必要なら `gh-issue-create` |
