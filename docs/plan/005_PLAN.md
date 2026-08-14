@@ -22,11 +22,11 @@ Happy AI Life の skill 構造を、authoring と evaluation の 2 つの薄い�
 ## Progress
 
 - [x] Bootstrap / 前提確認
-- [ ] Slice 1: PRD / design / plan
-- [ ] Slice 2: Authoring surface
-- [ ] Slice 3: Evaluation surface
-- [ ] Slice 4: Integration validation
-- [ ] Completion handoff
+- [x] Slice 1: PRD / design / plan
+- [x] Slice 2: Authoring surface
+- [x] Slice 3: Evaluation surface
+- [x] Slice 4: Integration validation
+- [x] Completion handoff
 
 ## Structure Decisions
 
@@ -39,12 +39,12 @@ Happy AI Life の skill 構造を、authoring と evaluation の 2 つの薄い�
 
 ## Behavior List
 
-- [ ] `copilot-authoring` に `new-agent` route がない。
-- [ ] `new-skill` に agent 作成を標準導線にしない説明がある。
-- [ ] `skill-eval` に `privateEval` の位置づけがある。
-- [ ] `docs/PRIVATE_EVAL.md` と `CONTEXT.md` の定義が一致する。
-- [ ] `loop-engineering` 側で PrivateEval の用語衝突が緩和される。
-- [ ] tests が route / terminology の回帰を検出する。
+- [x] `copilot-authoring` に `new-agent` route がない。
+- [x] `new-skill` に agent 作成を標準導線にしない説明がある。
+- [x] `skill-eval` に `privateEval` の位置づけがある。
+- [x] `docs/PRIVATE_EVAL.md` と `CONTEXT.md` の定義が一致する。
+- [x] `loop-engineering` 側で PrivateEval の用語衝突が緩和される。
+- [x] tests が route / terminology の回帰を検出する。
 
 ## Vertical Slices
 
