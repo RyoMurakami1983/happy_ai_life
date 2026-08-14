@@ -39,9 +39,9 @@ PR と main push では gitleaks、smoke test、ruff を実行します。full t
 | `skill-eval` | skill / prompt の評価方法選択 | skill の挙動や指示を変えるとき |
 | `empirical-prompt-tuning` | 別実行者に伝わる明瞭性 | 指示文の曖昧さを疑うとき |
 | `loop-engineering` | Observe から PrivateEval までの改善ループ | 単発ではなく改善を回すとき |
-| privateEval | secret なしの再利用可能な評価ケース | repo に残せる回帰ケースを育てるとき |
+| privateEval | secret なし評価ケースの設計・保管・昇格判断 | repo に残せる回帰ケースを育てるとき |
 
-PrivateEval の詳細は [PrivateEval](PRIVATE_EVAL.md) を参照します。PR 常時 gate にはせず、skill / prompt / workflow の挙動を変える PR で focused eval として使います。
+PrivateEval の詳細は [PrivateEval](PRIVATE_EVAL.md) と `plugins/happy-core/skills/skill-eval/references/private-eval.md` を参照します。PR 常時 gate にはせず、skill / prompt / workflow の挙動を変える PR で focused eval として使います。
 
 ## gitleaks
 

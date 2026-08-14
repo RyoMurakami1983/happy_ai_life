@@ -18,8 +18,8 @@ _Avoid_: package, module
 _Avoid_: archive, production skill
 
 **privateEval**:
-secret を含まない評価ケースで、skill や prompt の品質を継続的に測る仕組み。実会話ログや個人情報は含めない。
-_Avoid_: raw log, private data, judge
+secret を含まない評価ケースの設計・保管・昇格判断を担う層。評価の実行そのものではなく、再利用できる `evals/<skill-id>/` の基準と資産を扱う。
+_Avoid_: raw log, private data, judge, benchmark runner
 
 **型**:
 再現可能な仕事の進め方。自由を奪うテンプレートではなく、速さ、安全性、学習の土台として使う。

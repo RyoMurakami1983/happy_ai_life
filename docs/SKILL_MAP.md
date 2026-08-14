@@ -18,6 +18,7 @@ to-prd
 ```text
 copilot-authoring
   -> skill-eval
+    -> privateEval design / benchmark
     -> empirical-prompt-tuning
   -> loop-engineering
 
@@ -52,7 +53,7 @@ linux-server-ops
 | `knowledge-capture` | 公開可能な知識として捕捉する | `furikaeri` |
 | `linux-server-ops` | Ubuntu / Linux サーバーの SSH 接続、sudo、systemd、HTTP 監視を安全に進める | `beginner-readme-ops`, `copilot-authoring` |
 | `pptx` | PowerPoint ファイルを扱う | 文書系作業 |
-| `skill-eval` | skill / prompt 評価の入口 | `empirical-prompt-tuning`, `loop-engineering` |
+| `skill-eval` | skill / prompt 評価と privateEval の評価ケース設計入口 | `empirical-prompt-tuning`, `loop-engineering` |
 | `to-prd` | 会話内容を短い PRD にまとめる | `design-and-plan`, `implement` |
 | `interview-me` | 企画や設計について、ユーザーに一問ずつ深掘りして確認する | `interview-with-docs` |
 
