@@ -1,6 +1,6 @@
 # Advanced Performance Patterns
 
-Extended patterns for `dotnet-type-perf`. These topics complement the main workflow steps.
+Extended patterns for `type-perf`. These topics complement the main workflow steps.
 
 ## ValueTask vs Task
 

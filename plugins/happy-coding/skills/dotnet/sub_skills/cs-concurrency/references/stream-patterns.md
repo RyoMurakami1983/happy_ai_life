@@ -1,6 +1,6 @@
 # Stream Patterns — Akka.NET Streams & Reactive Extensions
 
-Reference material for `dotnet-cs-concurrency` Step 4.
+Reference material for `cs-concurrency` Step 4.
 
 ## Akka.NET Streams: Throttling
 

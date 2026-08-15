@@ -1,10 +1,10 @@
 ---
-name: dotnet-setup-dev-environment
+name: setup
 description: >
   dotnet CLI を軸に、再現可能な .NET 開発環境を安全に整えたいとき。
 ---
 
-# dotnet-setup-dev-environment
+# setup
 
 `dotnet` CLI を入口にそろえ、SDK・プロジェクト構造・品質ゲートを再現可能な形で整える skill です。
 「まず手でファイルを書く」のではなく、「まず CLI と build contract を置く」に寄せます。
@@ -43,7 +43,7 @@ dotnet build --no-restore
 - `global.json` がある → 上書きせず、まず SDK を尊重する
 - `.sln` がある → 変更は `dotnet sln migrate` を正規ルートにする
 - `.slnx` がある → そのまま標準として扱う
-- `net472` や `netstandard2.0` が見える → `dotnet-framework-netstandard-bridge` を開く
+- `net472` や `netstandard2.0` が見える → `framework-bridge` を開く
 - `<Project Sdk=` が無い project がある → SDK-style へ寄せる計画を先に考える
 
 ### Step 1 — SDK を固定する
@@ -127,7 +127,7 @@ SDK の既定値、テンプレート更新、将来の互換性を CLI 側に�
 </Project>
 ```
 
-`netstandard2.0` の共有層をどこに切るか、`net472` をどう隔離するかは `dotnet-framework-netstandard-bridge` の責務です。
+`netstandard2.0` の共有層をどこに切るか、`net472` をどう隔離するかは `framework-bridge` の責務です。
 Step 0 で mixed TFM を検出したら、ここで深追いせず bridge skill に渡します。
 
 ### Step 4 — package と local tool の管理を寄せる
@@ -230,9 +230,9 @@ dotnet test --no-build
 
 - `dotnet`
 - `repo-onboarding`
-- `dotnet-framework-netstandard-bridge`
-- `dotnet-modern-cs`
-- `dotnet-slopwatch`
+- `framework-bridge`
+- `modern-cs`
+- `slopwatch`
 - `git-commit`
 
 ## FAQ
@@ -250,4 +250,4 @@ A: ツール互換性や業務上の事情で問題があるなら例外扱い�
 A: `latest` は SDK 更新で実体が変わります。再現性を優先するなら、`9.0-recommended` のように固定して、上げるときだけ意図的に更新するほうが安全です。
 
 **Q: `.NET Framework 4.x` と `.NET 5+` を一緒に扱うときは？**  
-A: 共有が必要なら `netstandard2.0` を基準にし、setup skill では mixed TFM を検出して `dotnet-framework-netstandard-bridge` に渡します。境界設計そのものは bridge skill の責務です。
+A: 共有が必要なら `netstandard2.0` を基準にし、setup skill では mixed TFM を検出して `framework-bridge` に渡します。境界設計そのものは bridge skill の責務です。

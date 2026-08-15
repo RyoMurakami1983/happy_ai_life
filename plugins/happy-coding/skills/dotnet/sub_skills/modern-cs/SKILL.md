@@ -1,5 +1,5 @@
 ---
-name: dotnet-modern-cs
+name: modern-cs
 description: >
   こんなときに使う: モダン C#（12+）で record、パターンマッチング、合成、Result 型
   エラーハンドリングを使った慣用的で高性能なコードを書きたいとき。新規 C# コードの
@@ -27,9 +27,9 @@ description: >
 
 | Skill | Scope |
 |-------|-------|
-| `dotnet-type-perf` | Span\<T\>、Memory\<T\>、ArrayPool、ゼロアロケーションパターン |
+| `type-perf` | Span\<T\>、Memory\<T\>、ArrayPool、ゼロアロケーションパターン |
 | `dotnet` | API 設計や新規基盤 skill の入口 |
-| `dotnet-cs-concurrency` | async/await ベストプラクティス、CancellationToken、IAsyncEnumerable |
+| `cs-concurrency` | async/await ベストプラクティス、CancellationToken、IAsyncEnumerable |
 
 ## 基本原則
 

@@ -1,5 +1,5 @@
 ---
-name: dotnet-framework-netstandard-bridge
+name: framework-bridge
 description: >
   .NET Framework 4.x のレガシー層と .NET 8+ の UI/アプリ層を netstandard2.0 の共有層でつなぐ。
   既存の .NET Framework 依存を残しつつ UI やアプリ本体を .NET 8 へ段階移行したいとき、
@@ -26,7 +26,7 @@ description: >
 - いきなりの完全書き換え
 - IPC / 別プロセス化そのものの詳細設計
 - WPF 固有の MVVM 実装手順
-- `global.json`、`.slnx`、既存 repo の build contract 診断。まずは `dotnet-setup-dev-environment` を使う
+- `global.json`、`.slnx`、既存 repo の build contract 診断。まずは `setup` を使う
 
 ## 基本原則
 
@@ -128,5 +128,5 @@ public sealed class DeviceReader : IDeviceReader
 ## Related Skills
 
 - `dotnet` — .NET 系の入口
-- `dotnet-setup-dev-environment` — 既存 repo 診断と build contract の入口
-- `dotnet-modern-cs` — 共有型や契約型をどう表現するか
+- `setup` — 既存 repo 診断と build contract の入口
+- `modern-cs` — 共有型や契約型をどう表現するか

@@ -1,5 +1,5 @@
 ---
-name: dotnet-slopwatch
+name: slopwatch
 description: >
   .NET 向けの 2 層スロップ防止。Slopwatch CLI によるコードレベル検出（SW-xxx）と、
   アーキテクチャ上のアンチパターンカタログ（SLOP-xxx）を扱う。
@@ -7,7 +7,7 @@ description: >
   または anti-slop の品質ゲートを CI/CD に組み込むとき。
 ---
 
-このドキュメントは dotnet-slopwatch の日本語版です。
+このドキュメントは slopwatch の日本語版です。
 
 # Slopwatch: .NET向けLLMアンチチート
 
@@ -33,7 +33,7 @@ description: >
 ## Related Skills
 
 - **`dotnet`** — .NET family の入口
-- **`dotnet-modern-cs`** — Slopwatchが施行を助けるコーディング標準
+- **`modern-cs`** — Slopwatchが施行を助けるコーディング標準
 
 ---
 

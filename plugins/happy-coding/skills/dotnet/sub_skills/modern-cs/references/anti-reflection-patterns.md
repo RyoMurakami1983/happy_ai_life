@@ -1,6 +1,6 @@
 # Anti-Reflection Patterns（詳細リファレンス）
 
-<!-- Parent skill: ../SKILL.md (dotnet-modern-cs) -->
+<!-- Parent skill: ../SKILL.md (modern-cs) -->
 
 このファイルでは、reflection-based mapping を避けるべき理由、explicit mapping の書き方、source generator の使いどころ、そして正当な低レベルアクセスにおける `UnsafeAccessorAttribute` の使い方を扱います。
 

@@ -1,11 +1,11 @@
 ---
-name: dotnet-wpf-secure-config
+name: wpf-secure-config
 description: >
   WPF アプリに DPAPI 暗号化された設定管理を追加し、資格情報を安全に保存する。
   WPF アプリケーションで暗号化済み設定を用意するとき。
 ---
 
-<!-- このドキュメントは dotnet-wpf-secure-config の日本語版です。 -->
+<!-- このドキュメントは wpf-secure-config の日本語版です。 -->
 
 # WPFアプリケーションへのセキュア設定管理の追加
 
@@ -24,14 +24,14 @@ description: >
 
 **このスキルが前提となるスキル**：
 - `dotnet` — WPF 連携系の入口
-- `dotnet-wpf-mvvm-patterns` — このセキュリティ基盤を利用する UI 層
+- `wpf-mvvm` — このセキュリティ基盤を利用する UI 層
 
 ---
 
 ## Related Skills
 
 - **`dotnet`** — WPF 連携系の入口
-- **`dotnet-wpf-mvvm-patterns`** — このセキュリティ基盤を利用する UI 層
+- **`wpf-mvvm`** — このセキュリティ基盤を利用する UI 層
 - **`git-commit`** — 生成コードを原子的変更で管理
 
 ---

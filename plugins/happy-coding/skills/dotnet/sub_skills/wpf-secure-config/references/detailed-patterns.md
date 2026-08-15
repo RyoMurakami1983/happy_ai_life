@@ -1,6 +1,6 @@
 # Detailed Implementation Patterns
 
-Full code implementations for `dotnet-wpf-secure-config`. See [SKILL.md](../SKILL.md) for workflow overview.
+Full code implementations for `wpf-secure-config`. See [SKILL.md](../SKILL.md) for workflow overview.
 
 ## DpapiEncryptor — Full Implementation
 

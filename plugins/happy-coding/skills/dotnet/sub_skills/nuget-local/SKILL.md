@@ -46,5 +46,5 @@ remote repository から自作 NuGet を作り、local feed に置き、利用�
 
 - **pack と consume を同じ手順に混ぜない**: 失敗時の原因が見えにくくなるため、まずはどちらの側かを切り分けます。
 - **machine 固有の feed を前提にしない**: repo-local feed を基本にし、必要な場合だけ user profile 配下を opt-in にし、使い終わったら無効化または削除します。
-- **評価は構造と効果で分ける**: まず `skill/validate` で形を確認し、必要なときだけ `skill-eval` で振る舞いを比べます。
+- **評価は構造と効果で分ける**: まず `copilot-authoring` 配下の `validate` で形を確認し、必要なときだけ `skill-eval` で振る舞いを比べます。
 - **project file の手編集を先にしない**: version 変更や package 追加は先に `dotnet` / NuGet のコマンドで試し、手編集は例外として使います。

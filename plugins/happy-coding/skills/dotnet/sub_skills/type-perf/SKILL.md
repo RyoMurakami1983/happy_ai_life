@@ -1,5 +1,5 @@
 ---
-name: dotnet-type-perf
+name: type-perf
 description: >
   こんなときに使う: .NET の型をパフォーマンス重視で設計したいとき。sealed クラス、
   readonly 構造体、静的関数、遅延列挙、不変コレクションを活用する。
@@ -7,7 +7,7 @@ description: >
   使い分けを判断したいとき。
 ---
 
-このドキュメントは dotnet-type-perf の日本語版です。
+このドキュメントは type-perf の日本語版です。
 
 # .NETにおけるパフォーマンスのための型設計
 

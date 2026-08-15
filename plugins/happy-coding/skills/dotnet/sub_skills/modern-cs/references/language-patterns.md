@@ -1,6 +1,6 @@
 # Language Patterns（詳細リファレンス）
 
-<!-- Parent skill: ../SKILL.md (dotnet-modern-cs) -->
+<!-- Parent skill: ../SKILL.md (modern-cs) -->
 
 このファイルには、メイン skill から参照する `record`、パターンマッチング、nullable reference types、文字列処理パターンの完全版サンプルをまとめています。
 

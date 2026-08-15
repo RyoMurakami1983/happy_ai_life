@@ -86,7 +86,7 @@
 - `implement`
 - `implementation-eval-gate`
 - `modularity-review`
-- `nuget-local`
+- `dotnet`
 - `py-setup`
 - `repo-onboarding`
 - `safe-refactor`

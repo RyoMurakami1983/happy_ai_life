@@ -1,12 +1,12 @@
 ---
-name: dotnet-cs-concurrency
+name: cs-concurrency
 description: >
   こんなときに使う: .NET の並行処理抽象を正しく選択したいとき。async/await、
   Channels、Akka.NET Streams、Reactive Extensions、Akka.NET Actors を扱う。
   並行処理の設計判断、ツール選定、または複数エンティティの状態管理が必要なとき。
 ---
 
-<!-- このドキュメントは dotnet-cs-concurrency の日本語版です。 -->
+<!-- このドキュメントは cs-concurrency の日本語版です。 -->
 
 # .NET Concurrency: Choosing the Right Tool
 
@@ -29,8 +29,8 @@ description: >
 
 | Skill | Scope |
 |-------|-------|
-| `dotnet-modern-cs` | Records、パターンマッチング、Result\<T\> エラーハンドリング |
-| `dotnet-type-perf` | Span\<T\>、Memory\<T\>、ゼロアロケーションパターン |
+| `modern-cs` | Records、パターンマッチング、Result\<T\> エラーハンドリング |
+| `type-perf` | Span\<T\>、Memory\<T\>、ゼロアロケーションパターン |
 | `dotnet` | ソリューション構成や基盤 skill の入口 |
 
 ## Core Principles

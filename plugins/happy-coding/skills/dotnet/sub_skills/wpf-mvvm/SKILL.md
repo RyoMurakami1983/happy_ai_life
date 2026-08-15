@@ -1,5 +1,5 @@
 ---
-name: dotnet-wpf-mvvm-patterns
+name: wpf-mvvm
 description: >
   CommunityToolkit.Mvvmを使ったWPFアプリケーションのMVVM分離、コマンド、バリデーション、
   ダイアログパターンを実装する。
@@ -29,7 +29,7 @@ CommunityToolkit.Mvvmを使ったクリーンなMVVMアーキテクチャでWPF�
 
 ## Related Skills
 
-- **`dotnet-wpf-secure-config`** — このスキルのMVVMパターンを使った設定ダイアログ
+- **`wpf-secure-config`** — このスキルのMVVMパターンを使った設定ダイアログ
 - **`dotnet`** — WPF 入力・連携系の入口
 
 ---

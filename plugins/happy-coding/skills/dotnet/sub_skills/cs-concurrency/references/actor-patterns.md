@@ -1,6 +1,6 @@
 # Actor Patterns — Akka.NET Advanced Examples
 
-Reference material for `dotnet-cs-concurrency` Step 5.
+Reference material for `cs-concurrency` Step 5.
 
 ## State Machines with Become
 

@@ -1,6 +1,6 @@
 # Error Handling Patterns（詳細リファレンス）
 
-<!-- Parent skill: ../SKILL.md (dotnet-modern-cs) -->
+<!-- Parent skill: ../SKILL.md (modern-cs) -->
 
 このファイルには、完全な `Result<T, TError>` 実装、Railway-Oriented Programming の例、そして Exception と Result type の使い分け指針をまとめています。
 

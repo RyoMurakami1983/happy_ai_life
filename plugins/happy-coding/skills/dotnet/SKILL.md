@@ -1,40 +1,70 @@
 ---
 name: dotnet
 description: >
-  .NET 関連の依頼を、適切な C#、WPF、テスト、基盤、文書系 skill へ振り分ける入口。
-  どの .NET skill を使うべきか迷うとき、または今後追加される dotnet skill の起点が必要なとき。
+  こんなときに使う: .NET 関連の依頼で、どの leaf に進めばよいか迷うとき。公開入口を
+  `dotnet` に集約し、framework bridge、setup、modern C#、並行処理、WPF、
+  slopwatch、NuGet の internal sub-skill へ振り分けたいとき。
+disable-model-invocation: true
 ---
 
-# dotnet ルーター
+# dotnet
 
-.NET 関連の依頼を 1 つの入口にまとめる薄いルーターです。  
-詳細な判断や手順は既存の leaf skill に置き、ここでは「どこへ行くか」だけを決めます。
-ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
-
+この skill は、.NET family の **唯一の公開入口**です。公開一覧を短く保ちつつ、配下の internal sub-skill へ振り分ける family router として動きます。詳細な実装手順は child skill に置き、親は route / handoff に徹します。
 
 ## こんなときに使う
 
-このスキルは次のようなときに使います:
-- C#、WPF、テスト、基盤のどれに振るべきか迷う
-- 既存の dotnet skill 名を毎回覚えたくない
-- 今後増える dotnet skill の受け口を先に作りたい
+- .NET のことならまず `dotnet` から入りたいとき
+- framework bridge、setup、modern C#、並行処理、WPF、NuGet のどれへ進むべきか迷うとき
+- public skill 一覧を増やさずに .NET family を辿りたいとき
+
+## 役割の境界
+
+- `sub_skills/framework-bridge/` は、.NET Framework 4.x と .NET 8+ の共有境界を扱います。
+- `sub_skills/setup/` は、dotnet CLI を軸にした再現可能な .NET 開発環境を扱います。
+- `sub_skills/modern-cs/` は、モダン C# の実装・リファクタリングを扱います。
+- `sub_skills/type-perf/` は、.NET の型設計と性能判断を扱います。
+- `sub_skills/cs-concurrency/` は、.NET の並行処理抽象の選択を扱います。
+- `sub_skills/wpf-mvvm/` は、WPF の MVVM 実装を扱います。
+- `sub_skills/wpf-secure-config/` は、WPF の安全な設定管理を扱います。
+- `sub_skills/slopwatch/` は、.NET の anti-slop 品質ゲートを扱います。
+- `sub_skills/nuget-local/` は、ローカル NuGet の pack / consume を扱います。
+
+## 実行ルール
+
+1. 既存 repo の build contract や SDK の診断から始めたい場合は `sub_skills/setup/` へ進みます。
+2. .NET Framework と .NET 8+ の橋渡しが主題なら `sub_skills/framework-bridge/` へ進みます。
+3. モダン C#、型設計、並行処理は `sub_skills/modern-cs/`、`sub_skills/type-perf/`、`sub_skills/cs-concurrency/` に分けます。
+4. WPF の UI / 設定管理は `sub_skills/wpf-mvvm/`、`sub_skills/wpf-secure-config/` に分けます。安全な設定保存が主題なら `wpf-secure-config`、画面分離や command / validation が主題なら `wpf-mvvm` を優先します。
+5. 品質ゲートは `sub_skills/slopwatch/`、ローカル NuGet は `sub_skills/nuget-local/` に進みます。
+
+## 迷ったときの判断
+
+- `.NET のことならまず dotnet` を入口にします。
+- 初手が build / restore / solution / SDK なら `setup` に寄せます。
+- leaf 名だけで迷う場合は、親文脈が補う前提で child へ直接入らず、この router の判断表から進みます。
 
 ## 判断表
 
 | やりたいこと | ルート | 次にやること |
 | --- | --- | --- |
-| .NET Framework 4.x と .NET 8+ を netstandard2.0 でつなぎたい | `dotnet-framework-netstandard-bridge` | bridge skill を直接開く |
-| 既存の .NET repo を受け取り、solution や build contract を診断したい | `repo-onboarding` / `dotnet-setup-dev-environment` | まず repo を把握し、次に setup skill の Step 0 へ進む |
-| モダン C#、型設計、並行処理を整理したい | `dotnet-modern-cs` / `dotnet-type-perf` / `dotnet-cs-concurrency` | 該当 skill を直接開く |
-| WPF の MVVM や設定、UI まわりを扱いたい | `dotnet-wpf-mvvm-patterns` / `dotnet-wpf-secure-config` | 該当 skill を直接開く |
-| 品質ガードレールや slop を見たい | `dotnet-slopwatch` | 既存ルールを確認する |
-| プロジェクト構造、設定、パッケージ管理を再現可能に整えたい | `dotnet-setup-dev-environment` | 新規は `.slnx`、既存は Step 0 と `dotnet sln migrate` から始める |
-| データ、シリアライズ、EF Core、DB 性能を扱いたい | データ系の skill を curated import してから使う | まずは family router の経路を追加する |
-| テストや検証系を扱いたい | テスト系の skill を curated import してから使う | まずは family router の経路を追加する |
-| PDF、OCR、業務ワークフローを扱いたい | 文書・業務系の skill を curated import してから使う | 将来の domain router に分ける |
+| .NET Framework 4.x と .NET 8+ を netstandard2.0 でつなぎたい | `sub_skills/framework-bridge/` | bridge 境界と参照方向を決める |
+| 既存 .NET repo を診断し、再現可能な build contract を整えたい | `sub_skills/setup/` | Step 0 から SDK / solution / props を確認する |
+| モダン C# の実装や設計を整理したい | `sub_skills/modern-cs/` | C# 12+ のイディオムと Result 型を確認する |
+| 型設計と性能の両立を見たい | `sub_skills/type-perf/` | class / struct / record と allocation を確認する |
+| 並行処理の抽象を選びたい | `sub_skills/cs-concurrency/` | async/await、Channels、Actors を比較する |
+| WPF の MVVM を整えたい | `sub_skills/wpf-mvvm/` | ViewModel-first の分離へ進む |
+| WPF の安全な設定管理を入れたい | `sub_skills/wpf-secure-config/` | DPAPI を使った設定保存へ進む |
+| WPF 設定画面で secure storage と MVVM の両方が絡む | `sub_skills/wpf-secure-config/` を先に選ぶ | secure storage を先に固定し、画面分離は child 側の関連 skill から辿る |
+| .NET の anti-slop 品質ゲートを見たい | `sub_skills/slopwatch/` | rule と enforcement を確認する |
+| ローカル NuGet を pack / consume したい | `sub_skills/nuget-local/` | pack 側か consume 側かを切り分ける |
 
-## ルーティングメモ
+## 共通リソース
 
-- ここは薄く保ち、実装手順は leaf skill に置く。
-- 既存 skill は壊さず、増える領域だけ後から router 化する。
-- 新しい dotnet skill を足すときは、まずこの入口に経路を追加する。
+- `sub_skills/` — .NET family の internal sub-skill
+- `../repo-onboarding/` — repo 全体の入口がまだ曖昧な場合
+
+## 注意点
+
+- ここに child の詳細手順を複製しないでください。
+- public skill 一覧に dotnet leaf を並べ直さず、公開入口は `dotnet` に集約します。
+- `disable-model-invocation: true` は route / handoff の意図であり、可視性制御の保証には使いません。

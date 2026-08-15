@@ -1,6 +1,6 @@
 # Channel Patterns — Advanced Examples
 
-Reference material for `dotnet-cs-concurrency` Step 3.
+Reference material for `cs-concurrency` Step 3.
 
 ## Multi-Consumer Worker Pool
 
