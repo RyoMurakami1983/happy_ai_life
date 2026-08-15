@@ -67,4 +67,5 @@ disable-model-invocation: true
 
 - ここに child の詳細手順を複製しないでください。
 - public skill 一覧に dotnet leaf を並べ直さず、公開入口は `dotnet` に集約します。
+- 旧 top-level dotnet leaf（例: `dotnet-modern-cs`, `dotnet-type-perf`）は public entry としてはサポートしません。直接 invocation したい場合でも、まず `dotnet` を入口にして適切な child を選ぶのが正しい移行経路です。
 - `disable-model-invocation: true` は route / handoff の意図であり、可視性制御の保証には使いません。
