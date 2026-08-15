@@ -1,9 +1,10 @@
 ---
 name: dotnet-type-perf
 description: >
-  .NETの型をパフォーマンス重視で設計する。sealed クラス、readonly 構造体、
-  静的関数、遅延列挙、不変コレクションを活用。
-  新しい型を設計するとき、性能をレビューするとき、または class / struct / record の使い分けを判断するとき。
+  こんなときに使う: .NET の型をパフォーマンス重視で設計したいとき。sealed クラス、
+  readonly 構造体、静的関数、遅延列挙、不変コレクションを活用する。
+  新しい型を設計するとき、性能をレビューするとき、または class / struct / record の
+  使い分けを判断したいとき。
 ---
 
 このドキュメントは dotnet-type-perf の日本語版です。

@@ -114,7 +114,7 @@ skill 名を全面的に見直し、初見利用者が役割を推測できる�
 artifacts:
   - docs/grill_results/006_GRILL_WITH_DOCS_RESULT.md
   - docs/design/006_TECHNICAL_DESIGN.md
-  - docs/plan/006_PLAN.md
+  - docs/plan/006_PLAN_DONE.md
 
 ### Commands
 

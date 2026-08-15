@@ -20,11 +20,11 @@ skill 命名を、誤解しにくさ優先・短さ従属の原則で刷新し�
 ## Progress
 
 - [x] Bootstrap / 前提確認
-- [ ] Slice 1: 命名ポリシー文書化
-- [ ] Slice 2: authoring child rename
-- [ ] Slice 3: setup / dotnet leaf rename
-- [ ] Slice 4: Integration validation
-- [ ] Completion handoff
+- [x] Slice 1: 命名ポリシー文書化
+- [x] Slice 2: authoring child rename
+- [x] Slice 3: setup / dotnet leaf rename
+- [x] Slice 4: Integration validation
+- [x] Completion handoff
 
 ## Structure Decisions
 
@@ -35,11 +35,11 @@ skill 命名を、誤解しにくさ優先・短さ従属の原則で刷新し�
 
 ## Behavior List
 
-- [ ] `disable-model-invocation` の扱いが docs で一貫する
-- [ ] `instructions-authoring` / `improve-existing` / `validate-authoring` が rename される
-- [ ] `ts-setup` / `py-setup` / `ts-tauri` など第一弾 rename が反映される
-- [ ] dotnet leaf の一部が短縮される
-- [ ] skill map / tests が新名を正本とする
+- [x] `disable-model-invocation` の扱いが docs で一貫する
+- [x] `instructions-authoring` / `improve-existing` / `validate-authoring` が rename される
+- [x] `ts-setup` / `py-setup` / `ts-tauri` など第一弾 rename が反映される
+- [x] dotnet leaf の一部が短縮される
+- [x] skill map / tests が新名を正本とする
 
 ## Vertical Slices
 

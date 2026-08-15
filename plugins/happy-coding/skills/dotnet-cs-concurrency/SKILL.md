@@ -1,9 +1,9 @@
 ---
 name: dotnet-cs-concurrency
 description: >
-  .NET の並行処理抽象を正しく選択する — async/await、Channels、Akka.NET Streams、
-  Reactive Extensions、Akka.NET Actors。
-  並行処理の設計判断、ツール選定、または複数エンティティの状態管理が必要な場合。
+  こんなときに使う: .NET の並行処理抽象を正しく選択したいとき。async/await、
+  Channels、Akka.NET Streams、Reactive Extensions、Akka.NET Actors を扱う。
+  並行処理の設計判断、ツール選定、または複数エンティティの状態管理が必要なとき。
 ---
 
 <!-- このドキュメントは dotnet-cs-concurrency の日本語版です。 -->
