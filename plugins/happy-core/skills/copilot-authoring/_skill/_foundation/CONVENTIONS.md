@@ -7,6 +7,11 @@
 - kebab-case を使う
 - top-level skill は `<context>-<verb>-<object>` を優先する
 - router 配下の sub-skill は、文脈が親で補えるなら短い名前でもよい
+- 命名では **短さより誤解しにくさ** を優先する
+- plugin slug は既定で維持し、短縮対象は skill slug 側から始める
+- top-level / evaluation / safety / entrypoint skill は説明的な名前を保つ
+- 文脈で一意な child / leaf skill だけ `ts`, `py`, `cs`, `perf` などの一般的略称を許す
+- `eval`, `author`, `plan` のように衝突しやすい語は略称に使わない
 
 ## Frontmatter
 
@@ -16,6 +21,7 @@
 - `description: >` を使う場合、折り返しは句点や読点など意味の切れ目に寄せる。`こんなときに` と `使う` のように意味のまとまりを不自然に分断しない
 - `compatibility` には、本当に必要なツールや runtime 制約だけを書く
 - thin skill では、使いどころを `description` に寄せて本文を短く保ってよい
+- `disable-model-invocation: true` は orchestration 親が route / handoff に徹する意図を示すために使い、Copilot CLI の可視性制御や manual-only の保証としては扱わない
 
 ## Directory Rules
 

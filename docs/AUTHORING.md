@@ -27,6 +27,18 @@
 - orchestration 親は `disable-model-invocation: true` を基本にし、`役割の境界` と `実行ルール` だけを持たせる
 - `copilot-authoring` は authoring 全体を実装する skill ではなく、専門ルートへ振り分ける薄い入口として保つ
 
+`disable-model-invocation: true` は **orchestration 親が route / handoff に徹する意図** を示すために使います。Copilot CLI では slash command の**可視性制御**や manual-only 動作の保証としては扱いません。
+
+## 命名刷新ルール
+
+- **短さより誤解しにくさ** を優先する
+- plugin slug (`happy-core`, `happy-coding`) は既定で維持する
+- top-level / evaluation / safety / entrypoint skill は説明的な名前を維持する
+- **文脈で一意な child / leaf skill だけ略称可** とする
+- 許容する略称は `ts`, `py`, `cs`, `perf` のような developer 文脈で一般的なものに限る
+- `eval`, `author`, `plan` のように広義で衝突しやすい語は略称に使わない
+- 失敗条件は **初見ユーザーが役割を推測できない名前になること**
+
 ## dispatch の考え方
 
 新しい skill や instructions を増やす前に、既存の基本導線で十分かを確認します。

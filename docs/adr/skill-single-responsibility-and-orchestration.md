@@ -24,6 +24,8 @@ skill は再利用しやすい一方で、入口に責務を詰め込み始め�
 - 親は route / handoff だけを持ち、詳細な workflow、checklist、例外処理は child skill または `references/` へ置く
 - `copilot-authoring` は今後、authoring 全体を抱え込む skill ではなく、`new-skill` / `instructions-authoring` / `improve-existing` / `validate-authoring` / `skill-eval` へつなぐ薄い入口として扱う
 - `new-agent` は標準 authoring route から外す。custom agent 作成が必要に見える場合も、まず既存 skill では足りない理由を issue / design 判断へ戻す。
+- 命名刷新では、plugin slug は維持し、top-level / evaluation / safety / entrypoint skill は説明的なまま保護する。短縮は文脈で一意な child / leaf skill に限る。
+- `disable-model-invocation: true` は orchestration 意図を示す印であり、Copilot CLI の可視性制御や manual-only 保証としては依存しない。
 
 ## 根拠
 
@@ -47,3 +49,4 @@ skill は再利用しやすい一方で、入口に責務を詰め込み始め�
 - orchestration 親を作るときは、`disable-model-invocation: true`、`役割の境界`、`実行ルール`、必要最小限の fallback だけを置く
 - `copilot-authoring` のような入口 skill を改善するときは、「親へ詳細手順を戻していないか」を review で確認する
 - agent 作成は公開 child route にしない。必要性が出た場合は、個別の設計判断として扱う
+- 命名変更は「初見ユーザーが役割を推測できるか」を gate とし、短さだけを理由に省略しない

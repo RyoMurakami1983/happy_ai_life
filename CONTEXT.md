@@ -33,6 +33,10 @@ _Avoid_: 暇, 空き時間
 基本 skill、専門 skill、agent、docs、eval が孤立せず、入口、連携、評価、昇格基準を持って育つ構造。
 _Avoid_: skill list
 
+**disable-model-invocation**:
+orchestration 親が「自分で実行する unit ではなく、route / handoff に徹する」と示す frontmatter。Copilot CLI では可視性や manual-only 動作の保証としては扱わない。
+_Avoid_: slash 非表示フラグ, manual-only guarantee
+
 **実装契約 / implementation contract**:
 `design-and-plan` の主出力。goal、success criteria、behavior list、vertical slices を含み、`implement` がそのまま着手できる形まで圧縮された handoff。
 _Avoid_: 会話メモ, ふわっとした設計案
