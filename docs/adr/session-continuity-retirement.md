@@ -21,7 +21,7 @@
 - `$HOME/.copilot/.github/hooks` は公式の user-level hooks path ではなく、home sync で置いても hook として実行されない。
 - hooks は同期実行であり、重い要約や共有文書生成には向かない。
 - `/chronicle` は experimental だが、session store を使った横断的な standup summary に適している。
-- `/share file session` は raw session export として使えるが、既定で gist 共有すべきではない。
+- `/share file [PATH]` は raw session export として使えるが、既定で gist 共有すべきではない。
 - 日次ふりかえり skill は、保存前に公開配慮を確認でき、repo ごとの生成物を増やさない。
 
 ## トレードオフ
@@ -37,5 +37,5 @@
 - 通常の repo bootstrap は `sync-to-repo.ps1` 既定の `SafetyOnly` を使う。
 - session continuity hooks が必要な legacy repo は `-HooksMode All` を明示する。
 - 1 日の終わりに `furikaeri` を実行し、`~/.copilot/docs/furikaeri/` に日次記録を保存する。
-- raw session を残す必要があるときだけ `/share file session [PATH]` を使う。
+- raw session を残す必要があるときだけ `/share file [PATH]` を使う。
 - `/share gist` や OpenTelemetry content capture は、明示的に必要な trusted environment でのみ使う。

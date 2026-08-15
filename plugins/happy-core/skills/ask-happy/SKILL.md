@@ -21,7 +21,7 @@ Ask Happy は、どの Happy AI Life skill を使うか迷ったときの入口�
 | skill / agent / instructions を作りたい | `copilot-authoring` |
 | skill / prompt を評価したい | `skill-eval` |
 | repo 固有語彙を整理したい | `domain-modeling` |
-| session を引き継ぎたい | `session-handoff` |
+| session を引き継ぎたい | 公式の `/resume` または `/share file [PATH]` |
 | ふりかえりたい | `furikaeri` |
 | Git commit を作りたい | `git-commit` |
 | PR を作りたい | `gh-pr-create` |

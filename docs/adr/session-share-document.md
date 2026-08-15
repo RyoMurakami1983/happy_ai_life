@@ -45,7 +45,7 @@
 - `furikaeri` の中で、セッションストーリー確認 → YWT / KPT 分岐 → SMART → 保存まで進める
 - 複雑な skill 利用や出戻りがある場合は YWT を出さず KPT に寄せる
 - skill 改善提案は KPT 実施時にのみ候補化し、強化・カイゼンが望ましい場合だけ残す
-- 公式 session data、必要に応じた `/chronicle standup`、明示的な `/share file session` を材料にする
+- 公式 session data、必要に応じた `/chronicle standup`、明示的な `/share file [PATH]` を材料にする
 - 保存時はまず home の `.copilot/docs/furikaeri/` に `YYYYMMDD-HHmmss-タイトル.md` で残し、repo 共有が必要な場合だけ `docs/furikaeri/` へ明示的に追加する
 
 ## 状態
