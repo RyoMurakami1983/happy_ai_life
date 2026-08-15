@@ -6,7 +6,7 @@
 
 ## Success Criteria
 
-- authoring route は `new-skill` / `instructions-authoring` / `improve-existing` / `validate-authoring` に整理される。
+- authoring route は `new-skill` / `instructions` / `improve` / `validate` に整理される。
 - `new-agent` は公開 route から外れ、agent 作成は標準導線ではないことが明示される。
 - `privateEval` は評価ケースの設計・保管・昇格判断として定義され、実行は `skill-eval` の benchmark / empirical へ分かれる。
 - `empirical-prompt-tuning` は独立 skill として残る。
@@ -14,10 +14,10 @@
 
 ## Out of Scope
 
-- slash command の非表示機構を新設する。
-- `private-eval` を top-level skill として追加する。
-- `new-agent` の代替 agent 作成 workflow を実装する。
-- full benchmark を実行する。
+- slash command の非表示機構は新設しない。
+- `private-eval` は top-level skill として追加しない。
+- `new-agent` の代替 agent 作成 workflow は実装しない。
+- full benchmark は実行しない。
 
 ## Context / Source of Truth
 
@@ -42,9 +42,9 @@
 | Route | 責務 |
 | --- | --- |
 | `new-skill` | 新しい skill の作成と昇格準備 |
-| `instructions-authoring` | repo-wide / path-specific instructions の作成・整理 |
-| `improve-existing` | 既存 skill / instructions / authoring asset の改善 |
-| `validate-authoring` | 静的・構造確認 |
+| `instructions` | repo-wide / path-specific instructions の作成・整理 |
+| `improve` | 既存 skill / instructions / authoring asset の改善 |
+| `validate` | 静的・構造確認 |
 
 `new-agent` は標準導線から外す。既存 agent asset や validator は必要に応じて残せるが、新規 agent 作成は例外扱いとし、まず issue / design 判断へ戻す。
 
