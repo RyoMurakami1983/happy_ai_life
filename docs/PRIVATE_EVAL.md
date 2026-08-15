@@ -1,7 +1,9 @@
 # PrivateEval
 
-PrivateEval は、Happy AI Life の skill / prompt / workflow を育てるための評価ケース群です。
-目的は AI 評価で機械テストを置き換えることではなく、機械判定では測りにくい handoff、source of truth 参照、指示明瞭性、再利用性を継続的に見ることです。
+PrivateEval は、Happy AI Life の skill / prompt / workflow を育てるための、secret を含まない評価ケースの設計・保管・昇格判断を担う層です。
+目的は AI 評価で機械テストを置き換えることではなく、機械判定では測りにくい handoff、source of truth 参照、指示明瞭性、再利用性を継続的に見るための評価資産を育てることです。
+
+評価の実行そのものは `skill-eval` の benchmark や `empirical-prompt-tuning` で扱います。PrivateEval は「何を repo に残して再利用できる評価ケースにするか」を決めます。
 
 ## 置き場所
 
@@ -60,6 +62,13 @@ raw run、viewer、実会話ログは repo に入れません。必要な場合�
 | safety | secret、hook bypass、破壊的操作を誘導しないか |
 | docs-reader | 初見読者が目的・手順・判断基準を理解できるか |
 | cost | tool 回数、再試行、往復が増えていないか |
+
+## skill-eval への接続
+
+- ケース設計、保存可否、昇格判断は `plugins/happy-core/skills/skill-eval/references/private-eval.md` を正本にします。
+- baseline / legacy / current の比較実行は `skill-eval` の benchmark で扱います。
+- 指示明瞭性を別実行者で反復確認する場合は `empirical-prompt-tuning` を使います。
+- `loop-engineering` は privateEval の資産を使う consumer であり、評価ケース資産そのものの owner ではありません。
 
 ## quality gate への接続
 

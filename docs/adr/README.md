@@ -31,6 +31,7 @@ README や運用文書では「何を使うか」を案内し、ここでは「�
 ### instructions / agent / skill
 
 - [instruction-hierarchy-and-authoritative-source.md](instruction-hierarchy-and-authoritative-source.md) — instruction 階層と正本
+- [skill-single-responsibility-and-orchestration.md](skill-single-responsibility-and-orchestration.md) — skill の単一責務と薄い orchestration
 - [agent-dispatch-rules.md](agent-dispatch-rules.md) — agent dispatch の基準
 - [shihan-agents-operating-model.md](shihan-agents-operating-model.md) — custom agent の運用モデル
 

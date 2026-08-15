@@ -18,8 +18,9 @@ to-prd
 ```text
 copilot-authoring
   -> skill-eval
+    -> privateEval design / benchmark
     -> empirical-prompt-tuning
-    -> loop-engineering
+  -> loop-engineering
 
 loop-engineering
   -> happy-add-issue
@@ -40,7 +41,7 @@ linux-server-ops
 | --- | --- | --- |
 | `ask-happy` | どの Happy AI Life skill を使うか迷う | 各基本 skill |
 | `beginner-readme-ops` | 初心者向けの README / 運用手順を構造化する | `to-prd` |
-| `copilot-authoring` | skill / agent / instructions を作る・改善する | `skill-eval` |
+| `copilot-authoring` | authoring の薄い統合入口として、skill / instructions の対象を専門ルートへ振り分ける | `skill-eval` |
 | `empirical-prompt-tuning` | 別実行者で指示の明瞭性を検査する | `skill-eval` |
 | `furikaeri` | ふりかえりを残す | `knowledge-capture` |
 | `happy-add-issue` | Happy AI Life の skill / docs / 運用への意見を母艦 repo の Issue にする | 必要なら `gh-issue-create` |
@@ -52,7 +53,7 @@ linux-server-ops
 | `knowledge-capture` | 公開可能な知識として捕捉する | `furikaeri` |
 | `linux-server-ops` | Ubuntu / Linux サーバーの SSH 接続、sudo、systemd、HTTP 監視を安全に進める | `beginner-readme-ops`, `copilot-authoring` |
 | `pptx` | PowerPoint ファイルを扱う | 文書系作業 |
-| `skill-eval` | skill / prompt 評価の入口 | `empirical-prompt-tuning`, `loop-engineering` |
+| `skill-eval` | skill / prompt 評価と privateEval の評価ケース設計入口 | `empirical-prompt-tuning`, `loop-engineering` |
 | `to-prd` | 会話内容を短い PRD にまとめる | `design-and-plan`, `implement` |
 | `interview-me` | 企画や設計について、ユーザーに一問ずつ深掘りして確認する | `interview-with-docs` |
 
@@ -64,15 +65,15 @@ linux-server-ops
 | `deep-review-preflight` | PR 前の事前レビュー | `gh-pr-create` |
 | `design-and-plan` | grill 後に実装契約を作る | `implement` |
 | `dotnet` | .NET skill の入口 | `dotnet-*` |
-| `dotnet-csharp-concurrency-patterns` | .NET 並行処理の選択 | `dotnet` |
+| `dotnet-cs-concurrency` | .NET 並行処理の選択 | `dotnet` |
 | `dotnet-framework-netstandard-bridge` | .NET Framework と .NET 8+ の橋渡し | `dotnet` |
-| `dotnet-modern-csharp-coding-standards` | modern C# 実装・リファクタ | `dotnet` |
+| `dotnet-modern-cs` | modern C# 実装・リファクタ | `dotnet` |
 | `dotnet-setup-dev-environment` | .NET 開発環境の整備 | `dotnet` |
 | `dotnet-slopwatch` | .NET anti-slop 品質ゲート | `dotnet` |
-| `dotnet-type-design-performance` | .NET 型設計と性能 | `dotnet` |
+| `dotnet-type-perf` | .NET 型設計と性能 | `dotnet` |
 | `dotnet-wpf-mvvm-patterns` | WPF MVVM 実装 | `dotnet` |
 | `dotnet-wpf-secure-config` | WPF の安全な設定管理 | `dotnet` |
-| `enterprise-rust-tauri-network-build` | 社内ネットワーク下の Rust / Tauri build | `typescript-tauri-setup` |
+| `enterprise-rust-tauri-network-build` | 社内ネットワーク下の Rust / Tauri build | `ts-tauri` |
 | `implement` | 実装契約をローカル実装へ進める | `implementation-eval-gate` |
 | `implementation-eval-gate` | slice 完了を評価する | `deep-review-preflight` |
 | `interview-with-docs` | 既存の会話から要点を抽出し、インタビューを進める | `interview-me` |
@@ -82,13 +83,13 @@ linux-server-ops
 | `modularity-review` | 既存コードの結合構造を分析する | `design-and-plan` |
 | `nuget-local` | 自作 NuGet の local feed consume を切り分ける | `dotnet` |
 | `prototype` | 実装前に小さく試す | `design-and-plan` |
-| `python-setup-dev-environment` | Python 開発環境を整える | `repo-onboarding` |
+| `py-setup` | Python 開発環境を整える | `repo-onboarding` |
 | `repo-onboarding` | repo 初回把握 | `to-prd` |
 | `safe-refactor` | 振る舞い維持のリファクタ | `implement` |
-| `tauri-node-sidecar-windows-distribution` | Tauri Node sidecar 配布 | `typescript-tauri-setup` |
-| `tauri-sidecar-stability` | Tauri sidecar 安定化 | `typescript-tauri-setup` |
-| `typescript-setup-dev-environment` | TypeScript 開発環境を整える | `repo-onboarding` |
-| `typescript-tauri-setup` | TypeScript / Tauri setup | `tauri-*` |
+| `tauri-node-sidecar-windows-distribution` | Tauri Node sidecar 配布 | `ts-tauri` |
+| `tauri-sidecar-stability` | Tauri sidecar 安定化 | `ts-tauri` |
+| `ts-setup` | TypeScript 開発環境を整える | `repo-onboarding` |
+| `ts-tauri` | TypeScript / Tauri setup | `tauri-*` |
 
 ## agent
 

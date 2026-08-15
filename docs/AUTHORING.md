@@ -19,6 +19,26 @@
 - 作ったら focused test または手動確認を残す
 - 基本導線は [Skill Map](SKILL_MAP.md) に接続する
 
+## 単一責務と orchestration
+
+- **1 skill = 1 primary purpose** を基本にする
+- `作成 + 改善 + 検証 + 評価` のような別責務を 1 つの skill に直列で詰め込まない
+- 複数の専門 skill をまたぐ必要がある場合だけ、`interview-with-docs` のような薄い orchestration skill を置く
+- orchestration 親は `disable-model-invocation: true` を基本にし、`役割の境界` と `実行ルール` だけを持たせる
+- `copilot-authoring` は authoring 全体を実装する skill ではなく、専門ルートへ振り分ける薄い入口として保つ
+
+`disable-model-invocation: true` は **orchestration 親が route / handoff に徹する意図** を示すために使います。Copilot CLI では slash command の**可視性制御**や manual-only 動作の保証としては扱いません。
+
+## 命名刷新ルール
+
+- **短さより誤解しにくさ** を優先する
+- plugin slug (`happy-core`, `happy-coding`) は既定で維持する
+- top-level / evaluation / safety / entrypoint skill は説明的な名前を維持する
+- **文脈で一意な child / leaf skill だけ略称可** とする
+- 許容する略称は `ts`, `py`, `cs`, `perf` のような developer 文脈で一般的なものに限る
+- `eval`, `author`, `plan` のように広義で衝突しやすい語は略称に使わない
+- 失敗条件は **初見ユーザーが役割を推測できない名前になること**
+
 ## dispatch の考え方
 
 新しい skill や instructions を増やす前に、既存の基本導線で十分かを確認します。
@@ -55,6 +75,8 @@ plugins/<plugin>/skills/<skill-name>/SKILL.md
 | no-op pruning | モデルが既定でできる一般論や重複説明を削る |
 | completion criterion | 「作業した」ではなく、何が確認できたら完了かを書く |
 | progressive disclosure | 長い例、背景、書式は `references/` や `sub_skills/` へ逃がす |
+
+複数機能を束ねる必要がある場合でも、親 skill 自体がすべての詳細手順を持つ必要はありません。親には route と handoff だけを置き、実処理は child skill 側へ分けます。
 
 詳細が長くなる場合は `SKILL.md` に詰め込まず、次のように分けます。
 

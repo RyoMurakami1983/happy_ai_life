@@ -1,7 +1,9 @@
-# PrivateEval
+# Loop Engineering Evaluate Rubric
 
-PrivateEval は、Loop Engineering の Evaluate で使う品質ゲートです。
+この reference は、Loop Engineering の Evaluate で使う作業品質ゲートです。
 AI が自分で作ったものを自分で褒めるためではなく、**機械判定で取れない品質を、明示した軸で点検し、次の Patch 対象を絞る**ために使います。
+
+`privateEval` は、secret を含まない評価ケースの設計・保管・昇格判断を担う層です。Loop Engineering はその評価資産を使う consumer であり、評価ケース資産そのものの owner ではありません。
 
 ## 評価軸
 
@@ -54,7 +56,7 @@ AI が自分で作ったものを自分で褒めるためではなく、**機械
 - 無関係な変更がない
 - 最小差分で説明できる
 
-PrivateEval:
+Evaluate:
 - 総合点 22/25 以上
 - 構造化精度 4 点以上
 - 形式知化力 4 点以上
@@ -71,15 +73,15 @@ PrivateEval:
 低リスクな小タスクでは、毎回長い表を作らず次の形で足ります。
 
 ```markdown
-PrivateEval:
+Evaluate:
 - 落ちた軸: なし / <軸名>
-- Stop 理由: <機械判定、Critical、PrivateEval の要点>
+- Stop 理由: <機械判定、Critical、Evaluate の要点>
 - 次回に残す型: なし / <README、template、skill、Issue など>
 ```
 
 ## 注意点
 
-- PrivateEval は test / lint / typecheck / build の代替ではありません。
+- Evaluate は test / lint / typecheck / build の代替ではありません。
 - 自己評価の点数より、どの軸を次に Patch するかを重視します。
 - 低リスク作業では軽量化できますが、Critical 要件は省略しません。
-- `skill-eval` は skill / prompt 資産の評価方法を扱います。PrivateEval は Loop Engineering の作業品質ゲートです。
+- `skill-eval` は skill / prompt 資産の評価方法を扱います。privateEval の評価ケース設計・保管・昇格判断は `skill-eval` 側の reference を正本にします。

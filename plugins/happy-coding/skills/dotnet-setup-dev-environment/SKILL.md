@@ -231,7 +231,7 @@ dotnet test --no-build
 - `dotnet`
 - `repo-onboarding`
 - `dotnet-framework-netstandard-bridge`
-- `dotnet-modern-csharp-coding-standards`
+- `dotnet-modern-cs`
 - `dotnet-slopwatch`
 - `git-commit`
 

@@ -18,8 +18,8 @@ _Avoid_: package, module
 _Avoid_: archive, production skill
 
 **privateEval**:
-secret を含まない評価ケースで、skill や prompt の品質を継続的に測る仕組み。実会話ログや個人情報は含めない。
-_Avoid_: raw log, private data, judge
+secret を含まない評価ケースの設計・保管・昇格判断を担う層。評価の実行そのものではなく、再利用できる `evals/<skill-id>/` の基準と資産を扱う。
+_Avoid_: raw log, private data, judge, benchmark runner
 
 **型**:
 再現可能な仕事の進め方。自由を奪うテンプレートではなく、速さ、安全性、学習の土台として使う。
@@ -32,6 +32,10 @@ _Avoid_: 暇, 空き時間
 **skill ecosystem**:
 基本 skill、専門 skill、agent、docs、eval が孤立せず、入口、連携、評価、昇格基準を持って育つ構造。
 _Avoid_: skill list
+
+**disable-model-invocation**:
+orchestration 親が「自分で実行する unit ではなく、route / handoff に徹する」と示す frontmatter。Copilot CLI では可視性や manual-only 動作の保証としては扱わない。
+_Avoid_: slash 非表示フラグ, manual-only guarantee
 
 **実装契約 / implementation contract**:
 `design-and-plan` の主出力。goal、success criteria、behavior list、vertical slices を含み、`implement` がそのまま着手できる形まで圧縮された handoff。

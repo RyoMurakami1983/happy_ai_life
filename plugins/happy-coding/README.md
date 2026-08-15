@@ -33,7 +33,7 @@ copilot plugin marketplace remove happy-ai-life-marketplace
 This package intentionally does not include MCP server configuration, plugin hooks, plugin commands, or repo-local instructions.
 Generic safety hooks are managed by the trusted home sync path through `%USERPROFILE%\.copilot\config.json`, not by plugin install. Plugin hooks remain deferred until hook loading, script path resolution, and coexistence with repo-scoped hooks pass smoke validation through the supported marketplace-based install path.
 
-`sessionStart` / `sessionEnd` based repo-local context continuity is sealed as a default workflow. Use `furikaeri` from `happy-core` for explicit daily reflection, with `/chronicle standup` when experimental mode is available and `/share file session` only when a raw session export is intentionally needed.
+`sessionStart` / `sessionEnd` based repo-local context continuity is sealed as a default workflow. Use `furikaeri` from `happy-core` for explicit daily reflection, with `/chronicle standup` when experimental mode is available and `/share file [PATH]` only when a raw session export is intentionally needed.
 
 ## Maintainer note
 

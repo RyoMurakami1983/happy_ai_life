@@ -6,7 +6,7 @@ description: >
 
 # ふりかえりプラクティス
 
-セッションまたは 1 日の学びを、人間向けの作業報告・記録・KPT・改善 Issue 候補に変える single-entry skill。次の AI に作業を渡す圧縮メモは `session-handoff` に分け、この skill では「人が読んで次の改善へ動ける記録」を作ります。
+セッションまたは 1 日の学びを、人間向けの作業報告・記録・KPT・改善 Issue 候補に変える single-entry skill。次の AI に作業を渡すときは、公式の `/resume` や必要に応じた `/share file [PATH]` を使い、この skill では「人が読んで次の改善へ動ける記録」を作ります。
 まずセッションストーリーを対話でほどき、使った skill、出戻り、詰まりを確認してから YWT か KPT を選びます。軽い終了だけを Quick にし、日次レビュー、複雑な流れ、改善余地が見えるときは KPT に寄せます。
 ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
 
@@ -28,7 +28,7 @@ description: >
 | 日次レビュー / 複数 repo / 複数 session | Daily KPT 優先 | 人間向けに横断の Keep / Problem / Try を残す |
 | skill 利用が複雑 / 出戻りあり / 再発あり | Deep KPT | Problem を分け、Try と SMART を明確にする |
 | KPT で再発しそうな摩擦が見えた | Issue 候補抽出 | `gh-issue-create` に渡せる改善候補へ整える |
-| 次の AI に続きを渡したい | `session-handoff` | ふりかえりではなく AI 向け引き継ぎに分ける |
+| 次の AI に続きを渡したい | 公式の `/resume` または `/share file [PATH]` | ふりかえりではなく、公式の session data 導線へ分ける |
 
 ## ワークフロー
 
@@ -36,7 +36,7 @@ description: >
 
 前回セッションの T を見て、完了・継続・破棄を整理します。継続項目は今回の T に含めてよいです。
 
-日次ふりかえりの場合は、公式 session data を source of truth として扱います。`/chronicle standup for today` が使える環境ではその出力を材料にし、experimental が使えない場合は今回の session story と必要に応じた `/share file session [PATH]` の明示 export を材料にします。
+日次ふりかえりの場合は、公式 session data を source of truth として扱います。`/chronicle standup for today` が使える環境ではその出力を材料にし、experimental が使えない場合は今回の session story と必要に応じた `/share file [PATH]` の明示 export を材料にします。
 
 ### Step 1 — セッションストーリーを展開する
 
@@ -90,12 +90,12 @@ Issue 候補にする条件:
 - `references/issue-discovery.md`
 - `../knowledge-capture/` — 公開されうる記録の匿名化
 - `../gh-issue-create/` — 改善候補を GitHub Issue に起こすとき
-- `../session-handoff/` — 次の AI に作業を引き継ぐとき
+- 公式の `/resume` / `/share file [PATH]` — 次の AI に作業を引き継ぐとき
 
 ## 注意点
 
 - ふりかえりは報告書ではなく、次の改善に繋ぐ道具。
-- 次の AI へ作業を再開させる圧縮メモは `session-handoff` に分ける。
+- 次の AI へ作業を再開させるときは、公式の `/resume` または `/share file [PATH]` を使う。
 - YWT を既定にしすぎない。複雑な session に Quick を当てると学びが痩せる。
 - 日次レビューは KPT を優先し、Issue 候補まで見る。
 - すべてを Issue 化しない。追跡価値がある改善だけに絞る。

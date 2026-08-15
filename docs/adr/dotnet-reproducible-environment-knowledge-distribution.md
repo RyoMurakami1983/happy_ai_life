@@ -69,7 +69,7 @@ repo をまたいで再利用したい .NET setup の手順は、現在は plugi
 ## 根拠
 
 - `plugins/happy-coding/skills/dotnet/SKILL.md` は、基盤系 skill の追加余地を既に示している
-- `python-setup-dev-environment` skill は、環境構築手順を skill として配布する既存パターンになっている
+- `py-setup` skill は、環境構築手順を skill として配布する既存パターンになっている
 - `csharp.instructions.md` は style と safety を扱っているが、CLI-first の行動規範は未記載だった
 - `global.json`、nullable reference types、.NET analyzers、`dotnet format --verify-no-changes` は、いずれも再現性を pass/fail gate に変える一次要素である
 - repo-wide と path-specific instructions は併用できるが、競合時は非決定論的なので、ルールの真実は薄く明確に寄せる必要がある

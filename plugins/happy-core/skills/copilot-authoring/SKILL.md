@@ -2,96 +2,50 @@
 name: copilot-authoring
 disable-model-invocation: true
 description: >
-  Copilot の custom skill / agent / repository instructions の作成・改善・構造確認を
-  1 つの入口にまとめる。複合スキルとして、対象に応じて適切な authoring ルートへ
-  分けつつ、実行時のモデル呼び出しを抑止してルーティングを優先する。試作から
-  `plugins/*` 配布へ昇格するときの name / description 整備も扱う。skill /
-  agent / repo-wide instructions / path-specific instructions を新規作成したいとき、既存定義を育てたいとき、公開前に責務や導線を確かめたいとき。
+  こんなときに使う: Copilot の custom skill / repository instructions authoring で、
+  新規作成、既存改善、静的検証、実動評価のどれをしたいかを仕分け、適切な専門
+  skill へつなぎたいとき。複数責務を 1 つの skill に詰めず、必要なら薄い
+  orchestration skill として束ねたいときに使う。
 ---
 
-# Copilot authoring を進める
+# Copilot authoring
 
-Skill と Agent はどちらも「Copilot に何をどう任せるか」を定義する資産ですが、設計の単位と検証観点は同じではありません。この skill は入口だけを 1 本化し、対象に応じて適切な authoring ルートへ分けるための router です。入口を 1 つにする理由は、会話の途中で「新規作成 → 改善 → 検証」へ自然に遷移しても、同じ文脈のまま扱えるようにするためです。
-ゴール駆動で使うため、最初に達成したいゴール、成功条件、確認手段を短く固定します。
-
-この skill は複合ルーターです。内部で別 skill を参照するときは、実装上の明示参照として `happy-core@skill-eval` / `happy-core@empirical-prompt-tuning` のように plugin-qualified 名で書き、実行時の会話では `/skill-eval` / `/empirical-prompt-tuning` のような短い呼び出し名で扱います。
-
-この skill は **作成・改善・責務整理の通常入口**です。ここで扱う検証は、発見しやすさ、責務境界、trigger / body の整合、構造確認が中心です。別実行者にも通じるかを実動で測りたい場合は `happy-core@skill-eval` を評価窓口にし、明瞭性評価なら `happy-core@empirical-prompt-tuning` へ進みます。
-
-
-## 共通の改善型: 抽象 -> review -> 発展
-
-skill / agent / hooks の改善では、いきなり具体実装へ入らず、まず変更の型を 3〜6 行で抽象化します。次にその抽象を review へ渡し、責務境界、入力、失敗時の扱い、共有先を見直してから具体へ降ろします。途中で閉じない改善種は、その時点で Issue 化して次回に回します。
-
-### hooks を題材にした最小例
-
-- `pre-commit` に secret guard を足したい、ではなく「Git client hooks で staged diff の secret 検査を前段に置く」と抽象化する。
-- review では、hook の責務、同期先、失敗時の挙動、README との整合を先に確認する。
-- 実装具体に入るのは、抽象化と review で形がそろった後だけにする。
+この skill は、authoring 作業を 1 つの大きな workflow に詰め込まず、対象ごとに分けた専門 skill へつなぐためのオーケストレーションです。`interview-with-docs` と同じく、親は薄く保ち、詳細な手順は子 skill や reference に置きます。ゴールは、authoring の入口を 1 本に保ちながら、成功条件と確認手段を各専門 skill 側へ正しく渡すことです。
 
 ## こんなときに使う
 
-- 新しい custom skill を `plugins/happy-core/skills/` または `plugins/happy-coding/skills/` に追加したいとき
-- 新しい custom agent を `plugins/happy-coding/agents/` に追加したいとき
-- `works/` で育てた草案を `plugins/*` 配布前提へ昇格し、name / description / trigger を整えたいとき
-- `.github/copilot-instructions.md` や `.github/instructions/*.instructions.md` を作りたいとき
-- 既存の skill / agent / instructions の説明、境界、検証導線を改善したいとき
-- 公開や sync の前に authoring 資産の責務、構造、静的な品質を確かめたいとき
-- skill / agent / hooks 改善の共通型を先に整えたいとき
+- 新しい skill を作るのか、既存 skill を改善するのかを先に切り分けたいとき
+- skill と instructions のどこを直すべきか迷っているとき
+- 静的な構造確認で十分か、実動評価まで進むべきかを分けたいとき
+- 複数の authoring 機能を 1 つに混ぜず、薄い親から専門 skill へ handoff したいとき
 
-## 判断表
+## 役割の境界
 
-| やりたいこと | ルート | 次にやること |
-| --- | --- | --- |
-| 新しい skill を作る | `sub_skills/new-skill/` | scope、trigger、構造を決め、既存 template と validator を使って立ち上げる。 |
-| 新しい agent を作る | `sub_skills/new-agent/` | 役割境界、model、tools を決め、agent template から起こす。 |
-| repo-wide / path-specific instructions を作る・直す | `sub_skills/instructions-authoring/` | repo-wide と path-specific の責務を分け、最小の rule と review checklist を整える。 |
-| 既存の skill / agent を改善する | `sub_skills/improve-existing/` | evidence を読み、説明・境界・関連資料を同期して磨き直す。 |
-| 変更を出荷前に検証する | `sub_skills/validate-authoring/` | skill は既存 validator、agent は同梱 validator で構造確認する。 |
-| 実動で別実行者にも通じるか測る | `happy-core@skill-eval` / `happy-core@empirical-prompt-tuning` | authoring では閉じず、評価窓口または明瞭性の実証検査へ送る。 |
+- `sub_skills/new-skill/` は、新しい skill の作成と昇格準備を担当します。
+- `sub_skills/instructions/` は、repo-wide / path-specific instructions の作成と整理を担当します。
+- `sub_skills/improve/` は、既存資産の wording、境界、handoff の改善を担当します。
+- `sub_skills/validate/` は、authoring 資産の静的な構造確認を担当します。
+- `happy-core@skill-eval` は、別実行者でも通じるかの評価窓口です。
+- `happy-core@empirical-prompt-tuning` は、指示の曖昧さや裁量補完を実動で詰める窓口です。
 
-## ワークフロー: authoring を進める
+## 実行ルール
 
-### ステップ 1 — 対象と変更の種類を切り分ける
+1. 新規作成なら、対象に応じて `sub_skills/new-skill/` または `sub_skills/instructions/` へ進みます。
+2. 既存資産の責務整理や wording 修正なら、まず `sub_skills/improve/` へ進みます。
+3. 構造や静的品質の確認が主目的なら、`sub_skills/validate/` へ進みます。
+4. 別実行者にも同じように通じるか、または明瞭性を実動で測りたいなら、`happy-core@skill-eval` または `happy-core@empirical-prompt-tuning` へ進みます。
+5. `plugins/*` 配下の配布中 asset で利用者体験が変わる場合は、`references/plugin-versioning.md` で version 更新要否を確認します。
 
-まず対象が skill か agent か instructions か、新規作成か改善か、構造確認かを分けます。ここを混ぜると、skill に必要な routing 設計と、agent に必要な責務境界、instructions に必要な常駐 rule の設計がぶつかりやすくなるためです。
+> 実装上の明示参照としては `happy-core@skill-eval` のような plugin-qualified 名を使い、実行時の会話では `/skill-eval` のような短い呼び出し名で扱うのが自然です。
 
-### ステップ 1.5 — 変更の型を抽象化する
+## 迷ったときの判断
 
-改善なら、まず「何を変えるか」ではなく「どんな型の改善か」を短く書きます。たとえば hooks 追加なら、対象、責務、失敗時の扱い、共有先の 4 点を 3〜6 行で並べるだけで十分です。
-
-### ステップ 2 — 既存資産を再利用する
-
-skill では `_skill` の雛形 / 検証資産、agent では `_agent` の雛形、instructions では既存の `.github/copilot-instructions.md` と `.github/instructions/*.instructions.md` の責務分離を優先して使います。理由は、新しい入口を作っても下位の型まで独自化すると、将来の修正箇所が増えてメンテナンスが難しくなるからです。
-
-### ステップ 3 — create / improve / validate の順で進める
-
-新規作成でも改善でも、最後は検証に戻します。authoring 資産は prose が中心なので、書けたかどうかより「発見できるか」「境界が明確か」「次の利用者が迷わないか」を確かめることが重要です。
-
-この段階で「別エージェントが読んでも同じ行動を取れるか」が主な不安なら、`skill-eval` で評価ルートを選びます。明瞭性や裁量補完の検出が目的なら `empirical-prompt-tuning` を使い、behavioral A/B 比較が目的なら skill-eval の benchmark へ進みます。
-
-`plugins/*` 配下で plugin 配布中の skill / agent を改善した場合だけ、**利用者体験が変わる改善か**を最後に確認します。変わるなら、その plugin の `plugin.json` と marketplace entry の version 更新が必要かを判断します。詳細は `references/plugin-versioning.md` を参照してください。
-
-### ステップ 4 — その場で閉じるか Issue 化するかを決める
-
-- その場で閉じる: 抽象化と review の時点で、既存資産の書き換えだけで済む
-- Issue 化する: 変更先が複数にまたがる、別の review が必要、次回以降に再利用したい
-- 迷うとき: まず小さく issue 化し、具体実装は次の着手点に残す
-
-## 共通リソース
-
-- `./_skill/_foundation/` — skill authoring の規約と雛形
-- `./_skill/_eval/` — skill の評価 / 検証資産
-- `./_skill/scripts/` — skill 作成と梱包の補助スクリプト
-- `./_agent/references/agent-template.md` — agent 定義の雛形
-- `./_eval/scripts/validate_agent.py` — agent markdown の構造 validator
-- `./sub_skills/instructions-authoring/` — repo-wide / path-specific instructions の authoring ルート
-- `./sub_skills/improve-existing/` — 既存資産の改善ルート
-- `./references/plugin-versioning.md` — plugin 配布中 skill / agent を更新したときの version 判断
+- 1 つの primary purpose に還元できるなら、新しい親 skill を増やさず、既存の専門 skill を使います。
+- 複数の skill をまたぐ必要があるなら、親に詳細手順を詰め込まず、`interview-with-docs` 型の薄い orchestration にします。
+- 改善と評価が同時に必要でも、まず authoring 資産を直し、その後で評価ルートへ送ります。
+- 新しい custom agent は標準 authoring route では作りません。必要性が出た場合は、まず `improve` で既存 skill では足りない理由を明文化し、別 issue / design 判断へ戻します。
 
 ## 注意点
 
-- **built-in と競合する名前を新設しない**: `/plan` `/review` `/research` `/session` と紛らわしい 1 語名は、到達性より混乱を増やします。
-- **router を重くしすぎない**: 実行手順を親に詰め込むと、sub-skill の役割が消えて入口の価値が落ちます。
-- **Skill と Agent を同じ観点で採点しない**: skill は workflow と routing、agent は責務と権限が主眼なので、同じ checklist を無理に当てないほうが保守しやすいです。
-- **instructions に手順を書き込みすぎない**: 常時読み込まれる rule には短い guidance だけを置き、詳細 workflow は skill へ逃がします。
+- 親 skill に child skill の詳細手順を複製しないでください。
+- authoring の静的確認と、別実行者による実動評価を 1 つの手順として混ぜないでください。

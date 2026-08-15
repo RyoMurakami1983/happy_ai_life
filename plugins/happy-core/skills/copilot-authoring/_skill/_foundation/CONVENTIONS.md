@@ -7,6 +7,11 @@
 - kebab-case を使う
 - top-level skill は `<context>-<verb>-<object>` を優先する
 - router 配下の sub-skill は、文脈が親で補えるなら短い名前でもよい
+- 命名では **短さより誤解しにくさ** を優先する
+- plugin slug は既定で維持し、短縮対象は skill slug 側から始める
+- top-level / evaluation / safety / entrypoint skill は説明的な名前を保つ
+- 文脈で一意な child / leaf skill だけ `ts`, `py`, `cs`, `perf` などの一般的略称を許す
+- `eval`, `author`, `plan` のように衝突しやすい語は略称に使わない
 
 ## Frontmatter
 
@@ -16,6 +21,7 @@
 - `description: >` を使う場合、折り返しは句点や読点など意味の切れ目に寄せる。`こんなときに` と `使う` のように意味のまとまりを不自然に分断しない
 - `compatibility` には、本当に必要なツールや runtime 制約だけを書く
 - thin skill では、使いどころを `description` に寄せて本文を短く保ってよい
+- `disable-model-invocation: true` は orchestration 親が route / handoff に徹する意図を示すために使い、Copilot CLI の可視性制御や manual-only の保証としては扱わない
 
 ## Directory Rules
 
@@ -31,6 +37,14 @@ skill-name/
 - `references/` には overflow docs や必要時の補助資料を置く
 - `scripts/` には agent が毎回書き直すべきでない deterministic helper を置く
 - `assets/` には出力に埋め込むファイルを置き、説明文書は置かない
+
+## Responsibility
+
+- **1 skill = 1 primary purpose** を基本にする
+- `作成 + 改善 + 検証 + 評価` のような異なる責務を 1 つの本文へ直列に詰め込まない
+- 複数の専門 skill を 1 つの会話で束ねたい場合だけ、薄い orchestration skill を親に置く
+- orchestration 親の仕事が route / handoff だけなら、`disable-model-invocation: true` を既定にする
+- 親は入口判断と handoff に徹し、詳細な実行ロジックは child skill や `references/` に置く
 
 ## Router Skills
 
@@ -55,6 +69,7 @@ router-name/
 - router が domain を供給できるなら、sub-skill 名は短い verb / verb-object でよい
 - 共有テンプレート、規約、補助断片は router の `_foundation/` に置く
 - 詳細な実行ロジックは親 router ではなく各 sub-skill に置く
+- `interview-with-docs` のように sibling skill を束ねる orchestration では、役割の境界と実行ルールだけを親に残し、子の中身を親へ複製しない
 
 ## Progressive Disclosure
 

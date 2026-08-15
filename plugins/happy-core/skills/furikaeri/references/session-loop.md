@@ -31,7 +31,7 @@
 - 解釈は W / Problem に寄せる
 - 未来の行動は T / Try に寄せる
 - 環境改善は Issue か skill 更新に繋ぐ
-- `/share file session` は raw session export が必要なときだけ明示的に使う
+- `/share file [PATH]` は raw session export が必要なときだけ明示的に使う
 
 ## 良い循環
 

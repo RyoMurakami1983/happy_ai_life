@@ -21,7 +21,7 @@ Ask Happy は、どの Happy AI Life skill を使うか迷ったときの入口�
 | skill / agent / instructions を作りたい | `copilot-authoring` |
 | skill / prompt を評価したい | `skill-eval` |
 | repo 固有語彙を整理したい | `domain-modeling` |
-| session を引き継ぎたい | `session-handoff` |
+| session を引き継ぎたい | 公式の `/resume` または `/share file [PATH]` |
 | ふりかえりたい | `furikaeri` |
 | Git commit を作りたい | `git-commit` |
 | PR を作りたい | `gh-pr-create` |
@@ -30,7 +30,7 @@ Ask Happy は、どの Happy AI Life skill を使うか迷ったときの入口�
 | 今開発中の repo に、実行用の Issue を丁寧に作りたい | `gh-issue-create` |
 | 初心者向けの README / 運用手順を書きたい | `beginner-readme-ops` |
 | .NET 関連の skill を選びたい | `dotnet` |
-| Tauri / TypeScript 環境を整えたい | `typescript-tauri-setup` |
+| Tauri / TypeScript 環境を整えたい | `ts-tauri` |
 
 ## 使い方
 

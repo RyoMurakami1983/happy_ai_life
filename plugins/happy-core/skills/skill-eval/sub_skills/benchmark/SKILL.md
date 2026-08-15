@@ -22,6 +22,7 @@ description: >
 ### ステップ 1 — 良い eval ケースを設計する
 
 should-trigger と should-not-trigger を、実際の user request に近い形で作ります。near-miss case は false positive を見つけやすいので、明らかに無関係な prompt より重要です。
+ケース設計や repo への昇格判断は、必要に応じて `../../references/private-eval.md` を参照します。
 
 ### ステップ 2 — 3 variant を同条件で実行する
 
@@ -83,7 +84,8 @@ current が legacy より明確に良ければ accept、悪化していれば re
 - `../../_eval/scripts/aggregate_benchmark.py` — 集計
 - `../../_eval/scripts/generate_viewer.py` — viewer 生成
 - `../../_eval/schemas/schemas.md` — artifact スキーマ定義
-- `../empirical/` — 指示明瞭性を先に確かめる軽量ルートへの導線
+- `../../references/private-eval.md` — 評価ケースの設計・保管・昇格判断
+- `empirical-prompt-tuning` skill — 指示明瞭性を先に確かめる独立 skill
 
 ## 注意点
 

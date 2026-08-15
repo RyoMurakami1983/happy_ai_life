@@ -87,7 +87,7 @@
 - `implementation-eval-gate`
 - `modularity-review`
 - `nuget-local`
-- `python-setup-dev-environment`
+- `py-setup`
 - `repo-onboarding`
 - `safe-refactor`
 - `sdd`
