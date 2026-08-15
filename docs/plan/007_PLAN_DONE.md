@@ -23,8 +23,8 @@ dotnet family を `dotnet` 配下の internal sub-skill へ再編し、公開入
 - [x] Slice 1: Router contract rewrite
 - [x] Slice 2: Sub-skill move
 - [x] Slice 3: Docs / naming sync
-- [ ] Slice 4: Eval + review gate
-- [ ] Completion handoff
+- [x] Slice 4: Eval + review gate
+- [x] Completion handoff
 
 ## Structure Decisions
 

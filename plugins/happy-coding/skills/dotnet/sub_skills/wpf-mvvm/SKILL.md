@@ -1,9 +1,10 @@
 ---
 name: wpf-mvvm
 description: >
-  CommunityToolkit.Mvvmを使ったWPFアプリケーションのMVVM分離、コマンド、バリデーション、
-  ダイアログパターンを実装する。
-  新しい WPF ビューを実装するとき、またはコードビハインドを ViewModel-first アーキテクチャにリファクタリングするとき。
+  こんなときに使う: CommunityToolkit.Mvvm を使った WPF アプリケーションの MVVM
+  分離、コマンド、バリデーション、ダイアログパターンを実装したいとき。新しい WPF
+  ビューを実装するとき、またはコードビハインドを ViewModel-first アーキテクチャに
+  リファクタリングしたいとき。
 ---
 
 # WPF MVVMパターン

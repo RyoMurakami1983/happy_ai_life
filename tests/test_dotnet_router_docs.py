@@ -5,6 +5,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DOTNET_ROUTER = ROOT / "plugins" / "happy-coding" / "skills" / "dotnet" / "SKILL.md"
+SLOPWATCH = (
+    ROOT / "plugins" / "happy-coding" / "skills" / "dotnet" / "sub_skills" / "slopwatch" / "SKILL.md"
+)
 SKILL_MAP = ROOT / "docs" / "SKILL_MAP.md"
 
 
@@ -51,3 +54,9 @@ def test_skill_map_treats_dotnet_as_single_public_entry() -> None:
         "| `nuget-local` |",
     ):
         assert removed not in skill_map
+
+
+def test_slopwatch_links_back_to_repo_docs() -> None:
+    slopwatch = SLOPWATCH.read_text(encoding="utf-8")
+
+    assert "../../../../../../docs/PHILOSOPHY.md" in slopwatch

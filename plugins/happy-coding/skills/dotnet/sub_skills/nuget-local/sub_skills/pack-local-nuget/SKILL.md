@@ -1,7 +1,9 @@
 ---
 name: pack-local-nuget
 description: >
-  remote repository を clone し、net4x と net5+ の違いを踏まえて release build から nupkg を作る。自作ライブラリを local feed 用に pack したいとき。
+  こんなときに使う: remote repository を clone し、net4x と net5+ の違いを踏まえて
+  release build から nupkg を作りたいとき。自作ライブラリを local feed 用に pack
+  したいとき。
 ---
 
 # ローカル NuGet を pack する

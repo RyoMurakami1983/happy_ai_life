@@ -130,7 +130,7 @@ dotnet family を top-level の flat list から、`dotnet` 配下の internal s
 artifacts:
   - docs/grill_results/007_GRILL_WITH_DOCS_RESULT.md
   - docs/design/007_TECHNICAL_DESIGN.md
-  - docs/plan/007_PLAN.md
+  - docs/plan/007_PLAN_DONE.md
 
 ### Commands
 

@@ -1,9 +1,10 @@
 ---
 name: framework-bridge
 description: >
-  .NET Framework 4.x のレガシー層と .NET 8+ の UI/アプリ層を netstandard2.0 の共有層でつなぐ。
-  既存の .NET Framework 依存を残しつつ UI やアプリ本体を .NET 8 へ段階移行したいとき、
-  または共有境界をどこに置くべきか判断したいとき。
+  こんなときに使う: .NET Framework 4.x のレガシー層と .NET 8+ の UI/アプリ層を
+  netstandard2.0 の共有層でつなぎたいとき。既存の .NET Framework 依存を残しつつ
+  UI やアプリ本体を .NET 8 へ段階移行したいとき、または共有境界をどこに置くべきか
+  判断したいとき。
 ---
 
 # .NET Framework × .NET Standard 2.0 ブリッジ

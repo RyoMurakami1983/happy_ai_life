@@ -1,10 +1,10 @@
 ---
 name: slopwatch
 description: >
-  .NET 向けの 2 層スロップ防止。Slopwatch CLI によるコードレベル検出（SW-xxx）と、
-  アーキテクチャ上のアンチパターンカタログ（SLOP-xxx）を扱う。
-  LLM 生成の C# コードを検証するとき、層境界違反を確認するとき、
-  または anti-slop の品質ゲートを CI/CD に組み込むとき。
+  こんなときに使う: .NET 向けの 2 層スロップ防止を適用したいとき。Slopwatch CLI に
+  よるコードレベル検出（SW-xxx）と、アーキテクチャ上のアンチパターンカタログ
+  （SLOP-xxx）を扱う。LLM 生成の C# コードを検証するとき、層境界違反を確認するとき、
+  または anti-slop の品質ゲートを CI/CD に組み込みたいとき。
 ---
 
 このドキュメントは slopwatch の日本語版です。
@@ -331,7 +331,7 @@ slopwatch analyze --update-baseline
 
 - [Slopwatch GitHub](https://github.com/Aaronontheweb/dotnet-slopwatch) — ソースコードとドキュメント
 - [Slopwatch NuGet Package](https://www.nuget.org/packages/Slopwatch.Cmd)
-- [dotnet](../dotnet/SKILL.md) — .NET family の入口
-- [PHILOSOPHY.md](../../../../docs/PHILOSOPHY.md) — 開発憲法
+- [dotnet](../../SKILL.md) — .NET family の入口
+- [PHILOSOPHY.md](../../../../../../docs/PHILOSOPHY.md) — 開発憲法
 
 ---
