@@ -33,7 +33,7 @@ description: >
 ## Related Skills
 
 - **`dotnet`** — .NET family の入口
-- **`dotnet-modern-csharp-coding-standards`** — Slopwatchが施行を助けるコーディング標準
+- **`dotnet-modern-cs`** — Slopwatchが施行を助けるコーディング標準
 
 ---
 

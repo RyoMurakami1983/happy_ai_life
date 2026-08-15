@@ -21,7 +21,7 @@ description: >
 ## 関連スキル
 
 - `enterprise-rust-tauri-network-build` — 社内 proxy / CA 証明書配下で Rust / Tauri build を通す
-- `typescript-tauri-setup` — Tauri 初回導入の基本順序を整える
+- `ts-tauri` — Tauri 初回導入の基本順序を整える
 
 ## 前提条件
 

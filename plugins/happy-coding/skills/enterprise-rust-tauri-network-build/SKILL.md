@@ -20,8 +20,8 @@ description: >
 
 ## 関連スキル
 
-- `typescript-tauri-setup` — Tauri v2 の初回セットアップ順序をそろえる
-- `typescript-setup-dev-environment` — Node.js / npm 側の前提を整える
+- `ts-tauri` — Tauri v2 の初回セットアップ順序をそろえる
+- `ts-setup` — Node.js / npm 側の前提を整える
 - `repo-onboarding` — 既存 repo の build/test/重要ファイルを把握する
 
 ## 前提条件

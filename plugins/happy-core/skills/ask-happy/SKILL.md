@@ -30,7 +30,7 @@ Ask Happy は、どの Happy AI Life skill を使うか迷ったときの入口�
 | 今開発中の repo に、実行用の Issue を丁寧に作りたい | `gh-issue-create` |
 | 初心者向けの README / 運用手順を書きたい | `beginner-readme-ops` |
 | .NET 関連の skill を選びたい | `dotnet` |
-| Tauri / TypeScript 環境を整えたい | `typescript-tauri-setup` |
+| Tauri / TypeScript 環境を整えたい | `ts-tauri` |
 
 ## 使い方
 

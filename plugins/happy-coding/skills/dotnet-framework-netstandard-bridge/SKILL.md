@@ -129,4 +129,4 @@ public sealed class DeviceReader : IDeviceReader
 
 - `dotnet` — .NET 系の入口
 - `dotnet-setup-dev-environment` — 既存 repo 診断と build contract の入口
-- `dotnet-modern-csharp-coding-standards` — 共有型や契約型をどう表現するか
+- `dotnet-modern-cs` — 共有型や契約型をどう表現するか
