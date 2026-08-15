@@ -14,8 +14,8 @@ description: >
 
 - ここで扱うのは **新しい skill の作成** です。
 - 新しい custom agent は標準導線では作りません。skill では足りない権限境界や独立実行が必要な場合は、この場で作らず issue / design 判断へ戻します。
-- 既存 skill の wording や責務境界を磨き直す主担当は `../improve-existing/` です。
-- 静的な構造確認を主目的にする場合は `../validate-authoring/` へ戻します。
+- 既存 skill の wording や責務境界を磨き直す主担当は `../improve/` です。
+- 静的な構造確認を主目的にする場合は `../validate/` へ戻します。
 - 別実行者にも通じるかの評価は `happy-core@skill-eval` または `happy-core@empirical-prompt-tuning` で扱います。
 
 ## こんなときに使う
@@ -84,7 +84,7 @@ uv run python plugins\happy-core\skills\copilot-authoring\_skill\_eval\scripts\v
 - `../../_skill/_foundation/ROUTER_TEMPLATE.md` — router 親 skill の雛形
 - `../../_skill/_foundation/SUB_SKILL_TEMPLATE.md` — nested sub-skill の雛形
 - `../../_skill/scripts/create_skill.py` — skill / router / sub-skill 作成スクリプト
-- `../validate-authoring/` — 作成後の検証ルート
+- `../validate/` — 作成後の検証ルート
 
 ## 注意点
 

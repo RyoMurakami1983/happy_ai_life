@@ -22,17 +22,17 @@ description: >
 ## 役割の境界
 
 - `sub_skills/new-skill/` は、新しい skill の作成と昇格準備を担当します。
-- `sub_skills/instructions-authoring/` は、repo-wide / path-specific instructions の作成と整理を担当します。
-- `sub_skills/improve-existing/` は、既存資産の wording、境界、handoff の改善を担当します。
-- `sub_skills/validate-authoring/` は、authoring 資産の静的な構造確認を担当します。
+- `sub_skills/instructions/` は、repo-wide / path-specific instructions の作成と整理を担当します。
+- `sub_skills/improve/` は、既存資産の wording、境界、handoff の改善を担当します。
+- `sub_skills/validate/` は、authoring 資産の静的な構造確認を担当します。
 - `happy-core@skill-eval` は、別実行者でも通じるかの評価窓口です。
 - `happy-core@empirical-prompt-tuning` は、指示の曖昧さや裁量補完を実動で詰める窓口です。
 
 ## 実行ルール
 
-1. 新規作成なら、対象に応じて `sub_skills/new-skill/` または `sub_skills/instructions-authoring/` へ進みます。
-2. 既存資産の責務整理や wording 修正なら、まず `sub_skills/improve-existing/` へ進みます。
-3. 構造や静的品質の確認が主目的なら、`sub_skills/validate-authoring/` へ進みます。
+1. 新規作成なら、対象に応じて `sub_skills/new-skill/` または `sub_skills/instructions/` へ進みます。
+2. 既存資産の責務整理や wording 修正なら、まず `sub_skills/improve/` へ進みます。
+3. 構造や静的品質の確認が主目的なら、`sub_skills/validate/` へ進みます。
 4. 別実行者にも同じように通じるか、または明瞭性を実動で測りたいなら、`happy-core@skill-eval` または `happy-core@empirical-prompt-tuning` へ進みます。
 5. `plugins/*` 配下の配布中 asset で利用者体験が変わる場合は、`references/plugin-versioning.md` で version 更新要否を確認します。
 
@@ -43,7 +43,7 @@ description: >
 - 1 つの primary purpose に還元できるなら、新しい親 skill を増やさず、既存の専門 skill を使います。
 - 複数の skill をまたぐ必要があるなら、親に詳細手順を詰め込まず、`interview-with-docs` 型の薄い orchestration にします。
 - 改善と評価が同時に必要でも、まず authoring 資産を直し、その後で評価ルートへ送ります。
-- 新しい custom agent は標準 authoring route では作りません。必要性が出た場合は、まず `improve-existing` で既存 skill では足りない理由を明文化し、別 issue / design 判断へ戻します。
+- 新しい custom agent は標準 authoring route では作りません。必要性が出た場合は、まず `improve` で既存 skill では足りない理由を明文化し、別 issue / design 判断へ戻します。
 
 ## 注意点
 
