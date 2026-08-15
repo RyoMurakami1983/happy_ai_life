@@ -37,6 +37,10 @@ _Avoid_: skill list
 orchestration 親が「自分で実行する unit ではなく、route / handoff に徹する」と示す frontmatter。Copilot CLI では可視性や manual-only 動作の保証としては扱わない。
 _Avoid_: slash 非表示フラグ, manual-only guarantee
 
+**family router**:
+同じ技術領域の公開入口を 1 つに集約し、配下の internal sub-skill へ振り分ける親 skill。初見利用者には入口を減らしつつ、leaf には親文脈つきの短い名前を許せる。
+_Avoid_: flat skill list, independent top-level duplicates
+
 **実装契約 / implementation contract**:
 `design-and-plan` の主出力。goal、success criteria、behavior list、vertical slices を含み、`implement` がそのまま着手できる形まで圧縮された handoff。
 _Avoid_: 会話メモ, ふわっとした設計案

@@ -74,15 +74,16 @@ def test_first_batch_renames_are_reflected_in_public_docs() -> None:
             "`py-setup`",
             "`ts-setup`",
             "`ts-tauri`",
-            "`dotnet-cs-concurrency`",
-            "`dotnet-modern-cs`",
-            "`dotnet-type-perf`",
+            "| `dotnet` |",
         ),
     )
     assert "python-setup-dev-environment" not in skill_map
     assert "typescript-setup-dev-environment" not in skill_map
+    assert "dotnet-cs-concurrency" not in skill_map
+    assert "dotnet-modern-cs" not in skill_map
+    assert "dotnet-type-perf" not in skill_map
     assert "typescript-tauri-setup" not in ask_happy
     assert_contains_terms(
         dotnet,
-        ("`dotnet-modern-cs`", "`dotnet-type-perf`", "`dotnet-cs-concurrency`"),
+        ("`sub_skills/modern-cs/`", "`sub_skills/type-perf/`", "`sub_skills/cs-concurrency/`"),
     )

@@ -29,7 +29,7 @@
 
 含めるもの:
 
-- `plugins/happy-coding/skills/dotnet-setup-dev-environment/SKILL.md`
+- `plugins/happy-coding/skills/dotnet/sub_skills/setup/SKILL.md`
 - `plugins/happy-coding/skills/dotnet/SKILL.md` の router 更新
 - `.github/instructions/csharp.instructions.md`
 - `repo-template/.github/instructions/csharp.instructions.md`

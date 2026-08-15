@@ -82,11 +82,10 @@
 - `deep-research-preflight`
 - `deep-review-preflight`
 - `design-and-plan`
-- `dotnet*`
+- `dotnet`
 - `implement`
 - `implementation-eval-gate`
 - `modularity-review`
-- `nuget-local`
 - `py-setup`
 - `repo-onboarding`
 - `safe-refactor`
@@ -96,6 +95,8 @@
 - narrow agent `tdd-coder`
 
 `happy-office` や `happy-play` は将来の拡張候補であり、この ADR では追加しない。
+
+`dotnet` family は public entry を `dotnet` の 1 つだけに絞り、旧 top-level leaf は internal sub-skill としてのみ配置する。公開一覧に `dotnet-*` を並べることはしない。旧 slug を直接呼ぶ existing user は、まず `dotnet` へ入り直して child を選ぶのが正式な migration path とする。
 
 ### 5. 追補: authoring 入口の統合
 

@@ -6,7 +6,7 @@ applyTo: "**/*.xaml,**/*.xaml.cs"
 # XAML / WPF instructions
 
 - [repository-wide instructions](../copilot-instructions.md) を前提とし、このファイルは XAML / WPF View に閉じた局所ルールだけを定義する。
-- WPF / XAML / binding を触るときは、実装前にまず `dotnet` を入口として思い出し、必要なら `dotnet-wpf-mvvm-patterns` を参照する。
+- WPF / XAML / binding を触るときは、実装前にまず `dotnet` を入口として思い出し、必要なら `wpf-mvvm` route を参照する。
 - View は binding、layout、visual state に集中し、業務ロジック、I/O、永続化、プロトコル処理は ViewModel または service に置く。
 - user input 以外の binding は既定で `OneWay` と考え、`TextBox.Text` など既定で `TwoWay` のプロパティに読み取り専用 property を bind する場合は `Mode=OneWay` を明示する。
 - user action は event handler より command を優先し、CanExecute と busy state を ViewModel 側で表現する。
