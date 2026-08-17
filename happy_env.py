@@ -181,14 +181,32 @@ def build_plugin_repair_followup_command(plan: PluginRepairPlan) -> str:
     return " ".join(command)
 
 
+def build_plugin_update_retry_commands(plan: PluginRepairPlan) -> tuple[str, ...]:
+    return tuple(
+        f"copilot plugin update {target.install_spec}"
+        for target in plan.targets
+    )
+
+
 def format_plugin_repair_plan(plan: PluginRepairPlan) -> str:
+    retry_commands = build_plugin_update_retry_commands(plan)
     lines = [
         "◆ plugin-repair ドライラン",
         f"対象 marketplace: {plan.marketplace}",
         f"backup root: {plan.backup_root}",
         "",
-        "予定操作:",
+        "先にやること:",
+        "- まず VS Code を完全に閉じてください。",
+        "- その後、通常の update をもう一度だけ再試行してください。",
     ]
+    for command in retry_commands:
+        lines.append(f"  - {command}")
+    lines.extend(
+        [
+        "",
+        "予定操作:",
+        ]
+    )
     for target in plan.targets:
         if target.existed_before:
             lines.append(f"- backup {target.installed_dir} -> {target.backup_dir}")
@@ -216,6 +234,7 @@ def prompt_plugin_repair_confirmation(plan: PluginRepairPlan) -> bool:
         state = "installed" if target.existed_before else "missing"
         write_console_line(f"  - {target.name} ({state})")
     write_console_line("")
+    write_console_line("この操作に進む前に、まず VS Code を完全に閉じて `copilot plugin update` を再試行してください。")
     write_console_line("この操作は対象 plugin directory を backup 後に削除して再インストールします。")
     write_console_line("続行する場合は y を入力してください。")
     write_console_line("")
@@ -402,7 +421,7 @@ def run_plugin_repair(
                 label="plugin-repair",
                 command=("app.py", "plugin-repair"),
                 returncode=1,
-                stdout="確認が必要です。削除を伴うため、対話端末で実行するか `--yes --no-interactive` を付けてください。",
+                stdout="確認が必要です。まず VS Code を閉じて `copilot plugin update` を再試行し、それでも失敗する場合だけ、対話端末で実行するか `--yes --no-interactive` を付けてください。",
                 stderr="",
             )
 

@@ -30,11 +30,12 @@ Keep one stimulus fixed at a time.
 If `copilot plugin update <plugin>@<marketplace>` fails with `Access is denied`:
 
 1. Reproduce with the exact update command.
-2. Keep the first comparison read-only: `copilot plugin list`, marketplace browse, remote manifest fetch, ACL, lock check, and manual create / delete.
-3. Check whether `install` of a minimal local plugin succeeds but `update` / `uninstall` fails.
-4. Verify ACL, read-only attributes, direct create / delete, and file locks before blaming permissions.
-5. Only after backup, optionally compare with `copilot plugin update --all` to test whether the update path as a whole is failing.
-6. If direct delete succeeds and CLI update / uninstall fails, treat it as an update-path failure and use backup + manual delete + fresh install.
+2. First close VS Code completely and retry the same update once.
+3. Keep the first comparison read-only: `copilot plugin list`, marketplace browse, remote manifest fetch, ACL, lock check, and manual create / delete.
+4. Check whether `install` of a minimal local plugin succeeds but `update` / `uninstall` fails.
+5. Verify ACL, read-only attributes, direct create / delete, and file locks before blaming permissions.
+6. Only after backup, optionally compare with `copilot plugin update --all` to test whether the update path as a whole is failing.
+7. If direct delete succeeds and CLI update / uninstall fails, treat it as an update-path failure and use backup + manual delete + fresh install.
 
 Safe recovery shape:
 

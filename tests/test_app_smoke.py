@@ -186,6 +186,7 @@ def test_app_plugin_repair_dry_run_shows_default_targets(monkeypatch) -> None:
     assert "plugin-repair ドライラン" in output.getvalue()
     assert "happy-core@happy-ai-life-marketplace" in output.getvalue()
     assert "happy-coding@happy-ai-life-marketplace" in output.getvalue()
+    assert "まず VS Code を完全に閉じてください。" in output.getvalue()
 
 
 def test_app_plugin_repair_dry_run_preserves_subset_followup_command(monkeypatch) -> None:
@@ -212,6 +213,7 @@ def test_app_plugin_repair_requires_yes_when_non_interactive(monkeypatch) -> Non
 
     assert exit_code == 1
     assert "確認が必要です" in output.getvalue()
+    assert "まず VS Code を閉じて" in output.getvalue()
 
 
 def test_build_plugin_repair_plan_uses_subsecond_backup_root(monkeypatch) -> None:
