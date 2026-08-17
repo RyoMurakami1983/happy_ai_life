@@ -23,6 +23,15 @@ class CandidateFace:
     face: str
 
 
+def dict_value(mapping: object, key: str) -> object | None:
+    if not isinstance(mapping, dict):
+        return None
+    for existing_key, value in mapping.items():
+        if existing_key == key:
+            return value
+    return None
+
+
 def looks_like_nerd_font(face: object) -> bool:
     if not isinstance(face, str):
         return False
@@ -31,12 +40,8 @@ def looks_like_nerd_font(face: object) -> bool:
 
 
 def font_face(section: object) -> str | None:
-    if not isinstance(section, dict):
-        return None
-    font = section.get("font")
-    if not isinstance(font, dict):
-        return None
-    face = font.get("face")
+    font = dict_value(section, "font")
+    face = dict_value(font, "face")
     if isinstance(face, str) and face.strip():
         return face.strip()
     return None

@@ -10,6 +10,8 @@ Copilot CLI の reusable skills、agents、repo bootstrap 資産を管理する�
 - **この repo を改善:** [開発ガイド](docs/DEVELOPMENT.md) を開き、`to-prd` → `design-and-plan` → `implement` へ進む
 - **既存 repo に導入:** [はじめに](docs/GETTING_STARTED.md#パス-3-既存-repo-に導入するteam-repo-setup) の Team Repo Setup を使う
 - **調査から follow-up まで回す:** bugfix、review 対応、authoring 改善を単発修正で終わらせたくないときは `loop-engineering` を起点にする
+- **docs 全体を見る:** [docs 一覧](docs/README.md) から辿る
+- **agent 向けの入口を見る:** [AGENTS.md](AGENTS.md) を開く
 
 ## 🚀 クイックスタート
 
@@ -50,12 +52,15 @@ Windows で `アクセスが拒否されました` が出た場合も、まず�
 | 目的 | ドキュメント |
 |------|--------------|
 | 最短で使い始める | [はじめに](docs/GETTING_STARTED.md) |
+| docs 全体を辿る | [docs 一覧](docs/README.md) |
+| agent 向け入口を見る | [AGENTS.md](AGENTS.md) |
 | この repo を変更する | [開発ガイド](docs/DEVELOPMENT.md) |
 | WSL2 での現状を確認する | [WSL2 開発調査](docs/WSL2_DEVELOPMENT.md) |
 | 確認方針を見る | [品質ゲート](docs/QUALITY_GATES.md) |
 | skill / agent / instructions を作る | [作成ガイド](docs/AUTHORING.md) |
 | skill の地図を見る | [Skill Map](docs/SKILL_MAP.md) |
 | privateEval の方針を見る | [PrivateEval](docs/PRIVATE_EVAL.md) |
+| durable knowledge の入口を見る | [Knowledge Index](docs/knowledge/README.md) |
 | skill / privateEval の整理計画を見る | [Skill Ecosystem Action Plan](docs/SKILL_ECOSYSTEM_ACTION_PLAN.md) |
 | よくある質問を見る | [FAQ](docs/FAQ.md) |
 | 困ったとき | [トラブルシューティング](docs/TROUBLESHOOTING.md) |
@@ -72,7 +77,7 @@ Windows で `アクセスが拒否されました` が出た場合も、まず�
 6. **確認** — 変更範囲に合う focused check を流す
 
 ```powershell
-uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py
+uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py tests/test_github_knowledge_docs.py tests/test_evals_policy.py
 uv run ruff check .
 ```
 
@@ -80,13 +85,13 @@ uv run ruff check .
 
 ## ✅ 品質ゲート
 
-この repo では `HappyDefault` を既定にし、PR は smoke test と ruff を優先します。full quality は必要なときに manual workflow で実行します。
+この repo では `HappyDefault` を既定にし、PR は app / plugin manifest / guard / GitHub-first knowledge docs / eval policy の smoke test と ruff を優先します。full quality は必要なときに manual workflow で実行します。
 `HappyDefault` は「毎回ちゃんとする」ためではなく、「毎回つらくならない最低限」を守るための既定です。
 
 | チェック | ツール |
 |----------|--------|
 | secret 検出 | gitleaks（常時有効） |
-| smoke test | app / plugin manifest / guard 最小確認 |
+| smoke test | app / plugin manifest / guard / GitHub-first knowledge docs / eval policy 最小確認 |
 | lint | ruff |
 | Markdown lint | textlint（必要時のみ） |
 

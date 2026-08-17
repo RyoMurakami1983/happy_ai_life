@@ -14,6 +14,7 @@
 
 ```text
 happy_ai_life/
+├── AGENTS.md                 # cross-agent brief
 ├── plugins/                  # Copilot plugin package
 │   ├── happy-core/           # core workflow 向け
 │   ├── happy-coding/         # coding workflow 向け
@@ -24,6 +25,9 @@ happy_ai_life/
 │   ├── .github/              # Actions, hooks, instructions
 │   └── .githooks/            # Git client hooks
 ├── docs/                     # 利用者向け文書
+│   ├── README.md             # docs 全体の入口
+│   ├── knowledge/            # durable knowledge の入口
+│   └── adr/                  # 設計判断の理由
 ├── scripts/                  # sync / bootstrap script
 ├── tests/                    # test
 ├── pyproject.toml            # Python 設定
@@ -39,6 +43,8 @@ happy_ai_life/
 - `scripts/` — sync / bootstrap 用 script
 - `home-template/` — ローカル環境再現用 template
 - `repo-template/` — 対象 repo 配布用 template
+- `AGENTS.md` — cross-agent brief
+- `docs/README.md` / `docs/knowledge/` — durable knowledge の入口
 
 ## 開発の流れ
 
@@ -133,7 +139,7 @@ home sync 後は同じ script を `$HOME\.copilot\scripts\` から使えます�
 通常は変更範囲に合う focused check を先に流します。PR / main push の `HappyDefault smoke` は次の軽量確認を基準にします。
 
 ```powershell
-uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py
+uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py tests/test_github_knowledge_docs.py tests/test_evals_policy.py
 uv run ruff check .
 ```
 
@@ -176,10 +182,10 @@ gh pr create
 uv run pytest -q
 
 # PR の smoke と同じ
-uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py
+uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py tests/test_github_knowledge_docs.py tests/test_evals_policy.py
 ```
 
-Git hooks 周りを変えた場合は、`tests/test_secret_guard_minimal.py` に必要な deny / ask / allow だけを追加します。旧 Git hook 統合テストは `archive/enterprise-hardening/tests/` に退避しています。
+Git hooks 周りを変えた場合は、`tests/test_secret_guard_minimal.py` に必要な deny / ask / allow だけを追加します。GitHub-first knowledge の入口や issue policy を変えた場合は `tests/test_github_knowledge_docs.py` も focused gate に含めます。旧 Git hook 統合テストは `archive/enterprise-hardening/tests/` に退避しています。
 
 ### 品質確認の例
 
@@ -193,14 +199,23 @@ uv run ty check .
 PR / main push では主に次を通します。
 
 1. **gitleaks** — secret 検出
-2. **HappyDefault smoke** — app / plugin manifest / guard 最小確認
+2. **HappyDefault smoke** — app / plugin manifest / guard / GitHub-first knowledge docs / eval policy 最小確認
 3. **ruff** — lint
 
-PR / main push ではこれらを速く通し、重い確認は必要時だけ manual workflow または手元で実行します。
+PR / main push では app / plugin manifest / guard / GitHub-first knowledge docs / eval policy の smoke gate を速く通し、重い確認は必要時だけ manual workflow または手元で実行します。
 
 ## skill / agent / instructions を作る
 
 plugin 配下の既存 skill / agent の構成に合わせて追加します。日常導線ではここに詳細を増やしすぎず、必要な変更単位で既存例を見て進めます。
+
+## durable knowledge を追加するとき
+
+- repo 全体の入口は repo root の `README.md`
+- docs 全体の入口は `docs/README.md`
+- durable knowledge の入口は `docs/knowledge/README.md`
+- 用語の正本は `CONTEXT.md`
+- 設計判断の理由は `docs/adr/`
+- `AGENTS.md` は cross-agent brief であり、長い手順書の置き場ではない
 
 ## Git 運用
 

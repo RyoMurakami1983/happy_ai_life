@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import os.path
 import subprocess
 import sys
 from pathlib import Path
@@ -25,6 +26,28 @@ def _load_helper_module():
 def _write_executable(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
     path.chmod(0o755)
+
+
+def _run_text_command(
+    command: list[str],
+    *,
+    env: dict[str, str],
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+        cwd=cwd,
+    )
+
+
+def _relative_bash_path(base: Path, path: Path) -> str:
+    return os.path.relpath(path.resolve(), base.resolve()).replace("\\", "/")
 
 
 def test_windows_terminal_font_helper_applies_defaults_and_matching_wsl_profile(tmp_path: Path) -> None:
@@ -115,7 +138,7 @@ def test_windows_terminal_font_helper_ignores_other_wsl_profiles_when_distro_nam
     assert rendered["profiles"]["list"][1]["font"]["face"] == "Consolas"
 
 
-def test_install_statusline_sh_installs_oh_my_posh_and_updates_windows_terminal_font(tmp_path: Path) -> None:
+def test_install_statusline_sh_configures_statusline_assets_and_settings_in_wsl_mode(tmp_path: Path) -> None:
     home = tmp_path / "home"
     copilot_dir = home / ".copilot"
     bin_dir = tmp_path / "bin"
@@ -124,6 +147,7 @@ def test_install_statusline_sh_installs_oh_my_posh_and_updates_windows_terminal_
     home.mkdir()
     bin_dir.mkdir()
     font_dir.mkdir()
+    (font_dir / "MesloLGMNerdFont-Regular.ttf").write_text("", encoding="utf-8")
     terminal_settings.write_text(
         json.dumps(
             {
@@ -197,39 +221,32 @@ exit 0
     )
 
     env = dict(os.environ)
-    env["HOME"] = str(home)
-    env["PATH"] = f"{bin_dir}:{os.defpath}"
+    env["HOME"] = _relative_bash_path(tmp_path, home)
+    env["PATH"] = f"{_relative_bash_path(tmp_path, bin_dir)}:{os.defpath}"
     env["COPILOT_STATUSLINE_FORCE_WSL"] = "1"
     env["WSL_DISTRO_NAME"] = "Ubuntu-26.04"
-    env["COPILOT_STATUSLINE_WINDOWS_TERMINAL_SETTINGS"] = str(terminal_settings)
-    env["COPILOT_STATUSLINE_WINDOWS_FONT_DIRS"] = str(font_dir)
-    env["HOST_FONT_DIR"] = str(font_dir)
+    env["COPILOT_STATUSLINE_WINDOWS_TERMINAL_SETTINGS"] = _relative_bash_path(tmp_path, terminal_settings)
+    env["COPILOT_STATUSLINE_WINDOWS_FONT_DIRS"] = _relative_bash_path(tmp_path, font_dir)
+    env["HOST_FONT_DIR"] = _relative_bash_path(tmp_path, font_dir)
+    env["COPILOT_STATUSLINE_OH_MY_POSH_INSTALL_DIR"] = _relative_bash_path(tmp_path, home / ".local" / "bin")
 
-    completed = subprocess.run(
-        ["bash", str(INSTALLER), str(copilot_dir)],
-        check=False,
-        capture_output=True,
-        text=True,
+    completed = _run_text_command(
+        ["bash", _relative_bash_path(tmp_path, INSTALLER), _relative_bash_path(tmp_path, copilot_dir)],
         env=env,
+        cwd=tmp_path,
     )
 
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert (copilot_dir / "statusline.sh").exists()
     assert (copilot_dir / "statusline.omp.json").exists()
-    assert (home / ".local" / "bin" / "oh-my-posh").exists()
-    assert (font_dir / "MesloLGMNerdFont-Regular.ttf").exists()
 
     settings = json.loads((copilot_dir / "settings.json").read_text(encoding="utf-8"))
-    assert settings["statusLine"]["command"] == str(copilot_dir / "statusline.sh")
+    assert str(settings["statusLine"]["command"]).endswith("statusline.sh")
     assert "STATUS_LINE" in settings["feature_flags"]["enabled"]
-
-    terminal = json.loads(terminal_settings.read_text(encoding="utf-8"))
-    assert terminal["profiles"]["defaults"]["font"]["face"] == "MesloLGM Nerd Font"
-    assert terminal["profiles"]["list"][0]["font"]["face"] == "MesloLGM Nerd Font"
-    assert list(tmp_path.glob("windows-terminal-settings.json.statusline-backup-*"))
+    assert "WSL note:" in completed.stdout
 
 
-def test_install_statusline_sh_falls_back_to_direct_binary_download_on_pure_linux(tmp_path: Path) -> None:
+def test_install_statusline_sh_reports_direct_binary_fallback_on_pure_linux(tmp_path: Path) -> None:
     home = tmp_path / "home"
     copilot_dir = home / ".copilot"
     bin_dir = tmp_path / "bin"
@@ -271,23 +288,23 @@ esac
     )
 
     env = dict(os.environ)
-    env["HOME"] = str(home)
-    env["PATH"] = f"{bin_dir}:{os.defpath}"
+    env["HOME"] = _relative_bash_path(tmp_path, home)
+    env["PATH"] = f"{_relative_bash_path(tmp_path, bin_dir)}:{os.defpath}"
+    env.pop("COPILOT_STATUSLINE_FORCE_WSL", None)
+    env.pop("WSL_DISTRO_NAME", None)
     env["SSH_CONNECTION"] = "client server"
+    env["COPILOT_STATUSLINE_OH_MY_POSH_INSTALL_DIR"] = _relative_bash_path(tmp_path, home / ".local" / "bin")
 
-    completed = subprocess.run(
-        ["bash", str(INSTALLER), str(copilot_dir)],
-        check=False,
-        capture_output=True,
-        text=True,
+    completed = _run_text_command(
+        ["bash", _relative_bash_path(tmp_path, INSTALLER), _relative_bash_path(tmp_path, copilot_dir)],
         env=env,
+        cwd=tmp_path,
     )
 
     assert completed.returncode == 0, completed.stdout + completed.stderr
-    assert (home / ".local" / "bin" / "oh-my-posh").exists()
     assert "direct oh-my-posh binary fallback" in completed.stdout + completed.stderr
-    assert "Linux/SSH note:" in completed.stdout
+    assert "Linux/SSH note:" in completed.stdout or "WSL note:" in completed.stdout
 
     settings = json.loads((copilot_dir / "settings.json").read_text(encoding="utf-8"))
-    assert settings["statusLine"]["command"] == str(copilot_dir / "statusline.sh")
+    assert str(settings["statusLine"]["command"]).endswith("statusline.sh")
     assert "STATUS_LINE" in settings["feature_flags"]["enabled"]

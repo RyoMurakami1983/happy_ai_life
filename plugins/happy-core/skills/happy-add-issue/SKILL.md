@@ -2,8 +2,8 @@
 name: happy-add-issue
 description: >
   Happy AI Life 関連の skill、agent、docs、運用への意見や改善要望を、
-  `RyoMurakami1983/happy_ai_life` の Issue にすばやく起票する入口。 「この skill が分かりづらい」「この導線を直してほしい」のような雑なフィードバックを、
-  母艦 repo の Issue に残したいとき。
+  `RyoMurakami1983/happy_ai_life` の Issue にすばやく起票する入口。こんなときに使う:
+  「この skill が分かりづらい」「この導線を直してほしい」のような雑なフィードバックを、母艦 repo の Issue に残したいとき。
 ---
 
 # Happy Add Issue
@@ -22,8 +22,7 @@ Happy Add Issue は、**Happy AI Life への意見窓口**です。
 
 - 投稿先が `RyoMurakami1983/happy_ai_life` だと明確に分かる。
 - skill / agent / docs / hooks / plugin 導線への意見が、最小限の背景つきで残る。
-- 長い再現メモや失敗ログがある場合に、公開 Issue と分離して **secret gist** を併用できる。
-- 公開 Issue と gist の両方で、固有名詞や private 情報を匿名化する既定が分かる。
+- gist は個人用の cheat sheet や小さな snippet 共有に限定し、Issue の詳細メモや長い失敗ログの標準置き場にはしないと分かる。
 - 今開発中の repo に起票したい場合は `gh-issue-create` へ迷わず切り替えられる。
 
 ## こんなときに使う
@@ -32,7 +31,7 @@ Happy Add Issue は、**Happy AI Life への意見窓口**です。
 - plugin、README、docs、hook、router の導線改善を提案したい
 - 他 repo で使っていて見つけた違和感を、母艦 repo に返したい
 - 実装中ではなく、配布物や運用体験への意見をまず 1 件残したい
-- 公開 Issue は軽く保ちつつ、長い再現ログや切り分けメモは gist に逃がしたい
+- 長い detail を Issue 分割や docs / ADR / follow-up Issue に切り出したい
 
 ## 使わない場面
 
@@ -56,13 +55,13 @@ Happy Add Issue は、**Happy AI Life への意見窓口**です。
 - `gh-issue-create` — 今開発している repo に、その repo の作業 Issue を起票する
 - `knowledge-capture` — 公開されうる内容を匿名化観点つきで整理する
 
-## ワークフロー
+## ワークフロー:
 
 ```text
 rough feedback
  -> 何が困ったかを1文にする
  -> Happy AI Life 向けの改善要望に言い換える
- -> 公開 Issue に何を書くか / gist に逃がすかを分ける
+ -> 公開 Issue に何を書くか / follow-up に分けるかを決める
  -> 必要なら文脈補填を 3-6 行で足す
  -> 最小テンプレへ整形
  -> RyoMurakami1983/happy_ai_life に起票
@@ -73,37 +72,23 @@ rough feedback
 1. 入力を 1 文で圧縮し、「どこで困ったか」と「どう変わってほしいか」を分ける。
 2. 投稿先が `RyoMurakami1983/happy_ai_life` であることを明示する。
 3. 読み手が対象 repo を知らないと困りそうなら、`文脈補填` を 3-6 行で足す。
-4. 長い再現ログ、切り分け経緯、証拠メモは公開 Issue に詰め込まず、必要なら **secret gist** に分離する。
-5. 公開 Issue と gist の両方で、固有名詞・private repo 名・顧客名・内部 URL を一般化する。
+4. 長い再現ログ、切り分け経緯、証拠メモが必要なら、Issue を分割するか、`docs / ADR / follow-up Issue` のどれに切り出すかを決める。
+5. 公開 Issue には固有名詞・private repo 名・顧客名・内部 URL をそのまま書かない。
 6. 次の最小テンプレに落とす。
 7. 必要なら `gh issue create -R RyoMurakami1983/happy_ai_life` で起票する。
 8. 現 repo の実装 Issue にすべきだと分かったら `gh-issue-create` に切り替える。
 
-## gist を併用する判断
+## 詳細を分ける判断
 
-gist は **補助資料** です。Issue 本文を長文化しすぎず、必要な根拠だけを分離したいときに使います。
+gist は個人用の cheat sheet や小さな snippet 共有には使えますが、**Happy Add Issue の detail escape hatch には使いません**。
+Issue からこぼれる durable detail は、Issue 分割、`docs / ADR / follow-up Issue` のいずれかへ回します。
 
-| 状況 | Issue 本文 | gist |
-| --- | --- | --- |
-| 軽い感想 1 件 | そのまま書く | 使わない |
-| 3-6 行で済む前提説明が必要 | `文脈補填` を足す | 基本使わない |
-| 長い失敗ログ、再現メモ、切り分け経緯がある | 要点だけ書く | 使う |
-| private repo 名や顧客固有語が多い | 公開 Issue では抽象化する | gist 側も匿名化して使う |
-
-## gist 利用時の既定
-
-- gist を使う場合の既定は **secret gist**。`gh gist create` では `--public` を付けない。
-- secret gist でも URL を知る人は読めるため、**機密情報は載せない**。
-- gist の本文でも、repo 名、顧客名、サーバー名、内部 URL、内部 ID はそのまま書かない。
-- 匿名化は `knowledge-capture` の AC-1〜AC-4 を使う。
-- lightweight gist guard がある環境では、gist 作成時に「公開可否」と「匿名化」を人間が再確認する想定で進める。
-
-### 匿名化の最小チェック
-
-1. AC-1: プロジェクト名・会社名・顧客名を消すか汎用名へ置換する
-2. AC-2: 実 ID・実フォーマットは、同じ形を保つダミー値へ置換する
-3. AC-3: 業界や社内固有の用語を中立語へ一般化する
-4. AC-4: 実測値や閾値は代表的なダミー値へ置換する
+| 状況 | 既定の置き場 |
+| --- | --- |
+| 軽い感想 1 件 | そのまま Issue に書く |
+| 3-6 行で済む前提説明が必要 | `文脈補填` を足す |
+| 長い経緯や別論点が増える | follow-up Issue に分ける |
+| 戻しにくい判断理由が出る | ADR または docs へ切り出す |
 
 ## 最小テンプレ
 
@@ -125,7 +110,7 @@ Title: 🟢 skill 名または導線名: 何を改善してほしいか
 - 期待する改善
 
 ## 詳細メモ
-- secret gist の URL や「詳細は gist 参照」の一文（任意）
+- 関連 Issue / docs / ADR の path や URL（任意）
 
 ## 補足
 - 例、再現場面、関連 skill など（任意）
@@ -157,34 +142,6 @@ Title: 🟢 domain-modeling: grill-with-docs との接続を分かりやすく�
 - Happy AI Life の skill 間の関係を初見でも追えるようにしたい
 ```
 
-## gist 併用の出力イメージ
-
-```markdown
-Title: 🟢 linux-server-ops: 失敗ログを gist で補える導線を足す
-
-投稿先: RyoMurakami1983/happy_ai_life
-
-## 背景
-- `linux-server-ops` を使って実サーバー導線を試していた
-
-## 文脈補填
-- 対象は Linux サーバーへの SSH 接続、sudo、systemd、HTTP 確認を扱う skill
-- 読み手が元 repo や実環境を知らなくても、どの段階で詰まったか分かるよう最小限の前提だけ書く
-
-## 困りごと
-- 公開 Issue に長い失敗ログを全部入れると重い
-- ただし、再現の根拠は残したい
-
-## こう変わってほしい
-- 要点は Issue に、長い証拠は secret gist に分ける導線を本文で案内してほしい
-
-## 詳細メモ
-- 詳細な再現ログ: secret gist を参照
-
-## 補足
-- gist 本文でも固有名詞は匿名化する
-```
-
 ## CLI 例
 
 ```powershell
@@ -194,19 +151,11 @@ gh issue create `
   --body-file issue.md
 ```
 
-```powershell
-# secret gist が既定。--public は付けない
-gh gist create `
-  issue_evidence.md `
-  --desc "happy-add-issue 用の補助メモ"
-```
-
 ## 注意点
 
 - この skill の既定の投稿先は **今の作業 repo ではなく** `RyoMurakami1983/happy_ai_life`。
 - 現 repo の backlog を切る用途に流用しない。現 repo の Issue は `gh-issue-create` を使う。
 - 最初から重い仕様化をしない。まず意見を失わず残し、必要ならこの repo 側で具体化する。
 - 公開 Issue なので、他 repo の private 情報や固有名詞はそのまま書かない。
-- gist を使う場合も既定は **secret gist**。public gist は「本当に公開してよいか」を再確認する。
-- secret gist でも機密情報は載せない。URL を知る人は閲覧できる。
-- 匿名化に迷ったら `knowledge-capture` の AC-1〜AC-4 を適用する。
+- gist は個人用の cheat sheet や小さな snippet 共有に限定し、Issue の詳細メモや長い失敗ログの標準置き場にはしない。
+- detail が長くなる場合は、Issue を分割するか、`docs / ADR / follow-up Issue` へ切り出す。

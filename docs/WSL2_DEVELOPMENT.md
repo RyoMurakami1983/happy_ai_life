@@ -14,7 +14,7 @@ WSL2 でも **repo 自体の編集・focused test・lint・bash/sh ベースの 
 
 | 項目 | WSL2 での扱い | 根拠 |
 |------|---------------|------|
-| repo の編集、Python 実行、focused test、ruff | **使える** | repo は Python/uv ベースで、`tests/test_app_smoke.py` もこの環境で通る |
+| repo の編集、Python 実行、focused test、ruff | **使える** | repo は Python/uv ベースで、`tests/test_app_smoke.py` と `tests/test_github_knowledge_docs.py` もこの環境で通る |
 | repo-template の Git client hooks (`.githooks`) | **使える** | `repo-template/.githooks/*` は `#!/usr/bin/env sh` ベースで、`git` と `gitleaks` を前提にしている |
 | repo の Copilot safety hook (`.github/hooks/safety-guard.json`) | **使える** | `bash` と `powershell` の両 variant を持ち、`repo-secure-check.ps1` は非 Windows host で `bash` を優先する |
 | `uv run app.py` / `uv run app.py home` | **使える** | non-Windows host では `sync-to-home.sh` を選び、repo 内の `uv` で home sync を実行する |
@@ -28,7 +28,7 @@ WSL2 でも **repo 自体の編集・focused test・lint・bash/sh ベースの 
 ### 1. repo の日常開発
 
 - `uv sync --dev`
-- `uv run python -m pytest -q tests/test_app_smoke.py`
+- `uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py tests/test_github_knowledge_docs.py tests/test_evals_policy.py`
 - `uv run ruff check .`
 
 この repo の主要な開発サイクルは Python 側で回るため、WSL2 でも普通に進められます。

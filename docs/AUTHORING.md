@@ -8,6 +8,7 @@
 |---|---|
 | skill | 手順や判断基準を再利用したい |
 | agent | 特定の役割で独立して調査・実装させたい |
+| AGENTS.md | repo root で cross-agent の brief を渡したい |
 | instructions | repo 全体または path ごとの常時ルールを置きたい |
 
 ## 最小方針
@@ -26,6 +27,7 @@
 - 複数の専門 skill をまたぐ必要がある場合だけ、`interview-with-docs` のような薄い orchestration skill を置く
 - orchestration 親は `disable-model-invocation: true` を基本にし、`役割の境界` と `実行ルール` だけを持たせる
 - `copilot-authoring` は authoring 全体を実装する skill ではなく、専門ルートへ振り分ける薄い入口として保つ
+- `AGENTS.md` は repo-wide の cross-agent brief に限定し、skill の詳細手順を複製しない
 
 `disable-model-invocation: true` は **orchestration 親が route / handoff に徹する意図** を示すために使います。Copilot CLI では slash command の**可視性制御**や manual-only 動作の保証としては扱いません。
 
@@ -117,6 +119,12 @@ agent には役割、入力、完了条件、使ってよい tool の範囲を�
 ## instructions
 
 repo-wide instructions は `.github/copilot-instructions.md` に置きます。path 固有の補足は `.github/instructions/` に置きます。
+
+## learnings と durable knowledge
+
+- **learnings** は会話ログではなく、短く一般化した再発防止ルールとして扱う
+- 再利用する knowledge は `docs/knowledge/` に残し、単発の差分理由は PR / Issue / ADR の責務に合わせて分ける
+- gist は個人用の cheat sheet や snippet 共有には使えるが、repo 固有の durable knowledge の標準置き場にはしない
 
 ## 確認
 
