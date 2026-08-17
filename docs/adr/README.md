@@ -31,6 +31,7 @@ README や運用文書では「何を使うか」を案内し、ここでは「�
 ### instructions / agent / skill
 
 - [instruction-hierarchy-and-authoritative-source.md](instruction-hierarchy-and-authoritative-source.md) — instruction 階層と正本
+- [github-first-knowledge-storage-and-agent-entrypoints.md](github-first-knowledge-storage-and-agent-entrypoints.md) — GitHub-first knowledge storage と `AGENTS.md`
 - [skill-single-responsibility-and-orchestration.md](skill-single-responsibility-and-orchestration.md) — skill の単一責務と薄い orchestration
 - [agent-dispatch-rules.md](agent-dispatch-rules.md) — agent dispatch の基準
 - [shihan-agents-operating-model.md](shihan-agents-operating-model.md) — custom agent の運用モデル
@@ -55,3 +56,4 @@ README や運用文書では「何を使うか」を案内し、ここでは「�
 2. home sync の境界を知りたい → `home-sync-governance.md`
 3. instructions の正本を知りたい → `instruction-hierarchy-and-authoritative-source.md`
 4. plugin 分割の理由を知りたい → `happy-ai-life-plugin-split-and-skill-slug-simplification.md`
+5. GitHub-first knowledge storage を知りたい → `github-first-knowledge-storage-and-agent-entrypoints.md`

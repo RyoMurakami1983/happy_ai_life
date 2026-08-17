@@ -6,7 +6,7 @@ HappyDefault の品質ゲートは、速く壊れにくい AI-assisted developme
 
 [Windows: PowerShell]
 ```powershell
-uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py
+uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py tests/test_github_knowledge_docs.py tests/test_evals_policy.py
 uv run ruff check .
 ```
 
@@ -16,7 +16,7 @@ GitHub Actions の `quality.yml` でも同じく、PR / main push ではこの�
 
 - secret を混ぜない: gitleaks を使う
 - format / lint の基本を崩さない: ruff を使う
-- app / plugin manifest / guard の最小 smoke test を流す
+- app / plugin manifest / guard / GitHub-first knowledge 導線の最小 smoke test を流す
 - privateEval の raw artifact を混ぜない: `tests/test_evals_policy.py` を使う
 
 ## 重い確認

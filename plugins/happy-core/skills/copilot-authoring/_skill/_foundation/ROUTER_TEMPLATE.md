@@ -21,6 +21,12 @@ disable-model-invocation: true
 2. <Condition for route-b> のときは `<route-b>` へ進む
 3. route をまたぐ場合でも、親には route 判断だけを残し、詳細な workflow は子へ置く
 
+## 判断表
+
+| 状況 | route | 次にやること |
+| --- | --- | --- |
+<Decision Rows>
+
 > 実装上の明示参照としては plugin-qualified 名を使い、実行時の会話では短い呼び出し名で扱うのが自然です。
 
 ## 迷ったときの判断

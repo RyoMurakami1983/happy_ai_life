@@ -33,9 +33,17 @@ _Avoid_: 暇, 空き時間
 基本 skill、専門 skill、agent、docs、eval が孤立せず、入口、連携、評価、昇格基準を持って育つ構造。
 _Avoid_: skill list
 
+**AGENTS.md**:
+repo root に置く cross-agent brief。repo の役割、主要 command、boundary、source of truth への入口を短く示す。
+_Avoid_: skill の詳細手順, 長い設計理由, README の置き換え
+
 **disable-model-invocation**:
 orchestration 親が「自分で実行する unit ではなく、route / handoff に徹する」と示す frontmatter。Copilot CLI では可視性や manual-only 動作の保証としては扱わない。
 _Avoid_: slash 非表示フラグ, manual-only guarantee
+
+**learnings**:
+失敗や繰り返しの修正から抽出した、短く一般化された再発防止ルール。会話ログではなく、docs や instructions へ書き戻して再利用する。
+_Avoid_: raw transcript, 失敗ログの丸写し, 長いふりかえり本文
 
 **family router**:
 同じ技術領域の公開入口を 1 つに集約し、配下の internal sub-skill へ振り分ける親 skill。初見利用者には入口を減らしつつ、leaf には親文脈つきの短い名前を許せる。

@@ -47,7 +47,7 @@ bash "$HOME/.copilot/scripts/install-git-hooks.sh" -TargetRepoPath <path>
 ## check
 
 ```powershell
-uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py
+uv run python -m pytest -q tests/test_app_smoke.py tests/test_plugin_manifest.py tests/test_secret_guard_minimal.py tests/test_github_knowledge_docs.py tests/test_evals_policy.py
 uv run ruff check .
 ```
 
