@@ -26,6 +26,13 @@ copilot plugin list
 
 また、`copilot plugin update` は default branch の配布物を取り直します。この repo の branch や PR 上の未公開変更を試したい場合は、update ではなく local marketplace を使います。
 
+まずは **VS Code を完全に閉じてから**、同じ update を再試行してください。今回の調査では、それだけで正常化するケースが確認できました。
+
+```powershell
+copilot plugin update happy-core@happy-ai-life-marketplace
+copilot plugin update happy-coding@happy-ai-life-marketplace
+```
+
 切り分け:
 
 ```powershell
@@ -44,7 +51,7 @@ copilot plugin update happy-core@happy-ai-life-marketplace
 
 必要なら、**backup 後に限って** `copilot plugin update --all` を追加実行し、「特定 plugin だけでなく update 経路全体が失敗しているか」を確認します。初動では read-only な比較を優先してください。
 
-この repo を clone 済みなら、まずは safe repair command を使います。
+VS Code を閉じても失敗が続く場合に限り、この repo を clone 済みなら safe repair command を使います。
 
 ```powershell
 # 予定だけ確認

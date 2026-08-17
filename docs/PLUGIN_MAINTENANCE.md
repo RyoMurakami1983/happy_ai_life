@@ -49,7 +49,7 @@ copilot plugin update happy-coding@happy-ai-life-marketplace
 ```
 
 Windows で `Access denied` / `アクセスが拒否されました` が出ても、public docs 上の primary path は update のまま維持します。  
-ただし maintainer がこの repo を clone 済みなら、safe fallback として次を使えます。
+ただし maintainer がこの repo を clone 済みなら、**先に VS Code を完全に閉じて同じ update を再試行**してください。まだ失敗する場合だけ、safe fallback として次を使えます。
 
 ```powershell
 uv run app.py plugin-repair --dry-run --no-interactive

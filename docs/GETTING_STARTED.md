@@ -37,7 +37,7 @@ copilot plugin update happy-coding@happy-ai-life-marketplace
 ```
 
 これは **default branch で公開済みの plugin** を取り直す手順です。
-Windows で `アクセスが拒否されました` が出ても、通常はこの update を正規導線として扱います。復旧が必要な場合は [トラブルシューティング](TROUBLESHOOTING.md) の safe repair fallback を使ってください。repo を clone 済みなら、まず `uv run app.py plugin-repair --dry-run --no-interactive` で対象確認、次に `uv run app.py plugin-repair --yes --no-interactive` で復旧できます。
+Windows で `アクセスが拒否されました` が出ても、通常はこの update を正規導線として扱います。まず **VS Code を完全に閉じてから** 同じ update を再試行してください。まだ失敗する場合は [トラブルシューティング](TROUBLESHOOTING.md) の safe repair fallback を使ってください。repo を clone 済みなら、`uv run app.py plugin-repair --dry-run --no-interactive` で対象確認、次に `uv run app.py plugin-repair --yes --no-interactive` で復旧できます。
 この repo の branch や PR 上の未公開変更を試したい場合は、repo root で `copilot plugin marketplace add .` を使う local marketplace 手順へ進んでください。
 
 ### 入るもの
@@ -120,7 +120,7 @@ uv run app.py home --no-interactive
 
 ### Marketplace plugin の safe repair
 
-この repo を clone している開発者は、`copilot plugin update` が lock / `アクセスが拒否されました` で失敗したときに、repo-local fallback を使えます。
+この repo を clone している開発者は、`copilot plugin update` が lock / `アクセスが拒否されました` で失敗したときに、まず **VS Code を閉じて update を再試行** し、それでも失敗する場合だけ repo-local fallback を使えます。
 
 [Windows: PowerShell]
 ```powershell
