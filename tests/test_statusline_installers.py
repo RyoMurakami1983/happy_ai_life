@@ -138,7 +138,7 @@ def test_windows_terminal_font_helper_ignores_other_wsl_profiles_when_distro_nam
     assert rendered["profiles"]["list"][1]["font"]["face"] == "Consolas"
 
 
-def test_install_statusline_sh_installs_oh_my_posh_and_updates_windows_terminal_font(tmp_path: Path) -> None:
+def test_install_statusline_sh_configures_statusline_assets_and_settings_in_wsl_mode(tmp_path: Path) -> None:
     home = tmp_path / "home"
     copilot_dir = home / ".copilot"
     bin_dir = tmp_path / "bin"
@@ -246,7 +246,7 @@ exit 0
     assert "WSL note:" in completed.stdout
 
 
-def test_install_statusline_sh_falls_back_to_direct_binary_download_on_pure_linux(tmp_path: Path) -> None:
+def test_install_statusline_sh_reports_direct_binary_fallback_on_pure_linux(tmp_path: Path) -> None:
     home = tmp_path / "home"
     copilot_dir = home / ".copilot"
     bin_dir = tmp_path / "bin"
