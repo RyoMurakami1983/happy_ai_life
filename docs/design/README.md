@@ -12,4 +12,4 @@
 | [006_TECHNICAL_DESIGN.md](006_TECHNICAL_DESIGN.md) | active | skill 命名体系の全面刷新 |
 | [007_TECHNICAL_DESIGN.md](007_TECHNICAL_DESIGN.md) | active | dotnet family router への再編 |
 | [008_TECHNICAL_DESIGN.md](008_TECHNICAL_DESIGN.md) | active | GitHub-first knowledge storage の導線整備 |
-
+| [009_TECHNICAL_DESIGN.md](009_TECHNICAL_DESIGN.md) | active | repo-onboarding と guard の BootstrapMinimal 化 |

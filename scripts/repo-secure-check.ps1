@@ -34,6 +34,7 @@ function New-CheckResult {
         [Parameter(Mandatory = $true)][string]$Key,
         [Parameter(Mandatory = $true)][string]$Label,
         [Parameter(Mandatory = $true)][bool]$Ok,
+        [Parameter(Mandatory = $true)][string]$Severity,
         [Parameter(Mandatory = $true)][string]$Path,
         [Parameter(Mandatory = $true)][string]$Details
     )
@@ -42,8 +43,24 @@ function New-CheckResult {
         key = $Key
         label = $Label
         ok = $Ok
+        severity = $Severity
         path = $Path
         details = $Details
+    }
+}
+
+function Get-CheckSeverity {
+    param([Parameter(Mandatory = $true)][string]$Key)
+
+    switch ($Key) {
+        "repoInstructions" { return "blocking" }
+        "copilotHooks" { return "blocking" }
+        "guardPolicyFiles" { return "blocking" }
+        "gitHooksDirectory" { return "blocking" }
+        "gitHookLineEndings" { return "blocking" }
+        "coreHooksPath" { return "blocking" }
+        "toolDependencies" { return "blocking" }
+        default { return "advisory" }
     }
 }
 
@@ -506,6 +523,8 @@ if (-not (Test-Path -LiteralPath $targetRepoPath)) {
 $instructionsPath = Join-Path $targetRepoPath ".github\copilot-instructions.md"
 $copilotHooksPath = Join-Path $targetRepoPath ".github\hooks"
 $githubWorkflowsPath = Join-Path $targetRepoPath ".github\workflows"
+$guardPolicyPath = Join-Path $targetRepoPath "policy\guard-policy.json"
+$guardPolicySchemaPath = Join-Path $targetRepoPath "policy\guard-policy.schema.json"
 $sourceRootPath = [System.IO.Path]::GetFullPath($SourceRoot)
 $isSourceRepository = Test-SamePath -Left $targetRepoPath -Right $sourceRootPath
 $targetGitHooksPath = Join-Path $targetRepoPath ".githooks"
@@ -568,6 +587,13 @@ elseif ($hasOnlyDotNetTemplateWithoutDotNetProject) {
 else {
     $githubWorkflowsDetails = ".github/workflows に YAML workflow が存在します。repo の技術スタックと runtime に合う内容かは onboarding で確認してください。"
 }
+$guardPolicyFilesOk = (Test-Path -LiteralPath $guardPolicyPath -PathType Leaf) -and (Test-Path -LiteralPath $guardPolicySchemaPath -PathType Leaf)
+$guardPolicyFilesDetails = if ($guardPolicyFilesOk) {
+    "guard policy files が存在します。"
+}
+else {
+    "policy/guard-policy.json または policy/guard-policy.schema.json が不足しています。sync-to-repo を再実行してください。"
+}
 $gitHookIssues = @(Get-RequiredGitHookIssues -Path $gitHooksPath)
 $gitHooksOk = $gitHookIssues.Count -eq 0
 $gitHookLineEndingIssues = @(Get-GitHookLineEndingIssues `
@@ -608,50 +634,72 @@ $checks = @(
         -Key "repoInstructions" `
         -Label "repo instructions" `
         -Ok $instructionsOk `
+        -Severity (Get-CheckSeverity -Key "repoInstructions") `
         -Path $instructionsPath `
         -Details ($(if ($instructionsOk) { "repo-wide instructions が存在します。" } else { "repo-wide instructions がありません。" }))),
     (New-CheckResult `
         -Key "copilotHooks" `
         -Label "Copilot hooks" `
         -Ok $copilotHooksOk `
+        -Severity (Get-CheckSeverity -Key "copilotHooks") `
         -Path $copilotHooksPath `
         -Details ($(if ($copilotHooksOk) { "Copilot safety hook safety-guard.json が存在します。session continuity hooks は標準運用から封印済みで、必要な repo だけ明示 opt-in します。" } else { "Copilot safety hook safety-guard.json がありません。" }))),
+    (New-CheckResult `
+        -Key "guardPolicyFiles" `
+        -Label "guard policy files" `
+        -Ok $guardPolicyFilesOk `
+        -Severity (Get-CheckSeverity -Key "guardPolicyFiles") `
+        -Path $guardPolicyPath `
+        -Details $guardPolicyFilesDetails),
     (New-CheckResult `
         -Key "gitHooksDirectory" `
         -Label $gitHooksLabel `
         -Ok $gitHooksOk `
+        -Severity (Get-CheckSeverity -Key "gitHooksDirectory") `
         -Path $gitHooksPath `
         -Details ($(if ($gitHooksOk) { "$gitHooksLabel に pre-commit / pre-push / secret-guard / commit-safety-guard が存在し、pre-commit / pre-push から呼び出されています。" } else { "$gitHooksLabel の必須 hook が不足または未接続です: $($gitHookIssues -join ', ')" }))),
     (New-CheckResult `
         -Key "gitHookLineEndings" `
         -Label "git hook line endings" `
         -Ok $gitHookLineEndingsOk `
+        -Severity (Get-CheckSeverity -Key "gitHookLineEndings") `
         -Path $gitAttributesPath `
         -Details ($(if ($gitHookLineEndingsOk) { "$gitAttributesLabel に LF 固定ルールがあり、$gitHooksLabel の shell hook は CRLF を含みません。" } else { "Git hook line ending policy issue(s): $($gitHookLineEndingIssues -join ' ')" }))),
     (New-CheckResult `
         -Key "githubWorkflows" `
         -Label "GitHub Actions workflows" `
         -Ok $githubWorkflowsOk `
+        -Severity (Get-CheckSeverity -Key "githubWorkflows") `
         -Path $githubWorkflowsPath `
         -Details $githubWorkflowsDetails),
     (New-CheckResult `
         -Key "coreHooksPath" `
         -Label "core.hooksPath" `
         -Ok $coreHooksOk `
+        -Severity (Get-CheckSeverity -Key "coreHooksPath") `
         -Path $(if ([string]::IsNullOrWhiteSpace($coreHooksResolvedPath)) { $gitHooksPath } else { $coreHooksResolvedPath }) `
         -Details $coreHooksDetails),
     (New-CheckResult `
         -Key "toolDependencies" `
         -Label "hook tool dependencies" `
         -Ok $toolDependenciesOk `
+        -Severity (Get-CheckSeverity -Key "toolDependencies") `
         -Path $copilotHooksPath `
         -Details $toolDependencyDetails)
 )
 
 $missing = New-Object System.Collections.Generic.List[string]
+$blockingMissing = New-Object System.Collections.Generic.List[string]
+$advisoryMissing = New-Object System.Collections.Generic.List[string]
 foreach ($check in $checks) {
     if (-not $check.ok) {
         [void]$missing.Add([string]$check.key)
+        if ($check.severity -eq "blocking") {
+            [void]$blockingMissing.Add([string]$check.key)
+        }
+        else {
+            [void]$advisoryMissing.Add([string]$check.key)
+        }
     }
 }
 
@@ -665,6 +713,8 @@ $report = [ordered]@{
     targetRepoPath = $targetRepoPath
     isGitRepo = $isGitRepo
     missing = @($missing)
+    blockingMissing = @($blockingMissing)
+    advisoryMissing = @($advisoryMissing)
     warnings = @($warnings)
     toolDependencies = $toolDependencyState
     checks = $checks
@@ -682,18 +732,26 @@ Write-Host "Target : $targetRepoPath"
 Write-Host "Git    : $isGitRepo"
 
 foreach ($check in $checks) {
-    $status = if ($check.ok) { "OK" } else { "MISSING" }
-    $color = if ($check.ok) { "Green" } else { "Yellow" }
+    $status = if ($check.ok) { "OK" } elseif ($check.severity -eq "blocking") { "BLOCKING" } else { "ADVISORY" }
+    $color = if ($check.ok) { "Green" } elseif ($check.severity -eq "blocking") { "Red" } else { "Yellow" }
     Write-Host ("[{0}] {1}" -f $status, $check.label) -ForegroundColor $color
     Write-Host ("  Path    : {0}" -f $check.path)
+    Write-Host ("  Severity: {0}" -f $check.severity)
     Write-Host ("  Details : {0}" -f $check.details)
 }
 
 if ($missing.Count -eq 0) {
     Write-Host "All local safety valves are present." -ForegroundColor Green
 }
+elseif ($blockingMissing.Count -eq 0) {
+    Write-Host "All blocking safety valves are present. Advisory items remain. `-Strict` は全項目が green になるまで非ゼロを返します。" -ForegroundColor Yellow
+}
 else {
-    Write-Warning ("Missing local safety valves: {0}" -f ($missing -join ", "))
+    Write-Warning ("Missing blocking safety valves: {0}" -f ($blockingMissing -join ", "))
+}
+
+if ($advisoryMissing.Count -gt 0) {
+    Write-Warning ("Missing advisory safety valves: {0}" -f ($advisoryMissing -join ", "))
 }
 
 foreach ($warning in $warnings) {

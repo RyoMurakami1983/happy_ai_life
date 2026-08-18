@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -25,6 +26,21 @@ def _bash(script: Path, *args: str, env: dict[str, str] | None = None) -> subpro
         capture_output=True,
         text=True,
         env=env,
+    )
+
+
+def _run_guard_hook_sh(
+    script: Path, payload: dict[str, Any], *, env: dict[str, str], cwd: Path
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["bash", str(script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        input=json.dumps(payload),
+        env=env,
+        cwd=cwd,
     )
 
 
@@ -100,10 +116,23 @@ def _write_git_hook_line_ending_policy_crlf(repo: Path, relative: str) -> None:
     )
 
 
+def _write_guard_policy_files(repo: Path) -> None:
+    policy_dir = repo / "policy"
+    policy_dir.mkdir(parents=True, exist_ok=True)
+    (policy_dir / "guard-policy.json").write_text(
+        (ROOT / "policy" / "guard-policy.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    (policy_dir / "guard-policy.schema.json").write_text(
+        (ROOT / "policy" / "guard-policy.schema.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+
 def _tool_env(tmp_path: Path) -> dict[str, str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    for tool in ("sh", "bash", "git", "rsync", "dirname", "basename", "find", "grep", "sort", "mkdir"):
+    for tool in ("sh", "bash", "git", "rsync", "dirname", "basename", "find", "grep", "sort", "mkdir", "cat", "python3"):
         _write_passthrough_shim(bin_dir, tool)
     for tool in ("gitleaks", "jq", "node", "gh"):
         _write_shell_shim(bin_dir, tool)
@@ -116,7 +145,7 @@ def _tool_env(tmp_path: Path) -> dict[str, str]:
 def _tool_env_with_missing(tmp_path: Path, *missing_tools: str) -> dict[str, str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    for tool in ("sh", "bash", "git", "rsync", "dirname", "basename", "find", "grep", "sort", "mkdir"):
+    for tool in ("sh", "bash", "git", "rsync", "dirname", "basename", "find", "grep", "sort", "mkdir", "cat", "python3"):
         _write_passthrough_shim(bin_dir, tool)
     for tool in ("gitleaks", "jq", "node", "gh"):
         if tool in missing_tools:
@@ -298,6 +327,9 @@ def test_sync_to_repo_and_repo_secure_check_sh_work_on_linux(tmp_path: Path) -> 
     assert report_completed.returncode == 0, report_completed.stdout + report_completed.stderr
     report = json.loads(report_completed.stdout)
     assert report["missing"] == []
+    severities = {check["key"]: check["severity"] for check in report["checks"]}
+    assert severities["repoInstructions"] == "blocking"
+    assert severities["githubWorkflows"] == "advisory"
 
 
 def test_repo_secure_check_sh_reports_actionable_core_hooks_and_tool_dependency_details(tmp_path: Path) -> None:
@@ -315,6 +347,7 @@ def test_repo_secure_check_sh_reports_actionable_core_hooks_and_tool_dependency_
     )
     (source_repo / ".github" / "workflows").mkdir()
     (source_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    _write_guard_policy_files(source_repo)
     _write_required_git_hooks(source_repo, "repo-template/.githooks")
     _write_git_hook_line_ending_policy(source_repo, "repo-template/.githooks")
 
@@ -331,6 +364,8 @@ def test_repo_secure_check_sh_reports_actionable_core_hooks_and_tool_dependency_
     assert report_completed.returncode == 0, report_completed.stdout + report_completed.stderr
     report = json.loads(report_completed.stdout)
     assert set(report["missing"]) == {"coreHooksPath", "toolDependencies"}
+    assert set(report["blockingMissing"]) == {"coreHooksPath", "toolDependencies"}
+    assert report["advisoryMissing"] == []
     core_hooks = next(check for check in report["checks"] if check["key"] == "coreHooksPath")
     assert "install-git-hooks.sh" in core_hooks["details"]
     tool_dependencies = next(check for check in report["checks"] if check["key"] == "toolDependencies")
@@ -354,6 +389,7 @@ def test_repo_secure_check_sh_accepts_crlf_gitattributes_for_source_repo(tmp_pat
     )
     (source_repo / ".github" / "workflows").mkdir()
     (source_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    _write_guard_policy_files(source_repo)
     _write_required_git_hooks(source_repo, "repo-template/.githooks")
     _write_git_hook_line_ending_policy_crlf(source_repo, "repo-template/.githooks")
 
@@ -370,6 +406,59 @@ def test_repo_secure_check_sh_accepts_crlf_gitattributes_for_source_repo(tmp_pat
     assert report_completed.returncode == 0, report_completed.stdout + report_completed.stderr
     report = json.loads(report_completed.stdout)
     assert "gitHookLineEndings" not in report["missing"]
+
+
+def test_sync_to_repo_sh_bootstrap_minimal_rewrites_policy(tmp_path: Path) -> None:
+    _require_linux_bootstrap_tools()
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    completed = _bash(
+        ROOT / "scripts" / "sync-to-repo.sh",
+        "-TargetRepoPath",
+        str(target_repo),
+        "-SourceRoot",
+        str(ROOT),
+        "-PolicyProfile",
+        "BootstrapMinimal",
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    policy = json.loads((target_repo / "policy" / "guard-policy.json").read_text(encoding="utf-8"))
+    assert [entry["id"] for entry in policy["protectedPaths"]] == [
+        "repo-hooks",
+        "repo-githooks",
+        "guard-policy-json",
+        "guard-policy-schema",
+        "maintenance-mode-state",
+    ]
+
+
+def test_guard_pre_tool_sh_fallback_policy_is_bootstrap_minimal(tmp_path: Path) -> None:
+    _require_linux_bootstrap_tools()
+    if shutil.which("jq") is None:
+        pytest.skip("jq is required to exercise the bash fallback parser")
+    home = tmp_path / "home"
+    repo = tmp_path / "repo"
+    home.mkdir()
+    repo.mkdir()
+    script = ROOT / ".github" / "hooks" / "scripts" / "guard_pre_tool.sh"
+    env = _tool_env(tmp_path)
+    bin_dir = Path(env["PATH"])
+    _write_passthrough_shim(bin_dir, "jq")
+    env["HOME"] = str(home)
+
+    payload = {
+        "toolName": "edit",
+        "toolArgs": {"path": ".github/workflows/quality.yml", "oldString": "old", "newString": "new"},
+        "cwd": str(repo),
+    }
+    completed = _run_guard_hook_sh(script, payload, env=env, cwd=repo)
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    response = json.loads(completed.stdout)
+    assert response["permissionDecision"] == "ask"
 
 
 def test_home_synced_shell_script_can_generate_repo_assets(tmp_path: Path) -> None:

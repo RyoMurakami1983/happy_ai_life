@@ -82,6 +82,19 @@ def _write_broad_lf_policy(repo: Path, relative: str) -> None:
     policy_path.write_text("* text=auto eol=lf\n", encoding="utf-8", newline="\n")
 
 
+def _write_guard_policy_files(repo: Path) -> None:
+    policy_dir = repo / "policy"
+    policy_dir.mkdir(parents=True, exist_ok=True)
+    (policy_dir / "guard-policy.json").write_text(
+        (ROOT / "policy" / "guard-policy.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    (policy_dir / "guard-policy.schema.json").write_text(
+        (ROOT / "policy" / "guard-policy.schema.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+
 def _write_cmd_shim(bin_dir: Path, name: str) -> None:
     shim = bin_dir / f"{name}.cmd"
     shim.write_text("@echo off\nexit /b 0\n", encoding="utf-8")
@@ -161,6 +174,7 @@ def test_repo_secure_check_uses_repo_template_githooks_for_source_repo(tmp_path:
     (source_repo / ".github" / "hooks" / "safety-guard.json").write_text("{}", encoding="utf-8")
     (source_repo / ".github" / "workflows").mkdir()
     (source_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    _write_guard_policy_files(source_repo)
     _write_required_git_hooks(source_repo, "repo-template/.githooks")
     _write_git_hook_line_ending_policy(source_repo, "repo-template/.githooks")
 
@@ -169,6 +183,9 @@ def test_repo_secure_check_uses_repo_template_githooks_for_source_repo(tmp_path:
     assert report["missing"] == []
     git_hooks = next(check for check in report["checks"] if check["key"] == "gitHooksDirectory")
     assert git_hooks["label"] == "repo-template/.githooks"
+    severities = {check["key"]: check["severity"] for check in report["checks"]}
+    assert severities["repoInstructions"] == "blocking"
+    assert severities["gitHooksDirectory"] == "blocking"
 
 
 def test_repo_secure_check_accepts_broad_lf_rule_for_source_repo(tmp_path: Path) -> None:
@@ -189,6 +206,7 @@ def test_repo_secure_check_accepts_broad_lf_rule_for_source_repo(tmp_path: Path)
     )
     (source_repo / ".github" / "workflows").mkdir()
     (source_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    _write_guard_policy_files(source_repo)
     _write_required_git_hooks(source_repo, "repo-template/.githooks")
     _write_broad_lf_policy(source_repo, "repo-template/.githooks")
 
@@ -215,6 +233,7 @@ def test_repo_secure_check_reports_git_hook_line_ending_issues_for_source_repo(t
     )
     (source_repo / ".github" / "workflows").mkdir()
     (source_repo / ".github" / "workflows" / "quality.yml").write_text("name: quality\n", encoding="utf-8")
+    _write_guard_policy_files(source_repo)
     _write_required_git_hooks(source_repo, "repo-template/.githooks")
     (source_repo / "repo-template" / ".githooks" / "pre-commit").write_text(
         '#!/usr/bin/env sh\r\nsh "$(dirname "$0")/lib/commit-safety-guard.sh"\r\n',
@@ -250,3 +269,40 @@ def test_sync_to_repo_ps1_appends_gitattributes_rules_with_lf(tmp_path: Path) ->
     assert b"\r\n" not in rendered
     assert b".githooks/** text eol=lf\n" in rendered
     assert b".github/hooks/scripts/*.sh text eol=lf\n" in rendered
+
+
+def test_sync_to_repo_ps1_bootstrap_minimal_rewrites_policy(tmp_path: Path) -> None:
+    target_repo = tmp_path / "target"
+    target_repo.mkdir()
+    _git(target_repo, "init")
+
+    completed = subprocess.run(
+        [
+            _powershell_executable(),
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(SYNC_SCRIPT),
+            "-TargetRepoPath",
+            str(target_repo),
+            "-SourceRoot",
+            str(ROOT),
+            "-PolicyProfile",
+            "BootstrapMinimal",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    policy = json.loads((target_repo / "policy" / "guard-policy.json").read_text(encoding="utf-8"))
+    assert [entry["id"] for entry in policy["protectedPaths"]] == [
+        "repo-hooks",
+        "repo-githooks",
+        "guard-policy-json",
+        "guard-policy-schema",
+        "maintenance-mode-state",
+    ]
