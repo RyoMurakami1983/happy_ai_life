@@ -13,7 +13,7 @@ param(
     # Copilot hooks の配布範囲。sessionStart/sessionEnd は既定では封印し、明示時のみ配布する。
     [ValidateSet("SafetyOnly", "All", "None")]
     [string]$HooksMode = "SafetyOnly",
-    [ValidateSet("HappyDefault", "Secure", "EnterpriseStrict", "WindowsDesktop", "Default", "Enterprise")]
+    [ValidateSet("HappyDefault", "Secure", "EnterpriseStrict", "WindowsDesktop", "BootstrapMinimal", "Default", "Enterprise")]
     [string]$PolicyProfile = "HappyDefault",
     # Git client hooks のテンプレート。target repo の .githooks に同期する。
     [string]$GitHooksRelativePath = "repo-template\.githooks",
@@ -60,6 +60,40 @@ function Resolve-PolicyProfile {
         "Enterprise" { return "EnterpriseStrict" }
         default { return $Profile }
     }
+}
+
+function Write-PolicyProfileGuardPolicy {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceFile,
+        [Parameter(Mandatory = $true)][string]$DestinationFile,
+        [Parameter(Mandatory = $true)][string]$PolicyProfile,
+        [switch]$WhatIfMode
+    )
+
+    if ($PolicyProfile -ne "BootstrapMinimal") {
+        return
+    }
+
+    $policy = Get-TextFileContent -Path $SourceFile | ConvertFrom-Json -Depth 20
+    $protectedIds = @(
+        "repo-hooks",
+        "repo-githooks",
+        "guard-policy-json",
+        "guard-policy-schema",
+        "maintenance-mode-state"
+    )
+    $policy.protectedPaths = @(
+        @($policy.protectedPaths) | Where-Object { [string]$_.id -in $protectedIds }
+    )
+    $policy.purpose = "BootstrapMinimal policy for first-run repo onboarding. Keep destructive denies and safety-hook / guard-policy protection, but defer broader repo-local protected-path prompts until HappyDefault promotion."
+    $rendered = $policy | ConvertTo-Json -Depth 20
+
+    if ($WhatIfMode) {
+        Write-Host "Would rewrite policy/guard-policy.json for BootstrapMinimal profile." -ForegroundColor Yellow
+        return
+    }
+
+    Write-TextFileContent -Path $DestinationFile -Content ($rendered + "`n")
 }
 
 function Resolve-HooksSourcePath {
@@ -480,6 +514,9 @@ elseif ($effectivePolicyProfile -eq "Secure") {
 elseif ($effectivePolicyProfile -eq "WindowsDesktop") {
     Write-Host "Note        : WindowsDesktop は Windows desktop / Tauri / proxy 前提の profile ですが、EnterpriseStrict governance は同期しません。" -ForegroundColor Yellow
 }
+elseif ($effectivePolicyProfile -eq "BootstrapMinimal") {
+    Write-Host "Note        : BootstrapMinimal は初回 onboarding 用の軽量 profile です。破壊的 deny と safety-hook / policy 保護は維持し、より広い repo-local protected-path prompts は HappyDefault 昇格まで持ち込みません。" -ForegroundColor Yellow
+}
 else {
     Write-Host "Note        : HappyDefault では enterprise 固有 instructions を同期しません。" -ForegroundColor Yellow
 }
@@ -589,6 +626,12 @@ if (-not [string]::IsNullOrWhiteSpace($PolicyRelativePath)) {
         -MirrorMode:$Mirror `
         -WhatIfMode:$DryRun `
         -ShowVerboseLog:$VerboseLog
+
+    Write-PolicyProfileGuardPolicy `
+        -SourceFile (Join-Path $policySourcePath "guard-policy.json") `
+        -DestinationFile (Join-Path $policyDestinationPath "guard-policy.json") `
+        -PolicyProfile $effectivePolicyProfile `
+        -WhatIfMode:$DryRun
 }
 
 # --- 5. repo-template/docs/furikaeri/ → 配布先 docs/furikaeri/ ---

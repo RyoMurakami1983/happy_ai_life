@@ -12,7 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _evaluate(
-    payload: dict[str, object], *, home: Path, hook_event: HookEvent = "preToolUse"
+    payload: dict[str, object],
+    *,
+    home: Path,
+    hook_event: HookEvent = "preToolUse",
+    policy_path: Path | None = None,
 ) -> dict[str, object] | None:
     decision = evaluate_payload(
         payload,
@@ -21,7 +25,7 @@ def _evaluate(
             cwd=str(ROOT),
             repo_root=str(ROOT),
             home=str(home),
-            policy_path=str(ROOT / "policy" / "guard-policy.json"),
+            policy_path=str(policy_path or (ROOT / "policy" / "guard-policy.json")),
         ),
     )
     return decision.render(hook_event)
@@ -232,3 +236,38 @@ def test_guard_keeps_destructive_command_denied_even_when_gist_review_applies(
 
     assert response is not None
     assert response["permissionDecision"] == "deny"
+
+
+def test_guard_fallback_policy_keeps_workflow_protection_when_policy_is_missing(tmp_path: Path) -> None:
+    missing_policy = tmp_path / "missing-policy.json"
+
+    response = _evaluate(
+        {"toolName": "edit", "toolArgs": {"path": ".github/workflows/quality.yml", "oldString": "old", "newString": "new"}},
+        home=tmp_path,
+        policy_path=missing_policy,
+    )
+
+    assert response is not None
+    assert response["permissionDecision"] == "ask"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".github/hooks/scripts/guard_pre_tool.sh",
+        "policy/guard-policy.json",
+    ],
+)
+def test_guard_fallback_policy_keeps_safety_hook_and_policy_protected(
+    tmp_path: Path, path: str
+) -> None:
+    missing_policy = tmp_path / "missing-policy.json"
+
+    response = _evaluate(
+        {"toolName": "edit", "toolArgs": {"path": path, "oldString": "old", "newString": "new"}},
+        home=tmp_path,
+        policy_path=missing_policy,
+    )
+
+    assert response is not None
+    assert response["permissionDecision"] == "ask"

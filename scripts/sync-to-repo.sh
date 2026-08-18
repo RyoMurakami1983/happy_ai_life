@@ -28,11 +28,63 @@ full_path() {
 }
 
 resolve_policy_profile() {
-  case "$1" in
-    Default) printf 'HappyDefault\n' ;;
-    Enterprise) printf 'EnterpriseStrict\n' ;;
+  local normalized
+  normalized="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  case "${normalized}" in
+    default) printf 'HappyDefault\n' ;;
+    enterprise) printf 'EnterpriseStrict\n' ;;
+    happydefault) printf 'HappyDefault\n' ;;
+    secure) printf 'Secure\n' ;;
+    enterprisestrict) printf 'EnterpriseStrict\n' ;;
+    windowsdesktop) printf 'WindowsDesktop\n' ;;
+    bootstrapminimal) printf 'BootstrapMinimal\n' ;;
+    "") printf 'HappyDefault\n' ;;
     *) printf '%s\n' "$1" ;;
   esac
+}
+
+rewrite_policy_for_profile() {
+  local source_file="$1"
+  local destination_file="$2"
+  local effective_policy_profile="$3"
+  local dry_run="$4"
+
+  [[ "${effective_policy_profile}" == "BootstrapMinimal" ]] || return 0
+
+  if [[ "${dry_run}" -eq 1 ]]; then
+    printf 'Would rewrite policy/guard-policy.json for BootstrapMinimal profile.\n'
+    return 0
+  fi
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf 'python3 is required when using PolicyProfile BootstrapMinimal on Linux/WSL2.\n' >&2
+    exit 1
+  fi
+
+  python3 - "$source_file" "$destination_file" <<'PY'
+from __future__ import annotations
+import json
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+destination = Path(sys.argv[2])
+policy = json.loads(source.read_text(encoding="utf-8"))
+protected_ids = {
+    "repo-hooks",
+    "repo-githooks",
+    "guard-policy-json",
+    "guard-policy-schema",
+    "maintenance-mode-state",
+}
+policy["protectedPaths"] = [entry for entry in policy["protectedPaths"] if entry.get("id") in protected_ids]
+policy["purpose"] = (
+    "BootstrapMinimal policy for first-run repo onboarding. "
+    "Keep destructive denies and safety-hook / guard-policy protection, "
+    "but defer broader repo-local protected-path prompts until HappyDefault promotion."
+)
+destination.write_text(json.dumps(policy, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+PY
 }
 
 resolve_hooks_source_path() {
@@ -300,6 +352,17 @@ duplicate_hooks_path="${source_path}/hooks"
 warn_if_path_exists "${duplicate_hooks_path}" "repo-template/.github/hooks is ignored. Use .github/hooks as the single source of truth for repository hooks."
 
 exclude_args=(--exclude='.git/' --exclude='.vs/' --exclude='hooks/' --exclude='*.local.json' --exclude='*.local.ps1' --exclude='.gitignore')
+case "${effective_policy_profile}" in
+  HappyDefault|Secure|EnterpriseStrict|WindowsDesktop|BootstrapMinimal) ;;
+  *)
+    printf 'Unsupported PolicyProfile: %s\n' "${policy_profile}" >&2
+    exit 1
+    ;;
+esac
+if [[ "${effective_policy_profile}" == "BootstrapMinimal" && "${dry_run}" -eq 0 ]] && ! command -v python3 >/dev/null 2>&1; then
+  printf 'python3 is required before using PolicyProfile BootstrapMinimal on Linux/WSL2.\n' >&2
+  exit 1
+fi
 if [[ "${effective_policy_profile}" != "EnterpriseStrict" ]]; then
   exclude_args+=(--exclude='enterprise.instructions.md')
 fi
@@ -319,6 +382,9 @@ fi
 case "${effective_policy_profile}" in
   EnterpriseStrict)
     printf 'Note        : EnterpriseStrict は enterprise.instructions.md を含む重い governance guidance を opt-in で同期します。\n'
+    ;;
+  BootstrapMinimal)
+    printf 'Note        : BootstrapMinimal は初回 onboarding 用の軽量 profile です。破壊的 deny と safety-hook / policy 保護は維持し、より広い repo-local protected-path prompts は HappyDefault 昇格まで持ち込みません。\n'
     ;;
   Secure)
     printf 'Note        : Secure は安全弁を維持しつつ、enterprise 固有 instructions は同期しません。\n'
@@ -382,6 +448,7 @@ if [[ -n "${policy_relative_path}" ]]; then
   printf 'Source      : %s\n' "${policy_source_path}"
   printf 'Destination : %s\n' "${policy_destination_path}"
   sync_directory "${policy_source_path}" "${policy_destination_path}" "${mirror}" "${dry_run}" "${verbose_log}"
+  rewrite_policy_for_profile "${policy_source_path}/guard-policy.json" "${policy_destination_path}/guard-policy.json" "${effective_policy_profile}" "${dry_run}"
 fi
 
 if [[ -n "${docs_furikaeri_relative_path}" ]]; then
