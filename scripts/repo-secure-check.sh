@@ -572,14 +572,14 @@ else
     printf '  Severity: %s\n' "${severity}"
     printf '  Details : %s\n' "${details}"
   }
-  report_check "${instructions_ok}" "blocking" "repo instructions" "${instructions_path}" "$([[ "${instructions_ok}" -eq 1 ]] && printf 'repo-wide instructions が存在します。' || printf 'repo-wide instructions がありません。')"
-  report_check "${copilot_hooks_ok}" "blocking" "Copilot hooks" "${copilot_hooks_path}" "$([[ "${copilot_hooks_ok}" -eq 1 ]] && printf 'Copilot safety hook safety-guard.json が存在します。session continuity hooks は標準運用から封印済みで、必要な repo だけ明示 opt-in します。' || printf 'Copilot safety hook safety-guard.json がありません。')"
-  report_check "${guard_policy_files_ok}" "blocking" "guard policy files" "${guard_policy_path}" "${guard_policy_files_details}"
-  report_check "${git_hooks_ok}" "blocking" "${git_hooks_label}" "${git_hooks_path}" "$([[ "${git_hooks_ok}" -eq 1 ]] && printf '%s に pre-commit / pre-push / secret-guard / commit-safety-guard が存在し、pre-commit / pre-push から呼び出されています。' "${git_hooks_label}" || printf '%s の必須 hook が不足または未接続です: %s' "${git_hooks_label}" "$(IFS=', '; printf '%s' "${git_hook_issues[*]}")")"
-  report_check "${git_hook_line_endings_ok}" "blocking" "git hook line endings" "${gitattributes_path}" "$([[ "${git_hook_line_endings_ok}" -eq 1 ]] && printf '%s に LF 固定ルールがあり、%s の shell hook は CRLF を含みません。' "${gitattributes_label}" "${git_hooks_label}" || printf 'Git hook line ending policy issue(s): %s' "$(IFS=' '; printf '%s' "${git_hook_line_ending_issues[*]}")")"
-  report_check "${github_workflows_ok}" "advisory" "GitHub Actions workflows" "${github_workflows_path}" "${github_workflows_details}"
-  report_check "${core_hooks_ok}" "blocking" "core.hooksPath" "${core_hooks_resolved_path:-${git_hooks_path}}" "${core_hooks_details}"
-  report_check "${tool_dependencies_ok}" "blocking" "hook tool dependencies" "${copilot_hooks_path}" "${tool_dependency_details}"
+  report_check "${instructions_ok}" "$(check_severity repoInstructions)" "repo instructions" "${instructions_path}" "$([[ "${instructions_ok}" -eq 1 ]] && printf 'repo-wide instructions が存在します。' || printf 'repo-wide instructions がありません。')"
+  report_check "${copilot_hooks_ok}" "$(check_severity copilotHooks)" "Copilot hooks" "${copilot_hooks_path}" "$([[ "${copilot_hooks_ok}" -eq 1 ]] && printf 'Copilot safety hook safety-guard.json が存在します。session continuity hooks は標準運用から封印済みで、必要な repo だけ明示 opt-in します。' || printf 'Copilot safety hook safety-guard.json がありません。')"
+  report_check "${guard_policy_files_ok}" "$(check_severity guardPolicyFiles)" "guard policy files" "${guard_policy_path}" "${guard_policy_files_details}"
+  report_check "${git_hooks_ok}" "$(check_severity gitHooksDirectory)" "${git_hooks_label}" "${git_hooks_path}" "$([[ "${git_hooks_ok}" -eq 1 ]] && printf '%s に pre-commit / pre-push / secret-guard / commit-safety-guard が存在し、pre-commit / pre-push から呼び出されています。' "${git_hooks_label}" || printf '%s の必須 hook が不足または未接続です: %s' "${git_hooks_label}" "$(IFS=', '; printf '%s' "${git_hook_issues[*]}")")"
+  report_check "${git_hook_line_endings_ok}" "$(check_severity gitHookLineEndings)" "git hook line endings" "${gitattributes_path}" "$([[ "${git_hook_line_endings_ok}" -eq 1 ]] && printf '%s に LF 固定ルールがあり、%s の shell hook は CRLF を含みません。' "${gitattributes_label}" "${git_hooks_label}" || printf 'Git hook line ending policy issue(s): %s' "$(IFS=' '; printf '%s' "${git_hook_line_ending_issues[*]}")")"
+  report_check "${github_workflows_ok}" "$(check_severity githubWorkflows)" "GitHub Actions workflows" "${github_workflows_path}" "${github_workflows_details}"
+  report_check "${core_hooks_ok}" "$(check_severity coreHooksPath)" "core.hooksPath" "${core_hooks_resolved_path:-${git_hooks_path}}" "${core_hooks_details}"
+  report_check "${tool_dependencies_ok}" "$(check_severity toolDependencies)" "hook tool dependencies" "${copilot_hooks_path}" "${tool_dependency_details}"
   if ((${#missing[@]} == 0)); then
     printf 'All local safety valves are present.\n'
   elif ((${#blocking_missing[@]} == 0)); then
