@@ -31,17 +31,22 @@ uv run app.py home --no-interactive
 
 [Windows: PowerShell]
 ```powershell
-& $HOME\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath <path> -PolicyProfile HappyDefault -DryRun
-& $HOME\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath <path> -PolicyProfile HappyDefault
+& $HOME\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath <path>
+& $HOME\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath <path> -PolicyProfile BootstrapMinimal -DryRun
+& $HOME\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath <path> -PolicyProfile BootstrapMinimal
 & $HOME\.copilot\scripts\install-git-hooks.ps1 -TargetRepoPath <path>
+& $HOME\.copilot\scripts\repo-secure-check.ps1 -TargetRepoPath <path> -AsJson
+& $HOME\.copilot\scripts\sync-to-repo.ps1 -TargetRepoPath <path> -PolicyProfile HappyDefault
 ```
 
 [Linux / WSL2: bash]
 ```bash
 bash "$HOME/.copilot/scripts/repo-secure-check.sh" -TargetRepoPath <path>
-bash "$HOME/.copilot/scripts/sync-to-repo.sh" -TargetRepoPath <path> -PolicyProfile HappyDefault -DryRun
-bash "$HOME/.copilot/scripts/sync-to-repo.sh" -TargetRepoPath <path> -PolicyProfile HappyDefault
+bash "$HOME/.copilot/scripts/sync-to-repo.sh" -TargetRepoPath <path> -PolicyProfile BootstrapMinimal -DryRun
+bash "$HOME/.copilot/scripts/sync-to-repo.sh" -TargetRepoPath <path> -PolicyProfile BootstrapMinimal
 bash "$HOME/.copilot/scripts/install-git-hooks.sh" -TargetRepoPath <path>
+bash "$HOME/.copilot/scripts/repo-secure-check.sh" -TargetRepoPath <path> -AsJson
+bash "$HOME/.copilot/scripts/sync-to-repo.sh" -TargetRepoPath <path> -PolicyProfile HappyDefault
 ```
 
 ## check

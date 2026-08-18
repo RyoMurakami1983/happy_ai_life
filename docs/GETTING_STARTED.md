@@ -185,12 +185,12 @@ cat "$HOME/.copilot/copilot-instructions.md"
 
    [Windows: PowerShell]
    ```powershell
-   & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath <your-repo-path> -PolicyProfile HappyDefault
+   & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath <your-repo-path> -PolicyProfile BootstrapMinimal
    ```
 
    [Linux / WSL2: bash]
    ```bash
-   bash "$HOME/.copilot/scripts/sync-to-repo.sh" -TargetRepoPath <your-repo-path> -PolicyProfile HappyDefault
+   bash "$HOME/.copilot/scripts/sync-to-repo.sh" -TargetRepoPath <your-repo-path> -PolicyProfile BootstrapMinimal
    ```
 
 3. Git hooks を有効化します。
@@ -205,7 +205,21 @@ cat "$HOME/.copilot/copilot-instructions.md"
    bash "$HOME/.copilot/scripts/install-git-hooks.sh" -TargetRepoPath <your-repo-path>
    ```
 
-4. 反映を確認します。
+4. blocking 項目を確認し、必要なら HappyDefault へ昇格します。
+
+   [Windows: PowerShell]
+   ```powershell
+   & $HOME/.copilot/scripts/repo-secure-check.ps1 -TargetRepoPath <your-repo-path> -AsJson
+   & $HOME/.copilot/scripts/sync-to-repo.ps1 -TargetRepoPath <your-repo-path> -PolicyProfile HappyDefault
+   ```
+
+   [Linux / WSL2: bash]
+   ```bash
+   bash "$HOME/.copilot/scripts/repo-secure-check.sh" -TargetRepoPath <your-repo-path> -AsJson
+   bash "$HOME/.copilot/scripts/sync-to-repo.sh" -TargetRepoPath <your-repo-path> -PolicyProfile HappyDefault
+   ```
+
+5. 反映を確認します。
 
    ```powershell
    cd <your-repo-path>
@@ -220,6 +234,7 @@ cat "$HOME/.copilot/copilot-instructions.md"
 - チーム全員が同じ instructions を使う前提です
 - `gitleaks` により commit 時に secret を検査します
 - Linux / WSL2 では `bash`、`git`、`rsync` が必要です。bash variant の safety guard を使う host では `jq` も必要です
+- `BootstrapMinimal` を Linux / WSL2 で使う場合は `python3` も必要です
 - `.gitattributes` で `.githooks/**` の LF を固定します。`repo-secure-check` で line ending 指摘が出たら、まず `sync-to-repo` を再実行してください
 
 通常は上の手順だけで十分です。重い governance や追加 profile は既定導線から外しています。

@@ -37,6 +37,10 @@ _Avoid_: skill list
 repo root に置く cross-agent brief。repo の役割、主要 command、boundary、source of truth への入口を短く示す。
 _Avoid_: skill の詳細手順, 長い設計理由, README の置き換え
 
+**BootstrapMinimal**:
+初回 onboarding 用の軽量 policy profile。破壊的 deny は維持し、repo-local protected-path prompt は HappyDefault 昇格まで持ち込まない。
+_Avoid_: 定常運用の既定 profile, guard 無効化
+
 **disable-model-invocation**:
 orchestration 親が「自分で実行する unit ではなく、route / handoff に徹する」と示す frontmatter。Copilot CLI では可視性や manual-only 動作の保証としては扱わない。
 _Avoid_: slash 非表示フラグ, manual-only guarantee

@@ -12,6 +12,7 @@
 | [006_GRILL_WITH_DOCS_RESULT.md](006_GRILL_WITH_DOCS_RESULT.md) | active | skill 命名体系の全面刷新 |
 | [007_GRILL_WITH_DOCS_RESULT.md](007_GRILL_WITH_DOCS_RESULT.md) | active | dotnet family を internal sub-skill 化する |
 | [008_GRILL_WITH_DOCS_RESULT.md](008_GRILL_WITH_DOCS_RESULT.md) | superseded | GitHub-first knowledge storage と agent entrypoint。設計・実装の正本は [../design/008_TECHNICAL_DESIGN.md](../design/008_TECHNICAL_DESIGN.md) と [../plan/008_PLAN_DONE.md](../plan/008_PLAN_DONE.md) |
+| [009_GRILL_WITH_DOCS_RESULT.md](009_GRILL_WITH_DOCS_RESULT.md) | superseded | repo-onboarding と guard の初回導線を穏やかにする。設計・実装の正本は [../design/009_TECHNICAL_DESIGN.md](../design/009_TECHNICAL_DESIGN.md) と [../plan/009_PLAN_DONE.md](../plan/009_PLAN_DONE.md) |
 
 ## 更新ルール
 

@@ -12,3 +12,4 @@
 | [006_PLAN_DONE.md](006_PLAN_DONE.md) | done | skill 命名体系の全面刷新 |
 | [007_PLAN_DONE.md](007_PLAN_DONE.md) | done | dotnet family router への再編 |
 | [008_PLAN_DONE.md](008_PLAN_DONE.md) | done | GitHub-first knowledge storage の導線整備 |
+| [009_PLAN_DONE.md](009_PLAN_DONE.md) | done | repo-onboarding と guard の BootstrapMinimal 化 |
