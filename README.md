@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> このリポジトリは2026-08-22に開発を終了し、[happy-ai-work](https://github.com/RyoMurakami1983/happy-ai-work)へ統合しました。現在の開発・導入手順は移行先を参照してください。このrepoのCopilot CLI向け内容は履歴としてのみ保持します。判断の詳細は[ARCHIVE_NOTICE.md](ARCHIVE_NOTICE.md)に記録しています。
+
 # happy_ai_life
 
 > 楽しく AI と続ける仕事・学習・コーディングの型を、いつでもどこでも再現できるようにする。
